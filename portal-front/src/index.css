@@ -1,13 +1,11 @@
 :root {
-  /* Cores que já tínhamos */
-  --cor-primaria: #000000;
+
+/* Cores da paleta */
+  --cor-primaria: #ff0000;
   --cor-fundo: #ffffff;
-
-  /* Fonte padrão do sistema */
-
 }
 
-html{
+body{
   background-color: var(--cor-fundo);
   color: var(--cor-primaria);;
 }
