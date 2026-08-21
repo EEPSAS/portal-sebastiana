@@ -4,6 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+use function Laravel\Prompts\table;
+
 return new class extends Migration
 {
     /**
@@ -13,7 +15,12 @@ return new class extends Migration
     {
         Schema::create('radioatividades', function (Blueprint $table) {
             $table->id();
+            $table->string('titulo');
+            $table->text('descricao');
+            $table->string('imagem');
+             $table->time('duracao');
             $table->timestamps();
+             
         });
     }
 
