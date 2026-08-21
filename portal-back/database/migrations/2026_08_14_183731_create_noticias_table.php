@@ -12,8 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('noticias', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+            $table->id(); // PK
+            $table->string('titulo');
+            $table->text('conteudo');
+            $table->string('url_foto')->nullable();
+            $table->timestamp('data_publicacao')->nullable();
+
+            // Chave Estrangeira (FK)
+            $table->foreignId('autor_id')
+                ->constrained('users') // Aponta para a tabela 'users' (id)
+                ->onDelete('cascade'); // Se o usuário for deletado, apaga suas notícias
+
+            $table->timestamps(); // Cria created_at e updated_at
         });
     }
 
