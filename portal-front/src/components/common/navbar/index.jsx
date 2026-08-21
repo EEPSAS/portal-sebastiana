@@ -16,7 +16,7 @@ const NavBar = () => {
               <Link className="nav-link active" aria-current="page" to="#">Home</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link" to="/front/src/components/common/Sections/Login">Portal do aluno</Link>
+              <Link className="nav-link" to="login">Portal do aluno</Link>
             </li>
             </ul>
          
