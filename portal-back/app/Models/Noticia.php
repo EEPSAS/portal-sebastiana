@@ -4,9 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Noticia extends Model
 {
-    /** @use HasFactory<\Database\Factories\NoticiaFactory> */
     use HasFactory;
+    // Define a tabela manualmente caso o Laravel procure por 'noticias' no plural em inglês
+    protected $table = 'noticias'; 
+
+    protected $fillable = [
+        'titulo', 'conteudo', 'url_foto', 'data_publicacao', 'autor_id'
+    ];
+
+    // Relacionamento N:1 (Inverso)
+    public function autor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'autor_id');
+    }
 }
