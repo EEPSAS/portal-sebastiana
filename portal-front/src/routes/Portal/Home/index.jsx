@@ -3,11 +3,9 @@ import HeroSection from "../../../components/common/Sections/Hero";
 import NoticiasSection from "../../../components/common/Sections/Noticias";
 import PodcastSection from "../../../components/common/Sections/Podcast";
 import SobreSection from "../../../components/common/Sections/Sobre";
-import PortalLayout from "../../../Layouts/PortalLayout";
 
 const Home = () => {
   return (
-    <PortalLayout>
       <main>
         <HeroSection />
         <NoticiasSection />
@@ -15,7 +13,6 @@ const Home = () => {
         <PodcastSection />
         <SobreSection />
       </main>
-    </PortalLayout>
   );
 };
 
