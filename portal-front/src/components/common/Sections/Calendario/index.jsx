@@ -26,4 +26,4 @@ const CalendarioSection = () => {
   )
 }
 
-export default CalendarioSection
+export default CalendarioSection;

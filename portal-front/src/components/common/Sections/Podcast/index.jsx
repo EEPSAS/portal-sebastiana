@@ -35,4 +35,4 @@ const PodcastSection = () => {
   )
 }
 
-export default PodcastSection
+export default PodcastSection;

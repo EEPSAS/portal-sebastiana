@@ -34,4 +34,4 @@ const NoticiasSection = () => {
   )
 }
 
-export default NoticiasSection
+export default NoticiasSection;

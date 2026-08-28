@@ -1,4 +1,4 @@
-const SobreSection = () => {
+const SobreNos = () => {
   return (
     <>
      <section id="sobre-nos" className="py-5">
@@ -24,4 +24,4 @@ const SobreSection = () => {
   )
 }
 
-export default SobreSection;
+export default SobreNos;
