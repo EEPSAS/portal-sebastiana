@@ -1,20 +1,19 @@
-import Home from "./routes/Portal/Home"
-import { BrowserRouter, Routes, Route } from "react-router";
-import PortalPublico from "./Layouts/PortalPublico";
-import Login from "./components/common/Sections/Login";
+import CalendarioSection from "./components/common/Sections/Calendario";
+import HeroSection from "./components/common/Sections/Hero";
+import NoticiasSection from "./components/common/Sections/Noticias";
+import PodcastSection from "./components/common/Sections/Podcast";
+import SobreSection from "./components/common/Sections/Sobre";
 
-function App() {
+const Home = () => {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<PortalPublico/>}>
-          <Route index element ={<Home/>}/>
-          <Route path="Login" element={<Login/>}/>
-        </Route>
-      </Routes>
-    </BrowserRouter>
+      <main>
+        <HeroSection />
+        <NoticiasSection />
+        <CalendarioSection />
+        <PodcastSection />
+        <SobreSection />
+      </main>
+  );
+};
 
-  )
-}
-
-export default App
+export default Home;
