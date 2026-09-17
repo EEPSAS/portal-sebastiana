@@ -6,6 +6,10 @@ import SobreSection from "../../../components/common/Sections/Sobre";
 
 const Home = () => {
   return (
+
+    <>
+
+
       <main>
         <HeroSection />
         <NoticiasSection />
@@ -13,6 +17,9 @@ const Home = () => {
         <PodcastSection />
         <SobreSection />
       </main>
+
+    </>
+
   );
 };
 

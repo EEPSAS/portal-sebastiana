@@ -1,7 +1,8 @@
 import LoginSection from "../../../components/common/Sections/Login";
 
 const Login = () => {
-  return <LoginSection />;
+  return (
+  <LoginSection />);
 };
 
 export default Login;
