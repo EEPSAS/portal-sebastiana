@@ -1,6 +1,6 @@
 const Header = () => {
   return (
-    <header className="d-flex justify-content-between align-items-start p-4 w-100">
+    <header className="dashboard-header d-flex justify-content-between align-items-start p-4">
       
       {/* Lado Esquerdo: Texto de Boas-vindas e Barra de Pesquisa */}
       <div className="d-flex flex-column" style={{ maxWidth: "600px", flex: 1 }}>
