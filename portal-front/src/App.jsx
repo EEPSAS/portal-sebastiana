@@ -4,7 +4,7 @@ import PortalPublico from "./Layouts/PortalPublico";
 import Dashboard from "./Layouts/Dashboard";
 import Login from "./routes/Portal/Login";
 
-const Home = () => {
+const App = () => {
   return (
     <BrowserRouter>
       <Routes>
