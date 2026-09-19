@@ -4,7 +4,7 @@ const navigationItems = [
   { label: "Home", path: "/dashboard/home", icon: "bi-house-door-fill" },
   { label: "Biblioteca", path: "/dashboard/biblioteca", icon: "bi-book" },
   { label: "Agenda", path: "/dashboard/agenda", icon: "bi-calendar-event" },
-  { label: "CalendÃ¡rio", path: "/dashboard/calendario", icon: "bi-calendar3" },
+  { label: "Calendário", path: "/dashboard/calendario", icon: "bi-calendar3" },
 ]
 
 const navigationLinkClass = ({ isActive }) =>
@@ -17,7 +17,7 @@ const Aside = () => {
       <Link to="/dashboard/home" className="d-flex align-items-center mb-4 text-decoration-none justify-content-center">
         <div className="text-center">
           <span className="fs-5 fw-bold text-primary d-block">EEPSAS</span>
-          <span className="fs-6 text-dark fw-semibold">Ensino MÃ©dio</span>
+          <span className="fs-6 text-dark fw-semibold">Ensino Médio</span>
         </div>
       </Link>
 
@@ -36,12 +36,12 @@ const Aside = () => {
       <ul className="nav nav-pills flex-column gap-2 mb-3">
         <li className="nav-item">
           <Link className="nav-link link-dark d-flex align-items-center fw-semibold" to="/dashboard">
-            <i className="bi bi-bell me-3 fs-5 text-primary"></i> NotificaÃ§Ãµes
+            <i className="bi bi-bell me-3 fs-5 text-primary"></i> Notificações
           </Link>
         </li>
         <li className="nav-item">
           <NavLink className={navigationLinkClass} to="/dashboard/configuracoes">
-            <i className="bi bi-gear me-3 fs-5"></i> ConfiguraÃ§Ãµes
+            <i className="bi bi-gear me-3 fs-5"></i> Configurações
           </NavLink>
         </li>
         <li className="nav-item">

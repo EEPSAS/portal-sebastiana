@@ -3,15 +3,15 @@ import Footer from "../../components/Footer";
 import Navbar from "../../components/Navbar";
 
 const PortalLayout = () => (
-  <>
-    <header>
+  <div className="portal-layout">
+    <header className="portal-header">
       <Navbar />
     </header>
-    <main>
+    <main className="portal-main">
       <Outlet />
     </main>
     <Footer />
-  </>
+  </div>
 );
 
 export default PortalLayout;

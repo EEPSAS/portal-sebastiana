@@ -7,18 +7,13 @@ import Sobre from "../../components/Portal/Sobre";
 const Home = () => {
   return (
 
-    <>
-
-
-      <main>
+    <div className="portal-home">
         <Hero />
         <Noticias />
         <Calendario />
         <Podcast />
         <Sobre />
-      </main>
-
-    </>
+    </div>
 
   );
 };

@@ -1,17 +1,15 @@
 :root {
-
-/* Cores da paleta */
-  
   --cor-fundo: #ffffff;
+  --dashboard-sidebar-width: 250px;
 }
 
-body{
+body {
   background-color: var(--cor-fundo);
-  color: var(--cor-primaria);;
+  color: var(--cor-primaria);
 }
 
-.card{
-    width: 18rem
+.card {
+  width: 18rem;
 }
 
 .dashboard-shell {
@@ -23,23 +21,25 @@ body{
   position: fixed;
   inset: 0 auto 0 0;
   z-index: 1030;
-  width: 250px;
+  width: var(--dashboard-sidebar-width);
   height: 100vh;
   border-radius: 0 20px 20px 0;
+  overflow-y: auto;
 }
 
 .dashboard-content {
   min-height: 100vh;
-  margin-left: 250px;
+  margin-left: var(--dashboard-sidebar-width);
 }
 
 .dashboard-header {
   position: fixed;
   top: 0;
   right: 0;
-  left: 250px;
+  left: var(--dashboard-sidebar-width);
   z-index: 1020;
-  height: 136px;
+  min-height: 136px;
+  height: auto;
   background-color: #f8f9fa;
 }
 
@@ -67,4 +67,200 @@ body{
 .settings-toggle {
   width: 3rem;
   height: 1.6rem;
+}
+
+.calendar-layout {
+  min-width: 0;
+}
+
+.calendar-grid-panel {
+  min-width: 0;
+}
+
+.podcast-layout > * {
+  min-width: 0;
+}
+
+.podcast-episodes > div {
+  min-width: 0;
+}
+
+.podcast-episodes h4 {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767.98px) {
+  .podcast-section {
+    padding: 1rem !important;
+  }
+
+  .podcast-layout {
+    display: flex !important;
+    flex-direction: column;
+    gap: 2rem !important;
+  }
+
+  .podcast-section h1 {
+    font-size: 2.25rem !important;
+  }
+
+  .podcast-episodes-heading {
+    align-items: flex-start !important;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .podcast-episodes > div {
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+  }
+
+  .podcast-episodes > div > div:first-child {
+    width: 72px !important;
+    height: 52px !important;
+    flex: 0 0 72px;
+  }
+
+  .podcast-section > div:last-child {
+    align-items: flex-start !important;
+    flex-direction: column;
+    margin-top: 2rem !important;
+  }
+
+  .podcast-section > div:last-child > div:last-child {
+    flex-wrap: wrap;
+    gap: 0.75rem !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .calendar-section {
+    padding: 1rem !important;
+  }
+
+  .calendar-layout {
+    grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr) !important;
+  }
+
+  .calendar-layout > :last-child {
+    grid-column: 1 / -1;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 1.25rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .calendar-hero {
+    padding: 2rem 1.25rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .calendar-hero h1 {
+    font-size: 2rem !important;
+  }
+
+  .calendar-layout {
+    display: flex !important;
+    flex-direction: column;
+    gap: 1.5rem !important;
+    padding: 1rem !important;
+  }
+
+  .calendar-grid-panel {
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-top: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 1.25rem 0 !important;
+  }
+
+  .calendar-grid-panel > div:first-child {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .calendar-grid-panel > div:first-child > div {
+    min-width: 0;
+  }
+
+  .calendar-grid-panel h2 {
+    font-size: 1.25rem !important;
+  }
+
+  .calendar-categories label {
+    gap: 0.75rem;
+  }
+
+  .calendar-categories label > span:first-child {
+    min-width: 0;
+  }
+
+  .calendar-categories label > span:first-child > span:last-child {
+    min-width: 0;
+  }
+
+  .calendar-categories label > span:first-child > span:last-child span {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 991.98px) {
+  :root {
+    --dashboard-sidebar-width: 220px;
+  }
+
+  .dashboard-header {
+    padding: 1.25rem !important;
+  }
+
+  .dashboard-main {
+    padding-top: 150px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .dashboard-aside {
+    position: relative;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .dashboard-aside > ul {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .dashboard-aside > ul:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  .dashboard-content {
+    margin-left: 0;
+  }
+
+  .dashboard-header {
+    position: relative;
+    left: 0;
+    min-height: 0;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .dashboard-header > div:first-child {
+    max-width: none !important;
+    flex-basis: 100%;
+  }
+
+  .dashboard-header > div:first-child > div {
+    max-width: none !important;
+  }
+
+  .dashboard-main {
+    padding-top: 0;
+  }
 }

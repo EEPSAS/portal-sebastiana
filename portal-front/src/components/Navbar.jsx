@@ -3,8 +3,8 @@ import { Link } from "react-router"
 
 const NavBar = () => {
   return (
-     <nav className="navbar navbar-expand-lg bg-body-tertiary">
-      <div className="container-fluid">
+    <nav className="navbar navbar-expand-lg bg-body-tertiary portal-navbar">
+     <div className="container portal-navbar__inner">
         <Link className="navbar-brand" to="/">Portal Sebastiana</Link>
         <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
           <span className="navbar-toggler-icon"></span>

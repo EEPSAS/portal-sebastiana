@@ -22,6 +22,7 @@
 }
 
 .noticia-detail__paper {
+  box-sizing: border-box;
   max-width: 980px;
   margin: 0 auto;
   padding: clamp(1.5rem, 4vw, 4rem);
@@ -51,6 +52,7 @@
 
 .noticia-detail h1,
 .noticia-detail h2 {
+  overflow-wrap: anywhere;
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-weight: 600;
 }
@@ -91,6 +93,7 @@
 }
 
 .noticia-detail__content p {
+  overflow-wrap: anywhere;
   max-width: 700px;
   margin: 2rem auto 0;
   color: #171717;

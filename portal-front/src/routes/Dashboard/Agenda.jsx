@@ -4,30 +4,30 @@
       <div className="row g-4">
 
         {/* =========================================
-            COLUNA ESQUERDA (CalendÃ¡rio Maior - Placeholder)
+            COLUNA ESQUERDA (Calendário maior - placeholder)
         ========================================= */}
         <div className="col-lg-8">
           <div className="bg-white p-4 rounded-4 shadow-sm h-100 d-flex flex-column">
 
-            {/* CabeÃ§alho do CalendÃ¡rio */}
+            {/* Cabeçalho do calendário */}
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h4 className="text-primary fw-bold mb-0">Agosto 2026</h4>
               <div>
-                <button className="btn btn-outline-primary rounded-circle me-2 p-2 lh-1">
-                  <i className="bi bi-chevron-left"></i>
+                <button type="button" className="btn btn-outline-primary rounded-circle me-2 p-2 lh-1" aria-label="Mês anterior">
+                  <i className="bi bi-chevron-left" aria-hidden="true"></i>
                 </button>
-                <button className="btn btn-outline-primary rounded-circle p-2 lh-1">
-                  <i className="bi bi-chevron-right"></i>
+                <button type="button" className="btn btn-outline-primary rounded-circle p-2 lh-1" aria-label="Próximo mês">
+                  <i className="bi bi-chevron-right" aria-hidden="true"></i>
                 </button>
               </div>
             </div>
 
-            {/* Imagem do CalendÃ¡rio */}
+            {/* Imagem do calendário */}
             <div className="flex-grow-1 d-flex align-items-center">
               <img
                 src="https://placehold.co/1200x800"
                 className="img-fluid rounded-4 shadow-sm w-100 object-fit-cover"
-                alt="Placeholder do CalendÃ¡rio"
+                alt="Placeholder do calendário"
               />
             </div>
 
@@ -35,18 +35,18 @@
         </div>
 
         {/* =========================================
-            COLUNA DIREITA (AÃ§Ãµes e Listas)
+            COLUNA DIREITA (Ações e listas)
         ========================================= */}
         <div className="col-lg-4">
 
-          {/* SeÃ§Ã£o 1: Adicionar Evento */}
+          {/* Seção 1: adicionar evento */}
           <div className="bg-white p-4 rounded-4 shadow-sm mb-4">
             <h5 className="text-primary fw-bold mb-4">Novo Evento</h5>
 
             <form>
               <div className="mb-3">
-                <label className="form-label text-muted small fw-semibold">TÃ­tulo</label>
-                <input type="text" className="form-control bg-light border-0 py-2" placeholder="Ex: Feira de CiÃªncias" />
+                <label className="form-label text-muted small fw-semibold">Título</label>
+                <input type="text" className="form-control bg-light border-0 py-2" placeholder="Ex: Feira de Ciências" />
               </div>
               <div className="row g-2 mb-3">
                 <div className="col-6">
@@ -64,9 +64,9 @@
             </form>
           </div>
 
-          {/* SeÃ§Ã£o 2: PrÃ³ximos Eventos */}
+          {/* Seção 2: próximos eventos */}
           <div className="bg-white p-4 rounded-4 shadow-sm">
-            <h5 className="text-primary fw-bold mb-4">PrÃ³ximos Eventos</h5>
+            <h5 className="text-primary fw-bold mb-4">Próximos eventos</h5>
 
             <div className="d-flex flex-column gap-3">
               {/* Evento 1 */}
@@ -76,8 +76,8 @@
                   <span className="d-block text-primary fw-bold fs-3 lh-1">28</span>
                 </div>
                 <div>
-                  <h6 className="mb-0 fw-bold text-dark fs-6">Feira de CiÃªncias</h6>
-                  <small className="text-muted d-block">LaboratÃ³rio Principal</small>
+                  <h6 className="mb-0 fw-bold text-dark fs-6">Feira de Ciências</h6>
+                  <small className="text-muted d-block">Laboratório principal</small>
                   <small className="text-dark fw-semibold">08:00 - 12:00</small>
                 </div>
               </div>
@@ -89,7 +89,7 @@
                   <span className="d-block text-primary fw-bold fs-3 lh-1">05</span>
                 </div>
                 <div>
-                  <h6 className="mb-0 fw-bold text-dark fs-6">Prova de MatemÃ¡tica</h6>
+                  <h6 className="mb-0 fw-bold text-dark fs-6">Prova de Matemática</h6>
                   <small className="text-muted d-block">Sala 12</small>
                   <small className="text-dark fw-semibold">09:30</small>
                 </div>

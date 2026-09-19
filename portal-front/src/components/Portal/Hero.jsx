@@ -2,7 +2,7 @@
 
 const HeroSection = () => {
   return (
-    <section id="Hero" className="min-vh-100 bg-light d-flex align-items-center py-5">
+    <section id="Hero" className="portal-hero min-vh-100 bg-light d-flex align-items-center py-5">
       <div className="container py-lg-5">
         <div className="row align-items-center flex-column-reverse flex-lg-row g-5">
           
@@ -28,7 +28,7 @@ const HeroSection = () => {
           <div className="col-12 col-lg-7 text-center">
             {/* O alt diz "texto ao lado", então apliquei a imagem ao lado do texto no Grid */}
             <img 
-              className="img-fluid w-100 rounded-4 shadow-lg object-fit-cover" 
+              className="portal-hero__image img-fluid w-100 rounded-4 shadow-lg object-fit-cover" 
               src="https://placehold.co/1900x800" 
               alt="Foto da escola com texto ao lado"
               style={{ maxHeight: '600px' }} // Única exceção inline aceitável no Bootstrap para limitar a altura de um placeholder gigante, mas idealmente resolvido no corte da imagem real.

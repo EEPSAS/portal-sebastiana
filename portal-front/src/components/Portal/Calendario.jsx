@@ -3,10 +3,10 @@ import { useEffect, useState } from 'react';
 const daysOfWeek = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
 const categoryOptions = [
-  { key: 'eventos', label: 'Eventos', description: 'Palestras, feiras, reuniões', eventLabel: 'Evento', icon: '📅', color: '#e6007e' },
-  { key: 'provas', label: 'Provas e trabalhos', description: 'Matemática, Português, Biologia, História, Geografia, Química, Física e Artes', eventLabel: 'Avaliação', icon: '📄', color: '#f59e0b' },
-  { key: 'comemorativas', label: 'Datas comemorativas', description: 'Datas especiais e celebrações', eventLabel: 'Data comemorativa', icon: '⭐', color: '#2563eb' },
-  { key: 'feriados', label: 'Feriados e recessos', description: 'Feriados e períodos de recesso', eventLabel: 'Feriado', icon: '📖', color: '#1e293b' },
+  { key: 'eventos', label: 'Eventos', description: 'Palestras, feiras, reuniões', eventLabel: 'Evento', icon: 'bi-calendar-event', color: '#e6007e' },
+  { key: 'provas', label: 'Provas e trabalhos', description: 'Matemática, Português, Biologia, História, Geografia, Química, Física e Artes', eventLabel: 'Avaliação', icon: 'bi-file-earmark-text', color: '#f59e0b' },
+  { key: 'comemorativas', label: 'Datas comemorativas', description: 'Datas especiais e celebrações', eventLabel: 'Data comemorativa', icon: 'bi-star', color: '#2563eb' },
+  { key: 'feriados', label: 'Feriados e recessos', description: 'Feriados e períodos de recesso', eventLabel: 'Feriado', icon: 'bi-bookmark', color: '#1e293b' },
 ];
 
 const formatDateKey = (date) => {
@@ -201,8 +201,8 @@ const CalendarioSection = () => {
   const selectedTasks = tasks.filter((task) => task.date === selectedDate);
 
   return (
-    <section style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
-      <div style={{
+    <section className="calendar-section" style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
+      <div className="calendar-hero" style={{
         position: 'relative', borderRadius: '16px', overflow: 'hidden',
         backgroundImage: 'linear-gradient(to right, rgba(255, 255, 255, 0.85) 30%, rgba(255, 255, 255, 0.2) 100%), url("/assets/escola.jpg")',
         backgroundSize: 'cover', backgroundPosition: 'center', padding: '50px 40px',
@@ -216,12 +216,12 @@ const CalendarioSection = () => {
         </p>
       </div>
 
-      <div style={{
+      <div className="calendar-layout" style={{
         display: 'grid', gridTemplateColumns: '260px 1fr 280px', gap: '24px',
         background: '#ffffff', padding: '24px', borderRadius: '16px',
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9',
       }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="calendar-categories" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Categorias</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {categoryOptions.map((category) => {
@@ -229,7 +229,7 @@ const CalendarioSection = () => {
               return (
                 <label key={category.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', opacity: isActive ? 1 : 0.55 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ width: '32px', height: '32px', borderRadius: '6px', background: category.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px' }}>{category.icon}</span>
+                    <span style={{ width: '32px', height: '32px', borderRadius: '6px', background: category.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px' }}><i className={`bi ${category.icon}`} aria-hidden="true"></i></span>
                     <span>
                       <strong style={{ display: 'block', fontSize: '13px', color: '#0f172a' }}>{category.label}</strong>
                       <span style={{ fontSize: '11px', color: '#64748b' }}>{category.description}</span>
@@ -245,17 +245,17 @@ const CalendarioSection = () => {
             })}
           </div>
           <button type="button" onClick={() => setActiveCategories(new Set())} style={{ marginTop: '10px', background: 'none', border: 'none', color: '#e6007e', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            🧹 Limpar filtros
+            Limpar filtros
           </button>
         </div>
 
-        <div style={{ borderLeft: '1px solid #f1f5f9', borderRight: '1px solid #f1f5f9', padding: '0 24px' }}>
+        <div className="calendar-grid-panel" style={{ borderLeft: '1px solid #f1f5f9', borderRight: '1px solid #f1f5f9', padding: '0 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#1e3a8a', margin: 0 }}>{formatMonth(visibleMonth)}</h2>
               <div style={{ display: 'flex', gap: '4px', width: '72px', flexShrink: 0, justifyContent: 'center' }}>
-                <button type="button" onClick={() => changeMonth(-1)} aria-label="Mês anterior" style={{ width: '32px', height: '32px', border: 0, borderRadius: '8px', background: '#fdf2f8', color: '#e6007e', cursor: 'pointer', fontWeight: 'bold', fontSize: '18px', lineHeight: 1, flexShrink: 0 }}>&lt;</button>
-                <button type="button" onClick={() => changeMonth(1)} aria-label="Próximo mês" style={{ width: '32px', height: '32px', border: 0, borderRadius: '8px', background: '#fdf2f8', color: '#e6007e', cursor: 'pointer', fontWeight: 'bold', fontSize: '18px', lineHeight: 1, flexShrink: 0 }}>&gt;</button>
+                <button type="button" onClick={() => changeMonth(-1)} aria-label="Mês anterior" style={{ border: 0, borderRadius: '8px', background: '#fdf2f8', color: '#e6007e', cursor: 'pointer', fontWeight: '700', padding: '6px 9px', lineHeight: 1, flexShrink: 0 }}><i className="bi bi-chevron-left" aria-hidden="true"></i><span className="visually-hidden">Mês anterior</span></button>
+                <button type="button" onClick={() => changeMonth(1)} aria-label="Próximo mês" style={{ border: 0, borderRadius: '8px', background: '#fdf2f8', color: '#e6007e', cursor: 'pointer', fontWeight: '700', padding: '6px 9px', lineHeight: 1, flexShrink: 0 }}><i className="bi bi-chevron-right" aria-hidden="true"></i><span className="visually-hidden">Próximo mês</span></button>
               </div>
             </div>
             <button type="button" onClick={goToToday} style={{ background: 'transparent', border: '1px solid #e6007e', color: '#e6007e', borderRadius: '20px', padding: '6px 16px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
@@ -337,9 +337,9 @@ const CalendarioSection = () => {
               const category = getCategory(event.category);
               const isSelected = selectedDate === event.date;
               return (
-                <button type="button" key={event.id} onClick={() => selectEvent(event)} aria-pressed={isSelected} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', textAlign: 'left', border: isSelected ? `2px solid ${category.color}` : '1px solid #e2e8f0', borderRadius: '14px', background: '#fff', padding: '8px', cursor: 'pointer' }}>
-                  <span style={{ width: '32px', height: '32px', borderRadius: '6px', background: category.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '14px', flexShrink: 0 }}>{category.icon}</span>
-                  <span>
+                <button className="calendar-event" type="button" key={event.id} onClick={() => selectEvent(event)} aria-pressed={isSelected} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', textAlign: 'left', border: isSelected ? `2px solid ${category.color}` : '1px solid #e2e8f0', borderRadius: '14px', background: '#fff', padding: '8px', cursor: 'pointer' }}>
+                  <span style={{ width: '32px', height: '32px', borderRadius: '6px', background: category.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '14px', flexShrink: 0 }}><i className={`bi ${category.icon}`} aria-hidden="true"></i></span>
+                  <span className="calendar-event-content">
                     <strong style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#0f172a' }}>{event.title}</strong>
                     <span style={{ fontSize: '11px', color: '#64748b' }}>{category.eventLabel} • {new Intl.DateTimeFormat('pt-BR').format(new Date(`${event.date}T00:00:00`))}</span>
                   </span>
