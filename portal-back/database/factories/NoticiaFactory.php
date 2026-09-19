@@ -19,9 +19,13 @@ class NoticiaFactory extends Factory
     {
         return [
             'titulo' => fake()->sentence(6), 
+            'descricao' => fake()->sentence(14),
             'conteudo' => fake()->paragraphs(3, true), 
+            'categoria' => fake()->randomElement(['Eventos', 'Projetos', 'Comunicados']),
             'url_foto' => fake()->imageUrl(800, 600, 'news', true),
+            'url_miniatura' => fake()->imageUrl(400, 240, 'news', true),
             'data_publicacao' => fake()->dateTimeThisYear(), 
+            'destaque' => false,
             
             'autor_id' => User::factory(),
         ];
