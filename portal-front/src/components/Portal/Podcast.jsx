@@ -2,7 +2,7 @@
 
 const PodcastSection = () => {
   return (
-<section className="radioatividade-container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+<section id="podcast" className="radioatividade-container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
 
       {/* GRID PRINCIPAL */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
