@@ -15,7 +15,7 @@ const LoginSection = () => {
           <div className="col-12 col-md-8 col-lg-6 col-xl-5">
             
             {/* Padrão de Mercado: Formulário encapsulado em um Card com sombra */}
-            <div className="card border-0 shadow-lg rounded-4 overflow-hidden">
+            <div className="card portal-login-card border-0 shadow-lg rounded-4 overflow-hidden">
               <div className="card-body p-4 p-md-5">
                 
                 {/* Cabeçalho do Formulário (Adicionado para Padrão de Mercado) */}

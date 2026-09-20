@@ -34,8 +34,14 @@ button {
   color: inherit;
 }
 
-.card{
-    width: 18rem
+.portal-login-card {
+  width: 18rem;
+}
+
+.admin-header .input-group {
+  flex: 0 1 290px;
+  width: min(290px, 24vw);
+  min-width: 0;
 }
 
 .dashboard-shell {
