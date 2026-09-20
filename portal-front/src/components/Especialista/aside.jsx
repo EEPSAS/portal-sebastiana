@@ -1,6 +1,6 @@
 import { NavLink, Link } from "react-router";
 
-const AdminAside = () => {
+const EspecialistaAside = () => {
   return (
     <aside className="dashboard-aside d-flex flex-column flex-shrink-0 p-3 bg-white shadow-sm" style={{ zIndex: 1040, bottom: 0, top: 0, position: 'fixed' }}>
       <Link to="/" className="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none px-2">
@@ -59,4 +59,4 @@ const AdminAside = () => {
   );
 };
 
-export default AdminAside;
+export default EspecialistaAside;
