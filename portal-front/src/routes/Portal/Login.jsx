@@ -1,6 +1,13 @@
-
+import { useNavigate } from "react-router";
 
 const LoginSection = () => {
+  const navigate = useNavigate();
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    navigate("/dashboard");
+  };
+
   return (
     <section className="bg-light py-5 min-vh-100 d-flex align-items-center">
       <div className="container">
@@ -20,7 +27,7 @@ const LoginSection = () => {
                 </div>
 
                 {/* Formulário Original Preservado e Estilizado */}
-                <form>
+                <form onSubmit={handleSubmit}>
                   <div className="mb-4">
                     <label htmlFor="exampleInputEmail1" className="form-label fw-medium text-dark">
                       Email address

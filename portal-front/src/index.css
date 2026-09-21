@@ -13,3 +13,58 @@ body{
 .card{
     width: 18rem
 }
+
+.dashboard-shell {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.dashboard-aside {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 1030;
+  width: 250px;
+  height: 100vh;
+  border-radius: 0 20px 20px 0;
+}
+
+.dashboard-content {
+  min-height: 100vh;
+  margin-left: 250px;
+}
+
+.dashboard-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 250px;
+  z-index: 1020;
+  height: 136px;
+  background-color: #f8f9fa;
+}
+
+.dashboard-main {
+  min-height: 100vh;
+  padding-top: 136px;
+  overflow-x: hidden;
+}
+
+.settings-profile-avatar {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border: 4px solid #ffe0ee;
+}
+
+.settings-task-row {
+  border-bottom: 1px solid #edf0f4;
+}
+
+.settings-task-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-toggle {
+  width: 3rem;
+  height: 1.6rem;
+}

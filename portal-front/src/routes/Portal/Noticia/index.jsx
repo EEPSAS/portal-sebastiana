@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router';
-import NoticiaContent from '../../../components/common/Sections/Noticias/noticia/NoticiaContent';
-import NoticiaHeader from '../../../components/common/Sections/Noticias/noticia/NoticiaHeader';
-import { getNoticiaById } from '../../../components/common/Sections/Noticias/noticia/noticiasMock';
+import NoticiaContent from '../../../components/Portal/noticia/NoticiaContent';
+import NoticiaHeader from '../../../components/Portal/noticia/NoticiaHeader';
+import { getNoticiaById } from '../../../components/Portal/noticia/noticiasMock';
 import './noticia.css';
 
 const NoticiaPage = () => {
