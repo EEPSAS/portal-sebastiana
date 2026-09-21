@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -29,6 +30,7 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'role' => UserRole::PADRAO,
             'remember_token' => Str::random(10),
         ];
     }
@@ -40,6 +42,27 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    public function editor(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::EDITOR,
+        ]);
+    }
+
+    public function administrador(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::ADMINISTRADOR,
+        ]);
+    }
+
+    public function padrao(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::PADRAO,
         ]);
     }
 }
