@@ -2,7 +2,7 @@ import { useState } from 'react';
 import HorizontalNewsCard from './HorizontalNewsCard';
 import SmallNewsCard from './SmallNewsCard';
 import VerticalNewsCard from './VerticalNewsCard';
-import { noticiasMock } from '../../../noticia/noticiasMock';
+import { noticiasMock } from './noticia/noticiasMock';
 import './noticias.css';
 
 const categorias = [
