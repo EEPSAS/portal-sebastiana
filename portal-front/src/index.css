@@ -38,7 +38,7 @@ button {
   --content-width: 1170px;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, var(--paper) 0%, var(--paper) 88%, var(--pink-soft) 100%);
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper) 87.1%, var(--pink-soft) 100%);
   padding: clamp(2.5rem, 6vw, 5rem) max(1.25rem, calc((100% - var(--content-width)) / 2));
 }
 
@@ -317,16 +317,29 @@ button {
   min-height: 24rem;
 }
 
+.sobre-developers-carousel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sobre-developers-viewport {
+  min-width: 0;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
 .sobre-developers-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 15rem));
-  align-items: stretch;
+  display: flex;
   gap: 1rem;
-  justify-content: center;
+  align-items: stretch;
+  transition: transform 450ms ease;
+  will-change: transform;
 }
 
 .sobre-developer-card {
   display: flex;
+  flex: 0 0 calc((100% - (var(--visible-cards) - 1) * 1rem) / var(--visible-cards));
   min-height: 14rem;
   align-items: center;
   padding: 1.5rem 1rem;
@@ -335,12 +348,19 @@ button {
   background: rgba(255, 255, 255, 0.72);
   text-align: center;
   flex-direction: column;
-  transition: transform 300ms ease, box-shadow 300ms ease;
+  transition: opacity 300ms ease, filter 300ms ease, transform 300ms ease, box-shadow 300ms ease;
 }
 
 .sobre-developer-card:hover {
+  position: relative;
+  z-index: 1;
   box-shadow: 0 1rem 2rem rgba(23, 41, 81, 0.12);
   transform: translateY(-0.25rem) scale(1.01);
+}
+
+.sobre-developers-grid:has(.sobre-developer-card:hover) .sobre-developer-card:not(:hover) {
+  opacity: 0.45;
+  filter: blur(1px) saturate(0.7);
 }
 
 .sobre-developer-photo {
@@ -390,9 +410,57 @@ button {
   fill: currentColor;
 }
 
+.sobre-carousel-button {
+  display: grid;
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
+  transition: background 200ms ease, color 200ms ease, transform 200ms ease;
+}
+
+.sobre-carousel-button:hover,
+.sobre-carousel-button:focus-visible {
+  background: var(--pink);
+  color: var(--white);
+  transform: scale(1.05);
+}
+
+.sobre-carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.sobre-carousel-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--line);
+  cursor: pointer;
+  transition: background 200ms ease, transform 200ms ease;
+}
+
+.sobre-carousel-dot.is-active,
+.sobre-carousel-dot:hover,
+.sobre-carousel-dot:focus-visible {
+  background: var(--pink);
+  transform: scale(1.25);
+}
+
 @media (max-width: 1100px) and (min-width: 761px) {
-  .sobre-developers-grid {
-    grid-template-columns: repeat(3, minmax(0, 15rem));
+  .sobre-developer-card {
+    min-height: 15rem;
   }
 }
 
@@ -426,8 +494,14 @@ button {
     gap: 2.5rem;
   }
 
-  .sobre-developers-grid {
-    grid-template-columns: repeat(2, minmax(0, 15rem));
+  .sobre-developers-carousel {
+    gap: 0.5rem;
+  }
+
+  .sobre-carousel-button {
+    flex-basis: 2.25rem;
+    width: 2.25rem;
+    height: 2.25rem;
   }
 
   .sobre-content {
@@ -436,10 +510,6 @@ button {
 }
 
 @media (max-width: 480px) {
-  .sobre-developers-grid {
-    grid-template-columns: minmax(0, 15rem);
-  }
-
   .sobre-gallery-city,
   .sobre-gallery-school,
   .sobre-gallery-team {
@@ -457,5 +527,13 @@ button {
   .sobre-gallery img {
     min-height: 8rem;
     border-radius: 0.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sobre-developers-grid,
+  .sobre-carousel-button,
+  .sobre-carousel-dot {
+    transition: none;
   }
 }

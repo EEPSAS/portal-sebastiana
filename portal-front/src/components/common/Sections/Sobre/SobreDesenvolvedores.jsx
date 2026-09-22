@@ -1,10 +1,12 @@
+import { useEffect, useRef, useState } from "react";
+
 const developers = [
   "Ana Lívia",
   "Carlos Eduardo",
   "Davi",
+  "Natã",
   "Rhaynner",
   "Yasmin Teixeira",
-  "Natã",
   "Yasmin Gomes",
 ].map((name) => ({
   name,
@@ -20,14 +22,155 @@ const GithubIcon = () => (
 );
 
 const SobreDesenvolvedores = () => {
+  const [current, setCurrent] = useState(0);
+  const [cardsPerView, setCardsPerView] = useState(4);
+  const [isPaused, setIsPaused] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const touchStart = useRef(null);
+  const maxIndex = Math.max(0, developers.length - cardsPerView);
+  const activeIndex = Math.min(current, maxIndex);
+
+  useEffect(() => {
+    const updateCardsPerView = () => {
+      if (window.innerWidth <= 480) {
+        setCardsPerView(1);
+      } else if (window.innerWidth <= 760) {
+        setCardsPerView(2);
+      } else if (window.innerWidth <= 1100) {
+        setCardsPerView(3);
+      } else {
+        setCardsPerView(4);
+      }
+    };
+
+    updateCardsPerView();
+    window.addEventListener("resize", updateCardsPerView);
+
+    return () => window.removeEventListener("resize", updateCardsPerView);
+  }, []);
+
+  useEffect(() => {
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateMotionPreference = () => setReducedMotion(motionQuery.matches);
+
+    updateMotionPreference();
+    motionQuery.addEventListener("change", updateMotionPreference);
+
+    return () => motionQuery.removeEventListener("change", updateMotionPreference);
+  }, []);
+
+  useEffect(() => {
+    if (isPaused || reducedMotion || maxIndex === 0) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      setCurrent((index) => (index >= maxIndex ? 0 : index + 1));
+    }, 7000);
+
+    return () => window.clearInterval(interval);
+  }, [isPaused, maxIndex, reducedMotion]);
+
+  const goTo = (index) => {
+    setCurrent(Math.max(0, Math.min(index, maxIndex)));
+  };
+
+  const move = (direction) => {
+    setCurrent((index) => {
+      if (direction === "next") {
+        return index >= maxIndex ? 0 : index + 1;
+      }
+
+      return index <= 0 ? maxIndex : index - 1;
+    });
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      move("next");
+    } else if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      move("previous");
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      goTo(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      goTo(maxIndex);
+    }
+  };
+
+  const handlePointerDown = (event) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    touchStart.current = event.clientX;
+    setIsPaused(true);
+  };
+
+  const handlePointerUp = (event) => {
+    if (touchStart.current === null) {
+      return;
+    }
+
+    const distance = event.clientX - touchStart.current;
+    if (Math.abs(distance) > 40) {
+      move(distance < 0 ? "next" : "previous");
+    }
+
+    touchStart.current = null;
+    setIsPaused(false);
+  };
+
+  const handlePointerCancel = () => {
+    touchStart.current = null;
+    setIsPaused(false);
+  };
+
   return (
     <section
       id="sobre-desenvolvedores"
       className="sobre-panel sobre-developers-panel"
+      role="region"
+      aria-roledescription="carrossel"
+      aria-label="Desenvolvedores do portal"
+      onKeyDown={handleKeyDown}
+      onFocus={() => setIsPaused(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setIsPaused(false);
+        }
+      }}
     >
-      <div className="sobre-developers-grid">
+      <div className="sobre-developers-carousel">
+        <button
+          className="sobre-carousel-button sobre-carousel-button-previous"
+          type="button"
+          onClick={() => move("previous")}
+          aria-label="Mostrar desenvolvedores anteriores"
+        >
+          <span aria-hidden="true">&#8592;</span>
+        </button>
+
+        <div
+          className="sobre-developers-viewport"
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+        >
+          <div
+            className="sobre-developers-grid"
+            style={{
+              "--visible-cards": cardsPerView,
+              transform: `translateX(calc(-${activeIndex} * (100% + 1rem) / var(--visible-cards)))`,
+            }}
+          >
         {developers.map((developer) => (
-          <article className="sobre-developer-card" key={developer.name}>
+          <article
+            className="sobre-developer-card"
+            key={developer.name}
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+          >
             <img
               className="sobre-developer-photo"
               src={developer.image}
@@ -46,6 +189,31 @@ const SobreDesenvolvedores = () => {
               <span>GitHub</span>
             </a>
           </article>
+        ))}
+          </div>
+        </div>
+
+        <button
+          className="sobre-carousel-button sobre-carousel-button-next"
+          type="button"
+          onClick={() => move("next")}
+          aria-label="Mostrar próximos desenvolvedores"
+        >
+          <span aria-hidden="true">&#8594;</span>
+        </button>
+      </div>
+
+      <div className="sobre-carousel-dots" role="tablist" aria-label="Selecionar grupo de desenvolvedores">
+        {Array.from({ length: maxIndex + 1 }, (_, index) => (
+          <button
+            className={`sobre-carousel-dot${activeIndex === index ? " is-active" : ""}`}
+            key={index}
+            type="button"
+            role="tab"
+            aria-selected={activeIndex === index}
+            aria-label={`Mostrar grupo ${index + 1} de ${maxIndex + 1}`}
+            onClick={() => goTo(index)}
+          />
         ))}
       </div>
     </section>
