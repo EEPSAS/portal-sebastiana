@@ -2,16 +2,6 @@
 const CalendarioSection = () => {
   return (
     <section id="calendario" className="min-vh-100 bg-light pb-5">
-      
-      {/* Banner Principal em Largura Total */}
-      <div className="container-fluid px-0 mb-5">
-        <img 
-          className="img-fluid w-100 object-fit-cover shadow-sm" 
-          src="https://placehold.co/1900x200" 
-          alt="imagem da escola com texto calendario escolar" 
-        />
-      </div>
-      
       <div className="container mt-4 mt-lg-5">
         {/* Card Elevado Padrão de Mercado */}
         <div className="bg-white border-0 rounded-4 shadow p-4 p-lg-5">
