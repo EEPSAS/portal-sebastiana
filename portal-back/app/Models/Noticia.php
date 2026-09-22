@@ -13,7 +13,11 @@ class Noticia extends Model
     protected $table = 'noticias'; 
 
     protected $fillable = [
-        'titulo', 'conteudo', 'url_foto', 'data_publicacao', 'autor_id'
+        'titulo', 
+        'conteudo', 
+        'url_foto', 
+        'data_publicacao', 
+        'autor_id'
     ];
 
     // Relacionamento N:1 (Inverso)

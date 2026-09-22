@@ -7,49 +7,43 @@ use Illuminate\Http\Request;
 
 class NoticiaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // Lista todas as noticias cadastradas
     public function index()
     {
         return response()->json(Noticia::all(), 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // Salva uma nova noticia no banco
     public function store(Request $request)
     {
+        // Cria a noticia com os dados recebidos
         $noticia = Noticia::create($request->all());
         return response()->json($noticia, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
+    // Exibe os detalhes de uma noticia especifica
     public function show(Noticia $noticia)
     {
+        // Busca a noticia pelo ID informado
         $noticia = Noticia::find($noticia->id);
         return $noticia
         ? response()->json($noticia, 200)
         : response()->json(['erro'=> 'Notícia não encontrada'], 404);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+    // Atualiza os dados de uma noticia existente
     public function update(Request $request, Noticia $noticia)
     {
+        // Localiza e atualiza o registro
         $noticia = Noticia::findOrFail($noticia->id);
         $noticia->update($request->all());
         return response()->json($noticia, 200);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    // Remove uma noticia do sistema
     public function destroy(Noticia $noticia)
     {
+        // Localiza e exclui o registro
         $noticia = Noticia::findOrFail($noticia->id);
         $noticia->delete();
         return response()->json(null, 204);

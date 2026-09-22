@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('titulo');
             $table->text('descricao');
             $table->string('imagem');
-             $table->time('duracao');
+            $table->time('duracao');
             $table->timestamps();
              
         });

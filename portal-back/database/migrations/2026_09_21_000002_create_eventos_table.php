@@ -20,7 +20,7 @@ return new class extends Migration
             $table->time('hora_inicio')->nullable();
             $table->time('hora_fim')->nullable();
             $table->boolean('dia_inteiro')->default(false);
-            $table->string('tipo')->default('evento'); // evento, data_importante, feriado, prova, reuniao, recesso
+            $table->string('tipo')->default('evento');
             $table->boolean('importante')->default(false)->index();
             $table->string('local')->nullable();
             $table->string('cor', 30)->nullable();

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,32 +10,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Carbon;
 use Laravel\Sanctum\HasApiTokens;
 
-/**
- * @property int $id
- * @property string $name
- * @property string $email
- * @property UserRole|string $role
- * @property Carbon|null $email_verified_at
- * @property string $password
- * @property string|null $remember_token
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
- */
+// Campos permitidos para gravacao em massa
 #[Fillable(['name', 'email', 'password', 'role'])]
+// Campos ocultos na serializacao
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
+    // Autenticacao via API, criacao por factory e notificacoes
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    // Conversoes de tipos de atributos
     protected function casts(): array
     {
         return [
@@ -46,6 +32,7 @@ class User extends Authenticatable
         ];
     }
 
+    // Checagens de nivel de acesso
     public function isAdministrador(): bool
     {
         return $this->role === UserRole::ADMINISTRADOR;
@@ -61,19 +48,19 @@ class User extends Authenticatable
         return $this->role === UserRole::PADRAO;
     }
 
+    // Permissao para gerenciamento de eventos
     public function canManageEvents(): bool
     {
         return $this->isAdministrador() || $this->isEditor();
     }
 
+    // Relacionamento com as noticias criadas
     public function noticias(): HasMany
     {
         return $this->hasMany(Noticia::class, 'autor_id');
     }
 
-    /**
-     * @return HasMany<Evento, $this>
-     */
+    // Relacionamento com os eventos criados
     public function eventos(): HasMany
     {
         return $this->hasMany(Evento::class, 'criador_id');

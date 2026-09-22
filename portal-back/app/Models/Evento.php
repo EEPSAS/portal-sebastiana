@@ -11,10 +11,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Evento extends Model
 {
     /** @use HasFactory<EventoFactory> */
+    // Permite criacao de registros via Factory para testes e seeds
     use HasFactory;
 
+    // Nome da tabela associada no banco de dados
     protected $table = 'eventos';
 
+    // Campos permitidos para gravacao em massa
     protected $fillable = [
         'titulo',
         'descricao',
@@ -30,11 +33,7 @@ class Evento extends Model
         'criador_id',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    // Converte tipos de dados automaticamente ao recuperar do banco
     protected function casts(): array
     {
         return [
@@ -45,27 +44,19 @@ class Evento extends Model
         ];
     }
 
-    /**
-     * @return BelongsTo<User, $this>
-     */
+    // Relacionamento com o usuario autor do evento (FK: criador_id)
     public function criador(): BelongsTo
     {
         return $this->belongsTo(User::class, 'criador_id');
     }
 
-    /**
-     * @param  Builder<self>  $query
-     * @return Builder<self>
-     */
+    // Escopo local para filtrar apenas eventos marcados como importantes
     public function scopeImportantes(Builder $query): Builder
     {
         return $query->where('importante', true);
     }
 
-    /**
-     * @param  Builder<self>  $query
-     * @return Builder<self>
-     */
+    // Escopo local para filtrar eventos a partir de uma data ou entre duas datas
     public function scopePorPeriodo(Builder $query, string $inicio, ?string $fim = null): Builder
     {
         if (! $fim) {
@@ -75,10 +66,7 @@ class Evento extends Model
         return $query->whereBetween('data_inicio', [$inicio, $fim]);
     }
 
-    /**
-     * @param  Builder<self>  $query
-     * @return Builder<self>
-     */
+    // Escopo local para filtrar eventos de um mes e ano especificos
     public function scopePorMesAno(Builder $query, int|string $mes, int|string $ano): Builder
     {
         return $query->whereMonth('data_inicio', $mes)
