@@ -7,19 +7,13 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreEventoRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
+    // Verifica se o usuario autenticado tem permissao para criar eventos
     public function authorize(): bool
     {
         return $this->user() !== null && $this->user()->canManageEvents();
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, ValidationRule|array<mixed>|string>
-     */
+    // Define as regras de validacao para o cadastro do evento
     public function rules(): array
     {
         return [
@@ -37,11 +31,7 @@ class StoreEventoRequest extends FormRequest
         ];
     }
 
-    /**
-     * Custom messages for validation errors.
-     *
-     * @return array<string, string>
-     */
+    // Mensagens de erro personalizadas para exibicao ao usuario
     public function messages(): array
     {
         return [

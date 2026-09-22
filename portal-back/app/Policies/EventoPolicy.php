@@ -7,41 +7,31 @@ use App\Models\User;
 
 class EventoPolicy
 {
-    /**
-     * Determine whether the user can view any models.
-     */
+    // Permite que qualquer usuario autenticado liste os eventos
     public function viewAny(User $user): bool
     {
         return true;
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
+    // Permite que qualquer usuario autenticado visualize um evento especifico
     public function view(User $user, Evento $evento): bool
     {
         return true;
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
+    // Autoriza a criacao se o usuario for administrador ou editor
     public function create(User $user): bool
     {
         return $user->canManageEvents();
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
+    // Autoriza a edicao se o usuario for administrador ou editor
     public function update(User $user, Evento $evento): bool
     {
         return $user->canManageEvents();
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
+    // Autoriza a exclusao se o usuario for administrador ou editor
     public function delete(User $user, Evento $evento): bool
     {
         return $user->canManageEvents();
