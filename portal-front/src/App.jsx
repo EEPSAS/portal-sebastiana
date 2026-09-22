@@ -10,6 +10,7 @@ import BibliotecaPage from "./pages/Dashboard/Biblioteca";
 import TurmaPage from "./pages/Dashboard/Turma";
 import AgendaPage from "./pages/Dashboard/Agenda";
 import ConfiguracoesPage from "./pages/Dashboard/Configuracoes";
+import NoticiaPage from "./pages/Dashboard/noticias";
 
 const App = () => {
   return (
@@ -29,6 +30,7 @@ const App = () => {
           <Route path="turmas" element={<TurmaPage />} />
           <Route path="agenda" element={<AgendaPage />} />
           <Route path="configuracoes" element={<ConfiguracoesPage />} />
+          <Route path="noticias" element={<NoticiaPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

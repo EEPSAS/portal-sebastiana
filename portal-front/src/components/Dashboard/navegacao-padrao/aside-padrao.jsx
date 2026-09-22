@@ -5,6 +5,7 @@ const navigationItems = [
   { label: "Biblioteca", path: "/dashboard/biblioteca", icon: "bi-book" },
   { label: "Turmas", path: "/dashboard/turmas", icon: "bi-people-fill" },
   { label: "Agenda", path: "/dashboard/agenda", icon: "bi-calendar-event" },
+  { label: "Notícias", path: "/dashboard/noticias", icon: "bi-newspaper" },
 ]
 
 const navigationLinkClass = ({ isActive }) =>
