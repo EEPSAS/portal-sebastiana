@@ -1,10 +1,33 @@
-import Home from "./routes/Portal/Home"
+import { BrowserRouter, Routes, Route } from "react-router";
+import PortalLayout from "./layouts/Portal/PortalLayout";
+import DashboardLayout from "./layouts/Dashboard/Dashboard";
+import Login from "./routes/Portal/Login";
+import PublicHome from "./routes/Portal/Home";
+import Home from "./routes/Dashboard/Home";
+import Agenda from "./routes/Dashboard/Agenda";
+import Biblioteca from "./routes/Dashboard/Biblioteca";
+import Calendario from "./routes/Dashboard/Calendario";
+import Configuracoes from "./routes/Dashboard/Configuracoes";
 
-
-function App() {
+const App = () => {
   return (
-    <Home/>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<PortalLayout />}>
+          <Route index element={<PublicHome />} />
+          <Route path="login" element={<Login />} />
+        </Route>
 
+        <Route path="dashboard" element={<DashboardLayout />}>
+          <Route index element={<Home />} />
+          <Route path="home" element={<Home />} />
+          <Route path="agenda" element={<Agenda />} />
+          <Route path="biblioteca" element={<Biblioteca />} />
+          <Route path="calendario" element={<Calendario />} />
+          <Route path="configuracoes" element={<Configuracoes />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   )
 }
 
