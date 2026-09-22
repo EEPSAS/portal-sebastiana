@@ -1,5 +1,8 @@
 import { useState } from "react";
 
+import habitantes from "../../../../assets/img/habitantes.png";
+import fotoEscola from "../../../../assets/img/fotoescola.jpg";
+
 import SobreJaguaracu from "./SobreJaguaracu";
 import SobreDesenvolvedores from "./SobreDesenvolvedores";
 import SobreEepsas from "./SobreEepsas";
@@ -11,57 +14,82 @@ const SobreSlider = () => {
     {
       id: "jaguaracu",
       label: "Jaguaraçu",
-      description: "Nossa cidade",
+      image: habitantes,
       component: SobreJaguaracu,
     },
     {
       id: "desenvolvedores",
       label: "Desenvolvedores",
-      description: "Quem constrói o portal",
+      image: "https://placehold.co/96x96/f9d8eb/172951?text=DEV",
       component: SobreDesenvolvedores,
     },
     {
       id: "eepsas",
       label: "EEPSAS",
-      description: "Nossa escola",
+      image: fotoEscola,
       component: SobreEepsas,
     },
   ];
 
   const ActiveSection = sections[current].component;
 
+  const selectSection = (index) => setCurrent(index);
+
+  const handleTabKeyDown = (event, index) => {
+    let nextIndex;
+
+    if (event.key === "ArrowRight") {
+      nextIndex = (index + 1) % sections.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = (index - 1 + sections.length) % sections.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = sections.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    selectSection(nextIndex);
+    document.getElementById(`tab-${sections[nextIndex].id}`)?.focus();
+  };
+
   return (
     <section className="sobre-slider" aria-label="Sobre o portal">
       <div className="sobre-heading">
-        <p className="sobre-kicker">Conheça o nosso universo</p>
-        <h1>
-          Quem somos <span>nós?</span>
-        </h1>
-      </div>
+        <div className="sobre-title">
+          <h1>
+            <span className="sobre-title-line">Quem somos</span>
+            <span className="sobre-title-highlight">nós?</span>
+          </h1>
+        </div>
 
-      <div className="sobre-tabs" role="tablist" aria-label="Sobre">
-        {sections.map((section, index) => (
-          <button
-            className={`sobre-tab${current === index ? " is-active" : ""}`}
-            key={section.id}
-            id={`tab-${section.id}`}
-            type="button"
-            role="tab"
-            aria-selected={current === index}
-            aria-controls={`panel-${section.id}`}
-            tabIndex={current === index ? 0 : -1}
-            onClick={() => setCurrent(index)}
-          >
-            <span className="sobre-tab-number">0{index + 1}</span>
-            <span>
-              <strong>{section.label}</strong>
-              <small>{section.description}</small>
-            </span>
-          </button>
-        ))}
+        <div className="sobre-tabs" role="tablist" aria-label="Sobre">
+          {sections.map((section, index) => (
+            <button
+              className={`sobre-tab${current === index ? " is-active" : ""}`}
+              key={section.id}
+              id={`tab-${section.id}`}
+              type="button"
+              role="tab"
+              aria-selected={current === index}
+              aria-controls={`panel-${section.id}`}
+              tabIndex={current === index ? 0 : -1}
+              onClick={() => selectSection(index)}
+              onKeyDown={(event) => handleTabKeyDown(event, index)}
+            >
+              <img className="sobre-tab-thumb" src={section.image} alt="" />
+              <span>
+                <strong>{section.label}</strong>
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div
+        key={sections[current].id}
         className="sobre-content"
         id={`panel-${sections[current].id}`}
         role="tabpanel"
