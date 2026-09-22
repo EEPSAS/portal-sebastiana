@@ -97,19 +97,9 @@ button {
   margin-left: 250px;
 }
 
-.dashboard-header {
-  position: fixed;
-  top: 0;
-  right: 0;
-  left: 250px;
-  z-index: 1020;
-  height: 136px;
-  background-color: #f8f9fa;
-}
-
-.dashboard-main {
+.dashboard-panel {
   min-height: 100vh;
-  padding-top: 136px;
+  padding: 1.5rem 2rem;
   overflow-x: hidden;
 }
 

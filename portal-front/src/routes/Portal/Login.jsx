@@ -5,7 +5,7 @@ const LoginSection = () => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    navigate("/usuario");
+    navigate("/dashboard");
   };
 
   return (
