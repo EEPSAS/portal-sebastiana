@@ -3,7 +3,7 @@
 const SobreSection = () => {
   return (
     <>
-     <section id="Sobre nos" className="py-5">
+    <section id="Sobre-nos" className="py-5">
           <div className="container">
             <div className="row align-items-center g-4">
               <div className="col-12 col-lg-6 order-lg-1">
