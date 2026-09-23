@@ -158,29 +158,12 @@ body {
 }
 
 .portal-hero__showcase {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1.25rem;
-}
-
-.portal-hero__image-frame {
-  position: relative;
-  min-height: clamp(390px, 40vw, 560px);
-  overflow: hidden;
-  border-radius: 7px;
-  background: #dfe5ed;
-}
-
-.portal-hero__image {
-  display: block;
   width: 100%;
-  height: clamp(390px, 40vw, 560px);
-  object-fit: cover;
-  object-position: center 47%;
 }
 
 .portal-hero__carousel {
-  min-height: clamp(390px, 40vw, 560px);
+  position: relative;
+  min-height: clamp(300px, 28vw, 360px);
   overflow: hidden;
   border-radius: 7px;
   background: #dfe5ed;
@@ -195,7 +178,7 @@ body {
 
 .portal-hero__carousel-image {
   display: block;
-  min-height: clamp(390px, 40vw, 560px);
+  min-height: clamp(300px, 28vw, 360px);
   object-fit: cover;
 }
 
@@ -214,6 +197,27 @@ body {
   font-size: clamp(1rem, 1.55vw, 1.45rem);
   font-weight: 500;
   line-height: 1.5;
+}
+
+@media (min-width: 992px) {
+  .portal-hero {
+    height: calc(100dvh - 188px);
+    box-sizing: border-box;
+  }
+
+  .portal-hero__container,
+  .portal-hero__showcase,
+  .portal-hero__carousel {
+    height: 100%;
+  }
+
+  .portal-hero__carousel {
+    min-height: 0;
+  }
+
+  .portal-hero__carousel-image {
+    min-height: 0;
+  }
 }
 
 @media (max-width: 991.98px) {
@@ -277,11 +281,11 @@ body {
   }
 
   .portal-hero__carousel {
-    min-height: 270px;
+    min-height: 220px;
   }
 
   .portal-hero__carousel-image {
-    min-height: 270px;
+    min-height: 220px;
   }
 
   .portal-hero__message {
