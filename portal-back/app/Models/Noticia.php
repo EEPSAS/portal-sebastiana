@@ -13,10 +13,13 @@ class Noticia extends Model
     protected $table = 'noticias'; 
 
     protected $fillable = [
+        'categoria',
         'titulo', 
+        'descricao',
         'conteudo', 
-        'url_foto', 
-        'data_publicacao', 
+        'imagem',
+        'miniatura',
+        'dataPublicacao', 
         'autor_id'
     ];
 

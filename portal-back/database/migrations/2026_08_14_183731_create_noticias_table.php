@@ -13,10 +13,13 @@ return new class extends Migration
     {
         Schema::create('noticias', function (Blueprint $table) {
             $table->id(); // PK
+            $table->string('categoria');
             $table->string('titulo');
+            $table->text('descricao');
             $table->text('conteudo');
-            $table->string('url_foto')->nullable();
-            $table->timestamp('data_publicacao')->nullable();
+            $table->string('imagem')->nullable();
+            $table->string('miniatura')->nullable();
+            $table->timestamp('dataPublicacao')->nullable();
 
             // Chave Estrangeira (FK)
             $table->foreignId('autor_id')
@@ -26,6 +29,8 @@ return new class extends Migration
             $table->timestamps(); // Cria created_at e updated_at
         });
     }
+
+    //'categoria', 'titulo', 'descricao','conteudo', 'imagem', 'dataPublicacao','autor_id'
 
     /**
      * Reverse the migrations.
