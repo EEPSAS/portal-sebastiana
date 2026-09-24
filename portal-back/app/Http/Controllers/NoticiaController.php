@@ -2,55 +2,76 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreNoticiaRequest;
+use App\Http\Requests\UpdateNoticiaRequest;
 use App\Models\Noticia;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class NoticiaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    // Lista todas as noticias cadastradas
+    public function index(): JsonResponse
     {
-        return response()->json(Noticia::all(), 200);
+        $noticias = Noticia::query()
+            ->with('autor:id,name')
+            ->orderByDesc('destaque')
+            ->orderByDesc('data_publicacao')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get();
+
+        return response()->json($noticias, 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    // Salva uma nova noticia no banco
+    public function store(StoreNoticiaRequest $request): JsonResponse
     {
-        $noticia = Noticia::create($request->all());
+        $noticia = DB::transaction(function () use ($request): Noticia {
+            $data = $request->validated();
+            $data['autor_id'] = $request->user()->id;
+
+            if ($data['destaque'] ?? false) {
+                Noticia::where('destaque', true)->update(['destaque' => false]);
+            }
+
+            return Noticia::create($data);
+        });
+
+        $noticia->load('autor:id,name');
         return response()->json($noticia, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Noticia $noticia)
+    // Exibe os detalhes de uma noticia especifica
+    public function show(Noticia $noticia): JsonResponse
     {
-        $noticia = Noticia::find($noticia->id);
-        return $noticia
-        ? response()->json($noticia, 200)
-        : response()->json(['erro'=> 'Notícia não encontrada'], 404);
-    }
+        $noticia->load('autor:id,name');
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Noticia $noticia)
-    {
-        $noticia = Noticia::findOrFail($noticia->id);
-        $noticia->update($request->all());
         return response()->json($noticia, 200);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Noticia $noticia)
+    // Atualiza os dados de uma noticia existente
+    public function update(UpdateNoticiaRequest $request, Noticia $noticia): JsonResponse
     {
-        $noticia = Noticia::findOrFail($noticia->id);
+        DB::transaction(function () use ($request, $noticia): void {
+            $data = $request->validated();
+
+            if (($data['destaque'] ?? false) === true) {
+                Noticia::where('id', '!=', $noticia->id)
+                    ->where('destaque', true)
+                    ->update(['destaque' => false]);
+            }
+
+            $noticia->update($data);
+        });
+
+        $noticia->load('autor:id,name');
+        return response()->json($noticia, 200);
+    }
+
+    // Remove uma noticia do sistema
+    public function destroy(Noticia $noticia): JsonResponse
+    {
         $noticia->delete();
         return response()->json(null, 204);
     }

@@ -2,26 +2,18 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
-/**
- * @extends Factory<User>
- */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
+    // Cache da senha criptografada para otimizar a geracao em lote
     protected static ?string $password;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
+    // Define os valores padrao dos campos ao criar usuarios ficticios
     public function definition(): array
     {
         return [
@@ -29,17 +21,40 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'role' => UserRole::PADRAO,
             'remember_token' => Str::random(10),
         ];
     }
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
+    // Estado para gerar usuario com e-mail ainda nao verificado
     public function unverified(): static
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    // Estado para gerar usuario com papel de editor
+    public function editor(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::EDITOR,
+        ]);
+    }
+
+    // Estado para gerar usuario com papel de administrador
+    public function administrador(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::ADMINISTRADOR,
+        ]);
+    }
+
+    // Estado para gerar usuario com papel padrao explicitamente
+    public function padrao(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::PADRAO,
         ]);
     }
 }
