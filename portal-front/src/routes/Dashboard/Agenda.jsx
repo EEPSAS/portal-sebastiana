@@ -59,7 +59,7 @@
                 </div>
               </div>
               <button type="button" className="btn btn-danger w-100 py-2 fw-semibold rounded-pill mt-2">
-                Adicionar Ã  Agenda
+                Adicionar a Agenda
               </button>
             </form>
           </div>
