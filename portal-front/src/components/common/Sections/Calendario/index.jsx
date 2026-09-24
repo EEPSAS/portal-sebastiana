@@ -1,53 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const daysOfWeek = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
 const categoryOptions = [
   { key: 'eventos', label: 'Eventos', description: 'Palestras, feiras, reuniões', eventLabel: 'Evento', icon: '📅', color: '#e6007e' },
-  { key: 'provas', label: 'Provas e avaliações', description: 'Provas, trabalhos e testes', eventLabel: 'Prova', icon: '📄', color: '#f59e0b' },
+  { key: 'provas', label: 'Provas e trabalhos', description: 'Matemática, Português, Biologia, História, Geografia, Química, Física e Artes', eventLabel: 'Avaliação', icon: '📄', color: '#f59e0b' },
   { key: 'comemorativas', label: 'Datas comemorativas', description: 'Datas especiais e celebrações', eventLabel: 'Data comemorativa', icon: '⭐', color: '#2563eb' },
   { key: 'feriados', label: 'Feriados e recessos', description: 'Feriados e períodos de recesso', eventLabel: 'Feriado', icon: '📖', color: '#1e293b' },
 ];
-
-const events = [
-  { id: 1, title: 'Feira de profissões', category: 'eventos', date: '2026-05-07' },
-  { id: 2, title: 'Prova de matemática', category: 'provas', date: '2026-05-10' },
-  { id: 3, title: 'Dia das Mães', category: 'comemorativas', date: '2026-05-12' },
-  { id: 4, title: 'Corpus Christi', category: 'feriados', date: '2026-05-17' },
-  { id: 5, title: 'Reunião de responsáveis', category: 'eventos', date: '2026-05-16' },
-  { id: 6, title: 'Entrega do trabalho de ciências', category: 'provas', date: '2026-05-21' },
-  { id: 7, title: 'Feira de profissões', category: 'eventos', date: '2026-05-24' },
-  { id: 8, title: 'Festa Junina', category: 'eventos', date: '2026-06-13' },
-  { id: 9, title: 'Prova de história', category: 'provas', date: '2026-06-18' },
-  { id: 10, title: 'Independência do Brasil', category: 'feriados', date: '2026-09-07' },
-  { id: 11, title: 'Dia dos Professores', category: 'comemorativas', date: '2026-10-15' },
-  { id: 12, title: 'Ano Novo', category: 'comemorativas', date: '2027-01-01' },
-  { id: 13, title: 'Carnaval', category: 'comemorativas', date: '2027-02-09' },
-  { id: 14, title: 'Dia Internacional da Mulher', category: 'comemorativas', date: '2027-03-08' },
-  { id: 15, title: 'Tiradentes', category: 'feriados', date: '2027-04-21' },
-  { id: 16, title: 'Dia do Trabalho', category: 'feriados', date: '2027-05-01' },
-  { id: 17, title: 'Dia das Mães', category: 'comemorativas', date: '2027-05-09' },
-  { id: 18, title: 'Corpus Christi', category: 'feriados', date: '2027-05-27' },
-  { id: 19, title: 'Dia Mundial do Meio Ambiente', category: 'comemorativas', date: '2027-06-05' },
-  { id: 20, title: 'Dia dos Namorados', category: 'comemorativas', date: '2027-06-12' },
-  { id: 21, title: 'Festa Junina', category: 'eventos', date: '2027-06-19' },
-  { id: 22, title: 'Independência do Brasil', category: 'feriados', date: '2027-09-07' },
-  { id: 23, title: 'Nossa Senhora Aparecida', category: 'feriados', date: '2027-10-12' },
-  { id: 24, title: 'Dia das Crianças', category: 'comemorativas', date: '2027-10-12' },
-  { id: 25, title: 'Dia dos Professores', category: 'comemorativas', date: '2027-10-15' },
-  { id: 26, title: 'Finados', category: 'feriados', date: '2027-11-02' },
-  { id: 27, title: 'Proclamação da República', category: 'feriados', date: '2027-11-15' },
-  { id: 28, title: 'Dia da Consciência Negra', category: 'comemorativas', date: '2027-11-20' },
-  { id: 29, title: 'Natal', category: 'feriados', date: '2027-12-25' },
-];
-
-const initialMonth = new Date(2026, 4, 1);
-const initialSelectedDate = '2026-05-27';
-
-const formatMonth = (date) => new Intl.DateTimeFormat('pt-BR', {
-  month: 'long',
-  year: 'numeric',
-}).format(date).replace(/^(.)/, (letter) => letter.toUpperCase());
 
 const formatDateKey = (date) => {
   const year = date.getFullYear();
@@ -56,7 +16,89 @@ const formatDateKey = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+const fixedImportantDates = [
+  ['01-01', 'Ano Novo', 'feriados'], ['03-08', 'Dia Internacional da Mulher', 'comemorativas'],
+  ['04-21', 'Tiradentes', 'feriados'], ['05-01', 'Dia do Trabalho', 'feriados'],
+  ['06-05', 'Dia Mundial do Meio Ambiente', 'comemorativas'], ['09-07', 'Independência do Brasil', 'feriados'],
+  ['10-12', 'Nossa Senhora Aparecida', 'feriados'], ['10-12', 'Dia das Crianças', 'comemorativas'],
+  ['10-15', 'Dia dos Professores', 'comemorativas'], ['11-02', 'Finados', 'feriados'],
+  ['11-15', 'Proclamação da República', 'feriados'], ['11-20', 'Dia da Consciência Negra', 'comemorativas'],
+  ['12-25', 'Natal', 'feriados'],
+];
+
+const getEaster = (year) => {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  return new Date(year, Math.floor((h + l - 7 * m + 114) / 31) - 1, (h + l - 7 * m + 114) % 31 + 1);
+};
+
+const createImportantDates = () => Array.from({ length: 16 }, (_, index) => new Date().getFullYear() - 5 + index).flatMap((year) => {
+  const easter = getEaster(year);
+  const movableDates = [
+    [-47, 'Carnaval', 'comemorativas'], [-2, 'Sexta-feira Santa', 'feriados'],
+    [0, 'Páscoa', 'comemorativas'], [60, 'Corpus Christi', 'feriados'],
+  ];
+  const dates = fixedImportantDates.map(([monthDay, title, category]) => ({
+    id: `${year}-${monthDay}-${title}`, title, category, date: `${year}-${monthDay}`,
+  }));
+  return dates.concat(movableDates.map(([offset, title, category]) => {
+    const date = new Date(easter);
+    date.setDate(date.getDate() + offset);
+    return { id: `${year}-${title}`, title, category, date: formatDateKey(date) };
+  }));
+});
+
+const events = createImportantDates();
+const initialMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+const tasksStorageKey = 'portal-sebastiana-calendar-tasks';
+
+const getStoredTasks = () => {
+  try {
+    const storedTasks = window.localStorage.getItem(tasksStorageKey);
+    if (!storedTasks) {
+      return [];
+    }
+
+    const parsedTasks = JSON.parse(storedTasks);
+    return Array.isArray(parsedTasks)
+      ? parsedTasks.filter((task) => task?.id && task?.title && task?.date)
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const formatMonth = (date) => new Intl.DateTimeFormat('pt-BR', {
+  month: 'long',
+  year: 'numeric',
+}).format(date).replace(/^(.)/, (letter) => letter.toUpperCase());
+
 const getMonthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+const formatRelativeDate = (dateKey) => {
+  if (!dateKey) return 'Nenhum dia selecionado';
+  const selected = new Date(`${dateKey}T00:00:00`);
+  const today = new Date();
+  const todayAtMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const differenceInDays = Math.round((selected - todayAtMidnight) / 86400000);
+  if (differenceInDays === 0) return 'Hoje';
+  if (differenceInDays === 1) return 'Amanhã';
+  if (differenceInDays === -1) return 'Ontem';
+  if (differenceInDays > 0 && differenceInDays < 30) return `Em ${differenceInDays} dias`;
+  if (differenceInDays < 0 && differenceInDays > -30) return `Há ${Math.abs(differenceInDays)} dias`;
+  const months = Math.round(Math.abs(differenceInDays) / 30);
+  return differenceInDays > 0 ? `Em ${months} ${months === 1 ? 'mês' : 'meses'}` : `Há ${months} ${months === 1 ? 'mês' : 'meses'}`;
+};
 
 const getCalendarDays = (month) => {
   const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -71,13 +113,21 @@ const getCalendarDays = (month) => {
 
 const CalendarioSection = () => {
   const [visibleMonth, setVisibleMonth] = useState(initialMonth);
-  const [selectedDate, setSelectedDate] = useState(initialSelectedDate);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [activeCategories, setActiveCategories] = useState(
     () => new Set(categoryOptions.map(({ key }) => key)),
   );
   const [showAllEvents, setShowAllEvents] = useState(false);
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState(getStoredTasks);
   const [taskTitle, setTaskTitle] = useState('');
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(tasksStorageKey, JSON.stringify(tasks));
+    } catch {
+      return;
+    }
+  }, [tasks]);
 
   const visibleEvents = events.filter(({ category }) => activeCategories.has(category));
   const monthEvents = visibleEvents.filter(({ date }) => date.startsWith(getMonthKey(visibleMonth)));
@@ -124,7 +174,7 @@ const CalendarioSection = () => {
 
   const selectCalendarDay = (calendarDay) => {
     const dateKey = formatDateKey(calendarDay.date);
-    setSelectedDate((currentDate) => (currentDate === dateKey ? null : dateKey));
+    setSelectedDate(dateKey);
     if (!calendarDay.currentMonth) {
       setVisibleMonth(new Date(calendarDay.date.getFullYear(), calendarDay.date.getMonth(), 1));
     }
@@ -132,7 +182,7 @@ const CalendarioSection = () => {
 
   const addTask = (event) => {
     event.preventDefault();
-    const title = taskTitle.trim();
+    const title = taskTitle.trim().slice(0, 120);
     if (!selectedDate || !title) {
       return;
     }
@@ -146,7 +196,8 @@ const CalendarioSection = () => {
 
   const selectedDateLabel = selectedDate
     ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date(`${selectedDate}T00:00:00`))
-    : 'Nenhum dia marcado';
+    : 'Nenhum dia selecionado';
+  const selectedDateRelativeLabel = formatRelativeDate(selectedDate);
   const selectedTasks = tasks.filter((task) => task.date === selectedDate);
 
   return (
@@ -202,13 +253,13 @@ const CalendarioSection = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#1e3a8a', margin: 0 }}>{formatMonth(visibleMonth)}</h2>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button type="button" onClick={() => changeMonth(-1)} aria-label="Mês anterior" style={{ border: 0, background: 'transparent', color: '#e6007e', cursor: 'pointer', fontWeight: 'bold', fontSize: '18px' }}>&lt;</button>
-                <button type="button" onClick={() => changeMonth(1)} aria-label="Próximo mês" style={{ border: 0, background: 'transparent', color: '#e6007e', cursor: 'pointer', fontWeight: 'bold', fontSize: '18px' }}>&gt;</button>
+              <div style={{ display: 'flex', gap: '4px', width: '72px', flexShrink: 0, justifyContent: 'center' }}>
+                <button type="button" onClick={() => changeMonth(-1)} aria-label="Mês anterior" style={{ width: '32px', height: '32px', border: 0, borderRadius: '8px', background: '#fdf2f8', color: '#e6007e', cursor: 'pointer', fontWeight: 'bold', fontSize: '18px', lineHeight: 1, flexShrink: 0 }}>&lt;</button>
+                <button type="button" onClick={() => changeMonth(1)} aria-label="Próximo mês" style={{ width: '32px', height: '32px', border: 0, borderRadius: '8px', background: '#fdf2f8', color: '#e6007e', cursor: 'pointer', fontWeight: 'bold', fontSize: '18px', lineHeight: 1, flexShrink: 0 }}>&gt;</button>
               </div>
             </div>
             <button type="button" onClick={goToToday} style={{ background: 'transparent', border: '1px solid #e6007e', color: '#e6007e', borderRadius: '20px', padding: '6px 16px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
-              Hoje
+              {selectedDateRelativeLabel}
             </button>
           </div>
 
@@ -244,14 +295,15 @@ const CalendarioSection = () => {
             })}
           </div>
           <p style={{ color: '#64748b', fontSize: '12px', textAlign: 'center', margin: '14px 0 0' }}>
-            Dia marcado: <strong style={{ color: '#1e3a8a' }}>{selectedDateLabel}</strong>
+            Dia selecionado: <strong style={{ color: '#1e3a8a' }}>{selectedDateLabel}</strong>
+            {selectedDate && <span style={{ display: 'block', marginTop: '3px', color: '#e6007e', fontWeight: '700' }}>{selectedDateRelativeLabel}</span>}
           </p>
           <form onSubmit={addTask} style={{ marginTop: '12px', display: 'flex', gap: '6px' }}>
             <input
               type="text"
               value={taskTitle}
               onChange={(event) => setTaskTitle(event.target.value)}
-              placeholder="Marcar uma tarefa"
+              placeholder="Adicionar lembrete pessoal"
               aria-label="Nome da tarefa"
               disabled={!selectedDate}
               style={{ minWidth: 0, flex: 1, border: '1px solid #cbd5e1', borderRadius: '8px', padding: '7px 8px', fontSize: '11px' }}
@@ -266,7 +318,7 @@ const CalendarioSection = () => {
           </form>
           {selectedTasks.length > 0 && (
             <div style={{ marginTop: '10px', padding: '8px 10px', borderRadius: '8px', background: '#f0fdf4', color: '#166534', fontSize: '11px' }}>
-              <strong>Tarefas do dia</strong>
+              <strong>Lembretes pessoais</strong>
               {selectedTasks.map((task) => <div key={task.id} style={{ marginTop: '4px' }}>• {task.title}</div>)}
             </div>
           )}
