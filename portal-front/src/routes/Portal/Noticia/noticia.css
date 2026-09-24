@@ -98,6 +98,14 @@
   line-height: 1.9;
 }
 
+.noticia-detail__content .noticia-detail__thumbnail {
+  width: min(100%, 24rem);
+  max-height: 14rem;
+  margin: 2.5rem auto 0;
+  border-radius: 0.75rem;
+  object-fit: cover;
+}
+
 .noticia-detail--not-found {
   display: grid;
   place-items: center;

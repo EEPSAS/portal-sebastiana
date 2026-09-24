@@ -1,14 +1,18 @@
 import { Link, useParams } from 'react-router';
 import NoticiaContent from '../../../components/Portal/noticia/NoticiaContent';
 import NoticiaHeader from '../../../components/Portal/noticia/NoticiaHeader';
-import { getNoticiaById } from '../../../components/Portal/noticia/noticiasMock';
+import { useNoticia } from '../../../hooks/useNoticias';
 import './noticia.css';
 
 const NoticiaPage = () => {
   const { id } = useParams();
-  const noticia = getNoticiaById(id);
+  const { noticia, loading, error } = useNoticia(id);
 
-  if (!noticia) {
+  if (loading) {
+    return <section className="noticia-detail"><div className="container"><p>Carregando notícia...</p></div></section>;
+  }
+
+  if (error || !noticia) {
     return (
       <section className="noticia-detail noticia-detail--not-found">
         <div className="container">

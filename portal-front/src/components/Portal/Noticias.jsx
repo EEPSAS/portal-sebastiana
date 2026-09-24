@@ -2,7 +2,7 @@ import { useState } from 'react';
 import HorizontalNewsCard from './HorizontalNewsCard';
 import SmallNewsCard from './SmallNewsCard';
 import VerticalNewsCard from './VerticalNewsCard';
-import { noticiasMock } from './noticia/noticiasMock';
+import { useNoticias } from '../../hooks/useNoticias';
 import './noticias.css';
 
 const categorias = [
@@ -11,14 +11,29 @@ const categorias = [
   { nome: 'Outros', classe: 'category-control--vertical' },
 ];
 
-const noticias = {
-  destaque: noticiasMock[0],
-  vertical: noticiasMock[4],
-  pequenas: noticiasMock.slice(1, 4),
-};
-
 const NoticiasSection = () => {
   const [categoriaAtiva, setCategoriaAtiva] = useState(null);
+  const { noticias: noticiasApi, loading, error } = useNoticias();
+
+  const noticiaDestaque = noticiasApi.find((noticia) => noticia.destaque) || noticiasApi[0];
+  const noticiasRestantes = noticiasApi.filter((noticia) => noticia.id !== noticiaDestaque?.id);
+  const noticias = {
+    destaque: noticiaDestaque,
+    vertical: noticiasRestantes[3],
+    pequenas: noticiasRestantes.slice(0, 3),
+  };
+
+  if (loading) {
+    return <section id="Noticias" className="noticias-section"><div className="container"><p>Carregando notícias...</p></div></section>;
+  }
+
+  if (error) {
+    return <section id="Noticias" className="noticias-section"><div className="container"><p role="alert">Não foi possível carregar as notícias.</p></div></section>;
+  }
+
+  if (!noticiaDestaque) {
+    return <section id="Noticias" className="noticias-section"><div className="container"><p>Nenhuma notícia disponível.</p></div></section>;
+  }
 
   return (
     <section id="Noticias" className="noticias-section">
@@ -49,7 +64,7 @@ const NoticiasSection = () => {
             </div>
             <div className="news-group news-group--small-grid row g-3 mt-0">
               {noticias.pequenas.map((noticia) => (
-                <div className="col-12 col-sm-6 col-lg-4" key={noticia.titulo}>
+                <div className="col-12 col-sm-6 col-lg-4" key={noticia.id}>
                   <SmallNewsCard noticia={noticia} />
                 </div>
               ))}
@@ -57,7 +72,7 @@ const NoticiasSection = () => {
           </div>
 
           <div className="news-group news-group--vertical col-12 col-lg-3">
-            <VerticalNewsCard noticia={noticias.vertical} />
+            {noticias.vertical && <VerticalNewsCard noticia={noticias.vertical} />}
           </div>
         </div>
       </div>

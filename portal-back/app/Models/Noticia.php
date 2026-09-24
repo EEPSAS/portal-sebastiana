@@ -23,6 +23,14 @@ class Noticia extends Model
         'autor_id'
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'data_publicacao' => 'datetime',
+            'destaque' => 'boolean',
+        ];
+    }
+
     // Relacionamento N:1 (Inverso)
     public function autor(): BelongsTo
     {

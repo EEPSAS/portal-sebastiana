@@ -18,6 +18,10 @@ Route::get('/login', function () {
 Route::post('/login', [AuthController::class, 'login'])->name('api.login');
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 
+// Notícias são conteúdo público; apenas as operações de gestão exigem login.
+Route::get('/noticias', [NoticiaController::class, 'index']);
+Route::get('/noticias/{noticia}', [NoticiaController::class, 'show']);
+
 // Endpoints sob o prefixo /auth
 Route::prefix('auth')->name('auth.')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
@@ -31,7 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
-    Route::apiResource('noticias', NoticiaController::class);
+    Route::apiResource('noticias', NoticiaController::class)->except(['index', 'show']);
     Route::apiResource('radioatividades', RadioatividadeController::class);
 
     Route::get('/eventos/datas-importantes', [EventoController::class, 'datasImportantes']);

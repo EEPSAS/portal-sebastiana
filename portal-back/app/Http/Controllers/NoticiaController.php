@@ -2,49 +2,76 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreNoticiaRequest;
+use App\Http\Requests\UpdateNoticiaRequest;
 use App\Models\Noticia;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class NoticiaController extends Controller
 {
     // Lista todas as noticias cadastradas
-    public function index()
+    public function index(): JsonResponse
     {
-        return response()->json(Noticia::all(), 200);
+        $noticias = Noticia::query()
+            ->with('autor:id,name')
+            ->orderByDesc('destaque')
+            ->orderByDesc('data_publicacao')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get();
+
+        return response()->json($noticias, 200);
     }
 
     // Salva uma nova noticia no banco
-    public function store(Request $request)
+    public function store(StoreNoticiaRequest $request): JsonResponse
     {
-        // Cria a noticia com os dados recebidos
-        $noticia = Noticia::create($request->all());
+        $noticia = DB::transaction(function () use ($request): Noticia {
+            $data = $request->validated();
+            $data['autor_id'] = $request->user()->id;
+
+            if ($data['destaque'] ?? false) {
+                Noticia::where('destaque', true)->update(['destaque' => false]);
+            }
+
+            return Noticia::create($data);
+        });
+
+        $noticia->load('autor:id,name');
         return response()->json($noticia, 201);
     }
 
     // Exibe os detalhes de uma noticia especifica
-    public function show(Noticia $noticia)
+    public function show(Noticia $noticia): JsonResponse
     {
-        // Busca a noticia pelo ID informado
-        $noticia = Noticia::find($noticia->id);
-        return $noticia
-        ? response()->json($noticia, 200)
-        : response()->json(['erro'=> 'Notícia não encontrada'], 404);
+        $noticia->load('autor:id,name');
+
+        return response()->json($noticia, 200);
     }
 
     // Atualiza os dados de uma noticia existente
-    public function update(Request $request, Noticia $noticia)
+    public function update(UpdateNoticiaRequest $request, Noticia $noticia): JsonResponse
     {
-        // Localiza e atualiza o registro
-        $noticia = Noticia::findOrFail($noticia->id);
-        $noticia->update($request->all());
+        DB::transaction(function () use ($request, $noticia): void {
+            $data = $request->validated();
+
+            if (($data['destaque'] ?? false) === true) {
+                Noticia::where('id', '!=', $noticia->id)
+                    ->where('destaque', true)
+                    ->update(['destaque' => false]);
+            }
+
+            $noticia->update($data);
+        });
+
+        $noticia->load('autor:id,name');
         return response()->json($noticia, 200);
     }
 
     // Remove uma noticia do sistema
-    public function destroy(Noticia $noticia)
+    public function destroy(Noticia $noticia): JsonResponse
     {
-        // Localiza e exclui o registro
-        $noticia = Noticia::findOrFail($noticia->id);
         $noticia->delete();
         return response()->json(null, 204);
     }
