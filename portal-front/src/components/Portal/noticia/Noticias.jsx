@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import HorizontalNewsCard from './HorizontalNewsCard';
-import SmallNewsCard from './SmallNewsCard';
-import VerticalNewsCard from './VerticalNewsCard';
-import { useNoticias } from '../../hooks/useNoticias';
+import HorizontalNewsCard from '../HorizontalNewsCard';
+import SmallNewsCard from '../SmallNewsCard';
+import VerticalNewsCard from '../VerticalNewsCard';
+import { useNoticias } from '../../../hooks/useNoticias';
 import './noticias.css';
 
 const categorias = [
