@@ -26,7 +26,7 @@ class Noticia extends Model
     protected function casts(): array
     {
         return [
-            'data_publicacao' => 'datetime',
+            'dataPublicacao' => 'datetime',
             'destaque' => 'boolean',
         ];
     }
