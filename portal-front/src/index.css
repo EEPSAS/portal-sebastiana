@@ -44,6 +44,40 @@ button {
   min-width: 0;
 }
 
+.popular-book-trigger {
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.popular-book-trigger:hover {
+  transform: translateY(-2px);
+}
+
+.popular-book-trigger:focus-visible {
+  outline: 3px solid rgba(239, 21, 150, 0.45);
+  outline-offset: 2px;
+}
+
+.popular-book-dialog {
+  width: min(36rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: calc(100vh - 2rem);
+  padding: 0;
+  border: 0;
+  border-radius: var(--bs-modal-border-radius, 0.5rem);
+  background: transparent;
+  overflow-y: auto;
+}
+
+.popular-book-dialog::backdrop {
+  background: rgba(23, 41, 81, 0.55);
+}
+
+.popular-book-dialog-content {
+  background-color: #f8f8f7;
+  border: 1px solid #d7d8dc;
+}
+
 .dashboard-shell {
   min-height: 100vh;
   background-color: #f8f9fa;
