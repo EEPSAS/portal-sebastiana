@@ -1,8 +1,8 @@
 import { Outlet } from "react-router";
-import Aside from "../../components/Dashboard/Aside";
-import Header from "../../components/Dashboard/Header";
+import Aside from "../../components/Usuario/Aside";
+import Header from "../../components/Usuario/Header";
 
-const DashboardLayout = () => (
+const UsuarioLayout = () => (
   <div className="dashboard-shell">
     <Aside />
     <div className="dashboard-content">
@@ -14,4 +14,4 @@ const DashboardLayout = () => (
   </div>
 );
 
-export default DashboardLayout;
+export default UsuarioLayout;

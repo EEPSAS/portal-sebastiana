@@ -31,7 +31,7 @@ const Home = () => (
 				<article className="bg-white rounded-4 shadow-sm p-4 h-100">
 					<div className="d-flex justify-content-between align-items-center mb-3">
 						<h2 className="h5 text-primary fw-bold mb-0">Atividades recentes</h2>
-						<Link to="/dashboard/agenda" className="text-danger text-decoration-none small fw-semibold">Ver agenda</Link>
+						<Link to="/usuario/agenda" className="text-danger text-decoration-none small fw-semibold">Ver agenda</Link>
 					</div>
 					<div className="list-group list-group-flush">
 						<div className="list-group-item px-0 d-flex justify-content-between">
@@ -55,7 +55,7 @@ const Home = () => (
 					<p className="text-danger fw-bold mb-1">22 MAI · 07:00</p>
 					<h3 className="h6 text-dark">Entrega de Trabalho</h3>
 					<p className="text-secondary small">Análise de Dados</p>
-					<Link to="/dashboard/calendario" className="btn btn-outline-primary btn-sm rounded-pill">Abrir calendário</Link>
+					<Link to="/usuario/calendario" className="btn btn-outline-primary btn-sm rounded-pill">Abrir calendário</Link>
 				</article>
 			</div>
 		</div>
