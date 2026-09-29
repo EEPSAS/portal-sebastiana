@@ -48,42 +48,42 @@ test('standard user (padrao) can only view events and cannot modify them', funct
     expect(Evento::find($evento->id))->not->toBeNull();
 });
 
-test('editor can create, update, delete and view events', function () {
-    $editor = User::factory()->editor()->create();
+test('especialista can create, update, delete and view events', function () {
+    $especialista = User::factory()->especialista()->create();
 
     // Create event
-    $createResponse = $this->actingAs($editor, 'sanctum')
+    $createResponse = $this->actingAs($especialista, 'sanctum')
         ->postJson('/api/eventos', [
-            'titulo' => 'Reunião de Pais e Mestres',
-            'descricao' => 'Alinhamento pedagógico do 3º bimestre',
+            'titulo'      => 'Reunião de Pais e Mestres',
+            'descricao'   => 'Alinhamento pedagógico do 3º bimestre',
             'data_inicio' => '2026-10-15',
             'hora_inicio' => '19:00',
-            'hora_fim' => '21:00',
-            'tipo' => 'reuniao',
-            'importante' => true,
-            'local' => 'Auditório',
-            'cor' => '#007bff',
+            'hora_fim'    => '21:00',
+            'tipo'        => 'reuniao',
+            'importante'  => true,
+            'local'       => 'Auditório',
+            'cor'         => '#007bff',
         ]);
 
     $createResponse->assertCreated()
         ->assertJsonPath('titulo', 'Reunião de Pais e Mestres')
         ->assertJsonPath('importante', true)
-        ->assertJsonPath('criador.id', $editor->id);
+        ->assertJsonPath('criador.id', $especialista->id);
 
     $eventoId = $createResponse->json('id');
 
     // Update event
-    $this->actingAs($editor, 'sanctum')
+    $this->actingAs($especialista, 'sanctum')
         ->putJson("/api/eventos/{$eventoId}", [
             'titulo' => 'Reunião Geral de Pais',
-            'local' => 'Quadra Coberta',
+            'local'  => 'Quadra Coberta',
         ])
         ->assertOk()
         ->assertJsonPath('titulo', 'Reunião Geral de Pais')
         ->assertJsonPath('local', 'Quadra Coberta');
 
     // Delete event
-    $this->actingAs($editor, 'sanctum')
+    $this->actingAs($especialista, 'sanctum')
         ->deleteJson("/api/eventos/{$eventoId}")
         ->assertNoContent();
 
@@ -91,7 +91,7 @@ test('editor can create, update, delete and view events', function () {
 });
 
 test('administrator has full access to calendar operations', function () {
-    $admin = User::factory()->administrador()->create();
+    $admin = User::factory()->adm()->create();
     $evento = Evento::factory()->create();
 
     // Admin can update
@@ -111,7 +111,7 @@ test('administrator has full access to calendar operations', function () {
 });
 
 test('validates required fields and formats when creating events', function () {
-    $admin = User::factory()->administrador()->create();
+    $admin = User::factory()->adm()->create();
 
     // Missing title and start date
     $this->actingAs($admin, 'sanctum')

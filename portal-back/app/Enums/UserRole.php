@@ -7,17 +7,17 @@ namespace App\Enums;
 enum UserRole: string
 {
     // Valores literais armazenados na coluna 'role' da tabela 'users'
-    case PADRAO = 'padrao';
-    case EDITOR = 'editor';
-    case ADMINISTRADOR = 'administrador';
+    case PADRAO      = 'padrao';
+    case ESPECIALISTA = 'especialista';
+    case ADM         = 'adm';
 
     // Retorna o nome legível do papel para exibição nas telas (UI/Blade/JSON).
     public function label(): string
     {
         return match ($this) {
-            self::PADRAO => 'Usuário Padrão',
-            self::EDITOR => 'Editor',
-            self::ADMINISTRADOR => 'Administrador',
+            self::PADRAO      => 'Usuário Padrão',
+            self::ESPECIALISTA => 'Especialista',
+            self::ADM         => 'Administrador',
         };
     }
 }

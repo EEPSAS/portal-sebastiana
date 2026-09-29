@@ -17,12 +17,12 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
+            'name'              => fake()->name(),
+            'email'             => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'role' => UserRole::PADRAO,
-            'remember_token' => Str::random(10),
+            'password'          => static::$password ??= Hash::make('password'),
+            'role'              => UserRole::PADRAO,
+            'remember_token'    => Str::random(10),
         ];
     }
 
@@ -34,19 +34,19 @@ class UserFactory extends Factory
         ]);
     }
 
-    // Estado para gerar usuario com papel de editor
-    public function editor(): static
+    // Estado para gerar usuario com papel de especialista
+    public function especialista(): static
     {
         return $this->state(fn (array $attributes) => [
-            'role' => UserRole::EDITOR,
+            'role' => UserRole::ESPECIALISTA,
         ]);
     }
 
-    // Estado para gerar usuario com papel de administrador
-    public function administrador(): static
+    // Estado para gerar usuario com papel de administrador (ADM)
+    public function adm(): static
     {
         return $this->state(fn (array $attributes) => [
-            'role' => UserRole::ADMINISTRADOR,
+            'role' => UserRole::ADM,
         ]);
     }
 

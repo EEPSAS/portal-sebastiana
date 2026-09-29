@@ -27,20 +27,20 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'role' => UserRole::class,
+            'password'          => 'hashed',
+            'role'              => UserRole::class,
         ];
     }
 
     // Checagens de nivel de acesso
-    public function isAdministrador(): bool
+    public function isAdm(): bool
     {
-        return $this->role === UserRole::ADMINISTRADOR;
+        return $this->role === UserRole::ADM;
     }
 
-    public function isEditor(): bool
+    public function isEspecialista(): bool
     {
-        return $this->role === UserRole::EDITOR;
+        return $this->role === UserRole::ESPECIALISTA;
     }
 
     public function isPadrao(): bool
@@ -48,10 +48,10 @@ class User extends Authenticatable
         return $this->role === UserRole::PADRAO;
     }
 
-    // Permissao para gerenciamento de eventos
+    // Permissao para gerenciamento de conteudo (eventos, noticias)
     public function canManageEvents(): bool
     {
-        return $this->isAdministrador() || $this->isEditor();
+        return $this->isAdm() || $this->isEspecialista();
     }
 
     // Relacionamento com as noticias criadas

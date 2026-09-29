@@ -19,19 +19,19 @@ class EventoPolicy
         return true;
     }
 
-    // Autoriza a criacao se o usuario for administrador ou editor
+    // Autoriza a criacao se o usuario for ADM ou Especialista
     public function create(User $user): bool
     {
         return $user->canManageEvents();
     }
 
-    // Autoriza a edicao se o usuario for administrador ou editor
+    // Autoriza a edicao se o usuario for ADM ou Especialista
     public function update(User $user, Evento $evento): bool
     {
         return $user->canManageEvents();
     }
 
-    // Autoriza a exclusao se o usuario for administrador ou editor
+    // Autoriza a exclusao se o usuario for ADM ou Especialista
     public function delete(User $user, Evento $evento): bool
     {
         return $user->canManageEvents();
