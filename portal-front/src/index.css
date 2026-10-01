@@ -97,8 +97,14 @@ button {
   margin-left: 250px;
 }
 
+.dashboard-header {
+  height: 64px;
+  border-radius: 0 0 16px 16px;
+  transition: all 0.3s ease;
+}
+
 .dashboard-panel {
-  min-height: 100vh;
+  min-height: calc(100vh - 64px);
   padding: 1.5rem 2rem;
   overflow-x: hidden;
 }

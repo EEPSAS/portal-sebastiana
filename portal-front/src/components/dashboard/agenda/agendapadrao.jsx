@@ -1,5 +1,9 @@
-const Agenda = () => {
-  return <section>{/* Conteúdo será preenchido pela equipe */}</section>;
+const AgendaPadrao = () => {
+  return (
+    <div>
+      <h1>Agenda Padrão</h1>
+    </div>
+  );
 };
 
-export default Agenda;
+export default AgendaPadrao;

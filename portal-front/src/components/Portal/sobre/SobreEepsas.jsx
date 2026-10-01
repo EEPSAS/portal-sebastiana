@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import fotoEscola from "../../assets/img/fotoescola.jpg";
+const fotoEscola = "/img/fotoescola.jpg";
 
 const slides = [
   {

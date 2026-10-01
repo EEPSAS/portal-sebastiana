@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-import areaTerritorial from "../../assets/img/area-territorial.png";
-import habitantes from "../../assets/img/habitantes.png";
+const areaTerritorial = "/img/area-territorial.png";
+const habitantes = "/img/habitantes.png";
 
 const slides = [
   {

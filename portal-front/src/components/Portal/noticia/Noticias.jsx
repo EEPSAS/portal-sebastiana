@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import HorizontalNewsCard from '../HorizontalNewsCard';
-import SmallNewsCard from '../SmallNewsCard';
-import VerticalNewsCard from '../VerticalNewsCard';
+import HorizontalNewsCard from './HorizontalNewsCard';
+import SmallNewsCard from './SmallNewsCard';
+import VerticalNewsCard from './VerticalNewsCard';
 import { useNoticias } from '../../../hooks/useNoticias';
+import { DEFAULT_NOTICIAS } from './noticiasMock';
 import './noticias.css';
 
 const categorias = [
@@ -15,25 +16,18 @@ const NoticiasSection = () => {
   const [categoriaAtiva, setCategoriaAtiva] = useState(null);
   const { noticias: noticiasApi, loading, error } = useNoticias();
 
-  const noticiaDestaque = noticiasApi.find((noticia) => noticia.destaque) || noticiasApi[0];
-  const noticiasRestantes = noticiasApi.filter((noticia) => noticia.id !== noticiaDestaque?.id);
+  const list = (!loading && noticiasApi && noticiasApi.length > 0)
+    ? noticiasApi
+    : DEFAULT_NOTICIAS;
+
+  const noticiaDestaque = list.find((n) => n.destaque) || list[0];
+  const noticiasRestantes = list.filter((n) => n.id !== noticiaDestaque?.id);
+
   const noticias = {
     destaque: noticiaDestaque,
-    vertical: noticiasRestantes[3],
+    vertical: noticiasRestantes[3] || noticiasRestantes[noticiasRestantes.length - 1] || DEFAULT_NOTICIAS[4],
     pequenas: noticiasRestantes.slice(0, 3),
   };
-
-  if (loading) {
-    return <section id="Noticias" className="noticias-section"><div className="container"><p>Carregando notícias...</p></div></section>;
-  }
-
-  if (error) {
-    return <section id="Noticias" className="noticias-section"><div className="container"><p role="alert">Não foi possível carregar as notícias.</p></div></section>;
-  }
-
-  if (!noticiaDestaque) {
-    return <section id="Noticias" className="noticias-section"><div className="container"><p>Nenhuma notícia disponível.</p></div></section>;
-  }
 
   return (
     <section id="Noticias" className="noticias-section">
@@ -60,19 +54,19 @@ const NoticiasSection = () => {
         <div className="news-layout row g-3 align-items-start">
           <div className="col-12 col-lg-9">
             <div className="news-group news-group--featured">
-              <HorizontalNewsCard noticia={noticias.destaque} />
+              <HorizontalNewsCard noticia={noticias.destaque} loading={loading} />
             </div>
             <div className="news-group news-group--small-grid row g-3 mt-0">
-              {noticias.pequenas.map((noticia) => (
-                <div className="col-12 col-sm-6 col-lg-4" key={noticia.id}>
-                  <SmallNewsCard noticia={noticia} />
+              {noticias.pequenas.map((noticia, idx) => (
+                <div className="col-12 col-sm-6 col-lg-4" key={noticia.id || idx}>
+                  <SmallNewsCard noticia={noticia} loading={loading} />
                 </div>
               ))}
             </div>
           </div>
 
           <div className="news-group news-group--vertical col-12 col-lg-3">
-            {noticias.vertical && <VerticalNewsCard noticia={noticias.vertical} />}
+            {noticias.vertical && <VerticalNewsCard noticia={noticias.vertical} loading={loading} />}
           </div>
         </div>
       </div>
