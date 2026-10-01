@@ -7,6 +7,7 @@ use App\Models\Radioatividade;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Evento;
 
 
 class DatabaseSeeder extends Seeder
@@ -22,6 +23,8 @@ class DatabaseSeeder extends Seeder
 
         User::factory(10)->create();
         Noticia::factory(15)->create();
-        Radioatividade::factory(20)->create();
+        Radioatividade::factory(5)->create();
+        Evento::factory(20)->create();
     }
 }
+    
