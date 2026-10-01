@@ -54,6 +54,12 @@ class User extends Authenticatable
         return $this->isAdm() || $this->isEspecialista();
     }
 
+    // Permissao para gerenciamento de biblioteca (livros e emprestimos)
+    public function canManageLibrary(): bool
+    {
+        return $this->isAdm() || $this->isEspecialista();
+    }
+
     // Relacionamento com as noticias criadas
     public function noticias(): HasMany
     {
@@ -64,5 +70,13 @@ class User extends Authenticatable
     public function eventos(): HasMany
     {
         return $this->hasMany(Evento::class, 'criador_id');
+    }
+
+    /**
+     * @return HasMany<Emprestimo, $this>
+     */
+    public function emprestimos(): HasMany
+    {
+        return $this->hasMany(Emprestimo::class, 'usuario_id');
     }
 }

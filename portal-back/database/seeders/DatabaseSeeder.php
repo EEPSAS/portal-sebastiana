@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Livro;
 use App\Models\Noticia;
 use App\Models\Radioatividade;
 use App\Models\User;
@@ -23,5 +24,6 @@ class DatabaseSeeder extends Seeder
         User::factory(10)->create();
         Noticia::factory(15)->create();
         Radioatividade::factory(20)->create();
+        Livro::factory(20)->create();
     }
 }
