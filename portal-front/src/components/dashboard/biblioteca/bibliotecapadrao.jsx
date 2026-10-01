@@ -4,7 +4,7 @@ const resources = [
   { icon: "bi-play-circle", title: "Vídeos", description: "Aulas e reforços em formato de vídeo." },
 ];
 
-const Biblioteca = () => (
+const BibliotecaPadrao = () => (
   <section className="container-fluid p-4 bg-light min-vh-100">
     <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
       <h1 className="h3 text-primary fw-bold mb-2">Biblioteca</h1>
@@ -24,4 +24,4 @@ const Biblioteca = () => (
   </section>
 );
 
-export default Biblioteca;
+export default BibliotecaPadrao;
