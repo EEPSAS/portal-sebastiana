@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -27,8 +28,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
-            'role'              => UserRole::class,
+            'password' => 'hashed',
+            'role' => UserRole::class,
         ];
     }
 
@@ -60,6 +61,12 @@ class User extends Authenticatable
         return $this->isAdm() || $this->isEspecialista();
     }
 
+    // Permissao para gerenciamento acadêmico (turmas, notas, frequencias)
+    public function canManageAcademic(): bool
+    {
+        return $this->isAdm() || $this->isEspecialista();
+    }
+
     // Relacionamento com as noticias criadas
     public function noticias(): HasMany
     {
@@ -79,4 +86,47 @@ class User extends Authenticatable
     {
         return $this->hasMany(Emprestimo::class, 'usuario_id');
     }
+
+    /**
+     * @return HasMany<Matricula, $this>
+     */
+    public function matriculas(): HasMany
+    {
+        return $this->hasMany(Matricula::class, 'usuario_id', 'id');
+    }
+
+    /**
+     * @return BelongsToMany<Turma, $this>
+     */
+    public function turmas(): BelongsToMany
+    {
+        return $this->belongsToMany(Turma::class, 'matriculas', 'usuario_id', 'turma_id')
+            ->withPivot(['id_matricula', 'data_matricula', 'status_matricula'])
+            ->withTimestamps();
+    }
+
+    /**
+     * @return HasMany<RemessaDocente, $this>
+     */
+    public function remessas(): HasMany
+    {
+        return $this->hasMany(RemessaDocente::class, 'professor_id', 'id');
+    }
+
+    /**
+     * @return HasMany<Frequencia, $this>
+     */
+    public function frequencias(): HasMany
+    {
+        return $this->hasMany(Frequencia::class, 'usuario_id', 'id');
+    }
+
+    /**
+     * @return HasMany<Nota, $this>
+     */
+    public function notas(): HasMany
+    {
+        return $this->hasMany(Nota::class, 'usuario_id', 'id');
+    }
+}
 }
