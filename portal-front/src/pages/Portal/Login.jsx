@@ -1,11 +1,29 @@
+import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useAuth } from "../../hooks/useAuth";
 
 const LoginSection = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const handleSubmit = (event) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    navigate("/dashboard");
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      await login({ email, password });
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -18,56 +36,67 @@ const LoginSection = () => {
             <div className="card portal-login-card border-0 shadow-lg rounded-4 overflow-hidden">
               <div className="card-body p-4 p-md-5">
                 
-                {/* Cabeçalho do Formulário (Adicionado para Padrão de Mercado) */}
+                {/* Cabeçalho do Formulário */}
                 <div className="text-center mb-4">
-                  <h2 className="fw-bold text-dark mb-2">Título do Formulário</h2>
+                  <h2 className="fw-bold text-dark mb-2">Acesso ao Portal</h2>
                   <p className="text-secondary small">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+                    Informe suas credenciais para acessar o painel.
                   </p>
                 </div>
 
-                {/* Formulário Original Preservado e Estilizado */}
+                {/* Alerta de erro */}
+                {error && (
+                  <div className="alert alert-danger py-2 small" role="alert">
+                    {error}
+                  </div>
+                )}
+
+                {/* Formulário de Login */}
                 <form onSubmit={handleSubmit}>
                   <div className="mb-4">
-                    <label htmlFor="exampleInputEmail1" className="form-label fw-medium text-dark">
-                      Email address
+                    <label htmlFor="loginEmail" className="form-label fw-medium text-dark">
+                      E-mail
                     </label>
                     <input 
                       type="email" 
                       className="form-control form-control-lg bg-light border-0 shadow-none" 
-                      id="exampleInputEmail1" 
-                      aria-describedby="emailHelp" 
+                      id="loginEmail" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
                     />
-                    <div id="emailHelp" className="form-text small text-muted">
-                      We'll never share your email with anyone else.
-                    </div>
                   </div>
                   
                   <div className="mb-4">
-                    <label htmlFor="exampleInputPassword1" className="form-label fw-medium text-dark">
-                      Password
+                    <label htmlFor="loginPassword" className="form-label fw-medium text-dark">
+                      Senha
                     </label>
                     <input 
                       type="password" 
                       className="form-control form-control-lg bg-light border-0 shadow-none" 
-                      id="exampleInputPassword1" 
+                      id="loginPassword" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
                     />
-                  </div>
-                  
-                  <div className="mb-4 form-check d-flex align-items-center">
-                    <input 
-                      type="checkbox" 
-                      className="form-check-input mt-0 me-2 shadow-none" 
-                      id="exampleCheck1" 
-                    />
-                    <label className="form-check-label text-secondary" htmlFor="exampleCheck1">
-                      Check me out
-                    </label>
                   </div>
                   
                   <div className="d-grid mt-5">
-                    <button type="submit" className="btn btn-primary btn-lg fw-semibold py-3 shadow-sm">
-                      Submit
+                    <button 
+                      type="submit" 
+                      className="btn btn-primary btn-lg fw-semibold py-3 shadow-sm"
+                      disabled={submitting}
+                    >
+                      {submitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" />
+                          Entrando...
+                        </>
+                      ) : (
+                        "Entrar"
+                      )}
                     </button>
                   </div>
                 </form>
