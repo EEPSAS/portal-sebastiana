@@ -10,7 +10,7 @@ const navigationItems = [
 const navigationLinkClass = ({ isActive }) =>
   `nav-link d-flex align-items-center fw-semibold ${isActive ? "active" : "link-dark"}`
 
-const Aside = () => {
+const Aside = ({ onLogout }) => {
   return (
     <aside className="dashboard-aside d-flex flex-column flex-shrink-0 p-3 bg-white shadow-sm">
 
@@ -40,9 +40,9 @@ const Aside = () => {
           </NavLink>
         </li>
         <li className="nav-item">
-          <Link className="nav-link link-dark d-flex align-items-center fw-semibold" to="/">
+          <button type="button" onClick={onLogout} className="nav-link link-dark d-flex align-items-center fw-semibold border-0 bg-transparent text-start">
             <i className="bi bi-box-arrow-right me-3 fs-5 text-primary"></i> Sair
-          </Link>
+          </button>
         </li>
       </ul>
     </aside>

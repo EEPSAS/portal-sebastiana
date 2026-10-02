@@ -19,16 +19,16 @@ const Calendario = ({
   formatMonth,
   formatDateKey,
 }) => (
-  <div style={{ borderLeft: '1px solid #f1f5f9', borderRight: '1px solid #f1f5f9', padding: '0 24px' }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#1e3a8a', margin: 0 }}>{formatMonth(visibleMonth)}</h2>
-        <div style={{ display: 'flex', gap: '4px', width: '72px', flexShrink: 0, justifyContent: 'center' }}>
-          <button type="button" onClick={() => onChangeMonth(-1)} aria-label="Mês anterior" style={{ width: '32px', height: '32px', border: 0, borderRadius: '8px', background: '#fdf2f8', color: '#e6007e', cursor: 'pointer', fontWeight: 'bold', fontSize: '18px', lineHeight: 1, flexShrink: 0 }}>&lt;</button>
-          <button type="button" onClick={() => onChangeMonth(1)} aria-label="Próximo mês" style={{ width: '32px', height: '32px', border: 0, borderRadius: '8px', background: '#fdf2f8', color: '#e6007e', cursor: 'pointer', fontWeight: 'bold', fontSize: '18px', lineHeight: 1, flexShrink: 0 }}>&gt;</button>
+  <div className="agenda-especialista-calendar">
+    <div className="agenda-calendar-header">
+      <div className="agenda-calendar-month">
+        <h2 className="agenda-calendar-month-title">{formatMonth(visibleMonth)}</h2>
+        <div className="agenda-calendar-month-controls">
+          <button type="button" onClick={() => onChangeMonth(-1)} aria-label="Mês anterior">&lt;</button>
+          <button type="button" onClick={() => onChangeMonth(1)} aria-label="Próximo mês">&gt;</button>
         </div>
       </div>
-      <button type="button" onClick={onGoToToday} style={{ background: 'transparent', border: '1px solid #e6007e', color: '#e6007e', borderRadius: '20px', padding: '6px 16px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
+      <button type="button" onClick={onGoToToday} className="agenda-calendar-today">
         {selectedDateRelativeLabel}
       </button>
     </div>

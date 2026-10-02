@@ -1,6 +1,6 @@
 import { NavLink, Link } from "react-router";
 
-const EspecialistaAside = () => {
+const EspecialistaAside = ({ onLogout }) => {
   return (
     <aside className="dashboard-aside d-flex flex-column flex-shrink-0 p-3 bg-white shadow-sm" style={{ zIndex: 1040, bottom: 0, top: 0, position: 'fixed' }}>
       <Link to="/dashboard" className="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none px-2">
@@ -43,10 +43,10 @@ const EspecialistaAside = () => {
       <hr />
       <ul className="nav nav-pills flex-column gap-2">
         <li className="nav-item">
-          <Link to="/" className="nav-link link-danger">
+          <button type="button" onClick={onLogout} className="nav-link link-danger border-0 bg-transparent text-start">
             <i className="bi bi-box-arrow-left me-2"></i>
             Sair
-          </Link>
+          </button>
         </li>
       </ul>
     </aside>
