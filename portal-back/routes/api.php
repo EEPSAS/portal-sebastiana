@@ -6,6 +6,9 @@ use App\Http\Controllers\EventoController;
 use App\Http\Controllers\FrequenciaController;
 use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\NotaController;
+use App\Http\Controllers\EmprestimoController;
+use App\Http\Controllers\EventoController;
+use App\Http\Controllers\LivroController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\RemessaDocenteController;
@@ -25,8 +28,13 @@ Route::post('/login', [AuthController::class, 'login'])->name('api.login');
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 
 // Conteúdos públicos
+// Notícias e acervo de livros são conteúdos públicos para consulta
 Route::get('/noticias', [NoticiaController::class, 'index']);
 Route::get('/noticias/{noticia}', [NoticiaController::class, 'show']);
+
+Route::get('/livros', [LivroController::class, 'index']);
+Route::get('/livros/{livro}', [LivroController::class, 'show']);
+Route::get('/livros/{livro}/disponibilidade', [LivroController::class, 'verificarDisponibilidade']);
 
 // Endpoints sob o prefixo /auth
 Route::prefix('auth')->name('auth.')->group(function () {
@@ -89,4 +97,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notas/media-periodo', [NotaController::class, 'calcularMediaPeriodo']);
     Route::get('/notas/boletim/{usuario}', [NotaController::class, 'gerarBoletim']);
     Route::get('/notas/meu-boletim', [NotaController::class, 'consultarNotaPropria']);
+    // Gestão de Livros (Criação, Edição, Deleção)
+    Route::post('/livros', [LivroController::class, 'store']);
+    Route::put('/livros/{livro}', [LivroController::class, 'update']);
+    Route::patch('/livros/{livro}', [LivroController::class, 'update']);
+    Route::delete('/livros/{livro}', [LivroController::class, 'destroy']);
+
+    // Empréstimos de Livros
+    Route::get('/emprestimos/meus-emprestimos', [EmprestimoController::class, 'meusEmprestimos']);
+    Route::post('/emprestimos/solicitar', [EmprestimoController::class, 'solicitar']);
+    Route::patch('/emprestimos/{emprestimo}/aprovar', [EmprestimoController::class, 'aprovar']);
+    Route::patch('/emprestimos/{emprestimo}/renovar', [EmprestimoController::class, 'renovar']);
+    Route::patch('/emprestimos/{emprestimo}/devolver', [EmprestimoController::class, 'registrarDevolucao']);
+    Route::patch('/emprestimos/{emprestimo}/status', [EmprestimoController::class, 'atualizarStatus']);
+    Route::apiResource('emprestimos', EmprestimoController::class)->only(['index', 'show']);
 });

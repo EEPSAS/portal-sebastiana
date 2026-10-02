@@ -129,3 +129,4 @@ class User extends Authenticatable
         return $this->hasMany(Nota::class, 'usuario_id', 'id');
     }
 }
+}
