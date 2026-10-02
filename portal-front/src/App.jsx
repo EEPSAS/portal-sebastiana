@@ -1,32 +1,34 @@
-import PortalLayout from "./layouts/Portal/PortalLayout";
-import DashboardLayout from "./layouts/Dashboard/Dashboard";
 import { BrowserRouter, Route, Routes } from "react-router";
-import Login from "./routes/Portal/Login";
-import PublicHome from "./routes/Portal/Home";
-import NoticiaPage from "./routes/Portal/Noticia";
-import Home from "./routes/Dashboard/Home";
-import Agenda from "./routes/Dashboard/Agenda";
-import Biblioteca from "./routes/Dashboard/Biblioteca";
-import Calendario from "./routes/Dashboard/Calendario";
-import Configuracoes from "./routes/Dashboard/Configuracoes";
+import PortalLayout from "./Layouts/Portal/PortalLayout";
+import DashboardLayout from "./Layouts/Dashboard/DashboardLayout";
+
+import PublicHome from "./pages/Portal/Home";
+import Login from "./pages/Portal/Login";
+
+import GeralPage from "./pages/Dashboard/Geral";
+import BibliotecaPage from "./pages/Dashboard/Biblioteca";
+import TurmaPage from "./pages/Dashboard/Turma";
+import AgendaPage from "./pages/Dashboard/Agenda";
+import ConfiguracoesPage from "./pages/Dashboard/Configuracoes";
 
 const App = () => {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Área Pública do Portal */}
         <Route path="/" element={<PortalLayout />}>
           <Route index element={<PublicHome />} />
           <Route path="login" element={<Login />} />
-          <Route path="noticia/:id" element={<NoticiaPage />} />
         </Route>
 
+        {/* Área Logada do Dashboard */}
         <Route path="dashboard" element={<DashboardLayout />}>
-          <Route index element={<Home />} />
-          <Route path="home" element={<Home />} />
-          <Route path="agenda" element={<Agenda />} />
-          <Route path="biblioteca" element={<Biblioteca />} />
-          <Route path="calendario" element={<Calendario />} />
-          <Route path="configuracoes" element={<Configuracoes />} />
+          <Route index element={<GeralPage />} />
+          <Route path="geral" element={<GeralPage />} />
+          <Route path="biblioteca" element={<BibliotecaPage />} />
+          <Route path="turmas" element={<TurmaPage />} />
+          <Route path="agenda" element={<AgendaPage />} />
+          <Route path="configuracoes" element={<ConfiguracoesPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

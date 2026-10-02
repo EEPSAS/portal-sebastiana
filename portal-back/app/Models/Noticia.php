@@ -13,12 +13,23 @@ class Noticia extends Model
     protected $table = 'noticias'; 
 
     protected $fillable = [
+        'categoria',
         'titulo', 
+        'descricao',
         'conteudo', 
-        'url_foto', 
-        'data_publicacao', 
+        'imagem',
+        'miniatura',
+        'dataPublicacao', 
         'autor_id'
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'dataPublicacao' => 'datetime',
+            'destaque' => 'boolean',
+        ];
+    }
 
     // Relacionamento N:1 (Inverso)
     public function autor(): BelongsTo

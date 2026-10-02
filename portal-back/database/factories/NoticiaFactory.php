@@ -18,12 +18,17 @@ class NoticiaFactory extends Factory
     public function definition(): array
     {
         return [
+            'categoria' => fake()->sentence(2),
             'titulo' => fake()->sentence(6), 
+            'descricao' => fake()->paragraph(),
             'conteudo' => fake()->paragraphs(3, true), 
-            'url_foto' => fake()->imageUrl(800, 600, 'news', true),
-            'data_publicacao' => fake()->dateTimeThisYear(), 
+            'imagem' => fake()->imageUrl(800, 600, 'news', true),
+            'miniatura' => fake()->imageUrl(400, 300, 'news', true),
+            'dataPublicacao' => fake()->dateTimeThisYear(), 
             
             'autor_id' => User::factory(),
         ];
     }
 }
+
+//'categoria', 'titulo', 'descricao','conteudo', 'imagem', 'dataPublicacao','autor_id'

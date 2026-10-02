@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Livro;
 use App\Models\Noticia;
 use App\Models\Radioatividade;
 use App\Models\User;

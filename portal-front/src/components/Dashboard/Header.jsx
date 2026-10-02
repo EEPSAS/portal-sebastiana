@@ -1,64 +1,38 @@
-﻿const Header = () => {
+import React from "react";
+
+const Header = ({
+  userName = "Maria Silva",
+  role = "Padrão",
+  userPhoto
+}) => {
   return (
-    <header className="dashboard-header d-flex justify-content-between align-items-start p-4">
-
-      {/* Lado Esquerdo: Texto de Boas-vindas e Barra de Pesquisa */}
-      <div className="d-flex flex-column" style={{ maxWidth: "600px", flex: 1 }}>
-
-        <p className="text-secondary fw-semibold mb-3" style={{ fontSize: "1.1rem" }}>
-          Explore materiais, apostilas, videoaulas e muito mais para aprender no seu ritmo.
-        </p>
-
-        {/* Input de Busca com Ãcone Interno */}
-        <div className="position-relative" style={{ maxWidth: "550px" }}>
-          <input
-            type="text"
-            className="form-control rounded-pill border-0 shadow-sm py-2 px-4"
-            style={{ backgroundColor: "#ffffff" }}
-          />
-          {/* O zIndex garante que o Ã­cone fique acima do input */}
-          <i
-            className="bi bi-search position-absolute top-50 end-0 translate-middle-y me-3 text-secondary fw-bold"
-            style={{ cursor: "pointer", zIndex: 10 }}
-          ></i>
-        </div>
-
+    <header className="dashboard-header bg-white shadow-sm d-flex align-items-center justify-content-between px-4 py-2 mb-3">
+      <div className="d-flex align-items-center">
+        <span className="fs-5 fw-bold text-dark">Painel de Controle</span>
       </div>
 
-      {/* Lado Direito: Sino de NotificaÃ§Ã£o e Perfil do UsuÃ¡rio */}
-      <div className="d-flex align-items-center gap-4 mt-2">
-
-        {/* Ãcone de Sino com Badge de NotificaÃ§Ã£o */}
-        <div className="position-relative" style={{ cursor: "pointer" }}>
-          <i className="bi bi-bell-fill fs-4 text-dark"></i>
-
-          {/* Bolinha rosa de notificaÃ§Ã£o */}
-          <span
-            className="position-absolute top-0 start-100 translate-middle badge rounded-circle"
-            style={{ backgroundColor: "#ff007f", fontSize: "0.6rem", padding: "0.35em 0.5em" }}
-          >
-            1
-            <span className="visually-hidden">mensagens nÃ£o lidas</span>
-          </span>
+      <div className="d-flex align-items-center ms-auto gap-3">
+        <div className="text-end">
+          <span className="fw-bold d-block text-dark lh-sm">{userName}</span>
+          <small className="text-muted d-block text-capitalize">{role}</small>
         </div>
-
-        {/* Foto de Perfil e Seta */}
-        <div className="d-flex align-items-center gap-2" style={{ cursor: "pointer" }}>
-          <img
-            // Substitua o 'src' abaixo pela imagem real ou variÃ¡vel do seu estado
-            src="https://via.placeholder.com/60"
-            alt="Foto de Perfil"
-            className="rounded-circle shadow-sm"
-            style={{
-              width: "55px",
-              height: "55px",
-              objectFit: "cover",
-              border: "3px solid #ff007f" // Borda rosa vibrante do design
-            }}
-          />
-          <i className="bi bi-chevron-down fs-5 fw-bold text-dark"></i>
+        <div className="user-avatar-container">
+          {userPhoto ? (
+            <img
+              src={userPhoto}
+              alt={userName}
+              className="rounded-circle border border-2 border-primary"
+              style={{ width: "42px", height: "42px", objectFit: "cover" }}
+            />
+          ) : (
+            <div
+              className="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold border border-2 border-primary-subtle"
+              style={{ width: "42px", height: "42px", fontSize: "1.2rem" }}
+            >
+              <i className="bi bi-person-fill"></i>
+            </div>
+          )}
         </div>
-
       </div>
     </header>
   );
