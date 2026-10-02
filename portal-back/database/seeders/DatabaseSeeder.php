@@ -2,13 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Livro;
-use App\Models\Noticia;
-use App\Models\Radioatividade;
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-
 
 class DatabaseSeeder extends Seeder
 {
@@ -19,11 +14,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory(10)->create();
-        Noticia::factory(15)->create();
-        Radioatividade::factory(20)->create();
-        Livro::factory(20)->create();
+        $this->call([
+            UsuarioSeeder::class,
+            EventoSeeder::class,
+            NoticiaSeeder::class,
+            RadioatividadeSeeder::class,
+            BibliotecaSeeder::class,
+            AcademicoSeeder::class,
+            AtividadeSeeder::class,
+        ]);
     }
 }

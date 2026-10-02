@@ -76,4 +76,12 @@ class Disciplina extends Model
     {
         return $this->hasMany(Nota::class, 'disciplina_id', 'id_disciplina');
     }
+
+    /**
+     * @return HasMany<Atividade, $this>
+     */
+    public function atividades(): HasMany
+    {
+        return $this->hasMany(Atividade::class, 'disciplina_id', 'id_disciplina');
+    }
 }

@@ -128,5 +128,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(Nota::class, 'usuario_id', 'id');
     }
-}
+
+    /**
+     * @return HasMany<Atividade, $this>
+     */
+    public function atividadesCriadas(): HasMany
+    {
+        return $this->hasMany(Atividade::class, 'usuario_id', 'id');
+    }
+
+    /**
+     * @return HasMany<Submissao, $this>
+     */
+    public function submissoes(): HasMany
+    {
+        return $this->hasMany(Submissao::class, 'usuario_id', 'id');
+    }
 }
