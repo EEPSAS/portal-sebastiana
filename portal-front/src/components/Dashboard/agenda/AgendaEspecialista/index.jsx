@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react';
-import { getAuthSession } from '../../../../services/authService';
-import { useEventoModal } from '../../../../hooks/useEventoModal';
-import { useEventoMutations } from '../../../../hooks/useEventoMutations';
-import { useEventos } from '../../../../hooks/useEventos';
 import Calendario from './Calendario';
 import Categorias from './Categorias';
 import ProximosEventos from './ProximosEventos';
 import CadastroEventoModal from './CadastroEventoModal';
 import { categoryOptions } from './agendaConfig';
-import { formatDateKey, formatMonth, formatRelativeDate, getCalendarDays, getMonthKey } from './agendaUtils';
+import { useEventoModal } from '../../../../hooks/useEventoModal';
+import { useEventoMutations } from '../../../../hooks/useEventoMutations';
+import { useEventos } from '../../../../hooks/useEventos';
+import {
+  createImportantDates,
+  formatDateKey,
+  formatMonth,
+  formatRelativeDate,
+  getCalendarDays,
+  getMonthKey,
+} from './agendaUtils';
 
+const events = createImportantDates();
 const tasksStorageKey = 'portal-sebastiana-calendar-tasks';
 
 const getStoredTasks = () => {
@@ -27,6 +34,9 @@ const getStoredTasks = () => {
 };
 
 const AgendaEspecialista = () => {
+  const { eventos: apiEvents, loading: eventsLoading, error: eventsError, refresh } = useEventos();
+  const eventModal = useEventoModal();
+  const mutations = useEventoMutations({ onSuccess: refresh });
   const [visibleMonth, setVisibleMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(null);
   const [activeCategories, setActiveCategories] = useState(
@@ -35,11 +45,6 @@ const AgendaEspecialista = () => {
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [tasks, setTasks] = useState(getStoredTasks);
   const [taskTitle, setTaskTitle] = useState('');
-  const { events, loading: eventsLoading, error: eventsError, refresh } = useEventos();
-  const { saveEvento, removeEvento, saving, error: mutationError, clearError } = useEventoMutations({ refresh });
-  const eventModal = useEventoModal();
-  const session = getAuthSession();
-  const canManageEvents = ['adm', 'especialista'].includes(session?.user?.role);
 
   useEffect(() => {
     try {
@@ -49,7 +54,10 @@ const AgendaEspecialista = () => {
     }
   }, [tasks]);
 
-  const visibleEvents = events.filter(({ category }) => activeCategories.has(category));
+  const uniqueApiEvents = apiEvents.filter((apiEvent) => !events.some((event) => (
+    event.date === apiEvent.date && event.title.toLocaleLowerCase() === apiEvent.title.toLocaleLowerCase()
+  )));
+  const visibleEvents = [...events, ...uniqueApiEvents].filter(({ category }) => activeCategories.has(category));
   const monthEvents = visibleEvents.filter(({ date }) => date.startsWith(getMonthKey(visibleMonth)));
   const calendarDays = getCalendarDays(visibleMonth);
   const listedEvents = (showAllEvents ? visibleEvents : monthEvents).slice().sort((first, second) => (
@@ -111,27 +119,33 @@ const AgendaEspecialista = () => {
     setTaskTitle('');
   };
 
-  const openNewEventModal = () => {
-    clearError();
-    eventModal.openForCreate(selectedDate || formatDateKey(new Date()));
-  };
+  const saveEvent = async (event) => {
+    const result = event.id ? await mutations.update(event) : await mutations.create(event);
+    if (!result.success) return;
 
-  const openEditEventModal = (event) => {
-    clearError();
-    eventModal.openForEdit(event);
-  };
-
-  const saveAgendaEvent = async (event) => {
-    const savedEvent = await saveEvento(event);
-    if (!savedEvent) return;
-
+    const savedEvent = { ...event, ...result.data, isCustom: true };
     eventModal.close();
     selectEvent(savedEvent);
   };
 
-  const deleteAgendaEvent = async (event) => {
+  const deleteCustomEvent = async (event) => {
     if (!window.confirm(`Deseja excluir o evento "${event.title}"?`)) return;
-    await removeEvento(event.id);
+    await mutations.remove(event.id);
+  };
+
+  const openNewEventModal = () => {
+    mutations.clearError();
+    eventModal.openNewEvent(selectedDate || formatDateKey(new Date()));
+  };
+
+  const openEditEventModal = (event) => {
+    mutations.clearError();
+    eventModal.openEditEvent(event);
+  };
+
+  const closeEventModal = () => {
+    mutations.clearError();
+    eventModal.close();
   };
 
   const selectedDateLabel = selectedDate
@@ -170,6 +184,9 @@ const AgendaEspecialista = () => {
         />
         <ProximosEventos
           listedEvents={listedEvents}
+          loading={eventsLoading}
+          loadError={eventsError}
+          mutationError={eventModal.isOpen ? null : mutations.error}
           showAllEvents={showAllEvents}
           selectedDate={selectedDate}
           getCategory={getCategory}
@@ -177,23 +194,18 @@ const AgendaEspecialista = () => {
           onSelectEvent={selectEvent}
           onAddEvent={openNewEventModal}
           onEditEvent={openEditEventModal}
-          onDeleteEvent={deleteAgendaEvent}
-          canManageEvents={canManageEvents}
-          loading={eventsLoading}
-          eventsError={eventsError?.message}
-          mutationError={mutationError}
-          saving={saving}
+          onDeleteEvent={deleteCustomEvent}
         />
       </div>
-      {eventModal.isOpen && canManageEvents && (
+      {eventModal.isOpen && (
         <CadastroEventoModal
           categories={categoryOptions}
-          event={eventModal.event}
-          initialDate={eventModal.initialDate}
-          onClose={eventModal.close}
-          onSave={saveAgendaEvent}
-          error={mutationError}
-          isSaving={saving}
+          event={eventModal.eventBeingEdited}
+          initialDate={eventModal.initialDate || selectedDate || formatDateKey(new Date())}
+          error={mutations.error}
+          saving={mutations.saving}
+          onClose={closeEventModal}
+          onSave={saveEvent}
         />
       )}
     </section>

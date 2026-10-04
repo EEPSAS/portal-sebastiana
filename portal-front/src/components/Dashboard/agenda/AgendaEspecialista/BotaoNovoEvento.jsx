@@ -1,8 +1,7 @@
-const BotaoNovoEvento = ({ onClick, disabled = false }) => (
+const BotaoNovoEvento = ({ onClick }) => (
 	<button
 		type="button"
 		onClick={onClick}
-		disabled={disabled}
 		style={{
 			border: 0,
 			borderRadius: '20px',
@@ -11,8 +10,7 @@ const BotaoNovoEvento = ({ onClick, disabled = false }) => (
 			padding: '8px 14px',
 			fontSize: '12px',
 			fontWeight: '700',
-			cursor: disabled ? 'wait' : 'pointer',
-			opacity: disabled ? 0.7 : 1,
+			cursor: 'pointer',
 			whiteSpace: 'nowrap',
 		}}
 	>

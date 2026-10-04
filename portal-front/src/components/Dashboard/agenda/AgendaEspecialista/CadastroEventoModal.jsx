@@ -1,30 +1,23 @@
 import { useState } from 'react';
 
-const CadastroEventoModal = ({ categories, event, initialDate, onClose, onSave, error, isSaving }) => {
+const CadastroEventoModal = ({ categories, event, initialDate, error, saving, onClose, onSave }) => {
 	const [title, setTitle] = useState(event?.title || '');
 	const [date, setDate] = useState(event?.date || initialDate);
 	const [category, setCategory] = useState(event?.category || categories[0].key);
 
-	const handleSubmit = async (submitEvent) => {
+	const handleSubmit = (submitEvent) => {
 		submitEvent.preventDefault();
 		const trimmedTitle = title.trim();
 		if (!trimmedTitle || !date || !category) return;
 
-		await onSave({
-			id: event?.id,
-			title: trimmedTitle,
-			date,
-			category,
-			type: category === event?.category ? event?.type : undefined,
-			important: event?.important,
-		});
+		onSave({ id: event?.id, title: trimmedTitle, date, category });
 	};
 
 	return (
 		<div
 			role="presentation"
 			onMouseDown={(mouseEvent) => {
-				if (!isSaving && mouseEvent.target === mouseEvent.currentTarget) onClose();
+				if (!saving && mouseEvent.target === mouseEvent.currentTarget) onClose();
 			}}
 			style={{
 				position: 'fixed',
@@ -53,6 +46,7 @@ const CadastroEventoModal = ({ categories, event, initialDate, onClose, onSave, 
 				<h2 id="event-form-title" style={{ margin: '0 0 20px', color: '#1e3a8a', fontSize: '20px' }}>
 					{event ? 'Editar evento' : 'Adicionar data'}
 				</h2>
+				{error && <p role="alert" style={{ margin: '0 0 14px', color: '#b91c1c', fontSize: '13px' }}>{error.message}</p>}
 				<form onSubmit={handleSubmit} style={{ display: 'grid', gap: '14px' }}>
 					<label style={{ display: 'grid', gap: '6px', color: '#334155', fontSize: '13px', fontWeight: '600' }}>
 						Nome do evento
@@ -60,7 +54,6 @@ const CadastroEventoModal = ({ categories, event, initialDate, onClose, onSave, 
 							autoFocus
 							required
 							maxLength={255}
-							  disabled={isSaving}
 							value={title}
 							onChange={(inputEvent) => setTitle(inputEvent.target.value)}
 							placeholder="Ex.: Reunião de pais"
@@ -72,7 +65,6 @@ const CadastroEventoModal = ({ categories, event, initialDate, onClose, onSave, 
 						<input
 							required
 							type="date"
-							  disabled={isSaving}
 							value={date}
 							onChange={(inputEvent) => setDate(inputEvent.target.value)}
 							style={{ boxSizing: 'border-box', width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px' }}
@@ -82,7 +74,6 @@ const CadastroEventoModal = ({ categories, event, initialDate, onClose, onSave, 
 						Categoria
 						<select
 							required
-							  disabled={isSaving}
 							value={category}
 							onChange={(inputEvent) => setCategory(inputEvent.target.value)}
 							style={{ boxSizing: 'border-box', width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#ffffff', fontSize: '14px' }}
@@ -90,13 +81,12 @@ const CadastroEventoModal = ({ categories, event, initialDate, onClose, onSave, 
 							{categories.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
 						</select>
 					</label>
-					{error && <p role="alert" aria-live="polite" style={{ margin: 0, color: '#be123c', fontSize: '13px' }}>{error}</p>}
 					<div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
-						<button type="button" onClick={onClose} disabled={isSaving} style={{ padding: '9px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#ffffff', color: '#334155', fontWeight: '600', cursor: isSaving ? 'wait' : 'pointer' }}>
+						<button type="button" onClick={onClose} disabled={saving} style={{ padding: '9px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#ffffff', color: '#334155', fontWeight: '600', cursor: saving ? 'wait' : 'pointer' }}>
 							Cancelar
 						</button>
-						<button type="submit" disabled={isSaving} style={{ padding: '9px 14px', border: 0, borderRadius: '8px', background: '#e6007e', color: '#ffffff', fontWeight: '700', cursor: isSaving ? 'wait' : 'pointer', opacity: isSaving ? 0.7 : 1 }}>
-							{isSaving ? 'Salvando...' : (event ? 'Salvar alterações' : 'Adicionar data')}
+						<button type="submit" disabled={saving} style={{ padding: '9px 14px', border: 0, borderRadius: '8px', background: '#e6007e', color: '#ffffff', fontWeight: '700', cursor: saving ? 'wait' : 'pointer' }}>
+							{saving ? 'Salvando...' : event ? 'Salvar alterações' : 'Adicionar data'}
 						</button>
 					</div>
 				</form>

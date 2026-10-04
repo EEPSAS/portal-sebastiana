@@ -2,26 +2,26 @@ import { useState } from 'react';
 
 export const useEventoModal = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [event, setEvent] = useState(null);
-  const [initialDate, setInitialDate] = useState('');
+  const [eventBeingEdited, setEventBeingEdited] = useState(null);
+  const [initialDate, setInitialDate] = useState(null);
 
-  const openForCreate = (date = '') => {
-    setEvent(null);
+  const openNewEvent = (date) => {
+    setEventBeingEdited(null);
     setInitialDate(date);
     setIsOpen(true);
   };
 
-  const openForEdit = (selectedEvent) => {
-    setEvent(selectedEvent);
-    setInitialDate(selectedEvent.date);
+  const openEditEvent = (event) => {
+    setEventBeingEdited(event);
+    setInitialDate(null);
     setIsOpen(true);
   };
 
   const close = () => {
     setIsOpen(false);
-    setEvent(null);
-    setInitialDate('');
+    setEventBeingEdited(null);
+    setInitialDate(null);
   };
 
-  return { isOpen, event, initialDate, openForCreate, openForEdit, close };
+  return { isOpen, eventBeingEdited, initialDate, openNewEvent, openEditEvent, close };
 };

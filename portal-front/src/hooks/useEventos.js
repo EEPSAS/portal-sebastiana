@@ -1,36 +1,33 @@
 import { useEffect, useState } from 'react';
 import { listEventos } from '../services/eventosService';
 
-export const useEventos = () => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [revision, setRevision] = useState(0);
+export const useEventos = ({ token } = {}) => {
+  const [result, setResult] = useState({ requestKey: null, eventos: [], error: null });
+  const [refreshKey, setRefreshKey] = useState(0);
+  const requestKey = `${token || ''}:${refreshKey}`;
 
   useEffect(() => {
     const controller = new AbortController();
 
-    listEventos({ signal: controller.signal })
-      .then(setEvents)
+    listEventos({ signal: controller.signal, token })
+      .then((eventos) => {
+        setResult({ requestKey, eventos, error: null });
+      })
       .catch((requestError) => {
         if (requestError.name !== 'AbortError') {
-          setError(requestError);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
+          setResult({ requestKey, eventos: [], error: requestError });
         }
       });
 
     return () => controller.abort();
-  }, [revision]);
+  }, [token, refreshKey, requestKey]);
 
-  const refresh = () => {
-    setLoading(true);
-    setError(null);
-    setRevision((currentRevision) => currentRevision + 1);
+  const refresh = () => setRefreshKey((currentKey) => currentKey + 1);
+
+  return {
+    eventos: result.eventos,
+    loading: result.requestKey !== requestKey,
+    error: result.requestKey === requestKey ? result.error : null,
+    refresh,
   };
-
-  return { events, loading, error, refresh };
 };

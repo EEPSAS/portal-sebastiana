@@ -2,6 +2,9 @@ import BotaoNovoEvento from './BotaoNovoEvento';
 
 const ProximosEventos = ({
   listedEvents,
+  loading,
+  loadError,
+  mutationError,
   showAllEvents,
   selectedDate,
   getCategory,
@@ -10,11 +13,6 @@ const ProximosEventos = ({
   onAddEvent,
   onEditEvent,
   onDeleteEvent,
-  canManageEvents,
-  loading,
-  eventsError,
-  mutationError,
-  saving,
 }) => (
   <div className="agenda-especialista-events">
     <div className="agenda-especialista-events-header">
@@ -23,12 +21,14 @@ const ProximosEventos = ({
         <button type="button" onClick={onToggleShowAll} style={{ border: 0, background: 'transparent', fontSize: '12px', color: '#e6007e', cursor: 'pointer', fontWeight: '600' }}>
           {showAllEvents ? 'Ver menos' : 'Ver todos'}
         </button>
-        {canManageEvents && <BotaoNovoEvento onClick={onAddEvent} disabled={saving} />}
+        <BotaoNovoEvento onClick={onAddEvent} />
       </div>
     </div>
     <div className="agenda-especialista-event-list">
-      {(eventsError || mutationError) && <p role="alert" style={{ margin: 0, color: '#be123c', fontSize: '12px' }}>{eventsError || mutationError}</p>}
-      {loading ? <p role="status" style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>Carregando eventos...</p> : listedEvents.length > 0 ? listedEvents.map((event) => {
+      {loading && <p role="status" style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>Carregando eventos...</p>}
+      {loadError && <p role="alert" style={{ color: '#b91c1c', fontSize: '12px', margin: 0 }}>{loadError.message}</p>}
+      {mutationError && <p role="alert" style={{ color: '#b91c1c', fontSize: '12px', margin: 0 }}>{mutationError.message}</p>}
+      {loading && listedEvents.length === 0 ? null : listedEvents.length > 0 ? listedEvents.map((event) => {
         const category = getCategory(event.category);
         const isSelected = selectedDate === event.date;
         return (
@@ -40,12 +40,12 @@ const ProximosEventos = ({
                 <span style={{ fontSize: '11px', color: '#64748b' }}>{category.eventLabel} • {new Intl.DateTimeFormat('pt-BR').format(new Date(`${event.date}T00:00:00`))}</span>
               </span>
             </button>
-            {canManageEvents && (
+            {event.isCustom && (
               <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
-                <button type="button" onClick={() => onEditEvent(event)} disabled={saving} aria-label={`Editar ${event.title}`} title="Editar" style={{ border: 0, borderRadius: '6px', background: '#f1f5f9', color: '#475569', padding: '6px', cursor: saving ? 'wait' : 'pointer', fontSize: '11px' }}>
+                <button type="button" onClick={() => onEditEvent(event)} aria-label={`Editar ${event.title}`} title="Editar" style={{ border: 0, borderRadius: '6px', background: '#f1f5f9', color: '#475569', padding: '6px', cursor: 'pointer', fontSize: '11px' }}>
                   Editar
                 </button>
-                <button type="button" onClick={() => onDeleteEvent(event)} disabled={saving} aria-label={`Excluir ${event.title}`} title="Excluir" style={{ border: 0, borderRadius: '6px', background: '#fff1f2', color: '#be123c', padding: '6px', cursor: saving ? 'wait' : 'pointer', fontSize: '11px' }}>
+                <button type="button" onClick={() => onDeleteEvent(event)} aria-label={`Excluir ${event.title}`} title="Excluir" style={{ border: 0, borderRadius: '6px', background: '#fff1f2', color: '#be123c', padding: '6px', cursor: 'pointer', fontSize: '11px' }}>
                   Excluir
                 </button>
               </div>

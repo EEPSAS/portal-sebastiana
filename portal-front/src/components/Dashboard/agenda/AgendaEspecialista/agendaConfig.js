@@ -5,7 +5,7 @@ export const categoryOptions = [
   { key: 'feriados', label: 'Feriados e recessos', description: 'Feriados e períodos de recesso', eventLabel: 'Feriado', icon: '📖', color: '#1e293b' },
 ];
 
-const categoryByEventType = {
+const apiTypeToCategory = {
   evento: 'eventos',
   reuniao: 'eventos',
   prova: 'provas',
@@ -13,13 +13,13 @@ const categoryByEventType = {
   feriado: 'feriados',
 };
 
-const eventTypeByCategory = {
+const categoryToApiType = {
   eventos: 'evento',
   provas: 'prova',
   comemorativas: 'data_importante',
   feriados: 'feriado',
 };
 
-export const getCategoryFromEventType = (eventType) => categoryByEventType[eventType] || 'eventos';
+export const getCategoryFromApiType = (type) => apiTypeToCategory[type] || 'eventos';
 
-export const getEventTypeFromCategory = (category) => eventTypeByCategory[category] || 'evento';
+export const getApiTypeFromCategory = (category) => categoryToApiType[category] || 'evento';

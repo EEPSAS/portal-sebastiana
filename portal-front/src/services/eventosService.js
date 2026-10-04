@@ -1,74 +1,69 @@
-import { getAuthToken } from './authService';
-import { getCategoryFromEventType, getEventTypeFromCategory } from '../components/Dashboard/agenda/AgendaEspecialista/agendaConfig';
+import { getApiTypeFromCategory, getCategoryFromApiType } from '../components/Dashboard/agenda/AgendaEspecialista/agendaConfig';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
 
-const getResponseBody = async (response) => {
-  if (response.status === 204) return null;
-  return response.json().catch(() => ({}));
-};
-
-const getErrorMessage = (body, fallback) => {
-  const validationMessages = Object.values(body?.errors || {}).flat();
-  return body?.message || validationMessages.join(' ') || fallback;
-};
-
-const request = async (path, { method = 'GET', body, signal } = {}) => {
-  const token = getAuthToken();
-  if (!token) throw new Error('Faça login para acessar os eventos.');
+const request = async (path, { method = 'GET', body, signal, token } = {}) => {
+  const headers = new Headers({ Accept: 'application/json' });
+  if (body !== undefined) headers.set('Content-Type', 'application/json');
+  if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const response = await fetch(`${API_URL}${path}`, {
     method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
     signal,
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  const responseBody = await getResponseBody(response);
+  const data = response.status === 204 ? null : await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(responseBody, `Não foi possível concluir a operação (${response.status}).`));
+    const error = new Error(data?.message || `Não foi possível concluir a operação (${response.status}).`);
+    error.status = response.status;
+    error.details = data?.errors || null;
+    throw error;
   }
 
-  return responseBody;
+  return data;
 };
 
-export const mapEventoFromApi = (evento) => ({
-  id: evento.id,
+export const mapEvento = (evento) => ({
+  ...evento,
   title: evento.titulo,
-  date: evento.data_inicio?.slice(0, 10),
-  category: getCategoryFromEventType(evento.tipo),
-  type: evento.tipo,
-  important: evento.importante,
+  date: String(evento.data_inicio).slice(0, 10),
+  category: getCategoryFromApiType(evento.tipo),
+  isCustom: true,
 });
 
-const mapEventoToApi = ({ title, date, category, type, important }) => ({
+const serializeEvento = ({ title, date, category }) => ({
   titulo: title,
   data_inicio: date,
-  tipo: type || getEventTypeFromCategory(category),
-  ...(typeof important === 'boolean' ? { importante: important } : {}),
+  tipo: getApiTypeFromCategory(category),
 });
 
-export const listEventos = async ({ signal } = {}) => {
-  const eventos = await request('/eventos', { signal });
-  return eventos.map(mapEventoFromApi);
+export const listEventos = async ({ signal, token } = {}) => {
+  const eventos = await request('/eventos', { signal, token });
+  if (!Array.isArray(eventos)) throw new Error('A resposta da API de eventos está em formato inválido.');
+  return eventos.map(mapEvento);
 };
 
-export const createEvento = async (evento) => (
-  mapEventoFromApi(await request('/eventos', {
+export const createEvento = async (evento, { token } = {}) => {
+  const createdEvento = await request('/eventos', {
     method: 'POST',
-    body: mapEventoToApi(evento),
-  }))
-);
+    body: serializeEvento(evento),
+    token,
+  });
+  return mapEvento(createdEvento);
+};
 
-export const updateEvento = async (id, evento) => (
-  mapEventoFromApi(await request(`/eventos/${id}`, {
-    method: 'PATCH',
-    body: mapEventoToApi(evento),
-  }))
-);
+export const updateEvento = async (evento, { token } = {}) => {
+  const updatedEvento = await request(`/eventos/${encodeURIComponent(evento.id)}`, {
+    method: 'PUT',
+    body: serializeEvento(evento),
+    token,
+  });
+  return mapEvento(updatedEvento);
+};
 
-export const deleteEvento = async (id) => request(`/eventos/${id}`, { method: 'DELETE' });
+export const deleteEvento = async (id, { token } = {}) => {
+  await request(`/eventos/${encodeURIComponent(id)}`, { method: 'DELETE', token });
+  return true;
+};

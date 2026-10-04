@@ -1,50 +1,28 @@
 import { useState } from 'react';
-import {
-  createEvento,
-  deleteEvento as deleteEventoRequest,
-  updateEvento,
-} from '../services/eventosService';
+import { createEvento, deleteEvento, updateEvento } from '../services/eventosService';
 
-export const useEventoMutations = ({ refresh }) => {
+export const useEventoMutations = ({ token, onSuccess } = {}) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const saveEvento = async (event) => {
+  const runMutation = async (operation) => {
     setSaving(true);
     setError(null);
-
     try {
-      const savedEvent = event.id
-        ? await updateEvento(event.id, event)
-        : await createEvento(event);
-
-      refresh();
-      return savedEvent;
+      const data = await operation();
+      onSuccess?.();
+      return { success: true, data };
     } catch (requestError) {
-      setError(requestError.message || 'Não foi possível salvar o evento.');
-      return null;
+      setError(requestError);
+      return { success: false, error: requestError };
     } finally {
       setSaving(false);
     }
   };
 
-  const removeEvento = async (eventId) => {
-    setSaving(true);
-    setError(null);
+  const create = (evento) => runMutation(() => createEvento(evento, { token }));
+  const update = (evento) => runMutation(() => updateEvento(evento, { token }));
+  const remove = (id) => runMutation(() => deleteEvento(id, { token }));
 
-    try {
-      await deleteEventoRequest(eventId);
-      refresh();
-      return true;
-    } catch (requestError) {
-      setError(requestError.message || 'Não foi possível excluir o evento.');
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const clearError = () => setError(null);
-
-  return { saveEvento, removeEvento, saving, error, clearError };
+  return { create, update, remove, saving, error, clearError: () => setError(null) };
 };
