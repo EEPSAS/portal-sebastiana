@@ -2,15 +2,28 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Contracts\Validation\ValidationRule;
+use App\Enums\TipoEvento;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Enum;
 
+// Validação para cadastro de novos eventos no calendário escolar.
 class StoreEventoRequest extends FormRequest
 {
-    // Verifica se o usuario autenticado tem permissao para criar eventos
+    // Permite que qualquer usuário autenticado crie eventos no calendário
     public function authorize(): bool
     {
-        return $this->user() !== null && $this->user()->canManageEvents();
+        return $this->user() !== null;
+    }
+
+    // Normaliza o tipo de evento caso seja fornecido como texto flexível
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('tipo') && is_string($this->input('tipo'))) {
+            $parsed = TipoEvento::tryFromLoose($this->input('tipo'));
+            if ($parsed) {
+                $this->merge(['tipo' => $parsed->value]);
+            }
+        }
     }
 
     // Define as regras de validacao para o cadastro do evento
@@ -24,7 +37,7 @@ class StoreEventoRequest extends FormRequest
             'hora_inicio' => ['nullable', 'date_format:H:i'],
             'hora_fim' => ['nullable', 'date_format:H:i'],
             'dia_inteiro' => ['nullable', 'boolean'],
-            'tipo' => ['nullable', 'string', 'max:50'],
+            'tipo' => ['nullable', new Enum(TipoEvento::class)],
             'importante' => ['nullable', 'boolean'],
             'local' => ['nullable', 'string', 'max:255'],
             'cor' => ['nullable', 'string', 'max:30'],

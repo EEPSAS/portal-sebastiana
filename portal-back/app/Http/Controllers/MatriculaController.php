@@ -10,8 +10,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
+// Controller responsável pelo gerenciamento de matrículas e movimentação de alunos em turmas.
 class MatriculaController extends Controller
 {
+    // Realiza a matrícula de um aluno em uma turma respeitando a capacidade máxima.
     public function matricularAluno(StoreMatriculaRequest $request): JsonResponse
     {
         Gate::authorize('create', Turma::class);
@@ -44,6 +46,7 @@ class MatriculaController extends Controller
         return response()->json($matricula->load(['turma', 'aluno:id,name,email']), 201);
     }
 
+    // Transfere a matrícula do aluno para uma nova turma.
     public function transferirTurma(Request $request, Matricula $matricula): JsonResponse
     {
         Gate::authorize('update', $matricula->turma);
@@ -77,6 +80,7 @@ class MatriculaController extends Controller
         ], 200);
     }
 
+    // Cancela ou encerra a matrícula de um aluno (transferência ou evasão).
     public function cancelarMatricula(Request $request, Matricula $matricula): JsonResponse
     {
         Gate::authorize('update', $matricula->turma);
@@ -92,6 +96,7 @@ class MatriculaController extends Controller
         return response()->json($matricula, 200);
     }
 
+    // Lista as turmas em que determinado aluno está matriculado.
     public function listarTurmasDoAluno(User $usuario): JsonResponse
     {
         Gate::authorize('viewAny', Turma::class);
@@ -101,6 +106,7 @@ class MatriculaController extends Controller
         return response()->json($turmas, 200);
     }
 
+    // Lista as turmas do próprio aluno autenticado.
     public function minhasTurmas(Request $request): JsonResponse
     {
         $turmas = $request->user()->turmas()->orderByDesc('ano_letivo')->get();

@@ -23,21 +23,21 @@ class EmprestimoFactory extends Factory
     public function definition(): array
     {
         return [
-            'livro_id'                => Livro::factory(),
-            'usuario_id'              => User::factory(),
-            'data_emprestimo'         => now(),
+            'livro_id' => Livro::factory(),
+            'usuario_id' => User::factory(),
+            'data_emprestimo' => now(),
             'data_prevista_devolucao' => now()->addDays(14),
-            'data_devolucao_real'     => null,
-            'status'                  => EmprestimoStatus::APROVADO,
-            'observacoes'             => null,
+            'data_devolucao_real' => null,
+            'status' => EmprestimoStatus::APROVADO,
+            'observacoes' => null,
         ];
     }
 
     public function solicitado(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status'                  => EmprestimoStatus::SOLICITADO,
-            'data_emprestimo'         => null,
+            'status' => EmprestimoStatus::SOLICITADO,
+            'data_emprestimo' => null,
             'data_prevista_devolucao' => null,
         ]);
     }
@@ -45,7 +45,7 @@ class EmprestimoFactory extends Factory
     public function devolvido(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status'              => EmprestimoStatus::DEVOLVIDO,
+            'status' => EmprestimoStatus::DEVOLVIDO,
             'data_devolucao_real' => now(),
         ]);
     }
@@ -53,7 +53,7 @@ class EmprestimoFactory extends Factory
     public function atrasado(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status'                  => EmprestimoStatus::ATRASADO,
+            'status' => EmprestimoStatus::ATRASADO,
             'data_prevista_devolucao' => now()->subDays(3),
         ]);
     }

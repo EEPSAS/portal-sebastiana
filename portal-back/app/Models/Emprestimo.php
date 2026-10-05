@@ -8,15 +8,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Model que representa o empréstimo de livros da biblioteca.
 class Emprestimo extends Model
 {
     /** @use HasFactory<EmprestimoFactory> */
     use HasFactory;
 
+    // Tabela associada no banco de dados
     protected $table = 'emprestimos';
 
+    // Chave primária customizada
     protected $primaryKey = 'id_emprestimo';
 
+    // Campos preenchíveis em massa
     protected $fillable = [
         'livro_id',
         'usuario_id',
@@ -32,6 +36,7 @@ class Emprestimo extends Model
      *
      * @return array<string, string>
      */
+    // Conversões de tipo de dados e enums
     protected function casts(): array
     {
         return [
@@ -45,6 +50,7 @@ class Emprestimo extends Model
     /**
      * @return BelongsTo<Livro, $this>
      */
+    // Livro emprestado
     public function livro(): BelongsTo
     {
         return $this->belongsTo(Livro::class, 'livro_id', 'id_livro');
@@ -53,6 +59,7 @@ class Emprestimo extends Model
     /**
      * @return BelongsTo<User, $this>
      */
+    // Usuário que realizou o empréstimo
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(User::class, 'usuario_id', 'id');

@@ -18,10 +18,10 @@ class RadioatividadeFactory extends Factory
     public function definition(): array
     {
         return [
-            'titulo' => fake()->sentence(6), 
-            'descricao' => fake()->paragraphs(3, true), 
-            'imagem' => fake()->imageUrl(800, 600, 'science', true), 
-            'duracao' => fake()->time(), 
+            'titulo' => fake()->sentence(6),
+            'descricao' => fake()->paragraphs(3, true),
+            'imagem' => fake()->imageUrl(800, 600, 'science', true),
+            'duracao' => fake()->time(),
         ];
     }
 }

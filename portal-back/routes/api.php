@@ -2,17 +2,17 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DisciplinaController;
-use App\Http\Controllers\EventoController;
-use App\Http\Controllers\FrequenciaController;
-use App\Http\Controllers\MatriculaController;
-use App\Http\Controllers\NotaController;
 use App\Http\Controllers\EmprestimoController;
 use App\Http\Controllers\EventoController;
+use App\Http\Controllers\FrequenciaController;
 use App\Http\Controllers\LivroController;
+use App\Http\Controllers\MatriculaController;
+use App\Http\Controllers\NotaController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\RemessaDocenteController;
 use App\Http\Controllers\TurmaController;
+use App\Http\Controllers\UsuarioController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -47,7 +47,11 @@ Route::prefix('auth')->name('auth.')->group(function () {
 // Rotas protegidas (auth:sanctum)
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
-        return $request->user();
+        $user = $request->user()->load('roleModel.permissions');
+        $userData = $user->toArray();
+        $userData['permissoes'] = $user->getPermissionsSlugs();
+
+        return response()->json($userData);
     });
 
     Route::apiResource('noticias', NoticiaController::class)->except(['index', 'show']);
@@ -111,4 +115,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/emprestimos/{emprestimo}/devolver', [EmprestimoController::class, 'registrarDevolucao']);
     Route::patch('/emprestimos/{emprestimo}/status', [EmprestimoController::class, 'atualizarStatus']);
     Route::apiResource('emprestimos', EmprestimoController::class)->only(['index', 'show']);
+
+    // Gestão de Usuários, Papéis e Permissões (Exclusivo Administrador)
+    Route::get('/papeis', [UsuarioController::class, 'papeis']);
+    Route::get('/permissoes', [UsuarioController::class, 'permissoes']);
+    Route::patch('/usuarios/{usuario}/bloquear', [UsuarioController::class, 'bloquear']);
+    Route::patch('/usuarios/{usuario}/papel', [UsuarioController::class, 'alterarPapel']);
+    Route::patch('/usuarios/{usuario}/permissoes', [UsuarioController::class, 'atribuirPermissoes']);
+    Route::apiResource('usuarios', UsuarioController::class);
 });

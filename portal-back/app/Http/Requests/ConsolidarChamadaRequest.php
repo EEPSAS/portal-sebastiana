@@ -4,13 +4,16 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+// Validação para consolidação de chamada e registros de frequência diária.
 class ConsolidarChamadaRequest extends FormRequest
 {
+    // Autoriza apenas usuários com permissão de gestão acadêmica
     public function authorize(): bool
     {
         return $this->user() !== null && $this->user()->canManageAcademic();
     }
 
+    // Regras de validação para a lista de presença e dados da aula
     public function rules(): array
     {
         return [
