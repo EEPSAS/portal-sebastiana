@@ -11,11 +11,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
+// Controller responsável pelo fluxo completo de empréstimos de livros da biblioteca.
 class EmprestimoController extends Controller
 {
-    /**
-     * List loans based on user role and filters.
-     */
+    // Lista empréstimos de acordo com o papel do usuário e filtros aplicados.
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -40,9 +39,7 @@ class EmprestimoController extends Controller
         return response()->json($emprestimos, 200);
     }
 
-    /**
-     * List only loans of authenticated user.
-     */
+    // Lista apenas os empréstimos pertencentes ao usuário autenticado.
     public function meusEmprestimos(Request $request): JsonResponse
     {
         $emprestimos = Emprestimo::where('usuario_id', $request->user()->id)
@@ -53,9 +50,7 @@ class EmprestimoController extends Controller
         return response()->json($emprestimos, 200);
     }
 
-    /**
-     * Display a specific loan.
-     */
+    // Exibe os detalhes de um empréstimo específico.
     public function show(Emprestimo $emprestimo): JsonResponse
     {
         Gate::authorize('view', $emprestimo);
@@ -65,9 +60,7 @@ class EmprestimoController extends Controller
         return response()->json($emprestimo, 200);
     }
 
-    /**
-     * Request a new book loan.
-     */
+    // Realiza uma nova solicitação de empréstimo de livro.
     public function solicitar(SolicitarEmprestimoRequest $request): JsonResponse
     {
         Gate::authorize('solicitar', Emprestimo::class);
@@ -107,9 +100,7 @@ class EmprestimoController extends Controller
         return response()->json($emprestimo, 201);
     }
 
-    /**
-     * Approve a requested loan.
-     */
+    // Aprova uma solicitação de empréstimo e reserva o exemplar.
     public function aprovar(Request $request, Emprestimo $emprestimo): JsonResponse
     {
         Gate::authorize('aprovar', $emprestimo);
@@ -141,9 +132,7 @@ class EmprestimoController extends Controller
         return response()->json($emprestimo, 200);
     }
 
-    /**
-     * Renew an active loan.
-     */
+    // Renova o prazo de devolução de um empréstimo ativo.
     public function renovar(Request $request, Emprestimo $emprestimo): JsonResponse
     {
         Gate::authorize('renovar', $emprestimo);
@@ -171,9 +160,7 @@ class EmprestimoController extends Controller
         return response()->json($emprestimo, 200);
     }
 
-    /**
-     * Register the return of a book.
-     */
+    // Registra a devolução do livro e repõe a quantidade disponível no acervo.
     public function registrarDevolucao(Request $request, Emprestimo $emprestimo): JsonResponse
     {
         Gate::authorize('devolver', $emprestimo);
@@ -196,9 +183,7 @@ class EmprestimoController extends Controller
         return response()->json($emprestimo, 200);
     }
 
-    /**
-     * Manually update the status of a loan.
-     */
+    // Atualiza manualmente o status e dados de um empréstimo.
     public function atualizarStatus(AtualizarStatusEmprestimoRequest $request, Emprestimo $emprestimo): JsonResponse
     {
         Gate::authorize('atualizarStatus', $emprestimo);

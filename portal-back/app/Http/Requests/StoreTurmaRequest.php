@@ -4,13 +4,16 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+// Validação para cadastro de uma nova turma escolar.
 class StoreTurmaRequest extends FormRequest
 {
+    // Autoriza apenas usuários com permissão de gestão acadêmica
     public function authorize(): bool
     {
         return $this->user() !== null && $this->user()->canManageAcademic();
     }
 
+    // Regras de validação para os dados da nova turma
     public function rules(): array
     {
         return [

@@ -8,15 +8,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+// Model que representa a remessa de dados enviada por professores (frequência/notas).
 class RemessaDocente extends Model
 {
     /** @use HasFactory<RemessaDocenteFactory> */
     use HasFactory;
 
+    // Tabela associada no banco de dados
     protected $table = 'remessas_docentes';
 
+    // Chave primária customizada
     protected $primaryKey = 'id_remessa';
 
+    // Campos preenchíveis em massa
     protected $fillable = [
         'professor_id',
         'turma_id',
@@ -33,6 +37,7 @@ class RemessaDocente extends Model
      *
      * @return array<string, string>
      */
+    // Conversões de tipo de dados
     protected function casts(): array
     {
         return [
@@ -43,6 +48,7 @@ class RemessaDocente extends Model
     /**
      * @return BelongsTo<User, $this>
      */
+    // Professor autor do envio
     public function professor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'professor_id', 'id');
@@ -51,6 +57,7 @@ class RemessaDocente extends Model
     /**
      * @return BelongsTo<Turma, $this>
      */
+    // Turma vinculada à remessa
     public function turma(): BelongsTo
     {
         return $this->belongsTo(Turma::class, 'turma_id', 'id_turma');
@@ -59,6 +66,7 @@ class RemessaDocente extends Model
     /**
      * @return BelongsTo<Disciplina, $this>
      */
+    // Disciplina vinculada à remessa
     public function disciplina(): BelongsTo
     {
         return $this->belongsTo(Disciplina::class, 'disciplina_id', 'id_disciplina');
@@ -67,6 +75,7 @@ class RemessaDocente extends Model
     /**
      * @return HasMany<Frequencia, $this>
      */
+    // Registros de frequência consolidados a partir desta remessa
     public function frequencias(): HasMany
     {
         return $this->hasMany(Frequencia::class, 'remessa_origem_id', 'id_remessa');
@@ -75,6 +84,7 @@ class RemessaDocente extends Model
     /**
      * @return HasMany<Nota, $this>
      */
+    // Registros de notas lançados a partir desta remessa
     public function notas(): HasMany
     {
         return $this->hasMany(Nota::class, 'remessa_origem_id', 'id_remessa');

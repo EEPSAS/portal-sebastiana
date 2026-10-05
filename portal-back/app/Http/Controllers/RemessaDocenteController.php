@@ -8,11 +8,20 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
+// Controller responsável pelo fluxo de remessas docentes de notas e frequência.
 class RemessaDocenteController extends Controller
 {
+    // Envia uma nova remessa docente com arquivo anexo opcional para turma vinculada.
     public function enviarRemessa(StoreRemessaDocenteRequest $request): JsonResponse
     {
         Gate::authorize('create', RemessaDocente::class);
+
+        $user = $request->user();
+        if (! $user->canManageTeachingIn($request->integer('turma_id'), $request->integer('disciplina_id'))) {
+            return response()->json([
+                'message' => 'Você só pode enviar remessas para turmas e disciplinas às quais está formalmente vinculado.',
+            ], 403);
+        }
 
         $caminhoArquivo = null;
         if ($request->hasFile('arquivo_anexo')) {
@@ -33,6 +42,7 @@ class RemessaDocenteController extends Controller
         return response()->json($remessa->load(['professor:id,name,email', 'turma', 'disciplina']), 201);
     }
 
+    // Permite ao professor consultar todas as remessas de sua autoria.
     public function consultarRemessaPropria(Request $request): JsonResponse
     {
         $remessas = RemessaDocente::where('professor_id', $request->user()->id)
@@ -43,6 +53,7 @@ class RemessaDocenteController extends Controller
         return response()->json($remessas, 200);
     }
 
+    // Lista todas as remessas pendentes de análise para a equipe pedagógica.
     public function listarRemessasPendentes(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', RemessaDocente::class);
@@ -59,6 +70,7 @@ class RemessaDocenteController extends Controller
         return response()->json($remessas, 200);
     }
 
+    // Marca a remessa como anexada/processada no sistema.
     public function marcarComoAnexado(Request $request, RemessaDocente $remessa): JsonResponse
     {
         Gate::authorize('updateStatus', $remessa);
@@ -70,6 +82,7 @@ class RemessaDocenteController extends Controller
         return response()->json($remessa->load(['professor:id,name,email', 'turma', 'disciplina']), 200);
     }
 
+    // Rejeita a remessa informando justificativa/observações para o professor.
     public function marcarComoRejeitado(Request $request, RemessaDocente $remessa): JsonResponse
     {
         Gate::authorize('updateStatus', $remessa);

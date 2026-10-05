@@ -20,15 +20,15 @@ class LivroFactory extends Factory
     public function definition(): array
     {
         return [
-            'titulo'                 => fake()->sentence(3),
-            'capa'                   => 'https://placehold.co/300x450',
-            'autor'                  => fake()->name(),
-            'editora'                => fake()->company(),
-            'data_publicacao'        => fake()->date(),
-            'prateleira_localizacao' => 'Corredor ' . fake()->randomElement(['A', 'B', 'C']) . ', Estante ' . fake()->numberBetween(1, 10),
-            'genero'                 => fake()->randomElement(['Ficção', 'Romance', 'Ciência', 'História', 'Matemática']),
-            'quantidade_total'       => 5,
-            'quantidade_disponivel'  => 5,
+            'titulo' => fake()->sentence(3),
+            'capa' => 'https://placehold.co/300x450',
+            'autor' => fake()->name(),
+            'editora' => fake()->company(),
+            'data_publicacao' => fake()->date(),
+            'prateleira_localizacao' => 'Corredor '.fake()->randomElement(['A', 'B', 'C']).', Estante '.fake()->numberBetween(1, 10),
+            'genero' => fake()->randomElement(['Ficção', 'Romance', 'Ciência', 'História', 'Matemática']),
+            'quantidade_total' => 5,
+            'quantidade_disponivel' => 5,
         ];
     }
 
