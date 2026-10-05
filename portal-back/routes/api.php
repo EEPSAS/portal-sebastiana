@@ -8,6 +8,8 @@ use App\Http\Controllers\FrequenciaController;
 use App\Http\Controllers\LivroController;
 use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\NotaController;
+use App\Http\Controllers\EmprestimoController;
+use App\Http\Controllers\LivroController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\RemessaDocenteController;
