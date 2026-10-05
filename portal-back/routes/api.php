@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DisciplinaController;
 use App\Http\Controllers\EmprestimoController;
@@ -8,11 +9,10 @@ use App\Http\Controllers\FrequenciaController;
 use App\Http\Controllers\LivroController;
 use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\NotaController;
-use App\Http\Controllers\EmprestimoController;
-use App\Http\Controllers\LivroController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\RemessaDocenteController;
+use App\Http\Controllers\SubmissaoController;
 use App\Http\Controllers\TurmaController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Http\Request;
@@ -118,11 +118,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/emprestimos/{emprestimo}/status', [EmprestimoController::class, 'atualizarStatus']);
     Route::apiResource('emprestimos', EmprestimoController::class)->only(['index', 'show']);
 
-    // Gestão de Usuários, Papéis e Permissões (Exclusivo Administrador)
-    Route::get('/papeis', [UsuarioController::class, 'papeis']);
-    Route::get('/permissoes', [UsuarioController::class, 'permissoes']);
-    Route::patch('/usuarios/{usuario}/bloquear', [UsuarioController::class, 'bloquear']);
-    Route::patch('/usuarios/{usuario}/papel', [UsuarioController::class, 'alterarPapel']);
-    Route::patch('/usuarios/{usuario}/permissoes', [UsuarioController::class, 'atribuirPermissoes']);
-    Route::apiResource('usuarios', UsuarioController::class);
+    // Módulo de Atividades (Tarefas / Trabalhos)
+    Route::get('/turmas/{turma}/disciplinas/{disciplina}/atividades', [AtividadeController::class, 'listarPorTurmaEDisciplina']);
+    Route::patch('/atividades/{atividade}/encerrar', [AtividadeController::class, 'encerrarRecebimentoManualmente']);
+    Route::apiResource('atividades', AtividadeController::class);
+
+    // Módulo de Submissões (Entregas de Atividades)
+    Route::get('/atividades/{atividade}/submissoes', [SubmissaoController::class, 'index']);
+    Route::post('/atividades/{atividade}/submissoes', [SubmissaoController::class, 'store']);
+    Route::get('/atividades/{atividade}/minha-submissao', [SubmissaoController::class, 'minhaSubmissao']);
+    Route::get('/submissoes/{submissao}', [SubmissaoController::class, 'show']);
+    Route::put('/submissoes/{submissao}', [SubmissaoController::class, 'update']);
+    Route::patch('/submissoes/{submissao}', [SubmissaoController::class, 'update']);
+    Route::delete('/submissoes/{submissao}', [SubmissaoController::class, 'destroy']);
+    Route::patch('/submissoes/{submissao}/avaliar', [SubmissaoController::class, 'avaliar']);
+    Route::patch('/submissoes/{submissao}/feedback', [SubmissaoController::class, 'feedback']);
 });

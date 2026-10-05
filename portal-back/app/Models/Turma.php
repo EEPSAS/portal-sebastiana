@@ -109,4 +109,12 @@ class Turma extends Model
     {
         return $this->hasMany(Nota::class, 'turma_id', 'id_turma');
     }
+
+    /**
+     * @return HasMany<Atividade, $this>
+     */
+    public function atividades(): HasMany
+    {
+        return $this->hasMany(Atividade::class, 'turma_id', 'id_turma');
+    }
 }
