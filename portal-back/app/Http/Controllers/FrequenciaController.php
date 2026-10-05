@@ -10,8 +10,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
+// Controller responsável pelo lançamento, consolidação e relatório de frequências.
 class FrequenciaController extends Controller
 {
+    // Consolida a chamada diária para todos os alunos de uma turma em lote.
     public function consolidarChamadaDiaria(ConsolidarChamadaRequest $request): JsonResponse
     {
         Gate::authorize('manage', Frequencia::class);
@@ -47,6 +49,7 @@ class FrequenciaController extends Controller
         ], 201);
     }
 
+    // Atualiza a presença ou falta de um aluno individualmente.
     public function atualizarPresencaIndividual(Request $request, Frequencia $frequencia): JsonResponse
     {
         Gate::authorize('manage', Frequencia::class);
@@ -62,6 +65,7 @@ class FrequenciaController extends Controller
         return response()->json($frequencia->load(['aluno:id,name,email', 'disciplina', 'turma']), 200);
     }
 
+    // Gera relatório consolidado de faltas e taxa de presença da turma.
     public function gerarRelatorioFaltas(Request $request): JsonResponse
     {
         Gate::authorize('manage', Frequencia::class);
@@ -107,6 +111,7 @@ class FrequenciaController extends Controller
         ], 200);
     }
 
+    // Permite ao aluno consultar seu próprio histórico e resumo de frequência.
     public function consultarFrequenciaPropria(Request $request): JsonResponse
     {
         $alunoId = $request->user()->id;

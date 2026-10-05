@@ -4,13 +4,16 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+// Validação para lançamento oficial de notas e avaliações.
 class StoreNotaRequest extends FormRequest
 {
+    // Autoriza apenas usuários com permissão de gestão acadêmica
     public function authorize(): bool
     {
         return $this->user() !== null && $this->user()->canManageAcademic();
     }
 
+    // Regras de validação para os dados da nota/avaliação
     public function rules(): array
     {
         return [

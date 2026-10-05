@@ -4,13 +4,18 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+// Validação para publicação de novas notícias no portal.
 class StoreNoticiaRequest extends FormRequest
 {
+    // Autoriza se o usuário tem permissão para criar ou gerenciar notícias
     public function authorize(): bool
     {
-        return $this->user()?->canManageEvents() ?? false;
+        $user = $this->user();
+
+        return $user !== null && ($user->hasPermissionTo('criar_noticia') || $user->hasPermissionTo('gerenciar_noticias'));
     }
 
+    // Regras de validação do conteúdo da notícia
     public function rules(): array
     {
         return [

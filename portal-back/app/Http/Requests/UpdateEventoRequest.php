@@ -2,16 +2,40 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\TipoEvento;
 use App\Models\Evento;
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Enum;
 
+// Validação para atualização de eventos no calendário escolar.
 class UpdateEventoRequest extends FormRequest
 {
-    // Verifica se o usuario logado tem permissao para editar eventos
+    // Autoriza se o usuário gerencia eventos escolares ou é o autor do evento
     public function authorize(): bool
     {
-        return $this->user() !== null && $this->user()->canManageEvents();
+        $user = $this->user();
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->canManageEvents()) {
+            return true;
+        }
+
+        $evento = $this->route('evento');
+
+        return $evento instanceof Evento && $evento->criador_id === $user->id;
+    }
+
+    // Normaliza o tipo de evento caso seja fornecido como texto flexível
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('tipo') && is_string($this->input('tipo'))) {
+            $parsed = TipoEvento::tryFromLoose($this->input('tipo'));
+            if ($parsed) {
+                $this->merge(['tipo' => $parsed->value]);
+            }
+        }
     }
 
     // Regras de validacao para atualizacao parcial ou total do evento
@@ -37,7 +61,7 @@ class UpdateEventoRequest extends FormRequest
             // Indicador de dia inteiro
             'dia_inteiro' => ['nullable', 'boolean'],
             // Categoria do evento
-            'tipo' => ['nullable', 'string', 'max:50'],
+            'tipo' => ['nullable', new Enum(TipoEvento::class)],
             // Indicador de destaque
             'importante' => ['nullable', 'boolean'],
             // Local do evento

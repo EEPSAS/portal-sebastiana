@@ -9,11 +9,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
+// Controller responsável pelo gerenciamento de livros do acervo da biblioteca.
 class LivroController extends Controller
 {
-    /**
-     * Display a listing of books with optional filters.
-     */
+    // Lista os livros do acervo com suporte a filtros e busca.
     public function index(Request $request): JsonResponse
     {
         $query = Livro::query();
@@ -39,9 +38,7 @@ class LivroController extends Controller
         return response()->json($livros, 200);
     }
 
-    /**
-     * Store a newly created book in storage.
-     */
+    // Cadastra um novo livro no acervo da biblioteca.
     public function store(StoreLivroRequest $request): JsonResponse
     {
         Gate::authorize('create', Livro::class);
@@ -56,9 +53,7 @@ class LivroController extends Controller
         return response()->json($livro, 201);
     }
 
-    /**
-     * Display the specified book.
-     */
+    // Exibe os detalhes de um livro específico.
     public function show(Livro $livro): JsonResponse
     {
         Gate::authorize('view', $livro);
@@ -66,9 +61,7 @@ class LivroController extends Controller
         return response()->json($livro, 200);
     }
 
-    /**
-     * Update the specified book in storage.
-     */
+    // Atualiza as informações cadastrais de um livro.
     public function update(UpdateLivroRequest $request, Livro $livro): JsonResponse
     {
         Gate::authorize('update', $livro);
@@ -78,9 +71,7 @@ class LivroController extends Controller
         return response()->json($livro, 200);
     }
 
-    /**
-     * Remove the specified book from storage.
-     */
+    // Remove um livro do acervo.
     public function destroy(Livro $livro): JsonResponse
     {
         Gate::authorize('delete', $livro);
@@ -90,9 +81,7 @@ class LivroController extends Controller
         return response()->json(null, 204);
     }
 
-    /**
-     * Check availability of the specified book.
-     */
+    // Consulta e retorna a disponibilidade de exemplares de um livro.
     public function verificarDisponibilidade(Livro $livro): JsonResponse
     {
         return response()->json([

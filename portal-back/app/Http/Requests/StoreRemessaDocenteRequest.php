@@ -4,13 +4,16 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+// Validação para envio de remessa de dados por professores.
 class StoreRemessaDocenteRequest extends FormRequest
 {
+    // Autoriza qualquer usuário autenticado (a validação de vínculo ocorre no Controller)
     public function authorize(): bool
     {
         return $this->user() !== null;
     }
 
+    // Regras de validação para os dados e anexo da remessa
     public function rules(): array
     {
         return [
