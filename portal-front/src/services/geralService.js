@@ -1,14 +1,12 @@
+//small cards
 export async function geralService() {
-  // Exemplo de chamada HTTP
-  const response = await fetch('https://api.exemplo.com/dashboard/stats');
-  
-  if (!response.ok) {
-    throw new Error('Falha ao carregar as estatísticas.');
-  }
+  const data = {
+    totalAlunos: 128,
+    mediaGeral: 8.4,
+    frequenciaMedia: '94%',
+    noticiasPublicadas: 12,
+  };
 
-  const data = await response.json();
-
-  // Transforma o objeto da API num array para permitir renderização dinâmica com .map()
   return [
     {
       id: 'total-alunos',
@@ -41,6 +39,55 @@ export async function geralService() {
       bgIcone: 'bg-primary-subtle',
       textIcone: 'text-primary',
       tipoIcone: 'noticias'
+    }
+  ];
+}
+
+//medium cards
+export async function fetchResumoTurmas() {
+  // Quando o endpoint estiver pronto, substitua pelo seu fetch real:
+  // const response = await fetch('https://api.exemplo.com/turmas/resumo');
+  // if (!response.ok) throw new Error('Erro ao buscar dados das turmas');
+  // return await response.json();
+
+  // Dados ilustrativos para os cards até a integração com a API.
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        medias: [
+          { id: 1, turma: '1º Ano', nota: 8.2, cor: '#d63384' },
+          { id: 2, turma: '2º Ano', nota: 7.6, cor: '#0d6efd' },
+          { id: 3, turma: '3º Ano', nota: 8.9, cor: '#0dcaf0' },
+        ],
+        frequencias: [
+          { id: 1, turma: '1º Ano', percentual: 96, cor: '#20c997' },
+          { id: 2, turma: '2º Ano', percentual: 92, cor: '#20c997' },
+          { id: 3, turma: '3º Ano', percentual: 97, cor: '#fd7e14' },
+        ],
+      });
+    }, 500);
+  });
+}
+
+//ultimas atualizações
+export async function fetchLatestUpdates() {
+  // Substitua pela chamada real à sua API
+  // const response = await fetch('https://api.exemplo.com/dashboard/updates');
+  // const data = await response.json();
+  
+  // Simulando o retorno estruturado da API
+  return [
+    {
+      id: 'upd-1',
+      tipo: 'noticia', // Usado para definir o ícone e a cor
+      texto: 'Nova notícia publicada: Feira de Ciências 2026',
+      tempoAtras: '2h atrás'
+    },
+    {
+      id: 'upd-2',
+      tipo: 'notas',
+      texto: 'Notas do 2º bimestre atualizadas — 3º Ano',
+      tempoAtras: '5h atrás'
     }
   ];
 }

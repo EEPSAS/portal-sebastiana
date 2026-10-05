@@ -1,20 +1,20 @@
-import { useState, useEffect } from "react";
-import { geralService } from "../services/geralService";
+import { useState, useEffect } from 'react';
+import { fetchLatestUpdates } from '../../services/geralService';
 
-export function useDashboardStats() {
-  const [cards, setCards] = useState([]);
+export function useUpdates() {
+  const [updates, setUpdates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadStats() {
+    async function loadUpdates() {
       try {
         setLoading(true);
-        const data = await geralService();
+        const data = await fetchLatestUpdates();
         if (isMounted) {
-          setCards(data);
+          setUpdates(data);
         }
       } catch (err) {
         if (isMounted) {
@@ -27,12 +27,12 @@ export function useDashboardStats() {
       }
     }
 
-    loadStats();
+    loadUpdates();
 
     return () => {
       isMounted = false;
     };
   }, []);
 
-  return { cards, loading, error };
+  return { updates, loading, error };
 }

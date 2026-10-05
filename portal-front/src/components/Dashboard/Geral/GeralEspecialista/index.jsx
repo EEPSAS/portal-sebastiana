@@ -1,8 +1,25 @@
-import { useGeral } from "../../hooks/useGeral";
-import GeralSmallCards from "../geralsmallcards";
+import { useDashboardStats } from "../../../../hooks/Geral/useGeralSmallCards.js";
+import GeralSmallCards from "./geralsmallcards.jsx";
+import { useResumoTurmas } from '../../../../hooks/Geral/useGeralMediumCards.js';
+import GeralMediumCards from './geralmediumcards.jsx';
+import LatestUpdates from './LatestUpdates/latestupdatessmart.jsx';
+
+
+export function ResumoTurmas() {
+  const { medias, frequencias, loading } = useResumoTurmas();
+
+  return (
+    <GeralMediumCards
+      medias={medias}
+      frequencias={frequencias}
+      loading={loading}
+    />
+  );
+}
+
 
 const GeralEspecialista = () => {
-  const { cards, loading, error } = useGeral();
+  const { cards, loading, error } = useDashboardStats();
 
   if (loading) {
     return <div className="text-center py-4">A carregar estatísticas...</div>;
@@ -27,6 +44,8 @@ const GeralEspecialista = () => {
           />
         ))}
       </div>
+      <ResumoTurmas />
+      <LatestUpdates />
     </div>
   );
 };
