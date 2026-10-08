@@ -4,6 +4,12 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Evento;
+use App\Models\Noticia;
+use App\Models\Radioatividade;
+use App\Models\Biblioteca;
+use App\Models\Academico;
+
 
 class DatabaseSeeder extends Seeder
 {
@@ -25,3 +31,4 @@ class DatabaseSeeder extends Seeder
         ]);
     }
 }
+    
