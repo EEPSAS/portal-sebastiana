@@ -37,7 +37,7 @@ export function AgendaNotificacoes() {
 
 
 const AlarmIcon = () => (
-  <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24">
+  <svg width="33.6" height="33.6" fill="currentColor" viewBox="0 0 24 24">
     <path d="M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86zM7.88 3.39L6.59 1.86 2 5.72l1.29 1.53zM12 4a8 8 0 0 0-8 8v7h16v-7a8 8 0 0 0-8-8zm0 18a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2z"/>
   </svg>
 );
