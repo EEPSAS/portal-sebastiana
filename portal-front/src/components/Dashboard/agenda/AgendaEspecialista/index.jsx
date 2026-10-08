@@ -58,7 +58,11 @@ const AgendaEspecialista = () => {
     event.date === apiEvent.date && event.title.toLocaleLowerCase() === apiEvent.title.toLocaleLowerCase()
   )));
   const visibleEvents = [...events, ...uniqueApiEvents].filter(({ category }) => activeCategories.has(category));
-  const monthEvents = visibleEvents.filter(({ date }) => date.startsWith(getMonthKey(visibleMonth)));
+  const monthStart = `${getMonthKey(visibleMonth)}-01`;
+  const monthEnd = formatDateKey(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0));
+  const monthEvents = visibleEvents.filter(({ date, endDate }) => (
+    date <= monthEnd && (endDate || date) >= monthStart
+  ));
   const calendarDays = getCalendarDays(visibleMonth);
   const listedEvents = (showAllEvents ? visibleEvents : monthEvents).slice().sort((first, second) => (
     first.date.localeCompare(second.date)

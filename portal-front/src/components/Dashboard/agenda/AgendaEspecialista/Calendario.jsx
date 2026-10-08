@@ -40,7 +40,9 @@ const Calendario = ({
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', rowGap: '12px', textAlign: 'center' }}>
       {calendarDays.map((calendarDay) => {
         const dateKey = formatDateKey(calendarDay.date);
-        const dayEvents = monthEvents.filter((event) => event.date === dateKey);
+        const dayEvents = monthEvents.filter((event) => (
+          event.date <= dateKey && (event.endDate || event.date) >= dateKey
+        ));
         const dayTasks = tasks.filter((task) => task.date === dateKey);
         const isSelected = selectedDate === dateKey;
         return (
@@ -57,7 +59,7 @@ const Calendario = ({
             </span>
             {dayEvents.length > 0 && (
               <span style={{ display: 'flex', gap: '2px', position: 'absolute', bottom: '0px' }}>
-                {dayEvents.slice(0, 3).map((event) => <span key={event.id} style={{ width: '5px', height: '5px', borderRadius: '50%', background: getCategory(event.category).color }} />)}
+                {dayEvents.slice(0, 3).map((event) => <span key={event.id} style={{ width: '5px', height: '5px', borderRadius: '50%', background: event.color || getCategory(event.category).color }} />)}
                 {dayTasks.length > 0 && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16a34a' }} />}
               </span>
             )}
