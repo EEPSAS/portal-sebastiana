@@ -1,0 +1,498 @@
+/* ==========================================================================
+   TEMA GLOBAL DO PORTAL — EEPSAS
+   Variáveis visuais consolidadas, tipografia, Navbar, Hero e Footer.
+   ========================================================================== */
+
+.portal-scope {
+  /* ========================================================================
+     DESIGN TOKENS — PALETA CONSOLIDADA
+     Escola contemporânea • jovem • acolhedora • responsável
+     ======================================================================== */
+  --color-primary: #284477;          /* Azul principal */
+  --color-primary-dark: #1d3158;
+  --color-primary-light: #fff7d6;    /* Destaque suave */
+  --color-pink: #f2356e;             /* Rosa de destaque */
+  --color-pink-dark: #c92b5a;
+  --color-pink-soft: #fde8ef;
+  --color-yellow: #ebc200;           /* Amarelo energia */
+  --color-yellow-soft: #fff7d6;
+  --color-teal: #076660;             /* Verde/petróleo complementar */
+  --color-teal-soft: #eaf5f4;
+  --color-gray: #c6c6c5;
+
+  /* Superfícies e Fundos */
+  --color-bg: #f8f7f4;
+  --color-bg-alt: #f0f3f8;
+  --color-bg-card: #ffffff;
+  --color-bg-dark: #172642;
+
+  /* Tipografia */
+  --color-text-main: #263248;
+  --color-text-secondary: #566176;
+  --color-text-muted: #7c8493;
+  --color-text-inverse: #ffffff;
+
+  /* Bordas */
+  --color-border-subtle: #e7e9ed;
+  --color-border-medium: #d8dce3;
+  --color-border-strong: rgba(40, 68, 119, 0.25);
+
+  /* Variáveis de Compatibilidade */
+  --color-slate: var(--color-text-secondary);
+  --color-navy-dark: var(--color-text-main);
+  --color-bg-deep: var(--color-bg-dark);
+  --color-blue-primary: var(--color-primary);
+  --color-blue-vibrant: #45659a;
+  --color-blue-action: var(--color-primary);
+  --color-accent: var(--color-pink);
+  --color-accent-hover: var(--color-pink-dark);
+  --color-accent-subtle: var(--color-pink-soft);
+  --color-accent-glow: rgba(242, 53, 110, 0.22);
+  --color-blue-soft: var(--color-primary-light);
+  --color-blue-primary-soft: rgba(40, 68, 119, 0.08);
+
+  --color-section-night: var(--color-bg);
+  --color-section-slate: var(--color-bg);
+  --color-section-blue: var(--color-bg-alt);
+  --color-section-deep: #e9eef6;
+  --color-bg-white: var(--color-bg-card);
+  --color-bg-light-blue: var(--color-bg-alt);
+  --color-bg-light-alt: var(--color-bg);
+  --color-bg-light-card: #f7f8fa;
+
+  /* Espaçamentos e Dimensões */
+  --portal-section-spacing: clamp(4rem, 7vw, 6.5rem);
+  --portal-container-max: 1220px;
+
+  /* Raios de Borda */
+  --portal-radius-xs: 8px;
+  --portal-radius-sm: 12px;
+  --portal-radius-md: 18px;
+  --portal-radius-lg: 28px;
+  --portal-radius-pill: 9999px;
+
+  /* Sombras */
+  --portal-shadow-sm: 0 4px 16px rgba(40, 68, 119, 0.07);
+  --portal-shadow-md: 0 10px 30px rgba(40, 68, 119, 0.10);
+  --portal-shadow-lg: 0 18px 48px rgba(40, 68, 119, 0.13);
+  --portal-shadow-accent: 0 8px 24px rgba(242, 53, 110, 0.20);
+
+  /* Transições */
+  --portal-transition: 220ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Fundo e tipografia base */
+  background:
+    radial-gradient(circle at 0% 0%, rgba(242, 53, 110, 0.035), transparent 30%),
+    var(--color-bg);
+  color: var(--color-text-main);
+  font-family: "Poppins", "Segoe UI", Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   NORMALIZAÇÃO LOCAL E TIPOGRAFIA BASE
+   ========================================================================== */
+.portal-scope * {
+  box-sizing: border-box;
+}
+
+.portal-scope h1,
+.portal-scope h2,
+.portal-scope h3,
+.portal-scope h4 {
+  font-family: "Poppins", "Segoe UI", sans-serif;
+  color: var(--color-text-main);
+}
+
+.portal-scope h1,
+.portal-scope h2 {
+  letter-spacing: -0.045em;
+}
+
+.portal-scope p {
+  color: var(--color-text-secondary);
+}
+
+.portal-scope a {
+  color: var(--color-blue-vibrant);
+  transition: color var(--portal-transition);
+}
+
+.portal-scope a:hover {
+  color: var(--color-blue-primary);
+}
+
+.portal-scope .container {
+  max-width: var(--portal-container-max);
+}
+
+/* ==========================================================================
+   CABEÇALHO E NAVEGAÇÃO
+   ========================================================================== */
+.portal-scope .portal-header {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid var(--color-border-subtle);
+  box-shadow: 0 3px 18px rgba(40, 68, 119, 0.06);
+  backdrop-filter: blur(14px);
+}
+
+.portal-scope .portal-header__topbar {
+  background: var(--color-primary);
+  padding: 0.35rem 0;
+}
+
+.portal-scope .portal-header__student-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  padding: 0.3rem 0.9rem;
+  background: var(--color-pink);
+  border-radius: var(--portal-radius-pill);
+  transition: background-color var(--portal-transition), transform var(--portal-transition);
+}
+
+.portal-scope .portal-header__student-link:hover {
+  background: var(--color-pink-dark);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.portal-scope .portal-navbar {
+  padding: 0.75rem 0;
+  background: transparent;
+}
+
+.portal-scope .portal-brand {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  line-height: 1.15;
+}
+
+.portal-scope .portal-brand__eyebrow {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: var(--color-teal);
+}
+
+.portal-scope .portal-brand__name {
+  font-size: clamp(1.15rem, 2vw, 1.4rem);
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: -0.02em;
+}
+
+.portal-scope .portal-nav-link {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-secondary) !important;
+  padding: 0.5rem 0.85rem !important;
+  border-radius: var(--portal-radius-pill);
+  transition: color var(--portal-transition), background-color var(--portal-transition);
+}
+
+.portal-scope .portal-nav-link:hover,
+.portal-scope .portal-nav-link:focus-visible {
+  color: var(--color-primary) !important;
+  background: var(--color-primary-light);
+}
+
+.portal-scope .portal-navbar__toggler {
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--portal-radius-sm);
+  padding: 0.4rem 0.65rem;
+}
+
+/* ==========================================================================
+   HERO / CARROSSEL PRINCIPAL
+   ========================================================================== */
+.portal-scope .portal-hero {
+  height: calc(100vh - 7rem);
+  height: calc(100svh - 7rem);
+  min-height: 320px;
+  padding: 0;
+  display: flex;
+  background:
+    radial-gradient(circle at 8% 15%, rgba(242, 53, 110, 0.10), transparent 25%),
+    radial-gradient(circle at 92% 80%, rgba(7, 102, 96, 0.09), transparent 25%),
+    var(--color-bg-alt);
+  border: 0;
+}
+
+.portal-scope .portal-hero__container {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  display: flex;
+}
+
+.portal-scope .portal-hero__showcase {
+  width: 100%;
+  display: flex;
+  background: var(--color-primary);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.portal-scope .portal-hero__carousel {
+  width: 100%;
+  display: flex;
+}
+
+.portal-scope .portal-hero__carousel-inner,
+.portal-scope .portal-hero__carousel-inner .carousel-item {
+  width: 100%;
+  height: 100%;
+}
+
+.portal-scope .portal-hero__carousel-inner {
+  border-radius: 0;
+}
+
+.portal-scope .portal-hero__carousel-image {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  object-fit: cover;
+  filter: brightness(0.96) saturate(1.04);
+}
+
+.portal-scope .portal-hero__message {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  right: auto;
+  max-width: min(650px, calc(100% - 3rem));
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--color-text-main);
+  border: 0;
+  border-left: 6px solid var(--color-pink);
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(23, 38, 66, 0.18);
+  backdrop-filter: blur(10px);
+  padding: 1.15rem 1.45rem;
+  font-size: clamp(0.92rem, 1.5vw, 1.05rem);
+  line-height: 1.55;
+  margin: 0;
+  z-index: 10;
+}
+
+.portal-scope .portal-hero__message p,
+.portal-scope .portal-hero__message * {
+  color: var(--color-text-main);
+}
+
+.portal-scope .carousel-indicators [data-bs-target] {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.85);
+  border: 0;
+  margin: 0 4px;
+  transition: all var(--portal-transition);
+}
+
+.portal-scope .carousel-indicators .active {
+  width: 26px;
+  border-radius: var(--portal-radius-pill);
+  background-color: var(--color-pink);
+}
+
+.portal-scope .carousel-control-prev,
+.portal-scope .carousel-control-next {
+  width: 48px;
+  height: 48px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(40, 68, 119, 0.85);
+  border-radius: 50%;
+  margin: 0 1rem;
+  opacity: 0.85;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.15);
+  transition: all var(--portal-transition);
+}
+
+.portal-scope .carousel-control-prev:hover,
+.portal-scope .carousel-control-next:hover {
+  background: var(--color-pink);
+  opacity: 1;
+}
+
+/* ==========================================================================
+   RODAPÉ GLOBAL (FOOTER)
+   ========================================================================== */
+.portal-scope .portal-footer {
+  background: var(--color-bg-dark) !important;
+  color: #ffffff !important;
+  padding: clamp(3.8rem, 6.5vw, 5.5rem) 0 2.2rem !important;
+  margin-top: auto;
+  border-top: 0;
+}
+
+.portal-scope .portal-footer a {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  transition: color var(--portal-transition);
+}
+
+.portal-scope .portal-footer a:hover {
+  color: var(--color-yellow);
+}
+
+.portal-scope .portal-footer__brand-icon {
+  width: 42px;
+  height: 42px;
+  border: 2px solid var(--color-pink);
+  color: var(--color-pink);
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.portal-scope .portal-footer__social-btn {
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  text-decoration: none;
+  transition: all var(--portal-transition);
+}
+
+.portal-scope .portal-footer__social-btn:hover {
+  background: var(--color-pink);
+  border-color: var(--color-pink);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.portal-scope .portal-footer__badge {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--portal-radius-md);
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+.portal-scope .portal-footer__quote {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  margin-top: 3.5rem;
+  padding-top: 2rem;
+}
+
+.portal-scope .portal-footer__quote h1 {
+  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+  font-style: italic;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ==========================================================================
+   BOTÕES E ACESSIBILIDADE
+   ========================================================================== */
+.portal-scope .btn {
+  font-family: inherit;
+}
+
+.portal-scope .btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.portal-scope .btn-primary:hover {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.portal-scope ::selection {
+  background: var(--color-pink);
+  color: #ffffff;
+}
+
+.portal-scope :focus-visible {
+  outline-color: var(--color-pink);
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE (MEDIA QUERIES)
+   ========================================================================== */
+@media (max-width: 991.98px) {
+  .portal-scope {
+    --portal-section-spacing: clamp(2.8rem, 5vw, 4.5rem);
+  }
+
+  .portal-scope .portal-hero {
+    height: calc(100vh - 6rem);
+    height: calc(100svh - 6rem);
+  }
+
+  .portal-scope .portal-hero__message {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+  }
+
+  .portal-scope .portal-navbar__inner {
+    padding: 0.5rem 0;
+  }
+
+  .portal-scope .portal-nav-link {
+    padding: 0.75rem 1rem !important;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .portal-scope {
+    --portal-section-spacing: 2.8rem;
+  }
+
+  .portal-scope .portal-header__student-link {
+    font-size: 0.75rem;
+    padding: 0.22rem 0.7rem;
+  }
+
+  .portal-scope .portal-hero__showcase,
+  .portal-scope .portal-hero__carousel-inner {
+    border-radius: 0;
+  }
+
+  .portal-scope .portal-hero__message {
+    bottom: 2.5rem;
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+    padding: 0.9rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-scope * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

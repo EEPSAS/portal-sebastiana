@@ -1,32 +1,27 @@
 import { useState } from "react";
+import "./sobre.css";
 
 import SobreJaguaracu from "./SobreJaguaracu";
 import SobreDesenvolvedores from "./SobreDesenvolvedores";
 import SobreEepsas from "./SobreEepsas";
-
-const habitantes = "/img/habitantes.png";
-const fotoEscola = "/img/fotoescola.jpg";
 
 const SobreSlider = () => {
   const [current, setCurrent] = useState(0);
 
   const sections = [
     {
-      id: "jaguaracu",
-      label: "Jaguaraçu",
-      image: habitantes,
-      component: SobreJaguaracu,
-    },
-    {
       id: "desenvolvedores",
       label: "Desenvolvedores",
-      image: "https://placehold.co/96x96/f9d8eb/172951?text=DEV",
       component: SobreDesenvolvedores,
+    },
+    {
+      id: "jaguaracu",
+      label: "Jaguaraçu",
+      component: SobreJaguaracu,
     },
     {
       id: "eepsas",
       label: "EEPSAS",
-      image: fotoEscola,
       component: SobreEepsas,
     },
   ];
@@ -72,10 +67,7 @@ const SobreSlider = () => {
               onClick={() => selectSection(index)}
               onKeyDown={(event) => handleTabKeyDown(event, index)}
             >
-              <img className="sobre-tab-thumb" src={section.image} alt="" />
-              <span>
-                <strong>{section.label}</strong>
-              </span>
+              <strong>{section.label}</strong>
             </button>
           ))}
         </div>

@@ -8,7 +8,7 @@ const slides = [
     alt: "Fachada da Escola Estadual Professora Sebastiana",
   },
   {
-    src: "https://placehold.co/600x420/ffe7f1/172951?text=Escola",
+    src: "https://placehold.co/600x420/e2ecf8/04328C?text=Escola",
     alt: "Espaço interno da escola",
   },
   {

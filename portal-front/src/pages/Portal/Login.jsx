@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./login.css";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -27,7 +28,7 @@ const LoginSection = () => {
   };
 
   return (
-    <section className="bg-light py-5 min-vh-100 d-flex align-items-center">
+    <section className="portal-login-section">
       <div className="container">
         <div className="row justify-content-center">
           <div className="col-12 col-md-8 col-lg-6 col-xl-5">

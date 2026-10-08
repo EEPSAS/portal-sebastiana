@@ -1,25 +1,18 @@
-import Calendario from "../../components/Portal/Calendario";
+import Calendario from "../../components/Portal/calendario/Calendario";
 import Hero from "../../components/Portal/Hero";
 import Noticias from "../../components/Portal/noticia/Noticias";
-import Podcast from "../../components/Portal/Podcast";
+import Podcast from "../../components/Portal/podcast/Podcast";
 import Sobre from "../../components/Portal/sobre/Sobre";
 
 const Home = () => {
   return (
-
-    <>
-
-
-      <main>
-        <Hero />
-        <Noticias />
-        <Calendario />
-        <Podcast />
-        <Sobre />
-      </main>
-
-    </>
-
+    <div className="portal-home">
+      <Hero />
+      <Noticias />
+      <Calendario />
+      <Podcast />
+      <Sobre />
+    </div>
   );
 };
 

@@ -2,7 +2,7 @@ const SmallNewsCard = ({ noticia, loading }) => (
 	<a className="noticias-card-link" href={`/noticia/${noticia?.id || '#'}`} target="_blank" rel="noreferrer">
 		<article className="noticias-card h-100 rounded-4 bg-white p-3 shadow-sm">
 			{loading ? (
-				<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100" style={{ height: "140px" }}>
+				<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100 noticias-card__skeleton--small">
 					<div className="spinner-border text-primary" role="status">
 						<span className="visually-hidden">Carregando...</span>
 					</div>
