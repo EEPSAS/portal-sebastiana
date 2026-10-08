@@ -98,7 +98,7 @@ components:
           default: false  
         tipo:  
           type: string  
-          default: "evento"  
+          default: "Eventos"  
         importante:  
           type: boolean  
           default: false  

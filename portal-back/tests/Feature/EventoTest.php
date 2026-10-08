@@ -200,6 +200,59 @@ test('validates required fields and formats when creating events', function () {
         ->assertJsonValidationErrors(['tipo']);
 });
 
+test('validates event fields against database nullability and date constraints', function () {
+    $admin = User::factory()->adm()->create();
+
+    $this->actingAs($admin, 'sanctum')
+        ->postJson('/api/eventos', [
+            'titulo' => 'Evento com nulos inválidos',
+            'data_inicio' => '2026-11-20',
+            'tipo' => null,
+            'dia_inteiro' => null,
+            'importante' => null,
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['tipo', 'dia_inteiro', 'importante']);
+
+    $this->actingAs($admin, 'sanctum')
+        ->postJson('/api/eventos', [
+            'titulo' => 'Evento com campos opcionais vazios',
+            'descricao' => null,
+            'data_inicio' => '2026-11-20',
+            'data_fim' => null,
+            'hora_inicio' => null,
+            'hora_fim' => null,
+            'dia_inteiro' => false,
+            'tipo' => 'evento',
+            'importante' => false,
+            'local' => null,
+            'cor' => null,
+        ])
+        ->assertCreated();
+
+    $evento = Evento::factory()->create([
+        'criador_id' => $admin->id,
+        'data_inicio' => '2026-11-20',
+        'data_fim' => '2026-11-22',
+    ]);
+
+    $this->actingAs($admin, 'sanctum')
+        ->patchJson("/api/eventos/{$evento->id}", [
+            'tipo' => null,
+            'dia_inteiro' => null,
+            'importante' => null,
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['tipo', 'dia_inteiro', 'importante']);
+
+    $this->actingAs($admin, 'sanctum')
+        ->patchJson("/api/eventos/{$evento->id}", [
+            'data_inicio' => '2026-11-23',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['data_inicio']);
+});
+
 test('validates and accepts all TipoEvento enum options and normalizes loose values', function () {
     $admin = User::factory()->adm()->create();
 
