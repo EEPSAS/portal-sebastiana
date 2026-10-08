@@ -7,10 +7,14 @@ export const categoryOptions = [
 
 const apiTypeToCategory = {
   evento: 'eventos',
+  eventos: 'eventos',
   reuniao: 'eventos',
   prova: 'provas',
+  'provas e trabalhos': 'provas',
   data_importante: 'comemorativas',
+  'datas comemorativas': 'comemorativas',
   feriado: 'feriados',
+  'feriados e recessos': 'feriados',
 };
 
 const categoryToApiType = {
@@ -20,6 +24,8 @@ const categoryToApiType = {
   feriados: 'feriado',
 };
 
-export const getCategoryFromApiType = (type) => apiTypeToCategory[type] || 'eventos';
+export const getCategoryFromApiType = (type) => (
+  apiTypeToCategory[String(type || '').trim().toLocaleLowerCase('pt-BR')] || 'eventos'
+);
 
 export const getApiTypeFromCategory = (category) => categoryToApiType[category] || 'evento';
