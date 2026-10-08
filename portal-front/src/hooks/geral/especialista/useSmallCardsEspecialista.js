@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { geralService } from "../../services/geralService";
+import { geralService } from "../../../services/geralService";
 
 export function useDashboardStats() {
   const [cards, setCards] = useState([]);

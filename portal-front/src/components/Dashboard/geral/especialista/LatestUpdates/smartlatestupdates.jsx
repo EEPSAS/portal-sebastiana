@@ -1,6 +1,5 @@
-// components/LatestUpdates/LatestUpdates.jsx
-import { useUpdates } from '../../../../../hooks/Geral/useGeralLastUpdatesCards.js';
-import UpdateItem from './latestupdatesdumb.jsx';
+import { useUpdates } from '../../../../../hooks/geral/especialista/useLatestUpdatesEspecialista.js';
+import UpdateItem from './dumblatestupdates.jsx';
 
 export default function LatestUpdates() {
   const { updates, loading, error } = useUpdates();

@@ -1,4 +1,5 @@
-import GeralPadrao from "../../components/Dashboard/Geral/GeralPadrao";
+import GeralPadrao from "../../components/Dashboard/geral/padrao";
+
 
 const GeralPage = () => {
   return <GeralPadrao />;

@@ -1,8 +1,8 @@
-import { useDashboardStats } from "../../../../hooks/Geral/useGeralSmallCards.js";
-import GeralSmallCards from "./geralsmallcards.jsx";
-import { useResumoTurmas } from '../../../../hooks/Geral/useGeralMediumCards.js';
-import GeralMediumCards from './geralmediumcards.jsx';
-import LatestUpdates from './LatestUpdates/latestupdatessmart.jsx';
+import { useDashboardStats } from "../../../../hooks/geral/especialista/useSmallCardsEspecialista.js";
+import GeralSmallCards from "./Cards/smallcardsespecialista.jsx";
+import { useResumoTurmas } from '../../../../hooks/geral/especialista/useMediumCardsEspecialista.js';
+import GeralMediumCards from './Cards/mediumcardsespecialista.jsx';
+import LatestUpdates from './LatestUpdates/smartlatestupdates.jsx';
 
 
 export function ResumoTurmas() {

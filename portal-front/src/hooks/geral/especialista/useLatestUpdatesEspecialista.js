@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchLatestUpdates } from '../../services/geralService';
+import { fetchLatestUpdates } from '../../../services/geralService';
 
 export function useUpdates() {
   const [updates, setUpdates] = useState([]);

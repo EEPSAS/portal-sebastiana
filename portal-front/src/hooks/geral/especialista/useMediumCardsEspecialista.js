@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchResumoTurmas } from '../../services/geralService';
+import { fetchResumoTurmas } from '../../../services/geralService';
 
 export function useResumoTurmas() {
   const [medias, setMedias] = useState([]);

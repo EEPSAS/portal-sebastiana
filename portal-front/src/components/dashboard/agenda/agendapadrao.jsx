@@ -1,7 +1,9 @@
+import AgendaNotificacoes from "../geral/padrao/Agenda/smartagendapadrao.jsx";
+
 const AgendaPadrao = () => {
   return (
     <div>
-      <h1>Agenda Padrão</h1>
+      <AgendaNotificacoes />
     </div>
   );
 };

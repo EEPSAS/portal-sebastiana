@@ -1,5 +1,3 @@
-// components/LatestUpdates/UpdateItem.jsx
-
 // Função auxiliar para renderizar o ícone com base no tipo de atualização
 function RenderUpdateIcon({ tipo }) {
   if (tipo === 'noticia') {
