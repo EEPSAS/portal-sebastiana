@@ -25,8 +25,4 @@ class DatabaseSeeder extends Seeder
             AtividadeSeeder::class,
         ]);
     }
-<<<<<<< Updated upstream
 }
-=======
-}
->>>>>>> Stashed changes
