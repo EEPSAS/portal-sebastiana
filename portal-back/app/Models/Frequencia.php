@@ -7,15 +7,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Model que representa o registro de frequência e chamada escolar.
 class Frequencia extends Model
 {
     /** @use HasFactory<FrequenciaFactory> */
     use HasFactory;
 
+    // Tabela associada no banco de dados
     protected $table = 'frequencias';
 
+    // Chave primária customizada
     protected $primaryKey = 'id_frequencia';
 
+    // Campos preenchíveis em massa
     protected $fillable = [
         'turma_id',
         'disciplina_id',
@@ -32,6 +36,7 @@ class Frequencia extends Model
      *
      * @return array<string, string>
      */
+    // Conversões de tipo de dados
     protected function casts(): array
     {
         return [
@@ -43,6 +48,7 @@ class Frequencia extends Model
     /**
      * @return BelongsTo<Turma, $this>
      */
+    // Turma em que a aula foi ministrada
     public function turma(): BelongsTo
     {
         return $this->belongsTo(Turma::class, 'turma_id', 'id_turma');
@@ -51,6 +57,7 @@ class Frequencia extends Model
     /**
      * @return BelongsTo<Disciplina, $this>
      */
+    // Disciplina da chamada
     public function disciplina(): BelongsTo
     {
         return $this->belongsTo(Disciplina::class, 'disciplina_id', 'id_disciplina');
@@ -59,6 +66,7 @@ class Frequencia extends Model
     /**
      * @return BelongsTo<User, $this>
      */
+    // Aluno correspondente ao registro de presença
     public function aluno(): BelongsTo
     {
         return $this->belongsTo(User::class, 'usuario_id', 'id');
@@ -67,6 +75,7 @@ class Frequencia extends Model
     /**
      * @return BelongsTo<RemessaDocente, $this>
      */
+    // Remessa docente de origem do lançamento
     public function remessaOrigem(): BelongsTo
     {
         return $this->belongsTo(RemessaDocente::class, 'remessa_origem_id', 'id_remessa');

@@ -10,8 +10,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
+// Controller responsável pela gestão de turmas escolares e grade curricular.
 class TurmaController extends Controller
 {
+    // Lista as turmas cadastradas com suporte a filtros por ano, status e turno.
     public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', Turma::class);
@@ -33,6 +35,7 @@ class TurmaController extends Controller
         return response()->json($query->orderBy('nome_identificador')->get(), 200);
     }
 
+    // Cria e persiste uma nova turma.
     public function store(StoreTurmaRequest $request): JsonResponse
     {
         Gate::authorize('create', Turma::class);
@@ -42,6 +45,7 @@ class TurmaController extends Controller
         return response()->json($turma, 201);
     }
 
+    // Exibe detalhes de uma turma específica e contadores associados.
     public function show(Turma $turma): JsonResponse
     {
         Gate::authorize('view', $turma);
@@ -51,6 +55,7 @@ class TurmaController extends Controller
         return response()->json($turma, 200);
     }
 
+    // Atualiza os dados cadastrais da turma.
     public function update(Request $request, Turma $turma): JsonResponse
     {
         Gate::authorize('update', $turma);
@@ -68,6 +73,7 @@ class TurmaController extends Controller
         return response()->json($turma, 200);
     }
 
+    // Exclui uma turma do sistema.
     public function destroy(Turma $turma): JsonResponse
     {
         Gate::authorize('delete', $turma);
@@ -77,6 +83,7 @@ class TurmaController extends Controller
         return response()->json(null, 204);
     }
 
+    // Lista os alunos matriculados na turma.
     public function alunos(Turma $turma): JsonResponse
     {
         Gate::authorize('view', $turma);
@@ -86,6 +93,7 @@ class TurmaController extends Controller
         return response()->json($alunos, 200);
     }
 
+    // Lista as disciplinas e respectivos professores vinculados à turma.
     public function disciplinas(Turma $turma): JsonResponse
     {
         Gate::authorize('view', $turma);
@@ -97,6 +105,7 @@ class TurmaController extends Controller
         return response()->json($disciplinas, 200);
     }
 
+    // Vincula uma disciplina à turma, com professor responsável opcional.
     public function vincularDisciplina(Request $request, Turma $turma): JsonResponse
     {
         Gate::authorize('update', $turma);
@@ -119,6 +128,7 @@ class TurmaController extends Controller
         return response()->json($vinculo->load(['disciplina', 'professor:id,name,email']), 200);
     }
 
+    // Remove o vínculo de uma disciplina com a turma.
     public function desvincularDisciplina(Turma $turma, Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('update', $turma);

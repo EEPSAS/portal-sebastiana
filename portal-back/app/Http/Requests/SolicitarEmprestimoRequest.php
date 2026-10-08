@@ -5,11 +5,13 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
+// Validação para solicitação de empréstimo de livro por usuários.
 class SolicitarEmprestimoRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
+    // Autoriza qualquer usuário autenticado
     public function authorize(): bool
     {
         return $this->user() !== null;
@@ -20,6 +22,7 @@ class SolicitarEmprestimoRequest extends FormRequest
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
+    // Regras de validação do livro solicitado e observações
     public function rules(): array
     {
         return [
@@ -33,6 +36,7 @@ class SolicitarEmprestimoRequest extends FormRequest
      *
      * @return array<string, string>
      */
+    // Mensagens customizadas de validação
     public function messages(): array
     {
         return [

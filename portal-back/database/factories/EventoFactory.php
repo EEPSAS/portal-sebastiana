@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\TipoEvento;
 use App\Models\Evento;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -28,11 +29,11 @@ class EventoFactory extends Factory
             'hora_inicio' => '08:00',
             'hora_fim' => '12:00',
             'dia_inteiro' => false,
-            'tipo' => fake()->randomElement(['evento', 'data_importante', 'feriado', 'prova', 'reuniao']),
+            'tipo' => fake()->randomElement(TipoEvento::cases()),
             'importante' => false,
             'local' => fake()->word(),
             'cor' => '#e6007e',
-            'criador_id' => User::factory(),
+            'criador_id' => User::factory()->especialista(),
         ];
     }
 
@@ -40,7 +41,7 @@ class EventoFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'importante' => true,
-            'tipo' => 'data_importante',
+            'tipo' => TipoEvento::DATAS_COMEMORATIVAS,
         ]);
     }
 

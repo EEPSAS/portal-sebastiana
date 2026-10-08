@@ -6,23 +6,27 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Model que representa uma notícia publicada no portal.
 class Noticia extends Model
 {
     use HasFactory;
-    // Define a tabela manualmente caso o Laravel procure por 'noticias' no plural em inglês
-    protected $table = 'noticias'; 
 
+    // Define a tabela manualmente caso o Laravel procure por 'noticias' no plural em inglês
+    protected $table = 'noticias';
+
+    // Campos preenchíveis em massa
     protected $fillable = [
         'categoria',
-        'titulo', 
+        'titulo',
         'descricao',
-        'conteudo', 
+        'conteudo',
         'imagem',
         'miniatura',
-        'dataPublicacao', 
-        'autor_id'
+        'dataPublicacao',
+        'autor_id',
     ];
 
+    // Conversões de tipo de dados
     protected function casts(): array
     {
         return [
@@ -31,7 +35,7 @@ class Noticia extends Model
         ];
     }
 
-    // Relacionamento N:1 (Inverso)
+    // Relacionamento N:1 com o usuário autor da notícia
     public function autor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'autor_id');
