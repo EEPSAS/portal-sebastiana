@@ -1,16 +1,15 @@
-import { getApiTypeFromCategory, getCategoryFromApiType } from '../components/Dashboard/agenda/AgendaEspecialista/agendaConfig';
-
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
+import { getApiTypeFromCategory, getCategoryFromApiType } from '../../components/Dashboard/agenda/AgendaEspecialista/agendaConfig';
+import { api } from '../api';
 
 const request = async (path, { method = 'GET', body, signal, token } = {}) => {
   const headers = new Headers({ Accept: 'application/json' });
   if (body !== undefined) headers.set('Content-Type', 'application/json');
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await api(path, {
     method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: Object.fromEntries(headers),
+    body,
     signal,
   });
   const data = response.status === 204 ? null : await response.json().catch(() => null);
@@ -28,16 +27,48 @@ const request = async (path, { method = 'GET', body, signal, token } = {}) => {
 export const mapEvento = (evento) => ({
   ...evento,
   title: evento.titulo,
+  description: evento.descricao || '',
   date: String(evento.data_inicio).slice(0, 10),
+  endDate: evento.data_fim || '',
+  startTime: evento.hora_inicio?.slice(0, 5) || '',
+  endTime: evento.hora_fim?.slice(0, 5) || '',
+  allDay: evento.dia_inteiro,
   category: getCategoryFromApiType(evento.tipo),
+  important: evento.importante,
+  location: evento.local || '',
+  color: evento.cor || '',
+  creatorId: evento.criador_id,
+  createdAt: evento.created_at,
+  updatedAt: evento.updated_at,
   isCustom: true,
 });
 
-const serializeEvento = ({ title, date, category }) => ({
-  titulo: title,
-  data_inicio: date,
-  tipo: getApiTypeFromCategory(category),
-});
+const eventFields = {
+  title: 'titulo',
+  description: 'descricao',
+  date: 'data_inicio',
+  endDate: 'data_fim',
+  startTime: 'hora_inicio',
+  endTime: 'hora_fim',
+  allDay: 'dia_inteiro',
+  important: 'importante',
+  location: 'local',
+  color: 'cor',
+};
+
+const serializeEvento = (evento) => {
+  const payload = {};
+
+  for (const [field, apiField] of Object.entries(eventFields)) {
+    if (Object.hasOwn(evento, field)) payload[apiField] = evento[field];
+    else if (Object.hasOwn(evento, apiField)) payload[apiField] = evento[apiField];
+  }
+
+  if (Object.hasOwn(evento, 'category')) payload.tipo = getApiTypeFromCategory(evento.category);
+  else if (Object.hasOwn(evento, 'tipo')) payload.tipo = evento.tipo;
+
+  return payload;
+};
 
 export const listEventos = async ({ signal, token } = {}) => {
   const eventos = await request('/eventos', { signal, token });
@@ -56,7 +87,7 @@ export const createEvento = async (evento, { token } = {}) => {
 
 export const updateEvento = async (evento, { token } = {}) => {
   const updatedEvento = await request(`/eventos/${encodeURIComponent(evento.id)}`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: serializeEvento(evento),
     token,
   });

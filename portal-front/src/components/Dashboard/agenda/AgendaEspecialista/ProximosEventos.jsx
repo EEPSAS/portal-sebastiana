@@ -30,14 +30,27 @@ const ProximosEventos = ({
       {mutationError && <p role="alert" style={{ color: '#b91c1c', fontSize: '12px', margin: 0 }}>{mutationError.message}</p>}
       {loading && listedEvents.length === 0 ? null : listedEvents.length > 0 ? listedEvents.map((event) => {
         const category = getCategory(event.category);
-        const isSelected = selectedDate === event.date;
+        const eventColor = event.color || category.color;
+        const isSelected = selectedDate >= event.date && selectedDate <= (event.endDate || event.date);
+        const dateFormatter = new Intl.DateTimeFormat('pt-BR');
+        const dateLabel = event.endDate && event.endDate !== event.date
+          ? `${dateFormatter.format(new Date(`${event.date}T00:00:00`))} - ${dateFormatter.format(new Date(`${event.endDate}T00:00:00`))}`
+          : dateFormatter.format(new Date(`${event.date}T00:00:00`));
+        const eventDetails = [
+          event.allDay ? 'Dia inteiro' : [event.startTime, event.endTime].filter(Boolean).join(' - '),
+          event.location,
+          event.important ? 'Data importante' : null,
+        ].filter(Boolean).join(' • ');
+
         return (
-          <div key={event.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', border: isSelected ? `2px solid ${category.color}` : '1px solid #e2e8f0', borderRadius: '10px', background: '#fff', padding: '6px' }}>
+          <div key={event.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', border: isSelected ? `2px solid ${eventColor}` : '1px solid #e2e8f0', borderRadius: '10px', background: '#fff', padding: '6px' }}>
             <button type="button" onClick={() => onSelectEvent(event)} aria-pressed={isSelected} style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0, textAlign: 'left', border: 0, background: 'transparent', padding: '2px', cursor: 'pointer' }}>
-              <span style={{ width: '32px', height: '32px', borderRadius: '6px', background: category.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '14px', flexShrink: 0 }}>{category.icon}</span>
+              <span style={{ width: '32px', height: '32px', borderRadius: '6px', background: eventColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '14px', flexShrink: 0 }}>{category.icon}</span>
               <span style={{ minWidth: 0 }}>
                 <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', fontWeight: '700', color: '#0f172a' }}>{event.title}</strong>
-                <span style={{ fontSize: '11px', color: '#64748b' }}>{category.eventLabel} • {new Intl.DateTimeFormat('pt-BR').format(new Date(`${event.date}T00:00:00`))}</span>
+                <span style={{ display: 'block', fontSize: '11px', color: '#64748b' }}>{category.eventLabel} • {dateLabel}</span>
+                {event.description && <span title={event.description} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '10px', color: '#64748b' }}>{event.description}</span>}
+                {eventDetails && <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '10px', color: '#64748b' }}>{eventDetails}</span>}
               </span>
             </button>
             {event.isCustom && (

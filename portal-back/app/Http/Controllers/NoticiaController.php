@@ -23,7 +23,7 @@ class NoticiaController extends Controller
             ->limit(5)
             ->get();
 
-        return response()->json($noticias, 200);
+        return response()->json(\App\Http\Resources\NoticiaResource::collection($noticias), 200);
     }
 
     // Salva uma nova noticia no banco
@@ -43,7 +43,7 @@ class NoticiaController extends Controller
 
         $noticia->load('autor:id,name');
 
-        return response()->json($noticia, 201);
+        return response()->json(new \App\Http\Resources\NoticiaResource($noticia), 201);
     }
 
     // Exibe os detalhes de uma noticia especifica
@@ -51,7 +51,7 @@ class NoticiaController extends Controller
     {
         $noticia->load('autor:id,name');
 
-        return response()->json($noticia, 200);
+        return response()->json(new \App\Http\Resources\NoticiaResource($noticia), 200);
     }
 
     // Atualiza os dados de uma noticia existente
@@ -71,7 +71,7 @@ class NoticiaController extends Controller
 
         $noticia->load('autor:id,name');
 
-        return response()->json($noticia, 200);
+        return response()->json(new \App\Http\Resources\NoticiaResource($noticia), 200);
     }
 
     // Remove uma noticia do sistema
