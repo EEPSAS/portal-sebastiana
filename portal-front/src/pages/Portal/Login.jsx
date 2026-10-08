@@ -1,11 +1,44 @@
+import { useState } from "react";
 import { useNavigate } from "react-router";
+import { login, register, startDemoSession } from "../../services/portalApi";
 
 const LoginSection = () => {
   const navigate = useNavigate();
+  const [modoCadastro, setModoCadastro] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState('');
+  const [formulario, setFormulario] = useState({ nome: '', email: '', senha: '', confirmacaoSenha: '' });
 
-  const handleSubmit = (event) => {
+  const handleEntradaDesenvolvedor = () => {
+    startDemoSession();
+    navigate('/dashboard/biblioteca', { replace: true });
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    navigate("/dashboard");
+    setErro('');
+    setEnviando(true);
+
+    try {
+      if (modoCadastro) {
+        await register({
+          name: formulario.nome,
+          email: formulario.email,
+          password: formulario.senha,
+          password_confirmation: formulario.confirmacaoSenha
+        });
+      } else {
+        await login({ email: formulario.email, password: formulario.senha });
+      }
+
+      navigate('/dashboard/biblioteca', { replace: true });
+    } catch (error) {
+      setErro(error.status === 401
+        ? `${error.message} No primeiro acesso, selecione "Criar conta".`
+        : error.message);
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
@@ -20,57 +53,64 @@ const LoginSection = () => {
                 
                 {/* Cabeçalho do Formulário (Adicionado para Padrão de Mercado) */}
                 <div className="text-center mb-4">
-                  <h2 className="fw-bold text-dark mb-2">Título do Formulário</h2>
-                  <p className="text-secondary small">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                  </p>
+                  <h2 className="fw-bold text-dark mb-2">{modoCadastro ? 'Criar conta' : 'Entrar no portal'}</h2>
+                  <p className="text-secondary small mb-0">Acesse sua biblioteca e seus planos de estudo.</p>
                 </div>
 
-                {/* Formulário Original Preservado e Estilizado */}
                 <form onSubmit={handleSubmit}>
-                  <div className="mb-4">
-                    <label htmlFor="exampleInputEmail1" className="form-label fw-medium text-dark">
-                      Email address
-                    </label>
-                    <input 
-                      type="email" 
-                      className="form-control form-control-lg bg-light border-0 shadow-none" 
-                      id="exampleInputEmail1" 
-                      aria-describedby="emailHelp" 
-                    />
-                    <div id="emailHelp" className="form-text small text-muted">
-                      We'll never share your email with anyone else.
+                  {modoCadastro && (
+                    <div className="mb-3">
+                      <label htmlFor="nome" className="form-label fw-medium text-dark">Nome</label>
+                      <input id="nome" name="nome" type="text" className="form-control form-control-lg bg-light border-0 shadow-none" value={formulario.nome} onChange={(event) => setFormulario({ ...formulario, nome: event.target.value })} autoComplete="name" required />
                     </div>
+                  )}
+
+                  <div className="mb-3">
+                    <label htmlFor="email" className="form-label fw-medium text-dark">E-mail</label>
+                    <input id="email" name="email" type="email" className="form-control form-control-lg bg-light border-0 shadow-none" value={formulario.email} onChange={(event) => setFormulario({ ...formulario, email: event.target.value })} autoComplete="email" required />
                   </div>
                   
-                  <div className="mb-4">
-                    <label htmlFor="exampleInputPassword1" className="form-label fw-medium text-dark">
-                      Password
-                    </label>
-                    <input 
-                      type="password" 
-                      className="form-control form-control-lg bg-light border-0 shadow-none" 
-                      id="exampleInputPassword1" 
-                    />
+                  <div className="mb-3">
+                    <label htmlFor="senha" className="form-label fw-medium text-dark">Senha</label>
+                    <input id="senha" name="senha" type="password" className="form-control form-control-lg bg-light border-0 shadow-none" value={formulario.senha} onChange={(event) => setFormulario({ ...formulario, senha: event.target.value })} autoComplete={modoCadastro ? 'new-password' : 'current-password'} minLength={modoCadastro ? 8 : undefined} required />
                   </div>
+
+                  {modoCadastro && (
+                    <div className="mb-3">
+                      <label htmlFor="confirmacao-senha" className="form-label fw-medium text-dark">Confirmar senha</label>
+                      <input id="confirmacao-senha" name="confirmacaoSenha" type="password" className="form-control form-control-lg bg-light border-0 shadow-none" value={formulario.confirmacaoSenha} onChange={(event) => setFormulario({ ...formulario, confirmacaoSenha: event.target.value })} autoComplete="new-password" minLength={8} required />
+                    </div>
+                  )}
+
+                  {erro && <div className="alert alert-danger py-2" role="alert" style={{ fontSize: '13px' }}>{erro}</div>}
                   
-                  <div className="mb-4 form-check d-flex align-items-center">
-                    <input 
-                      type="checkbox" 
-                      className="form-check-input mt-0 me-2 shadow-none" 
-                      id="exampleCheck1" 
-                    />
-                    <label className="form-check-label text-secondary" htmlFor="exampleCheck1">
-                      Check me out
-                    </label>
-                  </div>
-                  
-                  <div className="d-grid mt-5">
-                    <button type="submit" className="btn btn-primary btn-lg fw-semibold py-3 shadow-sm">
-                      Submit
+                  <div className="d-grid mt-4">
+                    <button type="submit" className="btn btn-primary btn-lg fw-semibold py-3 shadow-sm" disabled={enviando}>
+                      {enviando ? 'Aguarde...' : modoCadastro ? 'Criar conta' : 'Entrar'}
                     </button>
                   </div>
                 </form>
+
+                <div className="text-center mt-3">
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 text-decoration-none"
+                    onClick={() => setModoCadastro((valorAtual) => !valorAtual)}
+                  >
+                    {modoCadastro ? 'Já tenho conta. Entrar' : 'Ainda não tenho conta. Criar conta'}
+                  </button>
+                </div>
+
+                {import.meta.env.DEV && (
+                  <button
+                    type="button"
+                    onClick={handleEntradaDesenvolvedor}
+                    className="btn w-100 text-white fw-bold mb-3 mt-2"
+                    style={{ backgroundColor: '#e6007e', border: 'none', borderRadius: '8px' }}
+                  >
+                    Entrar (Modo Dev) 🚀
+                  </button>
+                )}
 
               </div>
             </div>

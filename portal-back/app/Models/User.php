@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -27,8 +28,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
-            'role'              => UserRole::class,
+            'password' => 'hashed',
+            'role' => UserRole::class,
         ];
     }
 
@@ -64,5 +65,10 @@ class User extends Authenticatable
     public function eventos(): HasMany
     {
         return $this->hasMany(Evento::class, 'criador_id');
+    }
+
+    public function biblioteca(): HasOne
+    {
+        return $this->hasOne(Biblioteca::class);
     }
 }

@@ -1,11 +1,13 @@
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import UsuarioAside from "../../components/Dashboard/navegacao-padrao/aside-padrao";
 import EspecialistaAside from "../../components/Dashboard/navegacao-especialista/aside-especialista";
 import Panel from "../../components/Dashboard/panel";
 import Header from "../../components/Dashboard/Header";
 
 const DashboardLayout = ({ role = "padrao", userName = "Maria Silva", userPhoto }) => {
+	const location = useLocation();
 	const isUsuario = role === "padrao";
+	const isBiblioteca = location.pathname === "/dashboard/biblioteca";
 	const Aside = isUsuario ? UsuarioAside : EspecialistaAside;
 	const roleLabel = isUsuario ? "Usuário Padrão" : "Especialista";
 
@@ -13,7 +15,7 @@ const DashboardLayout = ({ role = "padrao", userName = "Maria Silva", userPhoto 
 		<div className="dashboard-shell d-flex">
 			<Aside />
 			<div className="dashboard-content flex-grow-1 d-flex flex-column">
-				<Header userName={userName} role={roleLabel} userPhoto={userPhoto} />
+				{!isBiblioteca && <Header userName={userName} role={roleLabel} userPhoto={userPhoto} />}
 				<Panel>
 					<Outlet />
 				</Panel>
