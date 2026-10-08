@@ -201,7 +201,7 @@ const CalendarioSection = () => {
   const selectedTasks = tasks.filter((task) => task.date === selectedDate);
 
   return (
-    <section style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
+    <section id="calendario" style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
       <div style={{
         position: 'relative', borderRadius: '16px', overflow: 'hidden',
         backgroundImage: 'linear-gradient(to right, rgba(255, 255, 255, 0.85) 30%, rgba(255, 255, 255, 0.2) 100%), url("/assets/escola.jpg")',
