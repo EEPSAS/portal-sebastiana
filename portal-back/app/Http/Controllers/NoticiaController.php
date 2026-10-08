@@ -6,8 +6,10 @@ use App\Http\Requests\StoreNoticiaRequest;
 use App\Http\Requests\UpdateNoticiaRequest;
 use App\Models\Noticia;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Controller responsável pela gestão e publicação de notícias e comunicados.
 class NoticiaController extends Controller
 {
     // Lista todas as noticias cadastradas
@@ -21,7 +23,7 @@ class NoticiaController extends Controller
             ->limit(5)
             ->get();
 
-        return response()->json($noticias, 200);
+        return response()->json(\App\Http\Resources\NoticiaResource::collection($noticias), 200);
     }
 
     // Salva uma nova noticia no banco
@@ -30,6 +32,7 @@ class NoticiaController extends Controller
         $noticia = DB::transaction(function () use ($request): Noticia {
             $data = $request->validated();
             $data['autor_id'] = $request->user()->id;
+            $data['descricao'] = $data['descricao'] ?? substr(strip_tags($data['conteudo'] ?? ''), 0, 150);
 
             if ($data['destaque'] ?? false) {
                 Noticia::where('destaque', true)->update(['destaque' => false]);
@@ -39,7 +42,8 @@ class NoticiaController extends Controller
         });
 
         $noticia->load('autor:id,name');
-        return response()->json($noticia, 201);
+
+        return response()->json(new \App\Http\Resources\NoticiaResource($noticia), 201);
     }
 
     // Exibe os detalhes de uma noticia especifica
@@ -47,7 +51,7 @@ class NoticiaController extends Controller
     {
         $noticia->load('autor:id,name');
 
-        return response()->json($noticia, 200);
+        return response()->json(new \App\Http\Resources\NoticiaResource($noticia), 200);
     }
 
     // Atualiza os dados de uma noticia existente
@@ -66,13 +70,19 @@ class NoticiaController extends Controller
         });
 
         $noticia->load('autor:id,name');
-        return response()->json($noticia, 200);
+
+        return response()->json(new \App\Http\Resources\NoticiaResource($noticia), 200);
     }
 
     // Remove uma noticia do sistema
-    public function destroy(Noticia $noticia): JsonResponse
+    public function destroy(Request $request, Noticia $noticia): JsonResponse
     {
+        if (! $request->user()?->hasPermissionTo('gerenciar_noticias')) {
+            return response()->json(['message' => 'Não autorizado a remover notícias.'], 403);
+        }
+
         $noticia->delete();
+
         return response()->json(null, 204);
     }
 }

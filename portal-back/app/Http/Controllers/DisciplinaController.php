@@ -9,8 +9,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
+// Controller responsável pela gestão de disciplinas e vínculo com docentes.
 class DisciplinaController extends Controller
 {
+    // Lista as disciplinas cadastradas, com filtro opcional por termo de busca.
     public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', Disciplina::class);
@@ -24,6 +26,7 @@ class DisciplinaController extends Controller
         return response()->json($query->orderBy('nome')->get(), 200);
     }
 
+    // Cria e persiste uma nova disciplina.
     public function store(StoreDisciplinaRequest $request): JsonResponse
     {
         Gate::authorize('create', Disciplina::class);
@@ -33,6 +36,7 @@ class DisciplinaController extends Controller
         return response()->json($disciplina, 201);
     }
 
+    // Exibe os detalhes de uma disciplina e suas turmas associadas.
     public function show(Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('view', $disciplina);
@@ -42,6 +46,7 @@ class DisciplinaController extends Controller
         return response()->json($disciplina, 200);
     }
 
+    // Atualiza os dados cadastrais da disciplina.
     public function update(Request $request, Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('update', $disciplina);
@@ -57,6 +62,7 @@ class DisciplinaController extends Controller
         return response()->json($disciplina, 200);
     }
 
+    // Exclui uma disciplina do sistema.
     public function destroy(Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('delete', $disciplina);
@@ -66,6 +72,7 @@ class DisciplinaController extends Controller
         return response()->json(null, 204);
     }
 
+    // Vincula ou atualiza o professor responsável por uma disciplina em determinada turma.
     public function vincularProfessor(Request $request, Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('update', $disciplina);

@@ -107,6 +107,189 @@ button {
   overflow-x: hidden;
 }
 
+.agenda-especialista-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: sans-serif;
+  container-name: agenda-page;
+  container-type: inline-size;
+}
+
+.agenda-especialista-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(360px, 1fr) 280px;
+  align-items: stretch;
+  gap: 24px;
+  padding: 24px;
+  border: 1px solid #f1f5f9;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.agenda-especialista-calendar {
+  min-width: 0;
+  padding: 0 24px;
+  border-right: 1px solid #f1f5f9;
+  border-left: 1px solid #f1f5f9;
+  container-name: agenda-calendar;
+  container-type: inline-size;
+}
+
+.agenda-calendar-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 58px;
+  margin-bottom: 20px;
+}
+
+.agenda-calendar-month {
+  display: contents;
+}
+
+.agenda-calendar-month-title {
+  display: flex;
+  grid-column: 1;
+  align-items: center;
+  min-width: 0;
+  width: auto;
+  min-height: 58px;
+  margin: 0;
+  color: #1e3a8a;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.agenda-calendar-month-controls {
+  display: flex;
+  grid-column: 2;
+  justify-content: center;
+  gap: 4px;
+}
+
+.agenda-calendar-month-controls button {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #fdf2f8;
+  color: #e6007e;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.agenda-calendar-today {
+  grid-column: 3;
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border: 1px solid #e6007e;
+  border-radius: 20px;
+  background: transparent;
+  color: #e6007e;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.agenda-especialista-events {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  contain: size;
+}
+
+.agenda-especialista-events-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.agenda-especialista-event-list {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+@container agenda-page (max-width: 1100px) {
+  .agenda-especialista-layout {
+    grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.2fr) minmax(210px, 0.9fr);
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .agenda-especialista-calendar {
+    padding: 0 16px;
+  }
+}
+
+@container agenda-calendar (max-width: 420px) {
+  .agenda-calendar-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(58px, auto) auto;
+  }
+
+  .agenda-calendar-month-title {
+    grid-row: 1;
+  }
+
+  .agenda-calendar-month-controls {
+    grid-row: 1;
+  }
+
+  .agenda-calendar-today {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: end;
+  }
+}
+
+@container agenda-page (max-width: 760px) {
+  .agenda-especialista-page {
+    padding: 12px;
+  }
+
+  .agenda-especialista-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 16px;
+  }
+
+  .agenda-especialista-calendar {
+    padding: 20px 0;
+    border: 0;
+    border-top: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .agenda-especialista-events {
+    height: auto;
+    contain: none;
+  }
+
+  .agenda-especialista-event-list {
+    flex: 0 1 auto;
+    overflow: visible;
+  }
+}
+
 /* Avatar e controles das tarefas nas telas de configurações. */
 .settings-profile-avatar {
   width: 76px;

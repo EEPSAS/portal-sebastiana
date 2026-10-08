@@ -30,7 +30,7 @@ return new class extends Migration
         });
     }
 
-    //'categoria', 'titulo', 'descricao','conteudo', 'imagem', 'dataPublicacao','autor_id'
+    // 'categoria', 'titulo', 'descricao','conteudo', 'imagem', 'dataPublicacao','autor_id'
 
     /**
      * Reverse the migrations.

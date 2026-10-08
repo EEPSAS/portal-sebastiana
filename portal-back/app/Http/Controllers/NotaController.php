@@ -11,8 +11,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
+// Controller responsável pelo lançamento oficial de notas, médias e boletim escolar.
 class NotaController extends Controller
 {
+    // Lança oficialmente uma nova nota para o aluno.
     public function lancarNotaOficial(StoreNotaRequest $request): JsonResponse
     {
         Gate::authorize('manage', Nota::class);
@@ -27,6 +29,7 @@ class NotaController extends Controller
         return response()->json($nota->load(['aluno:id,name,email', 'disciplina', 'turma']), 201);
     }
 
+    // Atualiza os dados ou pontuação de uma nota já registrada.
     public function atualizarNota(Request $request, Nota $nota): JsonResponse
     {
         Gate::authorize('manage', Nota::class);
@@ -44,6 +47,7 @@ class NotaController extends Controller
         return response()->json($nota->load(['aluno:id,name,email', 'disciplina', 'turma']), 200);
     }
 
+    // Remove o registro de uma nota.
     public function deletarNota(Nota $nota): JsonResponse
     {
         Gate::authorize('manage', Nota::class);
@@ -53,6 +57,7 @@ class NotaController extends Controller
         return response()->json(null, 204);
     }
 
+    // Calcula a média das notas da turma por período letivo e disciplina.
     public function calcularMediaPeriodo(Request $request): JsonResponse
     {
         Gate::authorize('manage', Nota::class);
@@ -92,6 +97,7 @@ class NotaController extends Controller
         ], 200);
     }
 
+    // Gera e retorna o boletim escolar completo do aluno informado.
     public function gerarBoletim(User $usuario): JsonResponse
     {
         Gate::authorize('manage', Nota::class);
@@ -99,11 +105,13 @@ class NotaController extends Controller
         return response()->json($this->construirBoletim($usuario), 200);
     }
 
+    // Permite ao aluno consultar seu próprio boletim escolar.
     public function consultarNotaPropria(Request $request): JsonResponse
     {
         return response()->json($this->construirBoletim($request->user()), 200);
     }
 
+    // Monta a estrutura de dados agrupada do boletim por disciplina e bimestres.
     private function construirBoletim(User $aluno): array
     {
         $notas = Nota::where('usuario_id', $aluno->id)
