@@ -1,0 +1,876 @@
+/* ==========================================================================
+   PODCAST RADIOATIVIDADE — EEPSAS
+   Nova identidade visual
+   Azul institucional + amarelo editorial + rosa de interação
+   ========================================================================== */
+
+/* ==========================================================================
+   SEÇÃO PRINCIPAL
+   ========================================================================== */
+
+.portal-scope .portal-podcast-section {
+    position: relative;
+    overflow: hidden;
+    padding: var(--portal-section-spacing) 0;
+    border: 0;
+
+    background:
+        radial-gradient(
+            circle at 88% 15%,
+            rgba(235, 194, 0, 0.13),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at 8% 85%,
+            rgba(242, 53, 110, 0.08),
+            transparent 28%
+        ),
+        linear-gradient(
+            135deg,
+            #284477 0%,
+            #2d4b7c 48%,
+            #263f6a 100%
+        );
+}
+
+
+/* ==========================================================================
+   APRESENTAÇÃO
+   ========================================================================== */
+
+.portal-scope .portal-podcast__badge {
+    display: inline-block;
+
+    color: var(--color-yellow);
+    font-size: 0.78rem;
+    font-weight: 800;
+
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+
+    margin-bottom: 0.55rem;
+}
+
+
+.portal-scope .portal-podcast__title {
+    position: relative;
+
+    font-family: inherit;
+    font-size: clamp(2.4rem, 4.5vw, 3.5rem);
+    font-weight: 800;
+
+    color: #ffffff;
+
+    letter-spacing: -0.045em;
+    line-height: 0.98;
+
+    margin: 0.25rem 0 1rem;
+}
+
+
+.portal-scope .portal-podcast__title span {
+    color: var(--color-yellow);
+}
+
+
+/* Linha editorial abaixo do título */
+
+.portal-scope .portal-podcast__title::after {
+    content: "";
+
+    display: block;
+
+    width: 50px;
+    height: 4px;
+
+    margin-top: 1rem;
+
+    border-radius: 99px;
+
+    background: var(--color-yellow);
+}
+
+
+/* Texto principal */
+
+.portal-scope .portal-podcast__lead {
+    max-width: 620px;
+
+    font-size: 1.08rem;
+    font-weight: 700;
+
+    color: #ffffff;
+
+    margin-bottom: 0.7rem;
+}
+
+
+.portal-scope .portal-podcast__desc {
+    max-width: 650px;
+
+    font-size: 0.96rem;
+    line-height: 1.65;
+
+    color: rgba(255, 255, 255, 0.88);
+
+    margin-bottom: 1.55rem;
+}
+
+
+/* ==========================================================================
+   BOTÃO "SAIBA MAIS"
+   ========================================================================== */
+
+.portal-scope .portal-podcast__btn-learn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+
+    padding: 0.6rem 1.35rem;
+
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: var(--portal-radius-pill);
+
+    background: transparent;
+
+    color: #ffffff;
+
+    font-size: 0.88rem;
+    font-weight: 700;
+
+    text-decoration: none;
+
+    margin-bottom: 2.2rem;
+
+    transition:
+        background 0.25s ease,
+        border-color 0.25s ease,
+        color 0.25s ease,
+        transform 0.25s ease;
+}
+
+
+.portal-scope .portal-podcast__btn-learn:hover {
+    background: var(--color-pink);
+    border-color: var(--color-pink);
+
+    color: #ffffff;
+
+    transform: translateY(-2px);
+}
+
+
+/* ==========================================================================
+   TÍTULO DAS CARACTERÍSTICAS
+   ========================================================================== */
+
+.portal-scope .portal-podcast__section-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+
+    font-size: 1rem;
+    font-weight: 700;
+
+    color: #ffffff;
+
+    margin: 1.3rem 0 0.95rem;
+}
+
+
+/* Pequena linha editorial */
+
+.portal-scope .portal-podcast__section-heading::before {
+    content: "";
+
+    width: 4px;
+    height: 18px;
+
+    border-radius: 99px;
+
+    background: var(--color-yellow);
+}
+
+
+/* ==========================================================================
+   CARDS "CONHEÇA A RADIOATIVIDADE"
+   ========================================================================== */
+
+.portal-scope .portal-podcast__features-grid {
+    display: grid;
+
+    grid-template-columns: repeat(4, 1fr);
+
+    gap: 0.75rem;
+}
+
+
+.portal-scope .portal-podcast__feature-card {
+    position: relative;
+
+    overflow: hidden;
+
+    min-height: 145px;
+
+    padding: 1rem 0.7rem;
+
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 14px;
+
+    background: rgba(255, 255, 255, 0.075);
+
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    text-align: center;
+
+    transition:
+        transform 0.25s ease,
+        border-color 0.25s ease,
+        background 0.25s ease;
+}
+
+
+/* Pequeno detalhe amarelo */
+
+.portal-scope .portal-podcast__feature-card::after {
+    content: "";
+
+    position: absolute;
+
+    bottom: 0;
+    left: 50%;
+
+    width: 28px;
+    height: 3px;
+
+    transform: translateX(-50%);
+
+    border-radius: 99px;
+
+    background: var(--color-yellow);
+
+    opacity: 0.75;
+
+    transition:
+        width 0.25s ease,
+        opacity 0.25s ease;
+}
+
+
+.portal-scope .portal-podcast__feature-card:hover {
+    transform: translateY(-4px);
+
+    background: rgba(255, 255, 255, 0.11);
+
+    border-color: rgba(235, 194, 0, 0.4);
+}
+
+
+.portal-scope .portal-podcast__feature-card:hover::after {
+    width: 48px;
+    opacity: 1;
+}
+
+
+/* Ícone */
+
+.portal-scope .portal-podcast__feature-icon {
+    display: block;
+
+    font-size: 1.45rem;
+
+    margin-bottom: 0.45rem;
+
+    filter: grayscale(0.15);
+}
+
+
+/* Título */
+
+.portal-scope .portal-podcast__feature-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+
+    color: #ffffff;
+
+    margin: 0.25rem 0 0.35rem;
+}
+
+
+/* Descrição */
+
+.portal-scope .portal-podcast__feature-desc {
+    font-size: 0.7rem;
+    line-height: 1.4;
+
+    color: rgba(255, 255, 255, 0.78);
+
+    margin: 0;
+}
+
+
+/* ==========================================================================
+   EPISÓDIO EM DESTAQUE
+   ========================================================================== */
+
+/*
+   IMPORTANTE:
+   O antigo card branco foi substituído por um painel translúcido,
+   fazendo com que ele pertença visualmente à seção.
+*/
+
+.portal-scope .portal-podcast__featured-card {
+    position: relative;
+
+    overflow: hidden;
+
+    color: #ffffff;
+
+    padding: 1.8rem;
+
+    margin-bottom: 1.6rem;
+
+    border: 1px solid rgba(255, 255, 255, 0.17);
+    border-radius: 20px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.105),
+            rgba(255, 255, 255, 0.055)
+        );
+
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    box-shadow:
+        0 18px 45px rgba(0, 0, 0, 0.14);
+}
+
+
+/* Brilho amarelo discreto no canto */
+
+.portal-scope .portal-podcast__featured-card::before {
+    content: "";
+
+    position: absolute;
+
+    top: -80px;
+    right: -60px;
+
+    width: 180px;
+    height: 180px;
+
+    border-radius: 50%;
+
+    background: rgba(235, 194, 0, 0.10);
+
+    pointer-events: none;
+}
+
+
+/* Número grande do episódio */
+
+.portal-scope .portal-podcast__featured-card::after {
+    content: "03";
+
+    position: absolute;
+
+    right: 1.2rem;
+    bottom: -0.9rem;
+
+    font-size: 7rem;
+    font-weight: 900;
+
+    line-height: 1;
+
+    color: rgba(255, 255, 255, 0.045);
+
+    pointer-events: none;
+}
+
+
+/* Corrige títulos internos */
+
+.portal-scope .portal-podcast__featured-card h3,
+.portal-scope .portal-podcast__featured-card p {
+    color: inherit;
+}
+
+
+/* Tag */
+
+.portal-scope .portal-podcast__tag {
+    position: relative;
+    z-index: 1;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+
+    font-size: 0.7rem;
+    font-weight: 800;
+
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+
+    color: var(--color-yellow);
+}
+
+
+/* Pequeno marcador antes da tag */
+
+.portal-scope .portal-podcast__tag::before {
+    content: "";
+
+    width: 6px;
+    height: 6px;
+
+    border-radius: 50%;
+
+    background: var(--color-yellow);
+
+    box-shadow:
+        0 0 0 4px rgba(235, 194, 0, 0.12);
+}
+
+
+/* Título do episódio */
+
+.portal-scope .portal-podcast__featured-title {
+    position: relative;
+    z-index: 1;
+
+    max-width: 520px;
+
+    font-size: clamp(1.25rem, 2vw, 1.45rem);
+    font-weight: 800;
+
+    line-height: 1.25;
+
+    margin: 0.7rem 0;
+
+    color: #ffffff;
+}
+
+
+/* Descrição */
+
+.portal-scope .portal-podcast__featured-card > p {
+    position: relative;
+    z-index: 1;
+
+    max-width: 600px;
+
+    font-size: 0.9rem;
+    line-height: 1.6;
+
+    color: rgba(255, 255, 255, 0.82);
+}
+
+
+/* ==========================================================================
+   AÇÕES DO EPISÓDIO
+   ========================================================================== */
+
+.portal-scope .portal-podcast__featured-actions {
+    position: relative;
+    z-index: 2;
+
+    display: flex;
+    align-items: center;
+
+    gap: 0.7rem;
+    flex-wrap: wrap;
+
+    margin-top: 1.25rem;
+}
+
+
+/* Botão principal */
+
+.portal-scope .portal-podcast__btn-listen {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+
+    padding: 0.6rem 1.25rem;
+
+    border: none;
+    border-radius: var(--portal-radius-pill);
+
+    background: var(--color-pink);
+
+    color: #ffffff;
+
+    font-size: 0.85rem;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 8px 22px rgba(242, 53, 110, 0.2);
+
+    transition:
+        transform 0.25s ease,
+        background 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+
+.portal-scope .portal-podcast__btn-listen:hover {
+    background: var(--color-pink-dark);
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 10px 26px rgba(242, 53, 110, 0.28);
+}
+
+
+/* Botão YouTube */
+
+.portal-scope .portal-podcast__btn-youtube {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0.6rem 1.2rem;
+
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: var(--portal-radius-pill);
+
+    background: transparent;
+
+    color: rgba(255, 255, 255, 0.9);
+
+    font-size: 0.84rem;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.25s ease,
+        color 0.25s ease,
+        background 0.25s ease;
+}
+
+
+.portal-scope .portal-podcast__btn-youtube:hover {
+    border-color: var(--color-yellow);
+
+    color: var(--color-yellow);
+
+    background: rgba(235, 194, 0, 0.06);
+}
+
+
+/* ==========================================================================
+   LISTA DE EPISÓDIOS
+   ========================================================================== */
+
+.portal-scope .portal-podcast__episodes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-bottom: 0.9rem;
+}
+
+
+.portal-scope .portal-podcast__episodes-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+
+    font-size: 1rem;
+    font-weight: 700;
+
+    margin: 0;
+
+    color: #ffffff;
+}
+
+
+.portal-scope .portal-podcast__episodes-title::before {
+    content: "";
+
+    width: 4px;
+    height: 18px;
+
+    border-radius: 99px;
+
+    background: var(--color-yellow);
+}
+
+
+/* Lista */
+
+.portal-scope .portal-podcast__episodes-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 0.65rem;
+}
+
+
+/* Item */
+
+.portal-scope .portal-podcast__episode-item {
+    display: flex;
+    align-items: center;
+
+    gap: 0.75rem;
+
+    min-height: 58px;
+
+    padding: 0.65rem 0.8rem;
+
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 12px;
+
+    background: rgba(255, 255, 255, 0.065);
+
+    transition:
+        transform 0.25s ease,
+        border-color 0.25s ease,
+        background 0.25s ease;
+}
+
+
+.portal-scope .portal-podcast__episode-item:hover {
+    transform: translateX(3px);
+
+    border-color: rgba(235, 194, 0, 0.35);
+
+    background: rgba(255, 255, 255, 0.095);
+}
+
+
+/* Informações */
+
+.portal-scope .portal-podcast__episode-info {
+    flex: 1;
+
+    min-width: 0;
+}
+
+
+/* Número/título */
+
+.portal-scope .portal-podcast__episode-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+
+    line-height: 1.35;
+
+    margin: 0;
+
+    color: #ffffff;
+}
+
+
+/* ==========================================================================
+   PLAY — NOVA PALETA
+   ========================================================================== */
+
+/*
+   O verde foi completamente removido.
+   Agora o play usa amarelo + azul.
+*/
+
+.portal-scope .portal-podcast__play-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    width: 37px;
+    height: 37px;
+
+    border: 1px solid rgba(235, 194, 0, 0.25);
+    border-radius: 50%;
+
+    background: rgba(235, 194, 0, 0.12);
+
+    color: var(--color-yellow);
+
+    font-size: 0.82rem;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.25s ease,
+        background 0.25s ease,
+        color 0.25s ease,
+        border-color 0.25s ease;
+}
+
+
+.portal-scope .portal-podcast__play-circle:hover {
+    transform: scale(1.08);
+
+    background: var(--color-yellow);
+
+    border-color: var(--color-yellow);
+
+    color: var(--color-primary);
+}
+
+
+/* ==========================================================================
+   BARRA DE PLATAFORMAS
+   ========================================================================== */
+
+.portal-scope .portal-podcast__platforms-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+    flex-wrap: wrap;
+
+    margin-top: 2.2rem;
+
+    padding: 1rem 1.3rem;
+
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+
+    background: rgba(255, 255, 255, 0.055);
+
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+
+.portal-scope .portal-podcast__platforms-bar * {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+
+/* ==========================================================================
+   RESPONSIVIDADE — TABLET
+   ========================================================================== */
+
+@media (max-width: 991.98px) {
+
+    .portal-scope .portal-podcast__features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .portal-scope .portal-podcast__featured-card {
+        margin-top: 1.5rem;
+    }
+
+}
+
+
+/* ==========================================================================
+   RESPONSIVIDADE — CELULAR
+   ========================================================================== */
+
+@media (max-width: 575.98px) {
+
+    .portal-scope .portal-podcast-section {
+        padding: 3rem 0;
+    }
+
+
+    .portal-scope .portal-podcast__title {
+        font-size: 2.35rem;
+    }
+
+
+    .portal-scope .portal-podcast__desc {
+        font-size: 0.9rem;
+    }
+
+
+    .portal-scope .portal-podcast__features-grid {
+        grid-template-columns: repeat(2, 1fr);
+
+        gap: 0.6rem;
+    }
+
+
+    .portal-scope .portal-podcast__feature-card {
+        min-height: 135px;
+
+        padding: 0.85rem 0.55rem;
+    }
+
+
+    .portal-scope .portal-podcast__feature-title {
+        font-size: 0.78rem;
+    }
+
+
+    .portal-scope .portal-podcast__feature-desc {
+        font-size: 0.66rem;
+    }
+
+
+    .portal-scope .portal-podcast__featured-card {
+        padding: 1.35rem;
+
+        border-radius: 17px;
+    }
+
+
+    .portal-scope .portal-podcast__featured-card::after {
+        font-size: 5rem;
+
+        right: 0.5rem;
+        bottom: -0.4rem;
+    }
+
+
+    .portal-scope .portal-podcast__featured-title {
+        font-size: 1.2rem;
+    }
+
+
+    .portal-scope .portal-podcast__featured-actions {
+        align-items: stretch;
+
+        flex-direction: column;
+    }
+
+
+    .portal-scope .portal-podcast__btn-listen,
+    .portal-scope .portal-podcast__btn-youtube {
+        width: 100%;
+    }
+
+
+    .portal-scope .portal-podcast__platforms-bar {
+        flex-direction: column;
+
+        align-items: flex-start;
+
+        padding: 1rem;
+    }
+
+}
+
+
+/* ==========================================================================
+   ACESSIBILIDADE — REDUÇÃO DE MOVIMENTO
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .portal-scope .portal-podcast__feature-card,
+    .portal-scope .portal-podcast__episode-item,
+    .portal-scope .portal-podcast__play-circle,
+    .portal-scope .portal-podcast__btn-listen,
+    .portal-scope .portal-podcast__btn-learn {
+        transition: none;
+    }
+
+}

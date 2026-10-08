@@ -14,7 +14,7 @@ const categorias = [
 
 const NoticiasSection = () => {
   const [categoriaAtiva, setCategoriaAtiva] = useState(null);
-  const { noticias: noticiasApi, loading, error } = useNoticias();
+  const { noticias: noticiasApi, loading } = useNoticias();
 
   const list = (!loading && noticiasApi && noticiasApi.length > 0)
     ? noticiasApi
