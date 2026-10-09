@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BibliotecaController;
 use App\Http\Controllers\DisciplinaController;
 use App\Http\Controllers\EmprestimoController;
+use App\Http\Controllers\EspecialistaDashboardController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\FrequenciaController;
 use App\Http\Controllers\LivroController;
@@ -15,7 +16,6 @@ use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\RemessaDocenteController;
 use App\Http\Controllers\SubmissaoController;
 use App\Http\Controllers\TurmaController;
-use App\Http\Controllers\UsuarioController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -72,6 +72,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/turmas/{turma}/disciplinas', [TurmaController::class, 'vincularDisciplina']);
     Route::delete('/turmas/{turma}/disciplinas/{disciplina}', [TurmaController::class, 'desvincularDisciplina']);
     Route::apiResource('turmas', TurmaController::class);
+
+    // Dashboard do Especialista (Inteligência Acadêmica e Gestão Pedagógica)
+    Route::post('/turmas/{turma_id}/importar-relatorio', [EspecialistaDashboardController::class, 'importarRelatorio']);
+    Route::get('/turmas/{turma_id}/resumo-gerencial', [EspecialistaDashboardController::class, 'resumoGerencial']);
+    Route::get('/turmas/{turma_id}/desempenho-componentes', [EspecialistaDashboardController::class, 'desempenhoComponentes']);
+    Route::get('/turmas/{turma_id}/alunos-criticos', [EspecialistaDashboardController::class, 'alunosCriticos']);
+    Route::get('/turmas/{turma_id}/disciplinas/{disciplina_id}/analise-detalhada', [EspecialistaDashboardController::class, 'analiseDetalhada']);
+    Route::get('/turmas/{turma_id}/disciplinas/{disciplina_id}/alunos-risco', [EspecialistaDashboardController::class, 'alunosRisco']);
 
     // Módulo Acadêmico: Disciplinas
     Route::post('/disciplinas/{disciplina}/vincular-professor', [DisciplinaController::class, 'vincularProfessor']);
