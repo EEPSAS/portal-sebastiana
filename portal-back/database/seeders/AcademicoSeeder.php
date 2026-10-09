@@ -20,60 +20,76 @@ class AcademicoSeeder extends Seeder
     public function run(): void
     {
         // 1. Turmas
-        $turma1A = Turma::create([
-            'nome_identificador' => '1º Ano A - Ensino Médio',
-            'turno' => 'Matutino',
-            'ano_letivo' => 2026,
-            'capacidade_maxima' => 40,
-            'status' => 'Ativa',
-        ]);
+        $turma1A = Turma::updateOrCreate(
+            ['nome_identificador' => '1º Ano A - Ensino Médio'],
+            [
+                'turno' => 'Matutino',
+                'ano_letivo' => 2026,
+                'capacidade_maxima' => 40,
+                'status' => 'Ativa',
+            ]
+        );
 
-        $turma2B = Turma::create([
-            'nome_identificador' => '2º Ano B - Ensino Médio',
-            'turno' => 'Vespertino',
-            'ano_letivo' => 2026,
-            'capacidade_maxima' => 35,
-            'status' => 'Ativa',
-        ]);
+        $turma2B = Turma::updateOrCreate(
+            ['nome_identificador' => '2º Ano B - Ensino Médio'],
+            [
+                'turno' => 'Vespertino',
+                'ano_letivo' => 2026,
+                'capacidade_maxima' => 35,
+                'status' => 'Ativa',
+            ]
+        );
 
-        $turma3A = Turma::create([
-            'nome_identificador' => '3º Ano A - Informática Integrado',
-            'turno' => 'Integral',
-            'ano_letivo' => 2026,
-            'capacidade_maxima' => 35,
-            'status' => 'Ativa',
-        ]);
+        $turma3A = Turma::updateOrCreate(
+            ['nome_identificador' => '3º Ano A - Informática Integrado'],
+            [
+                'turno' => 'Integral',
+                'ano_letivo' => 2026,
+                'capacidade_maxima' => 35,
+                'status' => 'Ativa',
+            ]
+        );
 
         // 2. Disciplinas
-        $discMat = Disciplina::create([
-            'nome' => 'Matemática',
-            'carga_horaria_anual' => 120,
-            'descricao' => 'Álgebra, geometria analítica, trigonometria e funções matemáticas.',
-        ]);
+        $discMat = Disciplina::updateOrCreate(
+            ['nome' => 'Matemática'],
+            [
+                'carga_horaria_anual' => 120,
+                'descricao' => 'Álgebra, geometria analítica, trigonometria e funções matemáticas.',
+            ]
+        );
 
-        $discPort = Disciplina::create([
-            'nome' => 'Língua Portuguesa e Literatura',
-            'carga_horaria_anual' => 120,
-            'descricao' => 'Interpretação textual, produção dissertativa e análise de obras literárias.',
-        ]);
+        $discPort = Disciplina::updateOrCreate(
+            ['nome' => 'Língua Portuguesa e Literatura'],
+            [
+                'carga_horaria_anual' => 120,
+                'descricao' => 'Interpretação textual, produção dissertativa e análise de obras literárias.',
+            ]
+        );
 
-        $discFis = Disciplina::create([
-            'nome' => 'Física',
-            'carga_horaria_anual' => 80,
-            'descricao' => 'Mecânica clássica, leis de Newton, óptica geométrica e termodinâmica.',
-        ]);
+        $discFis = Disciplina::updateOrCreate(
+            ['nome' => 'Física'],
+            [
+                'carga_horaria_anual' => 80,
+                'descricao' => 'Mecânica clássica, leis de Newton, óptica geométrica e termodinâmica.',
+            ]
+        );
 
-        $discHist = Disciplina::create([
-            'nome' => 'História Geral e do Brasil',
-            'carga_horaria_anual' => 80,
-            'descricao' => 'História contemporânea, formação social e econômica do Brasil.',
-        ]);
+        $discHist = Disciplina::updateOrCreate(
+            ['nome' => 'História Geral e do Brasil'],
+            [
+                'carga_horaria_anual' => 80,
+                'descricao' => 'História contemporânea, formação social e econômica do Brasil.',
+            ]
+        );
 
-        $discDev = Disciplina::create([
-            'nome' => 'Desenvolvimento de Aplicações Web',
-            'carga_horaria_anual' => 100,
-            'descricao' => 'Arquitetura MVC, REST APIs em Laravel, bancos relacionais e interfaces modernas.',
-        ]);
+        $discDev = Disciplina::updateOrCreate(
+            ['nome' => 'Desenvolvimento de Aplicações Web'],
+            [
+                'carga_horaria_anual' => 100,
+                'descricao' => 'Arquitetura MVC, REST APIs em Laravel, bancos relacionais e interfaces modernas.',
+            ]
+        );
 
         // 3. Professores
         $profCarlos = User::where('email', 'carlos.silva@sebastiana.edu.br')->first();
@@ -82,19 +98,19 @@ class AcademicoSeeder extends Seeder
 
         // 4. Vinculações (TurmaDisciplina)
         if ($profCarlos) {
-            TurmaDisciplina::create(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discMat->id_disciplina, 'professor_id' => $profCarlos->id]);
-            TurmaDisciplina::create(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discFis->id_disciplina, 'professor_id' => $profCarlos->id]);
-            TurmaDisciplina::create(['turma_id' => $turma3A->id_turma, 'disciplina_id' => $discDev->id_disciplina, 'professor_id' => $profCarlos->id]);
+            TurmaDisciplina::firstOrCreate(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discMat->id_disciplina, 'professor_id' => $profCarlos->id]);
+            TurmaDisciplina::firstOrCreate(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discFis->id_disciplina, 'professor_id' => $profCarlos->id]);
+            TurmaDisciplina::firstOrCreate(['turma_id' => $turma3A->id_turma, 'disciplina_id' => $discDev->id_disciplina, 'professor_id' => $profCarlos->id]);
         }
 
         if ($profaMarina) {
-            TurmaDisciplina::create(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discPort->id_disciplina, 'professor_id' => $profaMarina->id]);
-            TurmaDisciplina::create(['turma_id' => $turma3A->id_turma, 'disciplina_id' => $discPort->id_disciplina, 'professor_id' => $profaMarina->id]);
+            TurmaDisciplina::firstOrCreate(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discPort->id_disciplina, 'professor_id' => $profaMarina->id]);
+            TurmaDisciplina::firstOrCreate(['turma_id' => $turma3A->id_turma, 'disciplina_id' => $discPort->id_disciplina, 'professor_id' => $profaMarina->id]);
         }
 
         if ($profLucas) {
-            TurmaDisciplina::create(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discHist->id_disciplina, 'professor_id' => $profLucas->id]);
-            TurmaDisciplina::create(['turma_id' => $turma2B->id_turma, 'disciplina_id' => $discHist->id_disciplina, 'professor_id' => $profLucas->id]);
+            TurmaDisciplina::firstOrCreate(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discHist->id_disciplina, 'professor_id' => $profLucas->id]);
+            TurmaDisciplina::firstOrCreate(['turma_id' => $turma2B->id_turma, 'disciplina_id' => $discHist->id_disciplina, 'professor_id' => $profLucas->id]);
         }
 
         // 5. Alunos e Matrículas
@@ -107,47 +123,57 @@ class AcademicoSeeder extends Seeder
 
         $alunosTurma1A = array_filter([$yasmin, $pedro, $beatriz, $gabriel]);
         foreach ($alunosTurma1A as $aluno) {
-            Matricula::create([
-                'turma_id' => $turma1A->id_turma,
-                'usuario_id' => $aluno->id,
-                'data_matricula' => '2026-02-01',
-                'status_matricula' => 'Ativo',
-            ]);
+            Matricula::firstOrCreate(
+                ['turma_id' => $turma1A->id_turma, 'usuario_id' => $aluno->id],
+                [
+                    'data_matricula' => '2026-02-01',
+                    'status_matricula' => 'Ativo',
+                ]
+            );
         }
 
         $alunosTurma3A = array_filter([$camila, $lucasR]);
         foreach ($alunosTurma3A as $aluno) {
-            Matricula::create([
-                'turma_id' => $turma3A->id_turma,
-                'usuario_id' => $aluno->id,
-                'data_matricula' => '2026-02-01',
-                'status_matricula' => 'Ativo',
-            ]);
+            Matricula::firstOrCreate(
+                ['turma_id' => $turma3A->id_turma, 'usuario_id' => $aluno->id],
+                [
+                    'data_matricula' => '2026-02-01',
+                    'status_matricula' => 'Ativo',
+                ]
+            );
         }
 
         // 6. Remessa Docente
         if ($profCarlos) {
-            $remessa = RemessaDocente::create([
-                'professor_id' => $profCarlos->id,
-                'turma_id' => $turma1A->id_turma,
-                'disciplina_id' => $discMat->id_disciplina,
-                'tipo_dado' => 'Frequência',
-                'arquivo_anexo' => 'remessas/chamada_fevereiro_carlos.pdf',
-                'data_envio' => now()->subDays(15),
-                'status_processamento' => 'Anexado',
-                'observacoes' => 'Chamada de Fevereiro lançada com êxito.',
-            ]);
+            RemessaDocente::firstOrCreate(
+                [
+                    'professor_id' => $profCarlos->id,
+                    'turma_id' => $turma1A->id_turma,
+                    'disciplina_id' => $discMat->id_disciplina,
+                    'tipo_dado' => 'Frequência',
+                ],
+                [
+                    'arquivo_anexo' => 'remessas/chamada_fevereiro_carlos.pdf',
+                    'data_envio' => now()->subDays(15),
+                    'status_processamento' => 'Anexado',
+                    'observacoes' => 'Chamada de Fevereiro lançada com êxito.',
+                ]
+            );
 
-            RemessaDocente::create([
-                'professor_id' => $profCarlos->id,
-                'turma_id' => $turma1A->id_turma,
-                'disciplina_id' => $discFis->id_disciplina,
-                'tipo_dado' => 'Notas',
-                'arquivo_anexo' => 'remessas/notas_lab_fisica.xlsx',
-                'data_envio' => now()->subDay(),
-                'status_processamento' => 'Pendente',
-                'observacoes' => 'Notas das práticas laboratoriais de Física.',
-            ]);
+            RemessaDocente::firstOrCreate(
+                [
+                    'professor_id' => $profCarlos->id,
+                    'turma_id' => $turma1A->id_turma,
+                    'disciplina_id' => $discFis->id_disciplina,
+                    'tipo_dado' => 'Notas',
+                ],
+                [
+                    'arquivo_anexo' => 'remessas/notas_lab_fisica.xlsx',
+                    'data_envio' => now()->subDay(),
+                    'status_processamento' => 'Pendente',
+                    'observacoes' => 'Notas das práticas laboratoriais de Física.',
+                ]
+            );
         }
 
         // 7. Frequências (para alunos da Turma 1A em Matemática e Português)
@@ -156,27 +182,35 @@ class AcademicoSeeder extends Seeder
             foreach ($alunosTurma1A as $aluno) {
                 // Matemática
                 $presencaMat = ($aluno->email === 'beatriz.lima@sebastiana.edu.br' && $idx === 2) ? 'Falta' : 'Presente';
-                Frequencia::create([
-                    'turma_id' => $turma1A->id_turma,
-                    'disciplina_id' => $discMat->id_disciplina,
-                    'usuario_id' => $aluno->id,
-                    'data_aula' => $dataAula,
-                    'quantidade_aulas' => 2,
-                    'status_presenca' => $presencaMat,
-                    'remessa_origem_id' => null,
-                ]);
+                Frequencia::updateOrCreate(
+                    [
+                        'turma_id' => $turma1A->id_turma,
+                        'disciplina_id' => $discMat->id_disciplina,
+                        'usuario_id' => $aluno->id,
+                        'data_aula' => $dataAula,
+                    ],
+                    [
+                        'quantidade_aulas' => 2,
+                        'status_presenca' => $presencaMat,
+                        'remessa_origem_id' => null,
+                    ]
+                );
 
                 // Língua Portuguesa
                 $presencaPort = ($aluno->email === 'pedro.santos@sebastiana.edu.br' && $idx === 3) ? 'Falta Justificada' : 'Presente';
-                Frequencia::create([
-                    'turma_id' => $turma1A->id_turma,
-                    'disciplina_id' => $discPort->id_disciplina,
-                    'usuario_id' => $aluno->id,
-                    'data_aula' => $dataAula,
-                    'quantidade_aulas' => 2,
-                    'status_presenca' => $presencaPort,
-                    'justificativa' => $presencaPort === 'Falta Justificada' ? 'Consulta Odontológica' : null,
-                ]);
+                Frequencia::updateOrCreate(
+                    [
+                        'turma_id' => $turma1A->id_turma,
+                        'disciplina_id' => $discPort->id_disciplina,
+                        'usuario_id' => $aluno->id,
+                        'data_aula' => $dataAula,
+                    ],
+                    [
+                        'quantidade_aulas' => 2,
+                        'status_presenca' => $presencaPort,
+                        'justificativa' => $presencaPort === 'Falta Justificada' ? 'Consulta Odontológica' : null,
+                    ]
+                );
             }
         }
 
@@ -220,28 +254,36 @@ class AcademicoSeeder extends Seeder
 
                 foreach ($periodos as $periodo => $valores) {
                     // Avaliação 1: Prova Bimestral
-                    Nota::create([
-                        'turma_id' => $turma1A->id_turma,
-                        'disciplina_id' => $disciplinaId,
-                        'usuario_id' => $user->id,
-                        'periodo_letivo' => $periodo,
-                        'tipo_avaliacao' => 'Prova Bimestral',
-                        'valor_nota' => $valores[0],
-                        'valor_maximo' => 10.0,
-                        'data_registro' => now()->format('Y-m-d'),
-                    ]);
+                    Nota::updateOrCreate(
+                        [
+                            'turma_id' => $turma1A->id_turma,
+                            'disciplina_id' => $disciplinaId,
+                            'usuario_id' => $user->id,
+                            'periodo_letivo' => $periodo,
+                            'tipo_avaliacao' => 'Prova Bimestral',
+                        ],
+                        [
+                            'valor_nota' => $valores[0],
+                            'valor_maximo' => 10.0,
+                            'data_registro' => now()->format('Y-m-d'),
+                        ]
+                    );
 
                     // Avaliação 2: Trabalho em Grupo
-                    Nota::create([
-                        'turma_id' => $turma1A->id_turma,
-                        'disciplina_id' => $disciplinaId,
-                        'usuario_id' => $user->id,
-                        'periodo_letivo' => $periodo,
-                        'tipo_avaliacao' => 'Trabalho em Grupo',
-                        'valor_nota' => $valores[1],
-                        'valor_maximo' => 10.0,
-                        'data_registro' => now()->format('Y-m-d'),
-                    ]);
+                    Nota::updateOrCreate(
+                        [
+                            'turma_id' => $turma1A->id_turma,
+                            'disciplina_id' => $disciplinaId,
+                            'usuario_id' => $user->id,
+                            'periodo_letivo' => $periodo,
+                            'tipo_avaliacao' => 'Trabalho em Grupo',
+                        ],
+                        [
+                            'valor_nota' => $valores[1],
+                            'valor_maximo' => 10.0,
+                            'data_registro' => now()->format('Y-m-d'),
+                        ]
+                    );
                 }
             }
         }

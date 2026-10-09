@@ -18,7 +18,8 @@ class NoticiaFactory extends Factory
      */
     public function definition(): array
     {
-        $categoria = fake()->sentence(2);
+        $categoria = fake()->randomElement(['Acadêmico', 'Biblioteca', 'Eventos', 'Geral', 'Esportes']);
+        $data = fake()->dateTimeThisYear();
 
         return [
             'categoria' => $categoria,
@@ -27,8 +28,16 @@ class NoticiaFactory extends Factory
             'conteudo' => fake()->paragraphs(3, true),
             'imagem' => 'https://placehold.co/800x600?text=' . urlencode("Notícia: {$categoria}"),
             'miniatura' => 'https://placehold.co/400x300?text=' . urlencode("Miniatura: {$categoria}"),
-            'dataPublicacao' => fake()->dateTimeThisYear(),
-            'autor_id' => User::factory(),
+            'dataPublicacao' => $data,
+            'destaque' => false,
+            'autor_id' => User::factory()->adm(),
         ];
+    }
+
+    public function destaque(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'destaque' => true,
+        ]);
     }
 }

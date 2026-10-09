@@ -34,15 +34,23 @@ test('testa autenticacao com usuarios povoados', function () {
         'password' => 'password',
     ]);
     $respProf->assertOk()
+        ->assertJsonPath('user.role', 'professor');
+
+    // 4. Login como Especialista
+    $respEsp = $this->postJson('/api/auth/login', [
+        'email' => 'clara.mendes@sebastiana.edu.br',
+        'password' => 'password',
+    ]);
+    $respEsp->assertOk()
         ->assertJsonPath('user.role', 'especialista');
 
-    // 4. Login como Aluna Yasmin
+    // 5. Login como Aluna Yasmin
     $respAluna = $this->postJson('/api/auth/login', [
         'email' => 'yasmin.teixeira@sebastiana.edu.br',
         'password' => 'password',
     ]);
     $respAluna->assertOk()
-        ->assertJsonPath('user.role', 'padrao');
+        ->assertJsonPath('user.role', 'aluno');
 });
 
 test('testa rotas publicas de noticias e biblioteca', function () {

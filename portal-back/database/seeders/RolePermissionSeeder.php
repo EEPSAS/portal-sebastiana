@@ -234,6 +234,18 @@ class RolePermissionSeeder extends Seeder
             'ativo' => true,
         ]);
 
+        User::where('email', 'bibliotecaria@sebastiana.edu.br')->update([
+            'role_id' => $roles['bibliotecaria']->id,
+            'role' => 'bibliotecaria',
+            'ativo' => true,
+        ]);
+
+        User::where('email', 'clara.mendes@sebastiana.edu.br')->update([
+            'role_id' => $especialistaRole->id,
+            'role' => 'especialista',
+            'ativo' => true,
+        ]);
+
         User::where('role', 'especialista')->whereNull('role_id')->update([
             'role_id' => $especialistaRole->id,
             'ativo' => true,
