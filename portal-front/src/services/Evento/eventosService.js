@@ -1,4 +1,4 @@
-import { getApiTypeFromCategory, getCategoryFromApiType } from '../../components/Dashboard/agenda/AgendaEspecialista/agendaConfig';
+import { getApiTypeFromCategory, getCategoryFromApiType } from '../../components/Dashboard/agenda/agendaConfig';
 import { api } from '../api';
 
 const request = async (path, { method = 'GET', body, signal, token } = {}) => {

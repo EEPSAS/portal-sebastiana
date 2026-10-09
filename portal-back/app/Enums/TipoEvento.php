@@ -30,7 +30,7 @@ enum TipoEvento: string
         }
 
         return match (strtolower(trim($value))) {
-            'eventos', 'evento' => self::EVENTOS,
+            'eventos', 'evento', 'reuniao', 'reunião', 'reunioes', 'reuniões' => self::EVENTOS,
             'provas e trabalhos', 'provas_e_trabalhos', 'provas', 'prova' => self::PROVAS_E_TRABALHOS,
             'datas comemorativas', 'datas_comemorativas', 'data comemorativa', 'data_importante' => self::DATAS_COMEMORATIVAS,
             'feriados e recessos', 'feriados_e_recessos', 'feriados', 'feriado' => self::FERIADOS_E_RECESSOS,

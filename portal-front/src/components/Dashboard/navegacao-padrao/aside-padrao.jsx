@@ -2,8 +2,8 @@ import { NavLink, Link } from "react-router"
 
 const navigationItems = [
   { label: "Geral", path: "/dashboard/geral", icon: "bi-house-door-fill" },
+  { label: "Boletim", path: "/dashboard/boletim", icon: "bi-journal-check" },
   { label: "Biblioteca", path: "/dashboard/biblioteca", icon: "bi-book" },
-  { label: "Turmas", path: "/dashboard/turmas", icon: "bi-people-fill" },
   { label: "Agenda", path: "/dashboard/agenda", icon: "bi-calendar-event" },
 ]
 
@@ -38,11 +38,6 @@ const Aside = () => {
           <NavLink className={navigationLinkClass} to="/dashboard/configuracoes">
             <i className="bi bi-gear me-3 fs-5"></i> Configurações
           </NavLink>
-        </li>
-        <li className="nav-item">
-          <Link className="nav-link link-dark d-flex align-items-center fw-semibold" to="/">
-            <i className="bi bi-box-arrow-right me-3 fs-5 text-primary"></i> Sair
-          </Link>
         </li>
       </ul>
     </aside>

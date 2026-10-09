@@ -45,21 +45,36 @@ const mensagemErroYouTube = (error) => {
   return mensagens[error.code] ?? 'Não foi possível carregar o vídeo. Tente novamente.';
 };
 
+const MOCK_LIVROS = [
+  { id: 1, titulo: 'Dom Casmurro', autor: 'Machado de Assis', status: 'Disponível', nota: '4.8', imagem: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80', comentarios: [{ nome: 'João Santos', texto: 'Uma leitura emocionante que faz pensar sobre a realidade dos personagens.', nota: 5, data: '14/09/2026' }, { nome: 'Beatriz Costa', texto: 'Gostei muito da narrativa e recomendo para a turma.', nota: 4, data: '10/09/2026' }] },
+  { id: 2, titulo: 'O Cortiço', autor: 'Aluísio Azevedo', status: 'Emprestado', aluno: 'João Silva', nota: '4.4', imagem: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80', comentarios: [] },
+  { id: 3, titulo: 'Vidas Secas', autor: 'Graciliano Ramos', status: 'Disponível', nota: '4.6', imagem: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&q=80', comentarios: [] },
+  { id: 4, titulo: 'Capitães da Areia', autor: 'Jorge Amado', status: 'Disponível', nota: '4.7', imagem: 'https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=400&q=80', comentarios: [] }
+];
+
+const MOCK_PLANOS = [
+  { id: 1, nome: 'Geopolítica para o ENEM', disciplina: 'Geografia', livroIds: [1, 2], apostilaIds: [1], ativo: true },
+  { id: 2, nome: 'Inglês Básico: Gramática', disciplina: 'Inglês', livroIds: [1], apostilaIds: [], ativo: false },
+  { id: 3, nome: 'Intensivo de Exatas', disciplina: 'Matemática', livroIds: [], apostilaIds: [1, 2, 3], ativo: false }
+];
+
+const MOCK_APOSTILAS = [
+  { id: 1, titulo: 'Apostila Completa de Funções — 1º Ano', materia: 'Matemática', descricao: 'Conteúdo de apoio e exercícios de funções.', topico: 'Funções', tipo: 'Apostila', nivel: '1º ano', autor: 'Equipe pedagógica', corBadge: '#e0f2fe', corTexto: '#0284c7' },
+  { id: 2, titulo: 'Resumo Ilustrado de Brasil Colônia', materia: 'História', descricao: 'Resumo dos principais períodos e acontecimentos.', topico: 'Brasil Colônia', tipo: 'Resumo', nivel: 'Ensino médio', autor: 'Equipe pedagógica', corBadge: '#fef3c7', corTexto: '#b45309' },
+  { id: 3, titulo: 'Manual de Redação ENEM', materia: 'Redação', descricao: 'Orientações para estruturar e revisar textos dissertativos.', topico: 'Redação dissertativa', tipo: 'Manual', nivel: 'ENEM', autor: 'Equipe pedagógica', corBadge: '#ffe4e6', corTexto: '#e11d48' }
+];
+
 export default function BibliotecaPadrao() {
   const navigate = useNavigate();
   const [abaAtiva, setAbaAtiva] = useState('acervo');
   const [busca, setBusca] = useState('');
-  const [menuAbasAberto, setMenuAbasAberto] = useState(false);
 
   // NOTIFICAÇÕES E EXCLUSÃO GERAL
   const [notificacao, setNotificacao] = useState(null);
-  const [notificacoes, setNotificacoes] = useState([]);
-  const [painelNotificacoesAberto, setPainelNotificacoesAberto] = useState(false);
   const [itemParaExcluir, setItemParaExcluir] = useState(null);
 
   const dispararAviso = (msg) => {
     setNotificacao(msg);
-    setNotificacoes(prev => [{ id: Date.now(), mensagem: msg, criadaEm: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), lida: false }, ...prev].slice(0, 20));
     setTimeout(() => setNotificacao(null), 3500);
   };
 
@@ -92,30 +107,17 @@ export default function BibliotecaPadrao() {
   const corDestaque = PALETA_CORES[1]?.hex ?? '#e6007e';
 
   // 1. ACERVO DE LIVROS
-  const [livros, setLivros] = useState([
-    { id: 1, titulo: 'Dom Casmurro', autor: 'Machado de Assis', status: 'Disponível', nota: '4.8', imagem: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80', comentarios: [{ nome: 'João Santos', texto: 'Uma leitura emocionante que faz pensar sobre a realidade dos personagens.', nota: 5, data: '14/09/2026' }, { nome: 'Beatriz Costa', texto: 'Gostei muito da narrativa e recomendo para a turma.', nota: 4, data: '10/09/2026' }] },
-    { id: 2, titulo: 'O Cortiço', autor: 'Aluísio Azevedo', status: 'Emprestado', aluno: 'João Silva', nota: '4.4', imagem: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80', comentarios: [] },
-    { id: 3, titulo: 'Vidas Secas', autor: 'Graciliano Ramos', status: 'Disponível', nota: '4.6', imagem: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&q=80', comentarios: [] },
-    { id: 4, titulo: 'Capitães da Areia', autor: 'Jorge Amado', status: 'Disponível', nota: '4.7', imagem: 'https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=400&q=80', comentarios: [] }
-  ]);
+  const [livros, setLivros] = useState(MOCK_LIVROS);
 
   // 2. PLANOS DE ESTUDOS (Visual da Coluna Direita do Layout da Colega)
-  const [planos, setPlanos] = useState([
-    { id: 1, nome: 'Geopolítica para o ENEM', disciplina: 'Geografia', livroIds: [1, 2], apostilaIds: [1], ativo: true },
-    { id: 2, nome: 'Inglês Básico: Gramática', disciplina: 'Inglês', livroIds: [1], apostilaIds: [], ativo: false },
-    { id: 3, nome: 'Intensivo de Exatas', disciplina: 'Matemática', livroIds: [], apostilaIds: [1, 2, 3], ativo: false }
-  ]);
+  const [planos, setPlanos] = useState(MOCK_PLANOS);
   const [novoPlano, setNovoPlano] = useState({ nome: '', disciplina: 'Matemática' });
 
   // 3. VIDEOAULAS
   const [videoaulas, setVideoaulas] = useState([]);
 
   // 4. APOSTILAS
-  const [apostilas, setApostilas] = useState([
-    { id: 1, titulo: 'Apostila Completa de Funções — 1º Ano', materia: 'Matemática', descricao: 'Conteúdo de apoio e exercícios de funções.', topico: 'Funções', tipo: 'Apostila', nivel: '1º ano', autor: 'Equipe pedagógica', corBadge: '#e0f2fe', corTexto: '#0284c7' },
-    { id: 2, titulo: 'Resumo Ilustrado de Brasil Colônia', materia: 'História', descricao: 'Resumo dos principais períodos e acontecimentos.', topico: 'Brasil Colônia', tipo: 'Resumo', nivel: 'Ensino médio', autor: 'Equipe pedagógica', corBadge: '#fef3c7', corTexto: '#b45309' },
-    { id: 3, titulo: 'Manual de Redação ENEM', materia: 'Redação', descricao: 'Orientações para estruturar e revisar textos dissertativos.', topico: 'Redação dissertativa', tipo: 'Manual', nivel: 'ENEM', autor: 'Equipe pedagógica', corBadge: '#ffe4e6', corTexto: '#e11d48' }
-  ]);
+  const [apostilas, setApostilas] = useState(MOCK_APOSTILAS);
 
   // LÓGICA DE EXCLUSÃO (Sem alertas)
   const executarExclusao = () => {
@@ -304,7 +306,6 @@ export default function BibliotecaPadrao() {
   const selecionarAba = (id) => {
     setAbaAtiva(id);
     setBusca('');
-    setMenuAbasAberto(false);
   };
 
   const termoBusca = normalizarTexto(busca.trim());
@@ -313,7 +314,6 @@ export default function BibliotecaPadrao() {
   const livrosFiltrados = livros.filter(livro => correspondeBusca(livro.titulo, livro.autor));
   const planosFiltrados = planos.filter(plano => correspondeBusca(plano.nome, plano.disciplina));
   const apostilasFiltradas = apostilas.filter(apostila => correspondeBusca(apostila.titulo, apostila.materia, apostila.descricao, apostila.topico, apostila.tipo, apostila.nivel, apostila.autor));
-  const notificacoesNaoLidas = notificacoes.filter(item => !item.lida).length;
   const tentarCarregarBiblioteca = () => {
     setCarregandoBiblioteca(true);
     setErroCarregamento('');
@@ -331,12 +331,13 @@ export default function BibliotecaPadrao() {
     loadBiblioteca({ signal: controller.signal })
       .then(({ dados }) => {
         if (dados) {
-          setLivros(dados.livros ?? []);
-          setPlanos((dados.planos ?? []).map(plano => ({ ...plano, livroIds: plano.livroIds ?? [], apostilaIds: plano.apostilaIds ?? [] })));
+          setLivros(dados.livros && dados.livros.length > 0 ? dados.livros : MOCK_LIVROS);
+          setPlanos((dados.planos && dados.planos.length > 0 ? dados.planos : MOCK_PLANOS).map(plano => ({ ...plano, livroIds: plano.livroIds ?? [], apostilaIds: plano.apostilaIds ?? [] })));
           setVideoaulas(dados.videoaulas ?? []);
-          setApostilas(dados.apostilas ?? []);
+          setApostilas(dados.apostilas && dados.apostilas.length > 0 ? dados.apostilas : MOCK_APOSTILAS);
         }
         setBibliotecaCarregada(true);
+        setErroCarregamento('');
       })
       .catch(error => {
         if (error.name === 'AbortError') return;
@@ -344,7 +345,10 @@ export default function BibliotecaPadrao() {
           navigate('/login', { replace: true });
           return;
         }
-        setErroCarregamento('Não foi possível carregar sua biblioteca. Verifique a conexão e tente novamente.');
+        setLivros(prev => (prev && prev.length > 0 ? prev : MOCK_LIVROS));
+        setPlanos(prev => (prev && prev.length > 0 ? prev : MOCK_PLANOS));
+        setApostilas(prev => (prev && prev.length > 0 ? prev : MOCK_APOSTILAS));
+        setErroCarregamento('Problemas de Conexão, tente novamente mais tarde');
       })
       .finally(() => {
         if (!controller.signal.aborted) setCarregandoBiblioteca(false);
@@ -388,141 +392,31 @@ export default function BibliotecaPadrao() {
     return <div className="container py-5 text-center text-muted" role="status">Carregando sua biblioteca...</div>;
   }
 
-  if (erroCarregamento) {
-    return (
-      <div className="container py-5 text-center">
-        <p className="text-danger">{erroCarregamento}</p>
-        <button type="button" className="btn btn-primary" onClick={tentarCarregarBiblioteca}>Tentar novamente</button>
-      </div>
-    );
-  }
-
-  return (    <>
-      <header 
-        className="d-flex justify-content-between align-items-center p-3 bg-white shadow-sm" 
-        style={{ borderBottom: '1px solid #f1f5f9', zIndex: 10 }}
-      >
-        
-        {/* LADO ESQUERDO: Menu Hambúrguer + Título */}
-        <div className="d-flex align-items-center gap-3 position-relative">
-          {/* Botão de 3 barrinhas */}
+  return (
+    <div className="position-relative">
+      {/* AVISO DE PROBLEMAS DE CONEXÃO */}
+      {erroCarregamento && (
+        <div 
+          className="alert alert-warning d-flex justify-content-between align-items-center mb-4 shadow-sm" 
+          role="alert"
+          style={{ borderRadius: '12px', borderLeft: '5px solid #f59e0b', backgroundColor: '#fffbeb', borderColor: '#fde68a' }}
+        >
+          <div className="d-flex align-items-center gap-2">
+            <span style={{ fontSize: '18px' }}>⚠️</span>
+            <span className="fw-semibold" style={{ color: '#92400e', fontSize: '14px' }}>
+              {erroCarregamento}
+            </span>
+          </div>
           <button 
-            type="button"
-            className="btn btn-light d-flex align-items-center justify-content-center" 
-            style={{ width: '40px', height: '40px', border: 'none', fontSize: '20px', backgroundColor: 'transparent' }}
-            title="Menu"
-            aria-label="Abrir seções da biblioteca"
-            aria-expanded={menuAbasAberto}
-            onClick={() => setMenuAbasAberto(aberto => !aberto)}
+            type="button" 
+            className="btn btn-sm btn-outline-dark" 
+            onClick={tentarCarregarBiblioteca}
+            style={{ fontSize: '12px', fontWeight: '600' }}
           >
-            ☰
+            Tentar novamente
           </button>
-
-          {menuAbasAberto && (
-            <div className="position-absolute bg-white rounded-3 shadow border p-2" style={{ top: '46px', left: 0, width: '220px', zIndex: 20 }} role="menu">
-              {ABAS_BIBLIOTECA.map(aba => (
-                <button
-                  key={aba.id}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => selecionarAba(aba.id)}
-                  className={`btn btn-sm w-100 text-start ${abaAtiva === aba.id ? 'fw-bold text-primary' : 'text-dark'}`}
-                >
-                  {aba.label}
-                </button>
-              ))}
-            </div>
-          )}
-          
-          <h4 className="m-0 fw-bold" style={{ fontSize: '18px', color: '#0f172a' }}>
-            Painel de Controle
-          </h4>
         </div>
-
-        {/* LADO DIREITO: Barra de Pesquisa + Avatar (sem nome) */}
-        <div className="d-flex align-items-center gap-2 gap-md-3">
-          
-          {/* Campo de Pesquisa do Cabeçalho */}
-          <div className="position-relative">
-            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '14px' }}>
-              🔍
-            </span>
-            <input 
-              type="text" 
-              className="form-control rounded-pill ps-5 py-2" 
-              placeholder={`Pesquisar ${ABAS_BIBLIOTECA.find(aba => aba.id === abaAtiva)?.label.toLowerCase() ?? 'biblioteca'}...`}
-              value={busca}
-              onChange={(event) => setBusca(event.target.value)}
-              aria-label={`Pesquisar em ${ABAS_BIBLIOTECA.find(aba => aba.id === abaAtiva)?.label ?? 'biblioteca'}`}
-              style={{ fontSize: '13px', borderColor: '#e2e8f0', width: 'min(42vw, 280px)', backgroundColor: '#f8fafc' }}
-            />
-          </div>
-
-          {estadoSalvamento && (
-            <span className={`d-none d-lg-inline small ${estadoSalvamento === 'erro' ? 'text-danger' : 'text-muted'}`} role="status">
-              {estadoSalvamento === 'salvando' ? 'Salvando...' : estadoSalvamento === 'salvo' ? 'Salvo' : 'Falha ao salvar'}
-            </span>
-          )}
-          {estadoSalvamento === 'erro' && (
-            <button type="button" className="btn btn-sm btn-link p-0" onClick={() => setTentativaSalvamento(valor => valor + 1)}>Tentar salvar</button>
-          )}
-
-          <div className="position-relative">
-            <button
-              type="button"
-              className="btn btn-light rounded-circle d-flex align-items-center justify-content-center position-relative"
-              style={{ width: '40px', height: '40px', color: '#475569' }}
-              title="Notificações"
-              aria-label={`Notificações${notificacoesNaoLidas ? `, ${notificacoesNaoLidas} não lidas` : ''}`}
-              aria-expanded={painelNotificacoesAberto}
-              onClick={() => {
-                const abrir = !painelNotificacoesAberto;
-                setPainelNotificacoesAberto(abrir);
-                if (abrir) setNotificacoes(prev => prev.map(item => ({ ...item, lida: true })));
-              }}
-            >
-              <i className="bi bi-bell" aria-hidden="true" />
-              {notificacoesNaoLidas > 0 && <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">{notificacoesNaoLidas}</span>}
-            </button>
-
-            {painelNotificacoesAberto && (
-              <div className="position-absolute end-0 bg-white rounded-3 shadow border p-3" style={{ top: '48px', width: 'min(320px, 85vw)', zIndex: 20 }}>
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <strong style={{ fontSize: '14px' }}>Notificações</strong>
-                  <button type="button" className="btn btn-sm btn-link p-0 text-decoration-none" onClick={() => setPainelNotificacoesAberto(false)} aria-label="Fechar notificações">Fechar</button>
-                </div>
-                {notificacoes.length === 0 ? (
-                  <p className="text-muted mb-0" style={{ fontSize: '12px' }}>Nenhum aviso por enquanto.</p>
-                ) : (
-                  <div className="d-flex flex-column gap-2" style={{ maxHeight: '260px', overflowY: 'auto' }}>
-                    {notificacoes.map(item => (
-                      <div key={item.id} className="border-bottom pb-2">
-                        <p className="mb-1" style={{ fontSize: '12px' }}>{item.mensagem}</p>
-                        <small className="text-muted">{item.criadaEm}</small>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Avatar do Usuário (Somente a bolinha, sem texto) */}
-          <div 
-            className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" 
-            style={{ width: '40px', height: '40px', backgroundColor: '#dbeafe', color: '#2563eb', cursor: 'pointer' }}
-            title="Perfil"
-          >
-            {/* Ícone genérico de usuário usando SVG */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3Zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
-            </svg>
-          </div>
-
-        </div>
-      </header>
-
-      <section className="container-fluid p-4 bg-light min-vh-100 position-relative">
+      )}
       
       {/* TOAST NOTIFICAÇÃO */}
       {notificacao && (
@@ -533,9 +427,37 @@ export default function BibliotecaPadrao() {
 
       {/* GERENCIADOR */}
       <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
-        <h2 className="fw-bold mb-4" style={{ color: corDestaque, fontSize: '22px' }}>
-          Gerenciar Biblioteca
-        </h2>
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+          <h2 className="fw-bold mb-0" style={{ color: corDestaque, fontSize: '22px' }}>
+            Gerenciar Biblioteca
+          </h2>
+
+          <div className="d-flex align-items-center gap-3">
+            <div className="position-relative">
+              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '14px' }}>
+                🔍
+              </span>
+              <input 
+                type="text" 
+                className="form-control rounded-pill ps-5 py-2" 
+                placeholder={`Pesquisar ${ABAS_BIBLIOTECA.find(aba => aba.id === abaAtiva)?.label.toLowerCase() ?? 'biblioteca'}...`}
+                value={busca}
+                onChange={(event) => setBusca(event.target.value)}
+                aria-label={`Pesquisar em ${ABAS_BIBLIOTECA.find(aba => aba.id === abaAtiva)?.label ?? 'biblioteca'}`}
+                style={{ fontSize: '13px', borderColor: '#e2e8f0', width: 'min(70vw, 280px)', backgroundColor: '#f8fafc' }}
+              />
+            </div>
+
+            {estadoSalvamento && (
+              <span className={`d-none d-sm-inline small ${estadoSalvamento === 'erro' ? 'text-danger' : 'text-muted'}`} role="status">
+                {estadoSalvamento === 'salvando' ? 'Salvando...' : estadoSalvamento === 'salvo' ? 'Salvo' : 'Falha ao salvar'}
+              </span>
+            )}
+            {estadoSalvamento === 'erro' && (
+              <button type="button" className="btn btn-sm btn-link p-0" onClick={() => setTentativaSalvamento(valor => valor + 1)}>Tentar salvar</button>
+            )}
+          </div>
+        </div>
 
         {/* NAVEGAÇÃO */}
         <div className="d-flex gap-4 border-bottom pb-2 mb-4" style={{ fontSize: '14px' }}>
@@ -938,7 +860,6 @@ export default function BibliotecaPadrao() {
       {/* MODAL COMENTÁRIOS LIVRO */}
       <DetalheLivroModal livro={livroSelecionado} aberto={modalDetalhesAberto} onClose={() => setModalDetalhesAberto(false)} onAddComment={adicionarComentario} />
 
-    </section>
-  </>
+    </div>
   );
 }

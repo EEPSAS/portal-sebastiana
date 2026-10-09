@@ -16,9 +16,14 @@ class AuthController extends Controller
     {
         // Valida os dados de entrada (requer confirmação do campo 'password' via 'password_confirmation')
         $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', 'min:8'],
         ]);
+
+        if (empty($validated['name'])) {
+            $validated['name'] = strstr($validated['email'], '@', true) ?: 'Usuário';
+        }
 
         // Garante que todo novo registro seja criado exclusivamente como perfil padrão
         $validated['role'] = UserRole::PADRAO;
@@ -49,12 +54,12 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // Bloqueio de usuário inativado
-        if (! $user->ativo) {
-            return response()->json([
-                'message' => 'Usuário bloqueado pelo administrador. Acesso negado.',
-            ], 403);
-        }
+        /** Bloqueio de usuário inativado
+        *if (! $user->ativo) {
+        *    return response()->json([
+        *        'message' => 'Usuário bloqueado pelo administrador. Acesso negado.',
+        *    ], 403);
+        *} */
 
         // Retorna o token de acesso com status HTTP 200 (OK)
         return $this->tokenResponse($user);

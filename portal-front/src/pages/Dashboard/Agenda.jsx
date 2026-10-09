@@ -1,4 +1,4 @@
-import AgendaEspecialista from "../../components/Dashboard/agenda/AgendaEspecialista";
+import AgendaEspecialista from "../../components/Dashboard/agenda";
 
 
 const AgendaPage = () => {

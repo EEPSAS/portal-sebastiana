@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TipoEvento;
 use Database\Factories\EventoFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,8 +44,20 @@ class Evento extends Model
             'data_fim' => 'date:Y-m-d',
             'dia_inteiro' => 'boolean',
             'importante' => 'boolean',
-            'tipo' => TipoEvento::class,
         ];
+    }
+
+    // Cast resiliente para o tipo de evento garantindo compatibilidade com valores legados
+    protected function tipo(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $value instanceof TipoEvento
+                ? $value
+                : (TipoEvento::tryFromLoose($value) ?? TipoEvento::tryFrom($value) ?? TipoEvento::EVENTOS),
+            set: fn ($value) => $value instanceof TipoEvento
+                ? $value->value
+                : (TipoEvento::tryFromLoose($value)?->value ?? TipoEvento::tryFrom($value)?->value ?? TipoEvento::EVENTOS->value),
+        );
     }
 
     // Relacionamento com o usuario autor do evento (FK: criador_id)

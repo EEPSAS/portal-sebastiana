@@ -1,17 +1,17 @@
 import { Navigate } from "react-router";
-import TurmaEspecialista from "../../components/Dashboard/turmas";
+import Boletim from "../../components/Dashboard/boletim";
 import { useAuth } from "../../hooks/useAuth";
 
-const TurmaPage = () => {
+const BoletimPage = () => {
   const { user } = useAuth();
   const role = user?.role || "padrao";
   const isEspecialista = role === "especialista" || role === "adm";
 
-  if (!isEspecialista) {
+  if (isEspecialista) {
     return <Navigate to="/dashboard/geral" replace />;
   }
 
-  return <TurmaEspecialista />;
+  return <Boletim />;
 };
 
-export default TurmaPage;
+export default BoletimPage;

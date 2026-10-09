@@ -13,7 +13,7 @@ const Header = ({
     if (onLogout) {
       await onLogout();
     }
-    navigate("/login", { replace: true });
+    navigate("/", { replace: true });
   };
 
   return (

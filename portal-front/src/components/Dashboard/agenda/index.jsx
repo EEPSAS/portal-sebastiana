@@ -4,9 +4,9 @@ import Categorias from './Categorias';
 import ProximosEventos from './ProximosEventos';
 import CadastroEventoModal from './CadastroEventoModal';
 import { categoryOptions } from './agendaConfig';
-import { useEventoModal } from '../../../../hooks/useEventoModal';
-import { useEventoMutations } from '../../../../hooks/useEventoMutations';
-import { useEventos } from '../../../../hooks/useEventos';
+import { useEventoModal } from '../../../hooks/useEventoModal';
+import { useEventoMutations } from '../../../hooks/useEventoMutations';
+import { useEventos } from '../../../hooks/useEventos';
 import {
   createImportantDates,
   formatDateKey,

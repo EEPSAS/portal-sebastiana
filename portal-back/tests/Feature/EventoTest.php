@@ -290,6 +290,14 @@ test('validates and accepts all TipoEvento enum options and normalizes loose val
     ]);
     $respLooseFeriado->assertCreated()
         ->assertJsonPath('tipo', TipoEvento::FERIADOS_E_RECESSOS->value);
+
+    $respLooseReuniao = $this->actingAs($admin, 'sanctum')->postJson('/api/eventos', [
+        'titulo' => 'Teste Loose Reunião',
+        'data_inicio' => '2026-11-28',
+        'tipo' => 'reuniao',
+    ]);
+    $respLooseReuniao->assertCreated()
+        ->assertJsonPath('tipo', TipoEvento::EVENTOS->value);
 });
 
 test('can filter calendar events by month, year, type and fetch important dates', function () {
