@@ -1,10 +1,21 @@
 import React from "react";
+import { useNavigate } from "react-router";
 
 const Header = ({
   userName = "Maria Silva",
   role = "Padrão",
-  userPhoto
+  userPhoto,
+  onLogout,
 }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    if (onLogout) {
+      await onLogout();
+    }
+    navigate("/login", { replace: true });
+  };
+
   return (
     <header className="dashboard-header bg-white shadow-sm d-flex align-items-center justify-content-between px-4 py-2 mb-3">
       <div className="d-flex align-items-center">
@@ -33,6 +44,15 @@ const Header = ({
             </div>
           )}
         </div>
+        {onLogout && (
+          <button
+            className="btn btn-outline-secondary btn-sm"
+            onClick={handleLogout}
+            title="Sair"
+          >
+            <i className="bi bi-box-arrow-right"></i> Sair
+          </button>
+        )}
       </div>
     </header>
   );

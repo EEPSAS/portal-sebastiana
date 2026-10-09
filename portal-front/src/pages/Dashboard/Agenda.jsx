@@ -1,7 +1,8 @@
-import AgendaPadrao from "../../components/Dashboard/agenda/agendapadrao";
+import AgendaEspecialista from "../../components/Dashboard/agenda/AgendaEspecialista";
+
 
 const AgendaPage = () => {
-  return <AgendaPadrao />;
+  return <AgendaEspecialista />;
 };
 
 export default AgendaPage;

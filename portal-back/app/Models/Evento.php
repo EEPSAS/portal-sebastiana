@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\TipoEvento;
 use Database\Factories\EventoFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Model que representa os eventos do calendário escolar.
 class Evento extends Model
 {
     /** @use HasFactory<EventoFactory> */
@@ -41,6 +43,7 @@ class Evento extends Model
             'data_fim' => 'date:Y-m-d',
             'dia_inteiro' => 'boolean',
             'importante' => 'boolean',
+            'tipo' => TipoEvento::class,
         ];
     }
 

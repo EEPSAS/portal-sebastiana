@@ -1,224 +1,734 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Montserrat:wght@400;500;600;700&display=swap');
+/* ==========================================================================
+   NOTÍCIAS — EEPSAS
+   Editorial • contemporâneo • jovem • acolhedor
+   Paleta: azul + rosa + amarelo + branco
+   ========================================================================== */
 
-:root {
-	--noticias-ink: #18294f;
-	--noticias-muted: #263864;
-	--noticias-pill: #687593;
-	--noticias-pink: rgba(247, 184, 221, 0.5);
-	--noticias-paper: #fffefe;
+
+/* ==========================================================================
+   SEÇÃO PRINCIPAL
+   ========================================================================== */
+
+.portal-scope .noticias-section {
+  position: relative;
+  overflow: hidden;
+
+  padding: clamp(4.5rem, 7vw, 6.5rem) 0;
+
+  background: #ffffff;
+  border: 0;
 }
 
-.noticias-section {
-	position: relative;
-	isolation: isolate;
-	overflow: hidden;
-	padding: 4.5rem 0 5.5rem;
-	color: var(--noticias-ink);
-	background: #f8f8fa;
-	font-family: 'Montserrat', sans-serif;
+.portal-scope .noticias-section::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.86) 0%,
+      rgba(255, 255, 255, 0.74) 36%,
+      rgba(255, 255, 255, 0.66) 100%
+    ),
+    url('/img/journal.png') center center / cover no-repeat;
+
+  z-index: 0;
 }
 
-.noticias-section::before {
-	position: absolute;
-	z-index: -1;
-	inset: 7rem 8% 4rem;
-	content: '';
-	background: radial-gradient(ellipse at 50% 35%, var(--noticias-pink) 0%, rgba(247, 184, 221, 0.2) 34%, rgba(247, 184, 221, 0) 72%);
-	pointer-events: none;
+.portal-scope .noticias-section > .container,
+.portal-scope .noticias-section > .container * {
+  position: relative;
+  z-index: 1;
 }
 
-.noticias-section .container {
-	position: relative;
-	z-index: 1;
+/* ==========================================================================
+   CABEÇALHO
+   ========================================================================== */
+
+.portal-scope .noticias-section .noticias-title {
+  position: relative;
+
+  margin: 0;
+
+  color: var(--color-primary);
+
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  font-weight: 800;
+
+  line-height: 0.98;
+  letter-spacing: -0.055em;
 }
 
-.noticias-title,
-.noticias-subtitle,
-.noticias-card h3 {
-	color: var(--noticias-ink);
-	font-family: 'Cormorant Garamond', Georgia, serif;
-	font-weight: 600;
+
+/* Etiqueta editorial */
+
+.portal-scope .noticias-section .noticias-title::before {
+  content: "FIQUE POR DENTRO";
+
+  display: block;
+
+  margin-bottom: 0.75rem;
+
+  color: var(--color-pink);
+
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+
+  letter-spacing: 0.14em;
 }
 
-.noticias-title {
-	margin: 0;
-	font-size: clamp(3.1rem, 6vw, 5rem);
-	line-height: 0.9;
+
+/* Linha rosa + amarela */
+
+.portal-scope .noticias-section .noticias-title::after {
+  content: "";
+
+  display: block;
+
+  width: 58px;
+  height: 5px;
+
+  margin-top: 1rem;
+
+  background:
+    linear-gradient(
+      90deg,
+      var(--color-pink) 0 70%,
+      var(--color-yellow) 70% 100%
+    );
+
+  border-radius: var(--portal-radius-pill);
 }
 
-.noticias-subtitle {
-	margin: 0.15rem 0 2.2rem;
-	font-size: clamp(1.65rem, 3vw, 2.35rem);
-	line-height: 1;
+
+.portal-scope .noticias-section .noticias-subtitle {
+  max-width: 600px;
+
+  margin: 0.9rem 0 2.3rem;
+
+  color: var(--color-text-secondary);
+
+  font-size: clamp(0.98rem, 1.5vw, 1.1rem);
+  font-weight: 400;
+  line-height: 1.6;
+
+  letter-spacing: -0.015em;
 }
 
-.category-nav {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	gap: 3.5rem;
-	margin-bottom: 1.15rem;
+
+/* ==========================================================================
+   FILTROS / CATEGORIAS
+   ========================================================================== */
+
+.portal-scope .noticias-section .category-nav {
+  position: relative;
+  z-index: 10;
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+
+  gap: 0.7rem;
+
+  margin-bottom: 2.4rem;
 }
 
-.category-control {
-	border: 0;
-	border-radius: 0.65rem;
-	padding: 0.48rem 1rem 0.55rem;
-	color: #fff;
-	background: var(--noticias-pill);
-	box-shadow: 0 0.25rem 0.7rem rgba(24, 41, 79, 0.12);
-	cursor: pointer;
-	font: 600 clamp(1.05rem, 2vw, 1.35rem) 'Montserrat', sans-serif;
-	line-height: 1;
-	transition: background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+
+.portal-scope .noticias-section .category-control {
+  position: relative;
+
+  appearance: none;
+
+  min-height: 42px;
+
+  padding: 0.7rem 1.25rem;
+
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--portal-radius-pill);
+
+  background: #ffffff;
+  color: var(--color-text-secondary);
+
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+
+  cursor: pointer;
+
+  box-shadow: 0 4px 14px rgba(40, 68, 119, 0.06);
+
+  transition:
+    background-color var(--portal-transition),
+    border-color var(--portal-transition),
+    color var(--portal-transition),
+    transform var(--portal-transition),
+    box-shadow var(--portal-transition),
+    opacity var(--portal-transition);
 }
 
-.category-control:hover,
-.category-control:focus-visible {
-	outline: 0;
-	background: var(--noticias-ink);
-	box-shadow: 0 0.45rem 1rem rgba(24, 41, 79, 0.2);
-	transform: translateY(-2px);
+
+.portal-scope .noticias-section .category-control:hover {
+  color: var(--color-primary);
+
+  border-color: rgba(40, 68, 119, 0.3);
+
+  transform: translateY(-2px);
+
+  box-shadow: var(--portal-shadow-md);
 }
 
-.news-layout {
-	--bs-gutter-y: 1rem;
+
+.portal-scope .noticias-section .category-control:focus-visible {
+  outline: 3px solid rgba(242, 53, 110, 0.18);
+  outline-offset: 3px;
 }
 
-.noticias-card {
-	border: 0;
-	background: var(--noticias-paper) !important;
-	box-shadow: 0 0.6rem 1.2rem rgba(24, 41, 79, 0.08) !important;
-	color: #121212;
-	transition: filter 220ms ease, opacity 220ms ease, transform 220ms ease, box-shadow 220ms ease;
+
+/* Destaque — rosa */
+
+.portal-scope .noticias-section .category-control--featured.is-active {
+  background: var(--color-pink);
+  border-color: var(--color-pink);
+
+  color: #ffffff;
+
+  box-shadow: var(--portal-shadow-accent);
+
+  transform: translateY(-1px);
 }
 
-.noticias-card-link {
-	display: block;
-	height: 100%;
-	color: inherit;
-	text-decoration: none;
+
+/* Eventos — azul */
+
+.portal-scope .noticias-section .category-control--small.is-active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+
+  color: #ffffff;
+
+  box-shadow: var(--portal-shadow-md);
+
+  transform: translateY(-1px);
 }
 
-.noticias-card-link:focus-visible {
-	outline: 3px solid rgba(24, 41, 79, 0.6);
-	outline-offset: 4px;
+
+/* Outros — amarelo */
+
+.portal-scope .noticias-section .category-control--vertical.is-active {
+  background: var(--color-yellow);
+  border-color: var(--color-yellow);
+
+  color: var(--color-primary);
+
+  box-shadow:
+    0 8px 22px rgba(235, 194, 0, 0.22);
+
+  transform: translateY(-1px);
 }
 
-.noticias-card img {
-	display: block;
-	object-fit: cover;
+
+/* ==========================================================================
+   LAYOUT PRINCIPAL
+   ========================================================================== */
+
+.portal-scope .noticias-section .news-layout {
+  position: relative;
+  z-index: 2;
 }
 
-.news-group--featured .noticias-card {
-	min-height: 17rem;
+
+.portal-scope .noticias-section .news-group {
+  min-width: 0;
 }
 
-.news-group--featured .noticias-card img {
-	height: 15.75rem;
+
+/* ==========================================================================
+   SISTEMA DE FOCO DAS CATEGORIAS
+   ==========================================================================
+
+   O React já adiciona .is-active ao botão.
+   O :has() permite que a seção inteira reaja ao botão selecionado.
+
+   Destaque  → card principal nítido
+   Eventos   → grid de notícias nítido
+   Outros    → card lateral nítido
+   ========================================================================== */
+
+
+/* Transição geral dos grupos */
+
+.portal-scope .noticias-section .news-group--featured,
+.portal-scope .noticias-section .news-group--small-grid,
+.portal-scope .noticias-section .news-group--vertical {
+  transition:
+    filter 400ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 400ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.news-group--small-grid .noticias-card {
-	min-height: 12.5rem;
+
+/* --------------------------------------------------------------------------
+   DESTAQUE ATIVO
+   -------------------------------------------------------------------------- */
+
+.portal-scope .noticias-section:has(
+  .category-control--featured.is-active
+) .news-group--small-grid,
+
+.portal-scope .noticias-section:has(
+  .category-control--featured.is-active
+) .news-group--vertical {
+  filter: blur(4px);
+  opacity: 0.38;
+
+  transform: scale(0.985);
 }
 
-.news-group--small-grid .noticias-card img {
-	height: 7.5rem;
+
+/* Mantém o destaque completamente nítido */
+
+.portal-scope .noticias-section:has(
+  .category-control--featured.is-active
+) .news-group--featured {
+  filter: blur(0);
+  opacity: 1;
+
+  transform: scale(1);
 }
 
-.news-group--vertical .noticias-card img {
-	height: 12rem;
+
+/* --------------------------------------------------------------------------
+   EVENTOS ATIVO
+   -------------------------------------------------------------------------- */
+
+.portal-scope .noticias-section:has(
+  .category-control--small.is-active
+) .news-group--featured,
+
+.portal-scope .noticias-section:has(
+  .category-control--small.is-active
+) .news-group--vertical {
+  filter: blur(4px);
+  opacity: 0.38;
+
+  transform: scale(0.985);
 }
 
-@media (min-width: 992px) {
-	.news-layout {
-		align-items: stretch !important;
-	}
 
-	.news-group--vertical {
-		height: auto;
-	}
+/* Mantém os três eventos nítidos */
+
+.portal-scope .noticias-section:has(
+  .category-control--small.is-active
+) .news-group--small-grid {
+  filter: blur(0);
+  opacity: 1;
+
+  transform: scale(1);
 }
 
-.noticias-card h3 {
-	margin-bottom: 0.65rem;
-	font-size: clamp(1.45rem, 2.3vw, 2.15rem);
-	line-height: 0.95;
+
+/* --------------------------------------------------------------------------
+   OUTROS ATIVO
+   -------------------------------------------------------------------------- */
+
+.portal-scope .noticias-section:has(
+  .category-control--vertical.is-active
+) .news-group--featured,
+
+.portal-scope .noticias-section:has(
+  .category-control--vertical.is-active
+) .news-group--small-grid {
+  filter: blur(4px);
+  opacity: 0.38;
+
+  transform: scale(0.985);
 }
 
-.news-group--small-grid .noticias-card h3 {
-	margin-top: 0.85rem !important;
-	font-size: clamp(1.3rem, 2vw, 1.8rem);
+
+/* Mantém o card Outros nítido */
+
+.portal-scope .noticias-section:has(
+  .category-control--vertical.is-active
+) .news-group--vertical {
+  filter: blur(0);
+  opacity: 1;
+
+  transform: scale(1);
 }
 
-.noticias-card p {
-	color: #161616;
-	font-size: 1rem;
-	line-height: 1.5;
+
+/* ==========================================================================
+   ESTILO BASE DOS CARDS
+   ========================================================================== */
+
+.portal-scope .noticias-section .news-layout article,
+.portal-scope .noticias-section .news-layout .news-card,
+.portal-scope .noticias-section .news-layout .horizontal-news-card,
+.portal-scope .noticias-section .news-layout .small-news-card,
+.portal-scope .noticias-section .news-layout .vertical-news-card {
+  transition:
+    transform var(--portal-transition),
+    box-shadow var(--portal-transition),
+    border-color var(--portal-transition);
 }
 
-.noticias-section:has(.category-control--featured.is-active) .news-group:not(.news-group--featured),
-.noticias-section:has(.category-control--small.is-active) .news-group:not(.news-group--small-grid),
-.noticias-section:has(.category-control--vertical.is-active) .news-group:not(.news-group--vertical) {
-	filter: blur(4px);
-	opacity: 0.42;
-	transform: scale(0.985);
+
+/* ==========================================================================
+   CARD DESTAQUE
+   ========================================================================== */
+
+.portal-scope .noticias-section .news-group--featured {
+  margin-bottom: 1rem;
 }
 
-.noticias-section:has(.category-control--featured.is-active) .news-group--featured .noticias-card,
-.noticias-section:has(.category-control--small.is-active) .news-group--small-grid .noticias-card,
-.noticias-section:has(.category-control--vertical.is-active) .news-group--vertical .noticias-card {
-	box-shadow: 0 0.9rem 1.8rem rgba(24, 41, 79, 0.16) !important;
-	transform: translateY(-3px);
+
+.portal-scope .noticias-section .news-group--featured > * {
+  height: 100%;
 }
+
+
+.portal-scope .noticias-section .news-group--featured article,
+.portal-scope .noticias-section .news-group--featured .news-card,
+.portal-scope .noticias-section .news-group--featured .horizontal-news-card {
+  position: relative;
+
+  border: 1px solid rgba(40, 68, 119, 0.08);
+  border-radius: var(--portal-radius-lg);
+
+  background: #ffffff;
+
+  box-shadow: var(--portal-shadow-md);
+
+  overflow: hidden;
+}
+
+
+/* Barra rosa */
+
+.portal-scope .noticias-section .news-group--featured article::before,
+.portal-scope .noticias-section .news-group--featured .news-card::before,
+.portal-scope .noticias-section .news-group--featured .horizontal-news-card::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 0;
+
+  width: 5px;
+  height: 100%;
+
+  background: var(--color-pink);
+
+  z-index: 5;
+}
+
+
+.portal-scope .noticias-section .news-group--featured article:hover,
+.portal-scope .noticias-section .news-group--featured .news-card:hover,
+.portal-scope .noticias-section .news-group--featured .horizontal-news-card:hover {
+  transform: translateY(-4px);
+
+  box-shadow: var(--portal-shadow-lg);
+}
+
+
+/* ==========================================================================
+   GRID DE NOTÍCIAS MENORES
+   ========================================================================== */
+
+.portal-scope .noticias-section .news-group--small-grid {
+  --bs-gutter-y: 1rem;
+}
+
+
+.portal-scope .noticias-section .news-group--small-grid > div {
+  display: flex;
+}
+
+
+.portal-scope .noticias-section .news-group--small-grid > div > * {
+  width: 100%;
+}
+
+
+.portal-scope .noticias-section .news-group--small-grid article,
+.portal-scope .noticias-section .news-group--small-grid .news-card,
+.portal-scope .noticias-section .news-group--small-grid .small-news-card {
+  position: relative;
+
+  width: 100%;
+
+  border: 1px solid rgba(40, 68, 119, 0.08);
+  border-radius: var(--portal-radius-md);
+
+  background: #ffffff;
+
+  box-shadow: var(--portal-shadow-sm);
+
+  overflow: hidden;
+}
+
+
+/* Linha rosa */
+
+.portal-scope .noticias-section .news-group--small-grid article::before,
+.portal-scope .noticias-section .news-group--small-grid .news-card::before,
+.portal-scope .noticias-section .news-group--small-grid .small-news-card::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 1.2rem;
+  right: 1.2rem;
+
+  height: 3px;
+
+  background: var(--color-pink);
+
+  border-radius: 0 0 var(--portal-radius-pill) var(--portal-radius-pill);
+}
+
+
+.portal-scope .noticias-section .news-group--small-grid article:hover,
+.portal-scope .noticias-section .news-group--small-grid .news-card:hover,
+.portal-scope .noticias-section .news-group--small-grid .small-news-card:hover {
+  transform: translateY(-4px);
+
+  border-color: rgba(40, 68, 119, 0.14);
+
+  box-shadow: var(--portal-shadow-md);
+}
+
+
+/* ==========================================================================
+   CARD VERTICAL
+   ========================================================================== */
+
+.portal-scope .noticias-section .news-group--vertical {
+  display: flex;
+
+  height: 100%;
+}
+
+
+.portal-scope .noticias-section .news-group--vertical > * {
+  width: 100%;
+}
+
+
+.portal-scope .noticias-section .news-group--vertical article,
+.portal-scope .noticias-section .news-group--vertical .news-card,
+.portal-scope .noticias-section .news-group--vertical .vertical-news-card {
+  position: relative;
+
+  width: 100%;
+
+  border: 1px solid rgba(40, 68, 119, 0.08);
+  border-radius: var(--portal-radius-lg);
+
+  background: #ffffff;
+
+  box-shadow: var(--portal-shadow-sm);
+
+  overflow: hidden;
+}
+
+
+/* Linha amarela */
+
+.portal-scope .noticias-section .news-group--vertical article::before,
+.portal-scope .noticias-section .news-group--vertical .news-card::before,
+.portal-scope .noticias-section .news-group--vertical .vertical-news-card::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 0;
+
+  width: 100%;
+  height: 4px;
+
+  background: var(--color-yellow);
+}
+
+
+.portal-scope .noticias-section .news-group--vertical article:hover,
+.portal-scope .noticias-section .news-group--vertical .news-card:hover,
+.portal-scope .noticias-section .news-group--vertical .vertical-news-card:hover {
+  transform: translateY(-4px);
+
+  box-shadow: var(--portal-shadow-md);
+}
+
+
+/* ==========================================================================
+   IMAGENS
+   ========================================================================== */
+
+.portal-scope .noticias-section img {
+  display: block;
+  max-width: 100%;
+
+  transition:
+    transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+
+.portal-scope .noticias-section .news-layout article:hover img,
+.portal-scope .noticias-section .news-layout .news-card:hover img,
+.portal-scope .noticias-section .news-layout .horizontal-news-card:hover img,
+.portal-scope .noticias-section .news-layout .small-news-card:hover img,
+.portal-scope .noticias-section .news-layout .vertical-news-card:hover img {
+  transform: scale(1.025);
+}
+
+
+/* ==========================================================================
+   TEXTOS DOS CARDS
+   ========================================================================== */
+
+.portal-scope .noticias-section .news-layout h2,
+.portal-scope .noticias-section .news-layout h3,
+.portal-scope .noticias-section .news-layout h4 {
+  color: var(--color-primary);
+
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+
+.portal-scope .noticias-section .news-layout p {
+  color: var(--color-text-secondary);
+
+  line-height: 1.55;
+}
+
+
+.portal-scope .noticias-section .news-layout a {
+  color: inherit;
+  text-decoration: none;
+}
+
+
+.portal-scope .noticias-section .news-layout a:hover {
+  color: inherit;
+}
+
+
+/* ==========================================================================
+   TABLET
+   ========================================================================== */
 
 @media (max-width: 991.98px) {
-	.category-nav {
-		gap: 0.75rem 1.25rem;
-	}
 
-	.news-group--featured .noticias-card img {
-		height: auto;
-		max-height: 22rem;
-	}
+  .portal-scope .noticias-section {
+    padding-top: clamp(3.8rem, 6vw, 5rem);
+    padding-bottom: clamp(3.8rem, 6vw, 5rem);
+  }
 
-	.news-group--vertical .noticias-card img {
-		height: auto;
-		max-height: 28rem;
-	}
+  .portal-scope .noticias-section .noticias-title {
+    font-size: clamp(2.3rem, 6vw, 3.2rem);
+  }
+
+  .portal-scope .noticias-section .noticias-subtitle {
+    margin-bottom: 1.8rem;
+  }
+
+  .portal-scope .noticias-section .category-nav {
+    margin-bottom: 1.8rem;
+  }
+
+  .portal-scope .noticias-section .news-group--featured {
+    margin-bottom: 1rem;
+  }
+
+  .portal-scope .noticias-section .news-group--vertical {
+    margin-top: 0.25rem;
+  }
+
 }
+
+
+/* ==========================================================================
+   CELULAR
+   ========================================================================== */
 
 @media (max-width: 575.98px) {
-	.noticias-section {
-		padding: 3rem 0 4rem;
-	}
 
-	.noticias-section::before {
-		inset: 5rem -20% 3rem;
-	}
+  .portal-scope .noticias-section {
+    padding: 3.2rem 0;
+  }
 
-	.noticias-title {
-		font-size: 3rem;
-	}
+  .portal-scope .noticias-section::after {
+    top: 2rem;
+    right: 7%;
+  }
 
-	.noticias-subtitle {
-		margin-bottom: 1.7rem;
-	}
+  .portal-scope .noticias-section .noticias-title {
+    font-size: 2.35rem;
+  }
 
-	.category-nav {
-		justify-content: flex-start;
-		gap: 0.65rem;
-	}
+  .portal-scope .noticias-section .noticias-title::before {
+    margin-bottom: 0.65rem;
+    font-size: 0.65rem;
+  }
 
-	.category-control {
-		font-size: 0.95rem;
-	}
+  .portal-scope .noticias-section .noticias-title::after {
+    width: 46px;
+    height: 4px;
+    margin-top: 0.8rem;
+  }
+
+  .portal-scope .noticias-section .noticias-subtitle {
+    margin-top: 0.7rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .portal-scope .noticias-section .category-nav {
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .portal-scope .noticias-section .category-control {
+    min-height: 38px;
+    padding: 0.6rem 0.95rem;
+    font-size: 0.75rem;
+  }
+
+  .portal-scope .noticias-section .news-group--featured {
+    margin-bottom: 0.85rem;
+  }
+
+  .portal-scope .noticias-section .news-group--small-grid {
+    --bs-gutter-y: 0.85rem;
+  }
+
+  .portal-scope .noticias-section .news-group--vertical {
+    margin-top: 0;
+  }
+
 }
 
+
+/* ==========================================================================
+   ACESSIBILIDADE
+   ========================================================================== */
+
 @media (prefers-reduced-motion: reduce) {
-	.category-control,
-	.noticias-card,
-	.news-group {
-		transition: none;
-	}
+
+  .portal-scope .noticias-section *,
+  .portal-scope .noticias-section *::before,
+  .portal-scope .noticias-section *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
 }

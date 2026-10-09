@@ -1,0 +1,747 @@
+/* ==========================================================================
+   SOBRE A ESCOLA E A COMUNIDADE — EEPSAS
+   Estilos consolidados das abas, painéis descritivos, galerias e carrossel de devs.
+   ========================================================================== */
+
+/* Animação de transição ao trocar de aba */
+@keyframes sobre-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Seção principal */
+.portal-scope #Sobre-nos {
+  padding: var(--portal-section-spacing) 0;
+  border: 0;
+  background: #f8f7f5;
+}
+
+.portal-scope .sobre-slider {
+  --content-width: 1170px;
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+  padding: 0;
+}
+
+/* Cabeçalho da seção */
+.portal-scope .sobre-heading {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.85fr) minmax(0, 2fr);
+  align-items: center;
+  gap: clamp(2.25rem, 4vw, 5rem);
+  margin-bottom: clamp(2.5rem, 5vw, 4.5rem);
+}
+
+.portal-scope .sobre-title {
+  width: max-content;
+  max-width: 100%;
+  justify-self: start;
+}
+
+.portal-scope .sobre-kicker,
+.portal-scope .sobre-eyebrow {
+  margin: 0;
+  color: var(--color-pink) !important;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.portal-scope .sobre-heading h1 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  color: var(--color-primary);
+  font-family: "Poppins", "Segoe UI", sans-serif;
+  font-size: clamp(2.6rem, 5.4vw, 4.6rem);
+  font-weight: 700;
+  line-height: 0.85;
+  letter-spacing: -0.03em;
+}
+
+.portal-scope .sobre-title-highlight {
+  padding: 0.1em 0.35em 0.18em;
+  color: #ffffff !important;
+  background: var(--color-teal) !important;
+  border-radius: var(--portal-radius-xs);
+  box-shadow: none;
+}
+
+/* Abas de navegação (Jaguaraçu, Desenvolvedores, EEPSAS) */
+.portal-scope .sobre-tabs {
+  width: 100%;
+  max-width: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0;
+  margin-bottom: clamp(2.5rem, 5vw, 4rem);
+  border: 1px solid rgba(40, 68, 119, 0.12);
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(40, 68, 119, 0.05);
+  overflow: hidden;
+}
+
+.portal-scope .sobre-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 4.5rem;
+  padding: 0.85rem clamp(0.4rem, 1.2vw, 1rem);
+  border: 0;
+  border-right: 1px solid rgba(40, 68, 119, 0.1);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--portal-transition), color var(--portal-transition);
+}
+
+.portal-scope .sobre-tab:last-child {
+  border-right: 0;
+}
+
+.portal-scope .sobre-tab::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--color-pink) !important;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  box-shadow: none !important;
+  transition: transform 240ms ease;
+}
+
+.portal-scope .sobre-tab:hover,
+.portal-scope .sobre-tab:focus-visible {
+  background: rgba(40, 68, 119, 0.045) !important;
+}
+
+.portal-scope .sobre-tab:focus-visible {
+  outline: 3px solid rgba(40, 68, 119, 0.25);
+  outline-offset: -3px;
+}
+
+.portal-scope .sobre-tab.is-active::after {
+  transform: scaleX(1);
+}
+
+.portal-scope .sobre-tab.is-active strong {
+  color: #284477 !important;
+  font-weight: 700;
+}
+
+.portal-scope .sobre-tab-number {
+  color: var(--color-pink) !important;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.portal-scope .sobre-tab-thumb {
+  flex: 0 0 2.85rem;
+  width: 2.85rem;
+  height: 2.85rem;
+  object-fit: cover;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--color-blue-vibrant);
+}
+
+.portal-scope .sobre-tab strong {
+  display: block;
+  min-width: 0;
+  color: #284477;
+  font-size: clamp(0.85rem, 1.2vw, 1.05rem);
+  font-weight: 600;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portal-scope .sobre-tab small {
+  margin-top: 0.2rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.portal-scope .sobre-content {
+  min-height: 29rem;
+  animation: sobre-panel-enter 450ms ease-in-out both;
+}
+
+/* Painel de conteúdo */
+.portal-scope .sobre-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  align-items: center;
+  gap: clamp(2rem, 6vw, 6rem);
+}
+
+.portal-scope .sobre-developers-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1.75rem, 3.5vw, 2.75rem);
+  width: 100%;
+
+  /* Variáveis base dos cards de desenvolvedores (Desktop) */
+  --dev-card-width: 230px;
+  --dev-card-height: 335px;
+  --dev-cards-gap: 1.5rem;
+  --dev-card-padding: 1.25rem 1rem;
+  --dev-card-radius: 16px;
+  --dev-meta-font-size: 0.75rem;
+  --dev-count-font-size: 0.72rem;
+  --dev-initials-size: 4.5rem;
+  --dev-initials-font-size: 1.85rem;
+  --dev-initials-margin: 1.25rem 0 0.85rem;
+  --dev-initials-radius: 18px;
+  --dev-dot-size: 15px;
+  --dev-dot-offset: -4px;
+  --dev-dot-border: 2.5px;
+  --dev-info-padding-top: 0.75rem;
+  --dev-name-font-size: 1.25rem;
+  --dev-role-margin-top: 0.35rem;
+  --dev-role-font-size: 0.85rem;
+  --dev-link-margin-top: 1rem;
+  --dev-link-font-size: 0.82rem;
+  --dev-link-gap: 0.45rem;
+  --dev-dash-width: 2rem;
+  --dev-btn-size: 2.6rem;
+  --dev-btn-icon-size: 1.2rem;
+}
+
+.portal-scope .sobre-developers-intro {
+  position: relative;
+  width: 100%;
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 0;
+  text-align: center;
+}
+
+.portal-scope .sobre-developers-intro .sobre-eyebrow {
+  margin-bottom: 0.5rem;
+}
+
+.portal-scope .sobre-developers-intro h2 {
+  margin: 0;
+  color: #284477;
+  font-size: clamp(2rem, 4.5vw, 3.25rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.portal-scope .sobre-developers-tagline {
+  margin: 0.5rem 0 0;
+  color: #284477;
+  font-size: clamp(1rem, 1.8vw, 1.35rem);
+  line-height: 1.35;
+}
+
+.portal-scope .sobre-developers-description {
+  max-width: 32rem;
+  margin: 0.85rem auto 0;
+  color: rgba(40, 68, 119, 0.78);
+  font-size: clamp(0.9rem, 1.2vw, 1.05rem);
+  line-height: 1.6;
+}
+
+.portal-scope .sobre-developers-code {
+  display: inline-block;
+  margin-top: 1rem;
+  color: rgba(40, 68, 119, 0.35);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+}
+
+.portal-scope .sobre-developers-feature {
+  width: 100%;
+  max-width: fit-content;
+  margin: 0 auto;
+  min-width: 0;
+  padding: clamp(0.85rem, 2vw, 1.5rem);
+  border: 1px solid rgba(40, 68, 119, 0.1);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.64);
+  box-shadow: 0 18px 48px rgba(40, 68, 119, 0.06);
+}
+
+.portal-scope .sobre-copy h2 {
+  max-width: 32rem;
+  margin: 0.75rem 0 1.25rem;
+  color: var(--color-navy-dark);
+  font-size: clamp(2rem, 3.8vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.portal-scope .sobre-description {
+  max-width: 35rem;
+  margin: 0;
+  color: var(--color-slate);
+  font-size: clamp(1rem, 1.4vw, 1.15rem);
+  line-height: 1.65;
+}
+
+.portal-scope .sobre-note {
+  margin: 1.5rem 0 0;
+  color: var(--color-blue-primary) !important;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.portal-scope .sobre-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  margin-top: 2.5rem;
+}
+
+.portal-scope .sobre-stat {
+  display: grid;
+  grid-template-columns: 3.5rem auto;
+  column-gap: 0.75rem;
+  align-items: center;
+  color: var(--color-navy-dark);
+}
+
+.portal-scope .sobre-stat img {
+  grid-row: span 2;
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: contain;
+}
+
+.portal-scope .sobre-stat strong {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-blue-primary);
+}
+
+.portal-scope .sobre-stat span {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+/* Galerias de fotos com carrossel */
+.portal-scope .sobre-gallery-viewport {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  border-radius: var(--portal-radius-md);
+  background: #1d2b40;
+  box-shadow: var(--portal-shadow-md);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.portal-scope .sobre-gallery-carousel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.portal-scope .sobre-gallery-track {
+  display: flex;
+  transition: transform 400ms ease;
+}
+
+.portal-scope .sobre-gallery-slide {
+  position: relative;
+  flex: 0 0 100%;
+  margin: 0;
+}
+
+.portal-scope .sobre-gallery-slide img {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 24rem;
+  object-fit: cover;
+}
+
+.portal-scope .sobre-gallery-button,
+.portal-scope .sobre-carousel-button {
+  display: grid;
+  flex: 0 0 2.6rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  place-items: center;
+  border: 1px solid var(--color-border-medium) !important;
+  border-radius: 50%;
+  background: var(--color-bg-light-card);
+  color: var(--color-navy-dark) !important;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  box-shadow: var(--portal-shadow-sm);
+  transition: all var(--portal-transition);
+}
+
+.portal-scope .sobre-gallery-button:hover,
+.portal-scope .sobre-carousel-button:hover {
+  background: var(--color-blue-action) !important;
+  color: #ffffff !important;
+  border-color: var(--color-blue-action) !important;
+  transform: scale(1.06);
+}
+
+.portal-scope .sobre-gallery-dots,
+.portal-scope .sobre-carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.portal-scope .sobre-gallery-dot,
+.portal-scope .sobre-carousel-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(203, 216, 232, 0.3);
+  cursor: pointer;
+  transition: all var(--portal-transition);
+}
+
+.portal-scope .sobre-gallery-dot.is-active,
+.portal-scope .sobre-carousel-dot.is-active {
+  background: var(--color-pink) !important;
+  transform: scale(1.35);
+}
+
+/* Carrossel de desenvolvedores */
+.portal-scope .sobre-developers-carousel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.4rem, 1.2vw, 1.25rem);
+}
+
+.portal-scope .sobre-developers-cards {
+  display: grid;
+  grid-template-columns: repeat(3, var(--dev-card-width));
+  gap: var(--dev-cards-gap);
+  justify-content: center;
+  align-items: stretch;
+}
+
+.portal-scope .sobre-developer-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: var(--dev-card-width);
+  min-width: var(--dev-card-width);
+  max-width: var(--dev-card-width);
+  height: var(--dev-card-height);
+  min-height: var(--dev-card-height);
+  padding: var(--dev-card-padding);
+  border: 1px solid rgba(40, 68, 119, 0.12);
+  border-radius: var(--dev-card-radius);
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(40, 68, 119, 0.07);
+  touch-action: pan-y;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
+}
+
+.portal-scope .sobre-developer-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(40, 68, 119, 0.12);
+  border-color: rgba(40, 68, 119, 0.22);
+}
+
+.portal-scope .sobre-developer-card::after {
+  position: absolute;
+  bottom: 0.45rem;
+  left: 50%;
+  width: var(--dev-dash-width);
+  height: 1px;
+  background: rgba(40, 68, 119, 0.1);
+  content: "";
+  transform: translateX(-50%);
+}
+
+.portal-scope .sobre-developer-card-meta {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  color: #284477;
+  font-size: var(--dev-meta-font-size);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.portal-scope .sobre-developer-card-meta strong {
+  color: #f2356e;
+}
+
+.portal-scope .sobre-developer-count {
+  color: rgba(40, 68, 119, 0.36);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: var(--dev-count-font-size);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.portal-scope .sobre-developer-initials {
+  position: relative;
+  display: grid;
+  width: var(--dev-initials-size);
+  height: var(--dev-initials-size);
+  aspect-ratio: 1;
+  place-items: center;
+  margin: var(--dev-initials-margin);
+  border-radius: var(--dev-initials-radius);
+  background: rgba(40, 68, 119, 0.09);
+  color: #284477;
+  font-size: var(--dev-initials-font-size);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  flex-shrink: 0;
+}
+
+.portal-scope .sobre-developer-initials::after {
+  position: absolute;
+  right: var(--dev-dot-offset);
+  bottom: var(--dev-dot-offset);
+  width: var(--dev-dot-size);
+  height: var(--dev-dot-size);
+  border: var(--dev-dot-border) solid #ffffff;
+  border-radius: 50%;
+  background: #ebc200;
+  content: "";
+}
+
+.portal-scope .sobre-developer-info {
+  width: 100%;
+  min-width: 0;
+  padding-top: var(--dev-info-padding-top);
+  display: flex;
+  flex-direction: column;
+}
+
+.portal-scope .sobre-developer-info h3 {
+  margin: 0;
+  color: #284477;
+  font-size: var(--dev-name-font-size);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.portal-scope .sobre-developer-info p {
+  margin: var(--dev-role-margin-top) 0 0;
+  color: rgba(40, 68, 119, 0.72);
+  font-size: var(--dev-role-font-size);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.portal-scope .sobre-developer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dev-link-gap);
+  margin-top: var(--dev-link-margin-top);
+  color: #284477 !important;
+  font-size: var(--dev-link-font-size);
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 180ms ease;
+  line-height: 1;
+}
+
+.portal-scope .sobre-developer-link:hover {
+  color: #f2356e !important;
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE (MEDIA QUERIES)
+   ========================================================================== */
+@media (max-width: 991.98px) {
+  .portal-scope .sobre-heading {
+    display: block;
+  }
+
+  .portal-scope .sobre-heading h1 {
+    align-items: flex-start;
+  }
+
+  .portal-scope .sobre-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .portal-scope .sobre-panel {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .portal-scope .sobre-developers-panel {
+    gap: 2rem;
+    --dev-card-width: 180px;
+    --dev-card-height: 265px;
+    --dev-cards-gap: 0.85rem;
+    --dev-card-padding: 0.9rem 0.75rem;
+    --dev-card-radius: 14px;
+    --dev-meta-font-size: 0.65rem;
+    --dev-count-font-size: 0.62rem;
+    --dev-initials-size: 3.5rem;
+    --dev-initials-font-size: 1.4rem;
+    --dev-initials-margin: 0.85rem 0 0.6rem;
+    --dev-initials-radius: 14px;
+    --dev-dot-size: 12px;
+    --dev-dot-offset: -3px;
+    --dev-dot-border: 2px;
+    --dev-info-padding-top: 0.5rem;
+    --dev-name-font-size: 1.05rem;
+    --dev-role-margin-top: 0.3rem;
+    --dev-role-font-size: 0.74rem;
+    --dev-link-margin-top: 0.75rem;
+    --dev-link-font-size: 0.75rem;
+    --dev-link-gap: 0.35rem;
+    --dev-dash-width: 1.5rem;
+    --dev-btn-size: 2.25rem;
+    --dev-btn-icon-size: 1.05rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .portal-scope .sobre-developers-panel {
+    --dev-card-width: 145px;
+    --dev-card-height: 215px;
+    --dev-cards-gap: 0.65rem;
+    --dev-card-padding: 0.75rem 0.55rem;
+    --dev-card-radius: 12px;
+    --dev-meta-font-size: 0.58rem;
+    --dev-count-font-size: 0.55rem;
+    --dev-initials-size: 2.85rem;
+    --dev-initials-font-size: 1.15rem;
+    --dev-initials-margin: 0.65rem 0 0.45rem;
+    --dev-initials-radius: 11px;
+    --dev-dot-size: 10px;
+    --dev-dot-offset: -2.5px;
+    --dev-dot-border: 1.75px;
+    --dev-info-padding-top: 0.35rem;
+    --dev-name-font-size: 0.88rem;
+    --dev-role-margin-top: 0.25rem;
+    --dev-role-font-size: 0.65rem;
+    --dev-link-margin-top: 0.6rem;
+    --dev-link-font-size: 0.68rem;
+    --dev-link-gap: 0.3rem;
+    --dev-dash-width: 1.25rem;
+    --dev-btn-size: 2rem;
+    --dev-btn-icon-size: 0.95rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .portal-scope .sobre-tabs {
+    margin-bottom: 2.2rem;
+  }
+
+  .portal-scope .sobre-tab {
+    min-height: 3.8rem;
+    padding: 0.65rem 0.2rem;
+  }
+
+  .portal-scope .sobre-tab strong {
+    font-size: clamp(0.68rem, 2.65vw, 0.82rem);
+  }
+
+  .portal-scope .sobre-developers-panel {
+    gap: 1.35rem;
+    --dev-card-width: clamp(82px, 24vw, 108px);
+    --dev-card-height: clamp(140px, 37vw, 175px);
+    --dev-cards-gap: clamp(0.2rem, 1vw, 0.4rem);
+    --dev-card-padding: 0.45rem 0.35rem;
+    --dev-card-radius: 10px;
+    --dev-meta-font-size: 0.52rem;
+    --dev-initials-size: clamp(2rem, 7.5vw, 2.5rem);
+    --dev-initials-font-size: clamp(0.8rem, 3vw, 1.05rem);
+    --dev-initials-margin: 0.4rem 0 0.25rem;
+    --dev-initials-radius: 8px;
+    --dev-dot-size: 8px;
+    --dev-dot-offset: -2px;
+    --dev-dot-border: 1.5px;
+    --dev-info-padding-top: 0.3rem;
+    --dev-name-font-size: clamp(0.65rem, 2.4vw, 0.78rem);
+    --dev-role-margin-top: 0.2rem;
+    --dev-role-font-size: clamp(0.48rem, 1.7vw, 0.58rem);
+    --dev-link-margin-top: 0.45rem;
+    --dev-link-font-size: clamp(0.55rem, 2vw, 0.65rem);
+    --dev-link-gap: 0.2rem;
+    --dev-dash-width: 1rem;
+    --dev-btn-size: 1.65rem;
+    --dev-btn-icon-size: 0.85rem;
+  }
+
+  .portal-scope .sobre-developers-feature {
+    padding: 0.65rem 0.35rem;
+    border-radius: 16px;
+  }
+
+  .portal-scope .sobre-developers-carousel {
+    gap: 0.25rem;
+  }
+
+  .portal-scope .sobre-developer-count {
+    display: none;
+  }
+
+  .portal-scope .sobre-gallery-slide img {
+    height: 16rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .portal-scope .sobre-developers-panel {
+    --dev-card-width: 78px;
+    --dev-card-height: 132px;
+    --dev-btn-size: 1.5rem;
+    --dev-btn-icon-size: 0.75rem;
+    --dev-card-padding: 0.35rem 0.25rem;
+    --dev-name-font-size: 0.62rem;
+    --dev-role-font-size: 0.46rem;
+    --dev-link-font-size: 0.52rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .portal-scope .sobre-developers-panel {
+    --dev-card-width: 240px;
+    --dev-card-height: 350px;
+    --dev-cards-gap: 1.75rem;
+  }
+}

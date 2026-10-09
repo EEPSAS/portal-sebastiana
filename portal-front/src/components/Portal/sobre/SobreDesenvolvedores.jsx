@@ -2,52 +2,41 @@ import { useEffect, useRef, useState } from "react";
 
 const developers = [
   "Ana Lívia",
+  "Yasmin Teixeira",
+  "Yasmim Gomes",
   "Carlos Eduardo",
+  "Rhaynner",
+  "Prentys",
+  "Dalton",
   "Davi",
   "Natã",
-  "Rhaynner",
-  "Yasmin Teixeira",
-  "Yasmin Gomes",
 ].map((name) => ({
   name,
-  bio: "Construindo ideias com criatividade e colaboração.",
-  image: "https://placehold.co/240x240/f9d8eb/172951?text=DEV",
+  role: "Desenvolvimento · Front-end",
   profile: "https://github.com/",
 }));
 
-const GithubIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path d="M12 .5a12 12 0 0 0-3.79 23.39c.6.11.82-.26.82-.58v-2.04c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.74.08-.74 1.2.09 1.83 1.23 1.83 1.23 1.07 1.83 2.8 1.3 3.48.99.11-.77.42-1.3.76-1.6-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.38 1.23-3.22-.12-.3-.53-1.52.12-3.17 0 0 1-.32 3.3 1.23a11.45 11.45 0 0 1 6 0c2.3-1.55 3.3-1.23 3.3-1.23.65 1.65.24 2.87.12 3.17.76.84 1.23 1.91 1.23 3.22 0 4.62-2.8 5.65-5.48 5.95.43.37.81 1.1.81 2.22v3.29c0 .32.22.69.83.57A12 12 0 0 0 12 .5Z" />
-  </svg>
-);
+const cardsPerPage = 3;
+const pageCount = Math.ceil(developers.length / cardsPerPage);
+
+const getInitials = (name) => {
+  const parts = name.split(" ");
+  const initials = parts.length > 1
+    ? parts.slice(0, 2).map((part) => part[0]).join("")
+    : name.slice(0, 2);
+
+  return initials.toLocaleUpperCase("pt-BR");
+};
 
 const SobreDesenvolvedores = () => {
   const [current, setCurrent] = useState(0);
-  const [cardsPerView, setCardsPerView] = useState(4);
   const [isPaused, setIsPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const touchStart = useRef(null);
-  const maxIndex = Math.max(0, developers.length - cardsPerView);
-  const activeIndex = Math.min(current, maxIndex);
-
-  useEffect(() => {
-    const updateCardsPerView = () => {
-      if (window.innerWidth <= 480) {
-        setCardsPerView(1);
-      } else if (window.innerWidth <= 760) {
-        setCardsPerView(2);
-      } else if (window.innerWidth <= 1100) {
-        setCardsPerView(3);
-      } else {
-        setCardsPerView(4);
-      }
-    };
-
-    updateCardsPerView();
-    window.addEventListener("resize", updateCardsPerView);
-
-    return () => window.removeEventListener("resize", updateCardsPerView);
-  }, []);
+  const visibleDevelopers = developers.slice(
+    current * cardsPerPage,
+    (current + 1) * cardsPerPage,
+  );
 
   useEffect(() => {
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -60,49 +49,40 @@ const SobreDesenvolvedores = () => {
   }, []);
 
   useEffect(() => {
-    if (isPaused || reducedMotion || maxIndex === 0) {
+    if (isPaused || reducedMotion) {
       return undefined;
     }
 
     const interval = window.setInterval(() => {
-      setCurrent((index) => (index >= maxIndex ? 0 : index + 1));
+      setCurrent((index) => (index + 1) % pageCount);
     }, 7000);
 
     return () => window.clearInterval(interval);
-  }, [isPaused, maxIndex, reducedMotion]);
-
-  const goTo = (index) => {
-    setCurrent(Math.max(0, Math.min(index, maxIndex)));
-  };
+  }, [isPaused, reducedMotion]);
 
   const move = (direction) => {
-    setCurrent((index) => {
-      if (direction === "next") {
-        return index >= maxIndex ? 0 : index + 1;
-      }
-
-      return index <= 0 ? maxIndex : index - 1;
-    });
+    setCurrent((index) => (
+      (index + direction + pageCount) % pageCount
+    ));
   };
 
   const handleKeyDown = (event) => {
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      move("next");
+      move(1);
     } else if (event.key === "ArrowLeft") {
       event.preventDefault();
-      move("previous");
+      move(-1);
     } else if (event.key === "Home") {
       event.preventDefault();
-      goTo(0);
+      setCurrent(0);
     } else if (event.key === "End") {
       event.preventDefault();
-      goTo(maxIndex);
+      setCurrent(pageCount - 1);
     }
   };
 
   const handlePointerDown = (event) => {
-    event.currentTarget.setPointerCapture(event.pointerId);
     touchStart.current = event.clientX;
     setIsPaused(true);
   };
@@ -114,7 +94,7 @@ const SobreDesenvolvedores = () => {
 
     const distance = event.clientX - touchStart.current;
     if (Math.abs(distance) > 40) {
-      move(distance < 0 ? "next" : "previous");
+      move(distance < 0 ? 1 : -1);
     }
 
     touchStart.current = null;
@@ -141,80 +121,100 @@ const SobreDesenvolvedores = () => {
         }
       }}
     >
-      <div className="sobre-developers-carousel">
-        <button
-          className="sobre-carousel-button sobre-carousel-button-previous"
-          type="button"
-          onClick={() => move("previous")}
-          aria-label="Mostrar desenvolvedores anteriores"
-        >
-          <span aria-hidden="true">&#8592;</span>
-        </button>
-
-        <div
-          className="sobre-developers-viewport"
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerCancel}
-        >
-          <div
-            className="sobre-developers-grid"
-            style={{
-              "--visible-cards": cardsPerView,
-              transform: `translateX(calc(-${activeIndex} * (100% + 1rem) / var(--visible-cards)))`,
-            }}
-          >
-        {developers.map((developer) => (
-          <article
-            className="sobre-developer-card"
-            key={developer.name}
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-          >
-            <img
-              className="sobre-developer-photo"
-              src={developer.image}
-              alt={`Foto de perfil de ${developer.name}`}
-            />
-            <h3>{developer.name}</h3>
-            <p>{developer.bio}</p>
-            <a
-              className="sobre-developer-link"
-              href={developer.profile}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Abrir GitHub de ${developer.name}`}
-            >
-              <GithubIcon />
-              <span>GitHub</span>
-            </a>
-          </article>
-        ))}
-          </div>
-        </div>
-
-        <button
-          className="sobre-carousel-button sobre-carousel-button-next"
-          type="button"
-          onClick={() => move("next")}
-          aria-label="Mostrar próximos desenvolvedores"
-        >
-          <span aria-hidden="true">&#8594;</span>
-        </button>
+      <div className="sobre-developers-intro">
+        <p className="sobre-eyebrow">Quem faz o portal</p>
+        <h2>Desenvolvedores</h2>
+        <p className="sobre-developers-tagline">
+          que transformam ideias em código.
+        </p>
+        <p className="sobre-developers-description">
+          Conheça as pessoas que construíram este portal para aproximar a escola
+          de sua comunidade.
+        </p>
+        <span className="sobre-developers-code" aria-hidden="true">&lt; portal &gt;</span>
       </div>
 
-      <div className="sobre-carousel-dots" role="tablist" aria-label="Selecionar grupo de desenvolvedores">
-        {Array.from({ length: maxIndex + 1 }, (_, index) => (
+      <div
+        className="sobre-developers-feature"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
+        <div className="sobre-developers-carousel">
           <button
-            className={`sobre-carousel-dot${activeIndex === index ? " is-active" : ""}`}
-            key={index}
+            className="sobre-carousel-button sobre-carousel-button-previous"
             type="button"
-            role="tab"
-            aria-selected={activeIndex === index}
-            aria-label={`Mostrar grupo ${index + 1} de ${maxIndex + 1}`}
-            onClick={() => goTo(index)}
-          />
-        ))}
+            onClick={() => move(-1)}
+            aria-label="Mostrar desenvolvedor anterior"
+          >
+            <span aria-hidden="true">&#8592;</span>
+          </button>
+
+          <div className="sobre-developers-cards" aria-live="polite">
+            {visibleDevelopers.map((developer, index) => {
+              const developerNumber = current * cardsPerPage + index + 1;
+
+              return (
+                <article className="sobre-developer-card" key={developer.name}>
+                  <div className="sobre-developer-card-meta">
+                    <span>
+                      <strong>{String(developerNumber).padStart(2, "0")}</strong>
+                      <span aria-hidden="true"> · </span>
+                      DEV
+                    </span>
+                    <span className="sobre-developer-count" aria-hidden="true">
+                      {String(developerNumber).padStart(2, "0")} / {String(developers.length).padStart(2, "0")}
+                    </span>
+                  </div>
+
+                  <div className="sobre-developer-initials" aria-hidden="true">
+                    {getInitials(developer.name)}
+                  </div>
+
+                  <div className="sobre-developer-info">
+                    <h3 title={developer.name}>{developer.name}</h3>
+                    <p title={developer.role}>{developer.role}</p>
+                    <a
+                      className="sobre-developer-link"
+                      href={developer.profile}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Abrir GitHub de ${developer.name}`}
+                    >
+                      <span>GitHub</span>
+                      <span aria-hidden="true">&#8594;</span>
+                    </a>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <button
+            className="sobre-carousel-button sobre-carousel-button-next"
+            type="button"
+            onClick={() => move(1)}
+            aria-label="Mostrar próximo desenvolvedor"
+          >
+            <span aria-hidden="true">&#8594;</span>
+          </button>
+        </div>
+
+        <div className="sobre-carousel-dots" role="tablist" aria-label="Selecionar página de desenvolvedores">
+          {Array.from({ length: pageCount }, (_, index) => (
+            <button
+              className={`sobre-carousel-dot${current === index ? " is-active" : ""}`}
+              key={index}
+              type="button"
+              role="tab"
+              aria-selected={current === index}
+              aria-label={`Mostrar página ${index + 1} de ${pageCount}`}
+              onClick={() => setCurrent(index)}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

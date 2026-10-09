@@ -39,10 +39,10 @@ test('requires a sanctum token for protected resources and can revoke it', funct
     $user = User::factory()->create();
     $token = $user->createToken('test')->plainTextToken;
 
-    $this->getJson('/api/noticias')
+    $this->getJson('/api/user')
         ->assertUnauthorized();
 
-    $this->withToken($token)->getJson('/api/noticias')
+    $this->withToken($token)->getJson('/api/user')
         ->assertOk();
 
     $this->withToken($token)->postJson('/api/auth/logout')
@@ -52,7 +52,7 @@ test('requires a sanctum token for protected resources and can revoke it', funct
 
     $this->app['auth']->forgetGuards();
 
-    $this->withToken($token)->getJson('/api/noticias')
+    $this->withToken($token)->getJson('/api/user')
         ->assertUnauthorized();
 });
 
@@ -66,7 +66,7 @@ test('has a defined named route login that returns 401 json on GET', function ()
 });
 
 test('unauthenticated non-json requests to protected api routes return 401 json without error', function () {
-    $response = $this->get('/api/noticias');
+    $response = $this->get('/api/user');
 
     $response->assertUnauthorized();
 });
