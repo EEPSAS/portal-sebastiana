@@ -1,0 +1,131 @@
+.videoaulas-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.videoaulas-search__field {
+  min-width: 0;
+}
+
+.videoaulas-search__button {
+  min-width: 124px;
+  min-height: 38px;
+}
+
+.videoaulas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
+
+.videoaulas-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.videoaulas-card.is-selected {
+  border-color: #e6007e;
+  box-shadow: 0 0 0 2px rgba(230, 0, 126, 0.12);
+}
+
+.videoaulas-card__thumbnail {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #f1f5f9;
+}
+
+.videoaulas-card__thumbnail--empty {
+  background: #e2e8f0;
+}
+
+.videoaulas-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px;
+}
+
+.videoaulas-card__title {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.videoaulas-card__info,
+.videoaulas-card__description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.videoaulas-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 16px;
+  margin-top: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.videoaulas-add__field {
+  min-width: 0;
+}
+
+.videoaulas-add__button {
+  min-width: 124px;
+  min-height: 38px;
+}
+
+.videoaulas-selected-title {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+@media (max-width: 575.98px) {
+  .videoaulas-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .videoaulas-search__button {
+    width: 100%;
+  }
+
+  .videoaulas-add {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .videoaulas-add__button {
+    width: 100%;
+  }
+}
