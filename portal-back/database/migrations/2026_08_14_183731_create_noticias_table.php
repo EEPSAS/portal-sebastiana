@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('imagem')->nullable();
             $table->string('miniatura')->nullable();
             $table->timestamp('dataPublicacao')->nullable();
+            $table->boolean('destaque')->default(false);
 
             // Chave Estrangeira (FK)
             $table->foreignId('autor_id')

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Biblioteca;
 use App\Models\Emprestimo;
 use App\Models\Livro;
 use App\Models\User;
@@ -85,7 +86,10 @@ class BibliotecaSeeder extends Seeder
 
         $livrosCriados = [];
         foreach ($livros as $dados) {
-            $livrosCriados[] = Livro::create($dados);
+            $livrosCriados[] = Livro::updateOrCreate(
+                ['titulo' => $dados['titulo']],
+                $dados
+            );
         }
 
         // Criar empréstimos para alunos
@@ -95,49 +99,101 @@ class BibliotecaSeeder extends Seeder
 
         if ($yasmin && count($livrosCriados) > 0) {
             // Empréstimo ativo (Dom Casmurro)
-            Emprestimo::create([
-                'livro_id' => $livrosCriados[0]->id_livro,
-                'usuario_id' => $yasmin->id,
-                'data_emprestimo' => now()->subDays(5),
-                'data_prevista_devolucao' => now()->addDays(9),
-                'status' => 'aprovado',
-                'observacoes' => 'Retirado na biblioteca para trabalho de literatura.',
-            ]);
+            Emprestimo::updateOrCreate(
+                [
+                    'livro_id' => $livrosCriados[0]->id_livro,
+                    'usuario_id' => $yasmin->id,
+                    'status' => 'aprovado',
+                ],
+                [
+                    'data_emprestimo' => now()->subDays(5),
+                    'data_prevista_devolucao' => now()->addDays(9),
+                    'observacoes' => 'Retirado na biblioteca para trabalho de literatura.',
+                ]
+            );
 
             // Empréstimo concluído anteriormente (Capitães da Areia)
-            Emprestimo::create([
-                'livro_id' => $livrosCriados[1]->id_livro,
-                'usuario_id' => $yasmin->id,
-                'data_emprestimo' => now()->subDays(30),
-                'data_prevista_devolucao' => now()->subDays(16),
-                'data_devolucao_real' => now()->subDays(17),
-                'status' => 'devolvido',
-                'observacoes' => 'Devolvido em perfeito estado antes do prazo.',
-            ]);
+            Emprestimo::updateOrCreate(
+                [
+                    'livro_id' => $livrosCriados[1]->id_livro,
+                    'usuario_id' => $yasmin->id,
+                    'status' => 'devolvido',
+                ],
+                [
+                    'data_emprestimo' => now()->subDays(30),
+                    'data_prevista_devolucao' => now()->subDays(16),
+                    'data_devolucao_real' => now()->subDays(17),
+                    'observacoes' => 'Devolvido em perfeito estado antes do prazo.',
+                ]
+            );
+
+            // Povoar biblioteca pessoal do usuário
+            Biblioteca::updateOrCreate(
+                ['user_id' => $yasmin->id],
+                [
+                    'dados' => [
+                        'livros' => [
+                            [
+                                'id' => $livrosCriados[0]->id_livro,
+                                'titulo' => $livrosCriados[0]->titulo,
+                                'autor' => $livrosCriados[0]->autor,
+                                'status' => 'Emprestado',
+                                'nota' => '5.0',
+                            ],
+                        ],
+                        'planos' => [
+                            [
+                                'id' => 1,
+                                'nome' => 'Literatura Brasileira para o ENEM',
+                                'disciplina' => 'Língua Portuguesa e Literatura',
+                                'livroIds' => [$livrosCriados[0]->id_livro],
+                                'ativo' => true,
+                            ],
+                        ],
+                        'videoaulas' => [],
+                        'apostilas' => [
+                            [
+                                'id' => 1,
+                                'titulo' => 'Resumo Ilustrado de Dom Casmurro e Realismo',
+                                'materia' => 'Língua Portuguesa e Literatura',
+                                'tipo' => 'Resumo',
+                            ],
+                        ],
+                    ],
+                ]
+            );
         }
 
         if ($pedro && count($livrosCriados) > 3) {
             // Empréstimo ativo (Física)
-            Emprestimo::create([
-                'livro_id' => $livrosCriados[3]->id_livro,
-                'usuario_id' => $pedro->id,
-                'data_emprestimo' => now()->subDays(3),
-                'data_prevista_devolucao' => now()->addDays(11),
-                'status' => 'aprovado',
-                'observacoes' => 'Estudo para Olimpíada de Física.',
-            ]);
+            Emprestimo::updateOrCreate(
+                [
+                    'livro_id' => $livrosCriados[3]->id_livro,
+                    'usuario_id' => $pedro->id,
+                ],
+                [
+                    'data_emprestimo' => now()->subDays(3),
+                    'data_prevista_devolucao' => now()->addDays(11),
+                    'status' => 'aprovado',
+                    'observacoes' => 'Estudo para Olimpíada de Física.',
+                ]
+            );
         }
 
         if ($beatriz && count($livrosCriados) > 2) {
             // Empréstimo solicitado aguardando aprovação
-            Emprestimo::create([
-                'livro_id' => $livrosCriados[2]->id_livro,
-                'usuario_id' => $beatriz->id,
-                'data_emprestimo' => now(),
-                'data_prevista_devolucao' => now()->addDays(14),
-                'status' => 'solicitado',
-                'observacoes' => 'Solicitação via portal web.',
-            ]);
+            Emprestimo::updateOrCreate(
+                [
+                    'livro_id' => $livrosCriados[2]->id_livro,
+                    'usuario_id' => $beatriz->id,
+                ],
+                [
+                    'data_emprestimo' => now(),
+                    'data_prevista_devolucao' => now()->addDays(14),
+                    'status' => 'solicitado',
+                    'observacoes' => 'Solicitação via portal web.',
+                ]
+            );
         }
     }
 }

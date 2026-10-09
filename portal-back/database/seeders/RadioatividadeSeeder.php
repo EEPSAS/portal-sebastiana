@@ -34,7 +34,10 @@ class RadioatividadeSeeder extends Seeder
         ];
 
         foreach ($episodios as $dados) {
-            Radioatividade::create($dados);
+            Radioatividade::updateOrCreate(
+                ['titulo' => $dados['titulo']],
+                $dados
+            );
         }
     }
 }

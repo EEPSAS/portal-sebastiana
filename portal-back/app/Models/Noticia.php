@@ -23,6 +23,8 @@ class Noticia extends Model
         'imagem',
         'miniatura',
         'dataPublicacao',
+        'data_publicacao',
+        'destaque',
         'autor_id',
     ];
 
@@ -31,8 +33,19 @@ class Noticia extends Model
     {
         return [
             'dataPublicacao' => 'datetime',
+            'data_publicacao' => 'datetime',
             'destaque' => 'boolean',
         ];
+    }
+
+    public function setDataPublicacaoAttribute($value): void
+    {
+        $this->attributes['dataPublicacao'] = $value;
+    }
+
+    public function getDataPublicacaoAttribute(): mixed
+    {
+        return $this->attributes['dataPublicacao'] ?? $this->attributes['data_publicacao'] ?? null;
     }
 
     // Relacionamento N:1 com o usuário autor da notícia

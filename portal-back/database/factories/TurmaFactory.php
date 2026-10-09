@@ -20,7 +20,7 @@ class TurmaFactory extends Factory
     public function definition(): array
     {
         return [
-            'nome_identificador' => fake()->randomElement(['1º Ano', '2º Ano', '3º Ano']).' '.fake()->randomElement(['A', 'B', 'C']).' - Ensino Médio',
+            'nome_identificador' => fake()->randomElement(['1º Ano', '2º Ano', '3º Ano']).' '.fake()->randomElement(['A', 'B', 'C', 'D']).' - Ensino Médio #'.fake()->unique()->numberBetween(1, 9999),
             'turno' => fake()->randomElement(['Manhã', 'Tarde', 'Noite', 'Integral']),
             'ano_letivo' => 2026,
             'capacidade_maxima' => 40,

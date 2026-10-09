@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AlunoDashboardController;
 use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DisciplinaController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\RemessaDocenteController;
 use App\Http\Controllers\SubmissaoController;
 use App\Http\Controllers\TurmaController;
+use App\Http\Controllers\UsuarioController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -77,6 +79,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/turmas/{turma_id}/alunos-criticos', [EspecialistaDashboardController::class, 'alunosCriticos']);
     Route::get('/turmas/{turma_id}/disciplinas/{disciplina_id}/analise-detalhada', [EspecialistaDashboardController::class, 'analiseDetalhada']);
     Route::get('/turmas/{turma_id}/disciplinas/{disciplina_id}/alunos-risco', [EspecialistaDashboardController::class, 'alunosRisco']);
+
+    // Dashboard do Aluno (Visão Individual e Acadêmica)
+    Route::get('/alunos/{aluno_id}/turmas/{turma_id}/resumo-global', [AlunoDashboardController::class, 'resumoGlobal']);
+    Route::get('/alunos/{aluno_id}/turmas/{turma_id}/boletim', [AlunoDashboardController::class, 'boletim']);
+    Route::get('/alunos/{aluno_id}/turmas/{turma_id}/comparativo-turma', [AlunoDashboardController::class, 'comparativoTurma']);
+    Route::get('/alunos/{aluno_id}/turmas/{turma_id}/disciplinas/{disciplina_id}/desempenho', [AlunoDashboardController::class, 'desempenhoDisciplina']);
 
     // Módulo Acadêmico: Disciplinas
     Route::post('/disciplinas/{disciplina}/vincular-professor', [DisciplinaController::class, 'vincularProfessor']);
@@ -141,4 +149,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/submissoes/{submissao}', [SubmissaoController::class, 'destroy']);
     Route::patch('/submissoes/{submissao}/avaliar', [SubmissaoController::class, 'avaliar']);
     Route::patch('/submissoes/{submissao}/feedback', [SubmissaoController::class, 'feedback']);
+
+    // Gestão de Papéis e Permissões (Administrador)
+    Route::get('/papeis', [UsuarioController::class, 'papeis']);
+    Route::get('/permissoes', [UsuarioController::class, 'permissoes']);
+
+    // Gestão de Usuários (Administrador)
+    Route::patch('/usuarios/{usuario}/bloquear', [UsuarioController::class, 'bloquear']);
+    Route::patch('/usuarios/{usuario}/papel', [UsuarioController::class, 'alterarPapel']);
+    Route::post('/usuarios/{usuario}/permissoes', [UsuarioController::class, 'atribuirPermissoes']);
+    Route::apiResource('usuarios', UsuarioController::class);
 });
