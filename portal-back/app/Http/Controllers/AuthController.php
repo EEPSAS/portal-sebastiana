@@ -16,9 +16,12 @@ class AuthController extends Controller
     {
         // Valida os dados de entrada (requer confirmação do campo 'password' via 'password_confirmation')
         $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', 'min:8'],
         ]);
+
+        $validated['name'] = $validated['name'] ?? explode('@', $validated['email'])[0];
 
         // Garante que todo novo registro seja criado exclusivamente como perfil padrão
         $validated['role'] = UserRole::PADRAO;

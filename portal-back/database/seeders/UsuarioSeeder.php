@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\UserRole;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -15,19 +16,35 @@ class UsuarioSeeder extends Seeder
     public function run(): void
     {
         $password = Hash::make('password');
+        $roles = class_exists(Role::class) ? Role::pluck('id', 'slug')->all() : [];
 
-        // 1. Administrador Geral
-        User::firstOrCreate(
+        // 1. Administrador Geral (Nível 3)
+        User::updateOrCreate(
             ['email' => 'admin@sebastiana.edu.br'],
             [
                 'name' => 'Administrador Geral',
                 'password' => $password,
                 'role' => UserRole::ADM,
+                'role_id' => $roles['admin'] ?? null,
+                'ativo' => true,
                 'email_verified_at' => now(),
             ]
         );
 
-        // 2. Especialistas / Professores
+        // 2. Especialista / Gestão Acadêmica e Conteúdo (Nível 2)
+        User::updateOrCreate(
+            ['email' => 'clara.mendes@sebastiana.edu.br'],
+            [
+                'name' => 'Clara Mendes',
+                'password' => $password,
+                'role' => UserRole::ESPECIALISTA,
+                'role_id' => $roles['especialista'] ?? null,
+                'ativo' => true,
+                'email_verified_at' => now(),
+            ]
+        );
+
+        // 3. Professores (Nível 1.2)
         $professores = [
             [
                 'name' => 'Prof. Carlos Silva',
@@ -48,18 +65,33 @@ class UsuarioSeeder extends Seeder
         ];
 
         foreach ($professores as $prof) {
-            User::firstOrCreate(
+            User::updateOrCreate(
                 ['email' => $prof['email']],
                 [
                     'name' => $prof['name'],
                     'password' => $password,
-                    'role' => UserRole::ESPECIALISTA,
+                    'role' => UserRole::PROFESSOR,
+                    'role_id' => $roles['professor'] ?? null,
+                    'ativo' => true,
                     'email_verified_at' => now(),
                 ]
             );
         }
 
-        // 3. Usuários Padrão / Alunos
+        // 4. Bibliotecária (Nível 1.3)
+        User::updateOrCreate(
+            ['email' => 'bibliotecaria@sebastiana.edu.br'],
+            [
+                'name' => 'Helena Vasconcelos',
+                'password' => $password,
+                'role' => UserRole::BIBLIOTECARIA,
+                'role_id' => $roles['bibliotecaria'] ?? null,
+                'ativo' => true,
+                'email_verified_at' => now(),
+            ]
+        );
+
+        // 5. Alunos (Nível 1.1)
         $alunos = [
             [
                 'name' => 'Yasmin Teixeira',
@@ -88,12 +120,14 @@ class UsuarioSeeder extends Seeder
         ];
 
         foreach ($alunos as $aluno) {
-            User::firstOrCreate(
+            User::updateOrCreate(
                 ['email' => $aluno['email']],
                 [
                     'name' => $aluno['name'],
                     'password' => $password,
-                    'role' => UserRole::PADRAO,
+                    'role' => UserRole::ALUNO,
+                    'role_id' => $roles['aluno'] ?? null,
+                    'ativo' => true,
                     'email_verified_at' => now(),
                 ]
             );

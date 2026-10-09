@@ -91,9 +91,12 @@ class EventoSeeder extends Seeder
         ];
 
         foreach ($eventos as $item) {
-            Evento::create(array_merge($item, [
-                'criador_id' => $admin->id,
-            ]));
+            Evento::updateOrCreate(
+                ['titulo' => $item['titulo'], 'data_inicio' => $item['data_inicio']],
+                array_merge($item, [
+                    'criador_id' => $admin->id,
+                ])
+            );
         }
     }
 }

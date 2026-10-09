@@ -20,8 +20,12 @@ class DisciplinaFactory extends Factory
     public function definition(): array
     {
         return [
-            'nome' => fake()->unique()->randomElement(['Matemática', 'Língua Portuguesa', 'Física', 'Química', 'Biologia', 'História', 'Geografia', 'Filosofia', 'Sociologia', 'Inglês', 'Artes', 'Educação Física']),
-            'carga_horaria_anual' => fake()->randomElement([80, 120, 160]),
+            'nome' => fake()->randomElement([
+                'Matemática', 'Língua Portuguesa', 'Física', 'Química', 'Biologia',
+                'História', 'Geografia', 'Filosofia', 'Sociologia', 'Inglês', 'Artes',
+                'Educação Física', 'Robótica', 'Programação Web', 'Literatura',
+            ]).' '.fake()->unique()->numberBetween(1, 9999),
+            'carga_horaria_anual' => fake()->randomElement([80, 100, 120, 160]),
             'descricao' => fake()->sentence(),
         ];
     }

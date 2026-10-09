@@ -24,6 +24,7 @@ class NoticiaSeeder extends Seeder
                 'imagem' => 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800',
                 'miniatura' => 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=300',
                 'dataPublicacao' => now()->subDays(10),
+                'destaque' => true,
                 'autor_id' => $admin->id,
             ],
             [
@@ -34,6 +35,7 @@ class NoticiaSeeder extends Seeder
                 'imagem' => 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=800',
                 'miniatura' => 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=300',
                 'dataPublicacao' => now()->subDays(6),
+                'destaque' => false,
                 'autor_id' => $admin->id,
             ],
             [
@@ -44,12 +46,16 @@ class NoticiaSeeder extends Seeder
                 'imagem' => 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=800',
                 'miniatura' => 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=300',
                 'dataPublicacao' => now()->subDays(2),
+                'destaque' => false,
                 'autor_id' => $admin->id,
             ],
         ];
 
         foreach ($noticias as $dados) {
-            Noticia::create($dados);
+            Noticia::updateOrCreate(
+                ['titulo' => $dados['titulo']],
+                $dados
+            );
         }
     }
 }
