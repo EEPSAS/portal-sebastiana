@@ -1,8 +1,10 @@
 import { BrowserRouter, Route, Routes } from "react-router";
-import PortalLayout from "./Layouts/Portal/PortalLayout";
-import DashboardLayout from "./Layouts/Dashboard/DashboardLayout";
+import PortalLayout from "./layouts/Portal/PortalLayout";
+import DashboardLayout from "./layouts/Dashboard/DashboardLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import PublicHome from "./pages/Portal/Home";
+import NoticiaPage from "./pages/Portal/Noticia";
 import Login from "./pages/Portal/Login";
 
 import GeralPage from "./pages/Dashboard/Geral";
@@ -18,17 +20,20 @@ const App = () => {
         {/* Área Pública do Portal */}
         <Route path="/" element={<PortalLayout />}>
           <Route index element={<PublicHome />} />
+          <Route path="noticia/:id" element={<NoticiaPage />} />
           <Route path="login" element={<Login />} />
         </Route>
 
         {/* Área Logada do Dashboard */}
-        <Route path="dashboard" element={<DashboardLayout />}>
-          <Route index element={<GeralPage />} />
-          <Route path="geral" element={<GeralPage />} />
-          <Route path="biblioteca" element={<BibliotecaPage />} />
-          <Route path="turmas" element={<TurmaPage />} />
-          <Route path="agenda" element={<AgendaPage />} />
-          <Route path="configuracoes" element={<ConfiguracoesPage />} />
+        <Route path="dashboard" element={<ProtectedRoute />}>
+          <Route element={<DashboardLayout />}>
+            <Route index element={<GeralPage />} />
+            <Route path="geral" element={<GeralPage />} />
+            <Route path="biblioteca" element={<BibliotecaPage />} />
+            <Route path="turmas" element={<TurmaPage />} />
+            <Route path="agenda" element={<AgendaPage />} />
+            <Route path="configuracoes" element={<ConfiguracoesPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>
@@ -36,3 +41,4 @@ const App = () => {
 };
 
 export default App;
+

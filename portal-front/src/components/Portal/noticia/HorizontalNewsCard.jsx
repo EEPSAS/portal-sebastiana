@@ -4,7 +4,7 @@ const HorizontalNewsCard = ({ noticia, loading }) => (
 			<div className="row h-100 align-items-center g-3">
 				<div className="col-12 col-md-7">
 					{loading ? (
-						<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100" style={{ height: "220px" }}>
+						<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100 noticias-card__skeleton--horizontal">
 							<div className="spinner-border text-primary" role="status">
 								<span className="visually-hidden">Carregando...</span>
 							</div>

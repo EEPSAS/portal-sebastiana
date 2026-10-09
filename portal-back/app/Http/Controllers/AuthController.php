@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
+// Controller responsável pela autenticação (registro, login, logout e geração de tokens).
 class AuthController extends Controller
 {
     // Registra um novo usuário com perfil padrão e retorna seu token de acesso.
@@ -15,7 +16,6 @@ class AuthController extends Controller
     {
         // Valida os dados de entrada (requer confirmação do campo 'password' via 'password_confirmation')
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', 'min:8'],
         ]);
@@ -49,6 +49,13 @@ class AuthController extends Controller
             ], 401);
         }
 
+        // Bloqueio de usuário inativado
+        if (! $user->ativo) {
+            return response()->json([
+                'message' => 'Usuário bloqueado pelo administrador. Acesso negado.',
+            ], 403);
+        }
+
         // Retorna o token de acesso com status HTTP 200 (OK)
         return $this->tokenResponse($user);
     }
@@ -67,8 +74,13 @@ class AuthController extends Controller
     // Monta o payload JSON padronizado com o usuário e o token Bearer gerado.
     private function tokenResponse(User $user, int $status = 200): JsonResponse
     {
+        $user->load('roleModel.permissions');
+
+        $userData = $user->toArray();
+        $userData['permissoes'] = $user->getPermissionsSlugs();
+
         return response()->json([
-            'user' => $user,
+            'user' => $userData,
             'token' => $user->createToken('portal-front')->plainTextToken,
             'token_type' => 'Bearer',
         ], $status);

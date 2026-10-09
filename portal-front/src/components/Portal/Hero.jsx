@@ -21,14 +21,14 @@ const HeroSection = () => {
               </div>
               <div className="carousel-item">
                 <img
-                  src="https://placehold.co/900x675/e7ebf2/263864?text=Novidades+da+Escola"
+                  src="/img/jaguaraçu1.jpg"
                   className="portal-hero__carousel-image"
                   alt="Placeholder para novidades da escola"
                 />
               </div>
               <div className="carousel-item">
                 <img
-                  src="https://placehold.co/900x675/dce3ef/263864?text=Projetos+e+Eventos"
+                  src="/img/jaguaraçu2.jpg"
                   className="portal-hero__carousel-image"
                   alt="Placeholder para projetos e eventos da escola"
                 />
