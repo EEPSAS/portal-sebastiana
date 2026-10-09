@@ -1,7 +1,9 @@
-import GeralEspecialista from "../../components/Dashboard/Geral/geralespecialista";
+import GeralPadrao from "../../components/Dashboard/geral/padrao";
+
 
 const GeralPage = () => {
-  return <GeralEspecialista />;
+  return <GeralPadrao />;
+  ;
 };
 
 export default GeralPage;
