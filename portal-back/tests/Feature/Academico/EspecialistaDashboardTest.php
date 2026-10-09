@@ -362,3 +362,27 @@ CSV;
     $resDesempenho->assertOk();
     expect($resDesempenho->json('ranking_componentes'))->toHaveCount(22);
 });
+
+test('especialista lista as notas detalhadas registradas para uma turma', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $turma = Turma::factory()->create();
+    $disciplina = Disciplina::factory()->create(['nome' => 'Matemática']);
+    $aluno = User::factory()->create(['name' => 'Aluno Teste']);
+
+    Nota::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $disciplina->id_disciplina,
+        'usuario_id' => $aluno->id,
+        'valor_nota' => 8.5,
+        'periodo_letivo' => '1º Bimestre',
+    ]);
+
+    $response = $this->actingAs($especialista, 'sanctum')
+        ->getJson("/api/turmas/{$turma->id_turma}/notas");
+
+    $response->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.valor_nota', 8.5)
+        ->assertJsonPath('0.aluno.name', 'Aluno Teste')
+        ->assertJsonPath('0.disciplina.nome', 'Matemática');
+});

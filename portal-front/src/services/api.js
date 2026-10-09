@@ -6,20 +6,22 @@ const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').re
  */
 export const api = async (path, { method = 'GET', body, signal, headers = {} } = {}) => {
   const token = localStorage.getItem('auth_token');
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
   const config = {
     method,
     signal,
     headers: {
-      'Content-Type': 'application/json',
       'Accept': 'application/json',
+      // Quando é FormData, o navegador define o Content-Type multipart/form-data com o boundary correto
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
   };
 
   if (body) {
-    config.body = JSON.stringify(body);
+    config.body = isFormData ? body : JSON.stringify(body);
   }
 
   const response = await fetch(`${API_URL}${path}`, config);

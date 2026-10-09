@@ -71,6 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Módulo Acadêmico: Turmas
     Route::get('/turmas/{turma}/alunos', [TurmaController::class, 'alunos']);
     Route::get('/turmas/{turma}/disciplinas', [TurmaController::class, 'disciplinas']);
+    Route::get('/turmas/{turma}/notas', [TurmaController::class, 'notas']);
     Route::post('/turmas/{turma}/disciplinas', [TurmaController::class, 'vincularDisciplina']);
     Route::delete('/turmas/{turma}/disciplinas/{disciplina}', [TurmaController::class, 'desvincularDisciplina']);
     Route::apiResource('turmas', TurmaController::class);

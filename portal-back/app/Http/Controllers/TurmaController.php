@@ -139,4 +139,25 @@ class TurmaController extends Controller
 
         return response()->json(null, 204);
     }
+
+    // Lista as notas e avaliações registradas para os alunos desta turma.
+    public function notas(Request $request, Turma $turma): JsonResponse
+    {
+        Gate::authorize('view', $turma);
+
+        $query = $turma->notas()->with([
+            'aluno:id,name,email',
+            'disciplina:id_disciplina,nome',
+        ]);
+
+        if ($request->filled('periodo_letivo')) {
+            $query->where('periodo_letivo', $request->query('periodo_letivo'));
+        }
+
+        if ($request->filled('disciplina_id')) {
+            $query->where('disciplina_id', $request->query('disciplina_id'));
+        }
+
+        return response()->json($query->orderByDesc('id_nota')->get(), 200);
+    }
 }

@@ -272,18 +272,40 @@ class EspecialistaDashboardService
             }
 
             // Localiza ou cadastra o aluno dinamicamente
-            $alunoEncontrado = User::whereRaw('LOWER(name) = ?', [mb_strtolower($identificadorAluno)])
+            $slugNome = Str::slug($identificadorAluno);
+            $emailGerado = "{$slugNome}.{$turma->id_turma}@aluno.mg.gov.br";
+
+            // 1. Busca por nome exato, e-mail informado ou e-mail padrão já gerado para a turma
+            $alunoEncontrado = User::where('name', $identificadorAluno)
                 ->orWhere('email', $identificadorAluno)
+                ->orWhere('email', $emailGerado)
                 ->first();
 
+            // 2. Busca aproximada pelo slug do e-mail (caso o estudante já exista no sistema)
             if (! $alunoEncontrado) {
-                // Cadastra o aluno no sistema com papel PADRAO
-                $slugNome = Str::slug($identificadorAluno);
-                $emailGerado = "{$slugNome}.{$turma->id_turma}@aluno.mg.gov.br";
+                $alunoEncontrado = User::where('email', 'like', "{$slugNome}%")->first();
+            }
+
+            // 3. Busca insensível a maiúsculas e acentos em nível de aplicação (compatível com SQLite)
+            if (! $alunoEncontrado) {
+                $nomeNormalizado = Str::ascii(mb_strtolower($identificadorAluno));
+                $alunoEncontrado = User::all()->first(function ($user) use ($nomeNormalizado) {
+                    return Str::ascii(mb_strtolower($user->name)) === $nomeNormalizado;
+                });
+            }
+
+            // 4. Se o aluno realmente não existir, cadastra no sistema garantindo e-mail único
+            if (! $alunoEncontrado) {
+                $emailFinal = $emailGerado;
+                $contador = 1;
+                while (User::where('email', $emailFinal)->exists()) {
+                    $contador++;
+                    $emailFinal = "{$slugNome}.{$turma->id_turma}.{$contador}@aluno.mg.gov.br";
+                }
 
                 $alunoEncontrado = User::create([
                     'name' => $identificadorAluno,
-                    'email' => $emailGerado,
+                    'email' => $emailFinal,
                     'password' => bcrypt('12345678'),
                     'role' => UserRole::PADRAO,
                     'ativo' => true,
