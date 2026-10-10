@@ -1,0 +1,380 @@
+/**
+ * Biblioteca.css - Estilização Visual Centralizada da Biblioteca Escolar
+ *
+ * Papel Didático:
+ * Reúne os estilos específicos de identidade visual do Portal Sebastiana para o
+ * acervo escolar (modais sobrepostos, cartões de livros, planos de estudo e videoaulas).
+ * Utilizado de forma combinada com as classes utilitárias nativas do Bootstrap 5.
+ */
+
+/* ==========================================================================
+   1. Notificações Flutuantes (Toast)
+   ========================================================================== */
+
+.biblioteca-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background-color: #0f172a;
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 2000;
+  font-weight: 600;
+  font-size: 14px;
+  animation: bibliotecaFadeIn 0.3s ease;
+}
+
+@keyframes bibliotecaFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   2. Modais Customizados
+   ========================================================================== */
+
+.biblioteca-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1060;
+  padding: 16px;
+}
+
+.biblioteca-modal-dialog {
+  background-color: #ffffff;
+  border-radius: 16px;
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2);
+}
+
+.biblioteca-modal-dialog--lg {
+  width: min(680px, 100%);
+}
+
+.biblioteca-modal-dialog--sm {
+  width: min(380px, 100%);
+  text-align: center;
+}
+
+/* ==========================================================================
+   3. Botões e Navegação
+   ========================================================================== */
+
+.biblioteca-btn-primario {
+  background-color: #e6007e;
+  color: #ffffff;
+  border: 0;
+  font-weight: 700;
+  transition: opacity 0.2s ease;
+}
+
+.biblioteca-btn-primario:hover {
+  background-color: #d00071;
+  color: #ffffff;
+  opacity: 0.95;
+}
+
+.biblioteca-tab-btn {
+  color: #64748b;
+  font-weight: 500;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.biblioteca-tab-btn:hover {
+  color: #0f172a;
+}
+
+.biblioteca-tab-btn.is-active {
+  color: #e6007e;
+  font-weight: 700;
+  border-bottom: 2px solid #e6007e;
+  padding-bottom: 6px;
+}
+
+.biblioteca-search-wrapper {
+  position: relative;
+}
+
+.biblioteca-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.biblioteca-search-input {
+  font-size: 13px;
+  border-color: #e2e8f0;
+  width: min(70vw, 280px);
+  background-color: #f8fafc;
+}
+
+/* ==========================================================================
+   4. Cards de Livros (Acervo)
+   ========================================================================== */
+
+.livro-card {
+  border-radius: 16px;
+  overflow: hidden;
+  background-color: #ffffff;
+  border: 1px solid #f1f5f9;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.livro-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.livro-card-cover {
+  height: 150px;
+  overflow: hidden;
+  position: relative;
+}
+
+.livro-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.livro-card-placeholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+}
+
+.livro-card-rating {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(255, 255, 255, 0.94);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #d97706;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.livro-status-badge--disponivel {
+  background-color: #d1fae5;
+  color: #065f46;
+  font-size: 11px;
+}
+
+.livro-status-badge--emprestado {
+  background-color: #fef3c7;
+  color: #92400e;
+  font-size: 11px;
+}
+
+/* ==========================================================================
+   5. Cards de Planos de Estudos
+   ========================================================================== */
+
+.plano-estudo-card {
+  border-radius: 16px;
+  background-color: #ffffff;
+  position: relative;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+}
+
+.plano-estudo-card.is-ativo {
+  border: 2px solid #e6007e;
+  box-shadow: 0 0 15px rgba(230, 0, 126, 0.15);
+}
+
+.plano-estudo-card-delete-btn {
+  top: 16px;
+  right: 16px;
+  color: #94a3b8;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.plano-estudo-card-delete-btn:hover {
+  color: #ef4444;
+}
+
+/* ==========================================================================
+   6. Cards de Conteúdo Web / Apostilas
+   ========================================================================== */
+
+.material-web-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   7. Seção de Videoaulas (YouTube)
+   ========================================================================== */
+
+.videoaulas-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.videoaulas-search__field {
+  min-width: 0;
+}
+
+.videoaulas-search__button {
+  min-width: 124px;
+  min-height: 38px;
+}
+
+.videoaulas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
+
+.videoaulas-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.videoaulas-card.is-selected {
+  border-color: #e6007e;
+  box-shadow: 0 0 0 2px rgba(230, 0, 126, 0.12);
+}
+
+.videoaulas-card__thumbnail {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #f1f5f9;
+}
+
+.videoaulas-card__thumbnail--empty {
+  background: #e2e8f0;
+}
+
+.videoaulas-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px;
+}
+
+.videoaulas-card__title {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.videoaulas-card__info,
+.videoaulas-card__description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.videoaulas-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 16px;
+  margin-top: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.videoaulas-add__field {
+  min-width: 0;
+}
+
+.videoaulas-add__button {
+  min-width: 124px;
+  min-height: 38px;
+}
+
+.videoaulas-selected-title {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+@media (max-width: 575.98px) {
+  .videoaulas-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .videoaulas-search__button {
+    width: 100%;
+  }
+
+  .videoaulas-add {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .videoaulas-add__button {
+    width: 100%;
+  }
+}

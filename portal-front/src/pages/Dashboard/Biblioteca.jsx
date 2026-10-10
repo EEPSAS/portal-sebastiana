@@ -6,10 +6,10 @@
  * e também está acessível a alunos, professores e especialistas.
  */
 
-import BibliotecaPadrao from "../../components/Dashboard/biblioteca/padrao/BibliotecaPadrao";
+import Biblioteca from "../../components/Dashboard/biblioteca";
 
 const BibliotecaPage = () => {
-  return <BibliotecaPadrao />;
+  return <Biblioteca />;
 };
 
 export default BibliotecaPage;
