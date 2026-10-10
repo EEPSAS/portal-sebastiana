@@ -1,7 +1,7 @@
 import { Outlet } from "react-router";
 import Footer from "../../components/Portal/Footer";
 import Navbar from "../../components/Portal/Navbar";
-import "../../pages/Portal/portal.css";
+import "../../pages/Portal/Portal.css";
 
 const PortalLayout = () => (
   <div className="portal-scope">

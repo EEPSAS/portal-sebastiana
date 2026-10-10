@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listEventos } from '../services/Evento/eventosService';
+import { listEventos } from '../services/eventosService';
 
 export const useEventos = ({ token } = {}) => {
   const [result, setResult] = useState({ requestKey: null, eventos: [], error: null });

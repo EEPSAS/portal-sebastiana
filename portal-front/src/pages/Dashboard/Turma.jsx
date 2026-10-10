@@ -1,16 +1,15 @@
-import { Navigate } from "react-router";
+/**
+ * Turma.jsx - Página de Gestão de Turmas e Notas
+ *
+ * Papel Didático:
+ * Renderiza o módulo de turmas para professores, especialistas e administradores.
+ * A proteção de acesso por perfil é realizada declarativamente pelo <ProtectedRoute allowedRoles={...}>
+ * configurado em App.jsx, mantendo este componente desacoplado e focado em renderizar a tela.
+ */
+
 import TurmaEspecialista from "../../components/Dashboard/turmas";
-import { useAuth } from "../../hooks/useAuth";
 
 const TurmaPage = () => {
-  const { user } = useAuth();
-  const role = user?.role || "padrao";
-  const isEspecialista = role === "especialista" || role === "adm";
-
-  if (!isEspecialista) {
-    return <Navigate to="/dashboard/geral" replace />;
-  }
-
   return <TurmaEspecialista />;
 };
 

@@ -1,16 +1,33 @@
+/**
+ * Categorias.jsx - Painel de Filtros por Categoria de Evento
+ *
+ * Papel Didático:
+ * Permite ao usuário filtrar eventos escolares por categorias (pedagógico, acadêmico, feriado, etc).
+ * Os estilos visuais foram extraídos para `Agenda.css`, mantendo estilos inline
+ * unicamente para propriedades dinâmicas de cor definidas na configuração (`category.color`).
+ */
+
 const Categorias = ({ categories, activeCategories, onToggleCategory, onClearCategories }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-    <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Categorias</h3>
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+  <div className="agenda-categories-container">
+    <h3 className="agenda-categories-title">Categorias</h3>
+    <div className="agenda-categories-list">
       {categories.map((category) => {
         const isActive = activeCategories.has(category.key);
         return (
-          <label key={category.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', opacity: isActive ? 1 : 0.55 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ width: '32px', height: '32px', borderRadius: '6px', background: category.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px' }}>{category.icon}</span>
-              <span>
-                <strong style={{ display: 'block', fontSize: '13px', color: '#0f172a' }}>{category.label}</strong>
-                <span style={{ fontSize: '11px', color: '#64748b' }}>{category.description}</span>
+          <label
+            key={category.key}
+            className={`agenda-category-item ${isActive ? '' : 'is-inactive'}`}
+          >
+            <span className="agenda-category-info">
+              <span
+                className="agenda-category-icon"
+                style={{ backgroundColor: category.color }}
+              >
+                {category.icon}
+              </span>
+              <span className="agenda-category-text">
+                <strong className="agenda-category-name">{category.label}</strong>
+                <span className="agenda-category-desc">{category.description}</span>
               </span>
             </span>
             <input
@@ -18,16 +35,21 @@ const Categorias = ({ categories, activeCategories, onToggleCategory, onClearCat
               checked={isActive}
               onChange={() => onToggleCategory(category.key)}
               aria-label={`Mostrar ${category.label}`}
-              style={{ accentColor: category.color, width: '18px', height: '18px', cursor: 'pointer' }}
+              className="agenda-category-checkbox"
+              style={{ accentColor: category.color }}
             />
           </label>
         );
       })}
     </div>
-    <button type="button" onClick={onClearCategories} style={{ marginTop: '10px', background: 'none', border: 'none', color: '#e6007e', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+    <button
+      type="button"
+      onClick={onClearCategories}
+      className="agenda-clear-filters-btn"
+    >
       🧹 Limpar filtros
     </button>
   </div>
 );
 
-export default Categorias;
+export default Categorias;

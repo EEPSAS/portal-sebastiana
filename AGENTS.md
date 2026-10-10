@@ -46,13 +46,15 @@ Você atua como um **Tutor Técnico Sênior** orientando Desenvolvedores Juniore
 - **Tratamento de Mensagens de Erro:** Erros exibidos para o usuário final devem ser sempre amigáveis e em português, nunca expondo rastros de stack ou termos crus de banco de dados.
 
 ## Roles de Usuário (Contrato Back ↔ Front)
-| Valor no banco | Acesso                                    |
-|----------------|-------------------------------------------|
-| `padrao`       | Leitura (dashboard, turmas, calendário)   |
-| `especialista` | Criar/editar notícias, eventos e notas    |
-| `adm`          | Acesso total + painel administrativo      |
+| Valor no banco | Acesso | Destino Default (`/dashboard`) |
+|---|---|---|
+| `aluno` | Geral Aluno, Agenda, Boletim, Biblioteca, Configurações | `/dashboard/geral` |
+| `professor` | Geral Especialista, Agenda, Biblioteca, Turmas, Configurações | `/dashboard/geral` |
+| `bibliotecaria` / `bibliotecario` | Biblioteca, Agenda, Configurações | `/dashboard/biblioteca` |
+| `especialista` | Geral Especialista, Agenda, Turmas, Biblioteca, Noticias, Configurações | `/dashboard/geral` |
+| `adm` | Acesso total + simulação de perfis no navbar | `/dashboard/geral` |
 
-Todo usuário registrado via API recebe `padrao` automaticamente.
+*Nota:* Ambas as variações `bibliotecaria` e `bibliotecario` possuem exatamente o mesmo comportamento e permissões. Todo usuário registrado via API recebe `aluno` automaticamente.
 
 ## Contrato de Comunicação com a API
 - URL base fornecida via variável de ambiente: `VITE_API_URL` (com fallback padrão `http://localhost:8000/api`).

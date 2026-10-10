@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// Importação específica do hook useState (dispensa 'import React')
+import { useState } from "react";
 import { importarNotasCSV } from "../../../services/turmasService";
 
 /**

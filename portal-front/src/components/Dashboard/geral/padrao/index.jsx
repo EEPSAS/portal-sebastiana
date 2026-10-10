@@ -1,8 +1,8 @@
 import { useStudentStats } from '../../../../hooks/geral/padrao/useSmallCardsPadrao';
 import { useAgenda } from '../../../../hooks/geral/padrao/useAgendaPadrao.js';
-import StudentStatCard from './Cards/dumbsmallcardspadrao.jsx';
-import BoletimDetalhado from './Cards/smartmediumcardpadrao.jsx';
-import AgendaList from './Agenda/dumbagendapadrao.jsx';
+import StudentStatCard from './Cards/EstudanteEstatisticaCard.jsx';
+import BoletimDetalhado from './Cards/BoletimDetalhadoCard.jsx';
+import AgendaList from './Agenda/AgendaNotificacoesLista.jsx';
 
 export function AgendaNotificacoes() {
   const { agendaItens, loading, error } = useAgenda();

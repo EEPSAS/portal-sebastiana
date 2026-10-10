@@ -1,5 +1,5 @@
 import { useStudentStats } from '../../../../../hooks/geral/padrao/useSmallCardsPadrao';
-import StudentStatCard from './dumbsmallcardspadrao.jsx';
+import StudentStatCard from './EstudanteEstatisticaCard.jsx';
 
 // Ícone do Alarme para o 4º Card
 const AlarmIcon = () => (

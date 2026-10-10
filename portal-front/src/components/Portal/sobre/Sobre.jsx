@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "./sobre.css";
+import "./Sobre.css";
 
 import SobreJaguaracu from "./SobreJaguaracu";
 import SobreDesenvolvedores from "./SobreDesenvolvedores";

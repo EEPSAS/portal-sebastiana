@@ -1,4 +1,4 @@
-import './podcast.css';
+import './Podcast.css';
 
 const PodcastSection = () => {
   return (

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import CardLivro from './cardlivro';
-import DetalheLivroModal from './detalhelivromodal';
-import { hasPortalSession, loadBiblioteca, saveBiblioteca } from '../../../../services/portalApi';
+import CardLivro from './CardLivro';
+import DetalheLivroModal from './DetalheLivroModal';
+import { hasPortalSession, loadBiblioteca, saveBiblioteca } from '../../../../services/bibliotecaService';
 import { searchYouTubeVideos, validateYouTubeVideo } from '../../../../services/youtubeApi';
-import './videoaulas.css';
+import './VideoAulas.css';
 
 const MATERIAS_DISPONIVEIS = [
   "Matemática", "Português", "Redação", "Física", "Química",

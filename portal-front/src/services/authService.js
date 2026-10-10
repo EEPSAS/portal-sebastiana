@@ -41,7 +41,9 @@ export const fetchCurrentUser = async ({ signal } = {}) => {
   const response = await api('/user', { signal });
 
   if (!response.ok) {
-    throw new Error('Sessão expirada.');
+    const error = new Error('Sessão expirada.');
+    error.status = response.status;
+    throw error;
   }
 
   const user = await response.json();

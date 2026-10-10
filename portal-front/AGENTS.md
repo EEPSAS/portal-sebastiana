@@ -57,7 +57,7 @@ portal-front/src/
 | `/dashboard` (-> `geral`) | Logado | Entrada do painel |
 | `/dashboard/geral` | Logado | Visão geral do painel |
 | `/dashboard/biblioteca` | Logado | Acervo escolar |
-| `/dashboard/turmas` | Logado | Gestão de turmas |
+| `/dashboard/turmas` | Professor/Especialista/Adm | Gestão de turmas |
 | `/dashboard/agenda` | Logado | Calendário e eventos |
 | `/dashboard/noticias` | Especialista/Adm | CRUD de notícias |
 | `/dashboard/configuracoes` | Logado | Perfil e preferências |

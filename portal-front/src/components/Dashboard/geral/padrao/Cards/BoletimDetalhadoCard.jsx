@@ -1,5 +1,5 @@
 import { useBoletim } from '../../../../../hooks/geral/padrao/useMediumCardPadrao.js';
-import MediumCard from './dumbmediumcardpadrao.jsx';
+import MediumCard from './BoletimGraficoCard.jsx';
 
 export default function BoletimDetalhado() {
   // Apenas extraímos os dados, os loadings e errors

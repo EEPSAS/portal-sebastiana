@@ -1,13 +1,27 @@
-import ConfigPadrao from "../../components/Dashboard/configuracoes/configpadrao";
-import ConfigEspecialista from "../../components/Dashboard/configuracoes/configespecialista";
+/**
+ * Configuracoes.jsx - Página de Perfil e Preferências
+ *
+ * Papel Didático:
+ * Permite ao usuário editar suas informações de contato e preferências.
+ * Direciona para o formulário de configurações adequado com base no perfil.
+ */
+
+import ConfigPadrao from "../../components/Dashboard/configuracoes/ConfigPadrao";
+import ConfigEspecialista from "../../components/Dashboard/configuracoes/ConfigEspecialista";
 import { useAuth } from "../../hooks/useAuth";
 
 const ConfiguracoesPage = () => {
   const { user } = useAuth();
-  const role = user?.role || "padrao";
-  const isEspecialista = role === "especialista" || role === "adm";
+  const role = user?.role || "aluno";
 
-  return isEspecialista ? <ConfigEspecialista /> : <ConfigPadrao />;
+  const isServidorEscolar =
+    role === "professor" ||
+    role === "especialista" ||
+    role === "adm" ||
+    role === "bibliotecario" ||
+    role === "bibliotecaria";
+
+  return isServidorEscolar ? <ConfigEspecialista /> : <ConfigPadrao />;
 };
 
 export default ConfiguracoesPage;

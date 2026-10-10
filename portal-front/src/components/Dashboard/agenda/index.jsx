@@ -1,3 +1,17 @@
+/**
+ * index.jsx - Componente Raiz da Agenda do Especialista / Painel
+ *
+ * Papel Didático:
+ * Atua como o container de estado (Smart Component) que orquestra a comunicação
+ * entre a API de eventos, os modais de inserção/edição e os subcomponentes visuais:
+ * - `Categorias`: filtros reativos de tipos de eventos;
+ * - `Calendario`: navegação de meses, seleção de datas e lembretes locais;
+ * - `ProximosEventos`: listagem ordenada de compromissos escolares;
+ * - `CadastroEventoModal`: diálogo para criação e edição com persistência.
+ *
+ * Estilos: Os estilos visuais e de leiaute estão isolados em `Agenda.css`.
+ */
+
 import { useEffect, useState } from 'react';
 import Calendario from './Calendario';
 import Categorias from './Categorias';
@@ -15,6 +29,8 @@ import {
   getCalendarDays,
   getMonthKey,
 } from './agendaUtils';
+import './Agenda.css';
+
 
 const events = createImportantDates();
 const tasksStorageKey = 'portal-sebastiana-calendar-tasks';

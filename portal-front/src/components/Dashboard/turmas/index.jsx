@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+// Importação exclusiva dos hooks necessários (dispensa 'import React' no Vite)
+import { useEffect, useMemo, useState } from "react";
 import { fetchTurmas, fetchTurmaNotas, fetchTurmaResumo } from "../../../services/turmasService";
 import ModalImportarNotas from "./ModalImportarNotas";
 
 /**
- * Componente principal da área Turmas do Especialista Pedagógico.
+ * Componente principal da área Turmas do Especialista Pedagógico e Professor.
  * Consome dados 100% reais do backend (turmas, KPIs e notas registradas)
  * e oferece a funcionalidade de upload e sincronização via arquivo CSV.
  */
@@ -16,23 +17,29 @@ const TurmaEspecialista = () => {
   const [resumo, setResumo] = useState(null);
   const [notas, setNotas] = useState([]);
 
+  // Estado inicial já é carregando (loading = true) para a primeira renderização
   const [loading, setLoading] = useState(true);
   const [loadingDetalhes, setLoadingDetalhes] = useState(false);
   const [erro, setErro] = useState("");
   const [modalImportarAberto, setModalImportarAberto] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState("");
+  // Chave numérica para re-disparar a busca quando um CSV for importado
+  const [recargaKey, setRecargaKey] = useState(0);
 
-  // 1. Carrega a lista inicial de turmas cadastradas
+  /**
+   * 1. Efeito de Montagem: Busca a lista de turmas da escola.
+   * Didática: O array de dependências vazio `[]` garante que execute apenas uma vez.
+   * Evita chamadas síncronas de setState antes das Promises para não causar cascading render.
+   */
   useEffect(() => {
     let cancelado = false;
-    setLoading(true);
-    setErro("");
 
     fetchTurmas()
       .then((lista) => {
         if (!cancelado) {
           setTurmas(lista);
           if (lista.length > 0) {
+            setLoadingDetalhes(true);
             setTurmaSelecionadaId(String(lista[0].id_turma));
           }
         }
@@ -57,37 +64,51 @@ const TurmaEspecialista = () => {
     [turmas, turmaSelecionadaId]
   );
 
-  // 2. Busca os dados da turma selecionada (resumo gerencial e notas reais)
-  const carregarDadosTurma = useCallback(async () => {
+  /**
+   * 2. Efeito de Sincronização: Busca resumo e notas da turma selecionada.
+   * Executa sempre que `turmaSelecionadaId`, `periodoFiltro` ou `recargaKey` mudarem.
+   */
+  useEffect(() => {
     if (!turmaSelecionadaId) return;
 
-    setLoadingDetalhes(true);
-    setErro("");
+    let cancelado = false;
 
-    try {
-      const [dadosResumo, dadosNotas] = await Promise.all([
-        fetchTurmaResumo(turmaSelecionadaId, { periodo: periodoFiltro }).catch(() => null),
-        fetchTurmaNotas(turmaSelecionadaId, { periodo: periodoFiltro }),
-      ]);
+    Promise.all([
+      fetchTurmaResumo(turmaSelecionadaId, { periodo: periodoFiltro }).catch(() => null),
+      fetchTurmaNotas(turmaSelecionadaId, { periodo: periodoFiltro }),
+    ])
+      .then(([dadosResumo, dadosNotas]) => {
+        if (!cancelado) {
+          setResumo(dadosResumo);
+          setNotas(dadosNotas);
+        }
+      })
+      .catch((err) => {
+        if (!cancelado) {
+          setErro(err.message || "Erro ao carregar notas da turma.");
+        }
+      })
+      .finally(() => {
+        if (!cancelado) setLoadingDetalhes(false);
+      });
 
-      setResumo(dadosResumo);
-      setNotas(dadosNotas);
-    } catch (err) {
-      setErro(err.message || "Erro ao carregar notas da turma.");
-    } finally {
-      setLoadingDetalhes(false);
-    }
-  }, [turmaSelecionadaId, periodoFiltro]);
-
-  useEffect(() => {
-    carregarDadosTurma();
-  }, [carregarDadosTurma]);
+    return () => {
+      cancelado = true;
+    };
+  }, [turmaSelecionadaId, periodoFiltro, recargaKey]);
 
   // Callback chamado quando a importação de CSV é concluída com sucesso
   const handleImportacaoSucesso = (resultado) => {
     setMensagemSucesso(resultado?.message || "Notas importadas e sincronizadas com sucesso!");
-    carregarDadosTurma();
+    setLoadingDetalhes(true);
+    setRecargaKey((prev) => prev + 1);
     setTimeout(() => setMensagemSucesso(""), 6000);
+  };
+
+  // Atualização manual disparada pelo botão de refresh
+  const handleRecarregar = () => {
+    setLoadingDetalhes(true);
+    setRecargaKey((prev) => prev + 1);
   };
 
   // Filtra as notas por busca de texto (aluno ou disciplina)
@@ -151,7 +172,7 @@ const TurmaEspecialista = () => {
             <button
               type="button"
               className="btn btn-sm btn-outline-secondary"
-              onClick={carregarDadosTurma}
+              onClick={handleRecarregar}
               title="Recarregar dados da turma"
               disabled={loadingDetalhes}
             >

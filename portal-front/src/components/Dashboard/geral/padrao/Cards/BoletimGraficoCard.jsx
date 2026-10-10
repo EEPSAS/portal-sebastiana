@@ -4,42 +4,46 @@ export default function MediumCard({
   // 1. Calcular o total de pontos
   const totalPontos = itensVisiveis.reduce((acc, item) => acc + item.pontos, 0);
 
-  // 2. Lógica matemática para construir as fatias do SVG
-  let startAngle = -Math.PI / 2; // Iniciar do topo (12 horas)
+  // 2. Lógica funcional para construir as fatias do gráfico em SVG
+  // Didática: Usamos reduce com acumulador para manter a função pura e evitar mutação de variáveis locais
+  const { fatias } = (itensVisiveis || []).reduce(
+    (acc, item) => {
+      const proporcao = totalPontos > 0 ? item.pontos / totalPontos : 0;
+      const sliceAngle = proporcao * 2 * Math.PI;
+      const startAngle = acc.currentAngle;
+      const endAngle = startAngle + sliceAngle;
 
-  const fatias = itensVisiveis.map((item) => {
-    const proporcao = totalPontos > 0 ? item.pontos / totalPontos : 0;
-    const sliceAngle = proporcao * 2 * Math.PI;
-    const endAngle = startAngle + sliceAngle;
+      // Centro e Raio do SVG
+      const cx = 100;
+      const cy = 100;
+      const r = 100;
 
-    // Centro e Raio do SVG
-    const cx = 100;
-    const cy = 100;
-    const r = 100;
+      // Coordenadas trigonométricas dos arcos
+      const x1 = cx + r * Math.cos(startAngle);
+      const y1 = cy + r * Math.sin(startAngle);
+      const x2 = cx + r * Math.cos(endAngle);
+      const y2 = cy + r * Math.sin(endAngle);
 
-    // Coordenadas dos arcos
-    const x1 = cx + r * Math.cos(startAngle);
-    const y1 = cy + r * Math.sin(startAngle);
-    const x2 = cx + r * Math.cos(endAngle);
-    const y2 = cy + r * Math.sin(endAngle);
+      const largeArcFlag = sliceAngle > Math.PI ? 1 : 0;
 
-    const largeArcFlag = sliceAngle > Math.PI ? 1 : 0;
+      // Desenho do Path (círculo completo caso seja 100%, ou fatias)
+      const pathData =
+        proporcao === 1
+          ? `M ${cx}, ${cy - r} A ${r},${r} 0 1,1 ${cx}, ${cy + r} A ${r},${r} 0 1,1 ${cx}, ${cy - r}`
+          : `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
 
-    // Desenho do Path (círculo completo caso seja 100%, ou fatias)
-    const pathData = proporcao === 1 
-      ? `M ${cx}, ${cy - r} A ${r},${r} 0 1,1 ${cx}, ${cy + r} A ${r},${r} 0 1,1 ${cx}, ${cy - r}`
-      : `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+      // Posição para desenhar o texto (pontuação) dentro da fatia
+      const midAngle = startAngle + sliceAngle / 2;
+      const labelR = r * 0.65;
+      const labelX = cx + labelR * Math.cos(midAngle);
+      const labelY = cy + labelR * Math.sin(midAngle);
 
-    // Posição para desenhar o texto (pontuação) dentro da fatia
-    const midAngle = startAngle + sliceAngle / 2;
-    const labelR = r * 0.65; // Distância do centro até o texto
-    const labelX = cx + labelR * Math.cos(midAngle);
-    const labelY = cy + labelR * Math.sin(midAngle);
-
-    startAngle = endAngle;
-
-    return { ...item, pathData, labelX, labelY, proporcao };
-  });
+      acc.fatias.push({ ...item, pathData, labelX, labelY, proporcao });
+      acc.currentAngle = endAngle;
+      return acc;
+    },
+    { currentAngle: -Math.PI / 2, fatias: [] }
+  );
 
   return (
     <div

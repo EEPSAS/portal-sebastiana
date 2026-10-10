@@ -1,5 +1,5 @@
 import { useUpdates } from '../../../../../hooks/geral/especialista/useLatestUpdatesEspecialista.js';
-import UpdateItem from './dumblatestupdates.jsx';
+import UpdateItem from './UltimasAtualizacoesLista.jsx';
 
 export default function LatestUpdates() {
   const { updates, loading, error } = useUpdates();

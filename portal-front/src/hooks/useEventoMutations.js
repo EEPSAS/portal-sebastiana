@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createEvento, deleteEvento, updateEvento } from '../services/Evento/eventosService';
+import { createEvento, deleteEvento, updateEvento } from '../services/eventosService';
 
 export const useEventoMutations = ({ token, onSuccess } = {}) => {
   const [saving, setSaving] = useState(false);

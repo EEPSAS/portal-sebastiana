@@ -2,7 +2,7 @@ import { Link, useParams } from "react-router";
 import NoticiaHeader from "../../components/Portal/noticia/NoticiaHeader";
 import NoticiaContent from "../../components/Portal/noticia/NoticiaContent";
 import { useNoticia } from "../../hooks/useNoticias";
-import "../../components/Portal/noticia/noticiaDetail.css";
+import "../../components/Portal/noticia/NoticiaDetail.css";
 
 const Noticia = () => {
   const { id } = useParams();

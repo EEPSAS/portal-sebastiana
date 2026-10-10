@@ -4,7 +4,7 @@ import SmallNewsCard from './SmallNewsCard';
 import VerticalNewsCard from './VerticalNewsCard';
 import { useNoticias } from '../../../hooks/useNoticias';
 import { DEFAULT_NOTICIAS } from './noticiasMock';
-import './noticias.css';
+import './Noticias.css';
 
 const categorias = [
   { nome: 'Destaque', classe: 'category-control--featured' },

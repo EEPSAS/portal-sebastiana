@@ -1,5 +1,5 @@
 import { useAgenda } from '../../../../../hooks/geral/padrao/useAgendaPadrao.js';
-import AgendaList from './dumbagendapadrao.jsx';
+import AgendaList from './AgendaNotificacoesLista.jsx';
 
 export default function AgendaNotificacoes() {
   const { agendaItens, loading, error } = useAgenda();
