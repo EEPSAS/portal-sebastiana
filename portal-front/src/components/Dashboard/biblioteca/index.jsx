@@ -24,9 +24,9 @@ import './Biblioteca.css';
 
 const ABAS = [
   { id: 'acervo', label: 'Acervo de Livros' },
-  { id: 'planos', label: 'Planos de Estudos' },
   { id: 'videoaulas', label: 'Videoaulas' },
   { id: 'apostilas', label: 'Conteúdo web' },
+  { id: 'planos', label: 'Planos de Estudos' },
 ];
 
 const normalizarTexto = (valor = '') =>
@@ -226,6 +226,22 @@ export default function Biblioteca() {
           />
         )}
 
+
+        {abaAtiva === 'videoaulas' && (
+          <VideoaulasAba
+          videoaulas={videoaulas}
+          onAdicionarVideoaula={adicionarVideoaula}
+          />
+        )}
+
+        {abaAtiva === 'apostilas' && (
+          <ConteudoWebAba
+          apostilas={apostilasFiltradas}
+          onSalvarApostila={salvarApostila}
+          onExcluirApostila={setItemParaExcluir}
+          />
+        )}
+
         {abaAtiva === 'planos' && (
           <PlanosAba
             planos={planosFiltrados}
@@ -234,21 +250,6 @@ export default function Biblioteca() {
             onCriarPlano={criarPlano}
             onExcluirPlano={setItemParaExcluir}
             onAlternarMaterial={alternarMaterialPlano}
-          />
-        )}
-
-        {abaAtiva === 'videoaulas' && (
-          <VideoaulasAba
-            videoaulas={videoaulas}
-            onAdicionarVideoaula={adicionarVideoaula}
-          />
-        )}
-
-        {abaAtiva === 'apostilas' && (
-          <ConteudoWebAba
-            apostilas={apostilasFiltradas}
-            onSalvarApostila={salvarApostila}
-            onExcluirApostila={setItemParaExcluir}
           />
         )}
       </div>
