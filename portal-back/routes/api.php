@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\AlunoDashboardController;
-use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BibliotecaController;
 use App\Http\Controllers\DisciplinaController;
@@ -14,8 +13,6 @@ use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\NotaController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\RadioatividadeController;
-use App\Http\Controllers\RemessaDocenteController;
-use App\Http\Controllers\SubmissaoController;
 use App\Http\Controllers\TurmaController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Http\Request;
@@ -101,28 +98,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/alunos/{usuario}/turmas', [MatriculaController::class, 'listarTurmasDoAluno']);
     Route::get('/me/turmas', [MatriculaController::class, 'minhasTurmas']);
 
-    // Módulo Acadêmico: Remessas Docentes
-    Route::post('/remessas', [RemessaDocenteController::class, 'enviarRemessa']);
-    Route::get('/remessas/minhas', [RemessaDocenteController::class, 'consultarRemessaPropria']);
-    Route::get('/remessas/pendentes', [RemessaDocenteController::class, 'listarRemessasPendentes']);
-    Route::patch('/remessas/{remessa}/anexado', [RemessaDocenteController::class, 'marcarComoAnexado']);
-    Route::patch('/remessas/{remessa}/rejeitado', [RemessaDocenteController::class, 'marcarComoRejeitado']);
-
-    // Módulo Acadêmico: Frequência
-    Route::post('/frequencias/consolidar-chamada', [FrequenciaController::class, 'consolidarChamadaDiaria']);
-    Route::put('/frequencias/{frequencia}', [FrequenciaController::class, 'atualizarPresencaIndividual']);
-    Route::patch('/frequencias/{frequencia}', [FrequenciaController::class, 'atualizarPresencaIndividual']);
+    // Módulo Acadêmico: Consultas de Frequência e Notas (Geradas via CSV)
     Route::get('/frequencias/relatorio-faltas', [FrequenciaController::class, 'gerarRelatorioFaltas']);
     Route::get('/frequencias/minha-frequencia', [FrequenciaController::class, 'consultarFrequenciaPropria']);
-
-    // Módulo Acadêmico: Notas e Avaliações
-    Route::post('/notas', [NotaController::class, 'lancarNotaOficial']);
-    Route::put('/notas/{nota}', [NotaController::class, 'atualizarNota']);
-    Route::patch('/notas/{nota}', [NotaController::class, 'atualizarNota']);
-    Route::delete('/notas/{nota}', [NotaController::class, 'deletarNota']);
     Route::get('/notas/media-periodo', [NotaController::class, 'calcularMediaPeriodo']);
     Route::get('/notas/boletim/{usuario}', [NotaController::class, 'gerarBoletim']);
     Route::get('/notas/meu-boletim', [NotaController::class, 'consultarNotaPropria']);
+
     // Gestão de Livros (Criação, Edição, Deleção)
     Route::post('/livros', [LivroController::class, 'store']);
     Route::put('/livros/{livro}', [LivroController::class, 'update']);
@@ -138,22 +120,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/emprestimos/{emprestimo}/status', [EmprestimoController::class, 'atualizarStatus']);
     Route::apiResource('emprestimos', EmprestimoController::class)->only(['index', 'show']);
 
-    // Módulo de Atividades (Tarefas / Trabalhos)
-    Route::get('/turmas/{turma}/disciplinas/{disciplina}/atividades', [AtividadeController::class, 'listarPorTurmaEDisciplina']);
-    Route::patch('/atividades/{atividade}/encerrar', [AtividadeController::class, 'encerrarRecebimentoManualmente']);
-    Route::apiResource('atividades', AtividadeController::class);
-
-    // Módulo de Submissões (Entregas de Atividades)
-    Route::get('/atividades/{atividade}/submissoes', [SubmissaoController::class, 'index']);
-    Route::post('/atividades/{atividade}/submissoes', [SubmissaoController::class, 'store']);
-    Route::get('/atividades/{atividade}/minha-submissao', [SubmissaoController::class, 'minhaSubmissao']);
-    Route::get('/submissoes/{submissao}', [SubmissaoController::class, 'show']);
-    Route::put('/submissoes/{submissao}', [SubmissaoController::class, 'update']);
-    Route::patch('/submissoes/{submissao}', [SubmissaoController::class, 'update']);
-    Route::delete('/submissoes/{submissao}', [SubmissaoController::class, 'destroy']);
-    Route::patch('/submissoes/{submissao}/avaliar', [SubmissaoController::class, 'avaliar']);
-    Route::patch('/submissoes/{submissao}/feedback', [SubmissaoController::class, 'feedback']);
-
     // Gestão de Papéis e Permissões (Administrador)
     Route::get('/papeis', [UsuarioController::class, 'papeis']);
     Route::get('/permissoes', [UsuarioController::class, 'permissoes']);
@@ -164,3 +130,43 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/usuarios/{usuario}/permissoes', [UsuarioController::class, 'atribuirPermissoes']);
     Route::apiResource('usuarios', UsuarioController::class);
 });
+
+/*
+    |--------------------------------------------------------------------------
+    | ROTAS DESATIVADAS (FORA DE ESCOPO - ARQUIVADAS COM SEGURANÇA)
+    | As notas e frequências são populadas exclusivamente via upload do arquivo
+    | consolidado CSV pelo Especialista. Tarefas manuais, submissões e remessas
+    | estão arquivadas e disponíveis em caso de futura mudança de escopo.
+    |--------------------------------------------------------------------------
+    // Módulo Acadêmico: Remessas Docentes (Desativado)
+    // Route::post('/remessas', [RemessaDocenteController::class, 'enviarRemessa']);
+    // Route::get('/remessas/minhas', [RemessaDocenteController::class, 'consultarRemessaPropria']);
+    // Route::get('/remessas/pendentes', [RemessaDocenteController::class, 'listarRemessasPendentes']);
+    // Route::patch('/remessas/{remessa}/anexado', [RemessaDocenteController::class, 'marcarComoAnexado']);
+    // Route::patch('/remessas/{remessa}/rejeitado', [RemessaDocenteController::class, 'marcarComoRejeitado']);
+
+    // Módulo Acadêmico: Chamadas e Frequência Avulsa (Desativado)
+    // Route::post('/frequencias/consolidar-chamada', [FrequenciaController::class, 'consolidarChamadaDiaria']);
+    // Route::put('/frequencias/{frequencia}', [FrequenciaController::class, 'atualizarPresencaIndividual']);
+    // Route::patch('/frequencias/{frequencia}', [FrequenciaController::class, 'atualizarPresencaIndividual']);
+
+    // Módulo Acadêmico: Lançamento Manual de Notas (Desativado)
+    // Route::post('/notas', [NotaController::class, 'lancarNotaOficial']);
+    // Route::put('/notas/{nota}', [NotaController::class, 'atualizarNota']);
+    // Route::patch('/notas/{nota}', [NotaController::class, 'atualizarNota']);
+    // Route::delete('/notas/{nota}', [NotaController::class, 'deletarNota']);
+
+    // Módulo de Atividades e Submissões Manuais (Desativado)
+    // Route::get('/turmas/{turma}/disciplinas/{disciplina}/atividades', [AtividadeController::class, 'listarPorTurmaEDisciplina']);
+    // Route::patch('/atividades/{atividade}/encerrar', [AtividadeController::class, 'encerrarRecebimentoManualmente']);
+    // Route::apiResource('atividades', AtividadeController::class);
+    // Route::get('/atividades/{atividade}/submissoes', [SubmissaoController::class, 'index']);
+    // Route::post('/atividades/{atividade}/submissoes', [SubmissaoController::class, 'store']);
+    // Route::get('/atividades/{atividade}/minha-submissao', [SubmissaoController::class, 'minhaSubmissao']);
+    // Route::get('/submissoes/{submissao}', [SubmissaoController::class, 'show']);
+    // Route::put('/submissoes/{submissao}', [SubmissaoController::class, 'update']);
+    // Route::patch('/submissoes/{submissao}', [SubmissaoController::class, 'update']);
+    // Route::delete('/submissoes/{submissao}', [SubmissaoController::class, 'destroy']);
+    // Route::patch('/submissoes/{submissao}/avaliar', [SubmissaoController::class, 'avaliar']);
+    // Route::patch('/submissoes/{submissao}/feedback', [SubmissaoController::class, 'feedback']);
+    */

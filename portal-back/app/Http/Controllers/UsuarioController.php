@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
+use App\Http\Requests\AlterarPapelRequest;
 use App\Http\Requests\StoreUsuarioRequest;
 use App\Http\Requests\UpdateUsuarioRequest;
+use App\Http\Resources\UsuarioResource;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -12,10 +14,16 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
-// Controller responsável pela administração de usuários, bloqueios e atribuição de papéis/permissões.
+/**
+ * Controller responsável pela gestão administrativa de usuários, bloqueios e permissões.
+ */
 class UsuarioController extends Controller
 {
-    // Lista usuários cadastrados com paginação e filtros por termo de busca, papel e status.
+    /**
+     * Lista usuários cadastrados com suporte a busca e filtros por papel e status.
+     *
+     * @return JsonResponse Coleção de usuários formatada pelo UsuarioResource
+     */
     public function index(Request $request): JsonResponse
     {
         Gate::authorize('gerenciar_usuarios');
@@ -44,10 +52,12 @@ class UsuarioController extends Controller
 
         $usuarios = $query->paginate($request->integer('per_page', 20));
 
-        return response()->json($usuarios, 200);
+        return response()->json(UsuarioResource::collection($usuarios)->response()->getData(true), 200);
     }
 
-    // Cadastra um novo usuário no sistema.
+    /**
+     * Cria e cadastra um novo usuário no sistema administrativo.
+     */
     public function store(StoreUsuarioRequest $request): JsonResponse
     {
         $dados = $request->validated();
@@ -63,33 +73,32 @@ class UsuarioController extends Controller
             $dados['role_id'] = $roleModel->id;
             $dados['role'] = $roleModel->slug;
         } else {
-            $dados['role'] = UserRole::PADRAO;
+            $dados['role'] = UserRole::ALUNO;
         }
 
         $dados['ativo'] = $dados['ativo'] ?? true;
 
         $usuario = User::create($dados);
+        $usuario->load('roleModel.permissions');
 
-        return response()->json(
-            $usuario->load('roleModel.permissions'),
-            201
-        );
+        return response()->json(new UsuarioResource($usuario), 201);
     }
 
-    // Exibe detalhes cadastrais, papel e permissões ativas de um usuário.
+    /**
+     * Exibe os detalhes cadastrais, papel e permissões ativas de um usuário.
+     */
     public function show(User $usuario): JsonResponse
     {
         Gate::authorize('gerenciar_usuarios');
 
         $usuario->load(['roleModel.permissions', 'directPermissions']);
 
-        $dados = $usuario->toArray();
-        $dados['permissoes'] = $usuario->getPermissionsSlugs();
-
-        return response()->json($dados, 200);
+        return response()->json(new UsuarioResource($usuario), 200);
     }
 
-    // Atualiza dados cadastrais, senha ou papel do usuário.
+    /**
+     * Atualiza dados cadastrais, senha ou papel do usuário.
+     */
     public function update(UpdateUsuarioRequest $request, User $usuario): JsonResponse
     {
         $dados = $request->validated();
@@ -111,18 +120,19 @@ class UsuarioController extends Controller
         }
 
         $usuario->update($dados);
+        $usuario->load('roleModel.permissions');
 
-        return response()->json(
-            $usuario->load('roleModel.permissions'),
-            200
-        );
+        return response()->json(new UsuarioResource($usuario), 200);
     }
 
-    // Alterna o status do usuário entre ativo e bloqueado, revogando tokens se bloqueado.
+    /**
+     * Alterna o status do usuário entre ativo e inativo (bloqueado).
+     */
     public function bloquear(Request $request, User $usuario): JsonResponse
     {
         Gate::authorize('gerenciar_usuarios');
 
+        // Impede que o próprio administrador se bloqueie
         if ($usuario->id === $request->user()->id) {
             return response()->json([
                 'message' => 'Você não pode bloquear a sua própria conta de administrador.',
@@ -135,48 +145,47 @@ class UsuarioController extends Controller
 
         $usuario->update(['ativo' => $novoStatus]);
 
-        // Se bloqueado, desconecta todas as sessões ativas imediatamente
+        // Revoga os tokens de acesso se a conta for inativada
         if (! $novoStatus) {
             $usuario->tokens()->delete();
         }
 
         return response()->json([
             'message' => $novoStatus ? 'Usuário desbloqueado com sucesso.' : 'Usuário bloqueado com sucesso.',
-            'usuario' => $usuario->only(['id', 'name', 'email', 'ativo']),
+            'usuario' => new UsuarioResource($usuario),
         ], 200);
     }
 
-    // Altera o papel (Role) atribuído ao usuário.
-    public function alterarPapel(Request $request, User $usuario): JsonResponse
+    /**
+     * Altera o papel institucional do usuário utilizando Form Request com enum UserRole.
+     */
+    public function alterarPapel(AlterarPapelRequest $request, User $usuario): JsonResponse
     {
         Gate::authorize('gerenciar_papeis_permissoes');
 
-        $validated = $request->validate([
-            'role_id' => ['nullable', 'exists:roles,id'],
-            'role' => ['nullable', 'string', 'exists:roles,slug'],
-        ]);
+        $validated = $request->validated();
+        $roleValue = $validated['role'];
 
-        $roleModel = null;
-        if (! empty($validated['role_id'])) {
-            $roleModel = Role::findOrFail($validated['role_id']);
-        } elseif (! empty($validated['role'])) {
-            $roleModel = Role::where('slug', $validated['role'])->firstOrFail();
-        } else {
-            return response()->json(['message' => 'Informe o role_id ou o slug do papel.'], 422);
-        }
+        $roleModel = Role::where('slug', $roleValue)->first();
 
         $usuario->update([
-            'role_id' => $roleModel->id,
-            'role' => $roleModel->slug,
+            'role_id' => $roleModel?->id,
+            'role' => $roleValue,
         ]);
 
+        $usuario->load('roleModel.permissions');
+
         return response()->json([
-            'message' => "Papel do usuário alterado com sucesso para {$roleModel->nome}.",
-            'usuario' => $usuario->load('roleModel.permissions'),
+            'message' => "Papel do usuário alterado com sucesso para {$roleValue}.",
+            'usuario' => new UsuarioResource($usuario),
         ], 200);
     }
 
-    // Exclui o usuário do sistema e revoga seus tokens de acesso.
+    /**
+     * Remove um usuário do sistema escolar e revoga seus tokens.
+     *
+     * @return JsonResponse Retorno HTTP 204
+     */
     public function destroy(Request $request, User $usuario): JsonResponse
     {
         Gate::authorize('gerenciar_usuarios');
@@ -193,31 +202,33 @@ class UsuarioController extends Controller
         return response()->json(null, 204);
     }
 
-    // Lista todos os papéis e suas permissões associadas.
+    /**
+     * Retorna a lista de papéis e suas permissões associadas.
+     */
     public function papeis(): JsonResponse
     {
         Gate::authorize('gerenciar_papeis_permissoes');
 
-        $papeis = Role::with('permissions')
-            ->orderBy('nivel')
-            ->get();
+        $papeis = Role::with('permissions')->orderBy('nivel')->get();
 
         return response()->json($papeis, 200);
     }
 
-    // Lista todas as permissões cadastradas no sistema agrupadas por módulo.
+    /**
+     * Retorna a lista de permissões disponíveis no sistema.
+     */
     public function permissoes(): JsonResponse
     {
         Gate::authorize('gerenciar_papeis_permissoes');
 
-        $permissoes = Permission::orderBy('modulo')
-            ->orderBy('slug')
-            ->get();
+        $permissoes = Permission::orderBy('modulo')->orderBy('slug')->get();
 
         return response()->json($permissoes, 200);
     }
 
-    // Atribui ou revoga permissões individuais diretamente ao usuário.
+    /**
+     * Atribui ou revoga permissões específicas diretamente ao usuário.
+     */
     public function atribuirPermissoes(Request $request, User $usuario): JsonResponse
     {
         Gate::authorize('gerenciar_papeis_permissoes');
@@ -241,8 +252,7 @@ class UsuarioController extends Controller
 
         return response()->json([
             'message' => 'Permissões do usuário atualizadas com sucesso.',
-            'usuario_id' => $usuario->id,
-            'permissoes' => $usuario->getPermissionsSlugs(),
+            'usuario' => new UsuarioResource($usuario),
         ], 200);
     }
 }

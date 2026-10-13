@@ -98,9 +98,6 @@ class RolePermissionSeeder extends Seeder
             // Módulo Acadêmico
             ['slug' => 'visualizar_proprio_boletim', 'nome' => 'Visualizar Próprio Boletim', 'modulo' => 'academico'],
             ['slug' => 'visualizar_propria_frequencia', 'nome' => 'Visualizar Própria Frequência', 'modulo' => 'academico'],
-            ['slug' => 'enviar_resolucao_atividade', 'nome' => 'Enviar Resolução de Atividade', 'modulo' => 'academico'],
-            ['slug' => 'enviar_remessa_docente', 'nome' => 'Enviar Remessa Docente (Diários/Planilhas)', 'modulo' => 'academico'],
-            ['slug' => 'gerenciar_atividades_proprias', 'nome' => 'Gerenciar Atividades Próprias da Disciplina', 'modulo' => 'academico'],
             ['slug' => 'gerenciar_turmas', 'nome' => 'Gerenciar Turmas e Matrículas', 'modulo' => 'academico'],
             ['slug' => 'gerenciar_frequencia', 'nome' => 'Consolidar e Gerenciar Frequência Escolar', 'modulo' => 'academico'],
             ['slug' => 'gerenciar_notas', 'nome' => 'Lançar e Gerenciar Notas Oficiais e Boletins', 'modulo' => 'academico'],
@@ -134,18 +131,15 @@ class RolePermissionSeeder extends Seeder
             'baixar_pdfs',
             'visualizar_proprio_boletim',
             'visualizar_propria_frequencia',
-            'enviar_resolucao_atividade',
         ];
         $roles['aluno']->permissions()->sync(
             array_map(fn ($slug) => $permissions[$slug]->id, $permissoesAluno)
         );
 
-        // 3.2 PROFESSOR (Tudo do aluno + mídias e docência)
+        // 3.2 PROFESSOR (Tudo do aluno + mídias educativas)
         $permissoesProfessor = array_merge($permissoesAluno, [
             'criar_videoaula',
             'criar_pdf',
-            'enviar_remessa_docente',
-            'gerenciar_atividades_proprias',
         ]);
         $roles['professor']->permissions()->sync(
             array_map(fn ($slug) => $permissions[$slug]->id, $permissoesProfessor)

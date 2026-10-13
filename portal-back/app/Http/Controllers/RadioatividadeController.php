@@ -2,54 +2,81 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\RadioatividadeResource;
 use App\Models\Radioatividade;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-// Controller responsável pelo gerenciamento de episódios da rádio escolar.
+/**
+ * Controller responsável pelos episódios da Radioatividade (podcast do Terceirão).
+ */
 class RadioatividadeController extends Controller
 {
-    // Lista todos os episodios cadastrados
-    public function index()
+    /**
+     * Lista todos os episódios do podcast cadastrados.
+     *
+     * @return JsonResponse Coleção formatada por RadioatividadeResource
+     */
+    public function index(): JsonResponse
     {
-        return response()->json(Radioatividade::all(), 200);
+        $episodios = Radioatividade::orderByDesc('data_publicacao')->get();
+
+        return response()->json(RadioatividadeResource::collection($episodios), 200);
     }
 
-    // Cria um novo episodio no banco
-    public function store(Request $request)
+    /**
+     * Cadastra e persiste um novo episódio da rádio escolar.
+     */
+    public function store(Request $request): JsonResponse
     {
-        // Salva com os dados recebidos
-        $episodio = Radioatividade::create($request->all());
+        $validated = $request->validate([
+            'titulo' => ['required', 'string', 'max:255'],
+            'descricao' => ['nullable', 'string', 'max:1000'],
+            'audio_url' => ['required', 'string', 'url'],
+            'data_publicacao' => ['nullable', 'date'],
+        ]);
 
-        return response()->json($episodio, 201);
+        $validated['criador_id'] = $request->user()?->id;
+        $validated['data_publicacao'] = $validated['data_publicacao'] ?? now()->format('Y-m-d');
+
+        $episodio = Radioatividade::create($validated);
+
+        return response()->json(new RadioatividadeResource($episodio), 201);
     }
 
-    // Exibe os detalhes de um episodio especifico
-    public function show(Radioatividade $episodio)
+    /**
+     * Exibe os detalhes de um episódio específico.
+     */
+    public function show(Radioatividade $radioatividade): JsonResponse
     {
-        // Busca o episodio pelo ID
-        $episodio = Radioatividade::find($episodio->id);
-
-        return $episodio
-        ? response()->json($episodio, 200)
-        : response()->json(['erro' => 'Episódio não encontrado'], 404);
+        return response()->json(new RadioatividadeResource($radioatividade), 200);
     }
 
-    // Atualiza os dados de um episodio existente
-    public function update(Request $request, Radioatividade $episodio)
+    /**
+     * Atualiza os dados de um episódio existente.
+     */
+    public function update(Request $request, Radioatividade $radioatividade): JsonResponse
     {
-        // Localiza e atualiza o episodio
-        $episodio = Radioatividade::findOrFail($episodio->id);
-        $episodio->update($request->all());
+        $validated = $request->validate([
+            'titulo' => ['sometimes', 'required', 'string', 'max:255'],
+            'descricao' => ['nullable', 'string', 'max:1000'],
+            'audio_url' => ['sometimes', 'required', 'string', 'url'],
+            'data_publicacao' => ['nullable', 'date'],
+        ]);
 
-        return response()->json($episodio, 200);
+        $radioatividade->update($validated);
+
+        return response()->json(new RadioatividadeResource($radioatividade), 200);
     }
 
-    // Exclui um episodio do sistema
-    public function destroy(Radioatividade $episodio)
+    /**
+     * Remove um episódio do podcast.
+     *
+     * @return JsonResponse Retorno HTTP 204
+     */
+    public function destroy(Radioatividade $radioatividade): JsonResponse
     {
-        // Localiza e remove o episodio
-        $episodio = Radioatividade::findOrFail($episodio->id);
-        $episodio->delete();
+        $radioatividade->delete();
 
         return response()->json(null, 204);
     }

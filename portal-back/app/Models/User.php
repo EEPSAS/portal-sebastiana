@@ -110,18 +110,16 @@ class User extends Authenticatable
     }
 
     /**
-     * @return HasMany<RemessaDocente, $this>
+     * [ARQUIVADO - FORA DE ESCOPO] Relações com módulos de remessas e atividades
+     * public function remessas(): HasMany { return $this->hasMany(RemessaDocente::class, 'professor_id', 'id'); }
+     * public function atividadesCriadas(): HasMany { return $this->hasMany(Atividade::class, 'usuario_id', 'id'); }
+     * public function submissoes(): HasMany { return $this->hasMany(Submissao::class, 'usuario_id', 'id'); }
      */
-    // Remessas enviadas pelo professor
-    public function remessas(): HasMany
-    {
-        return $this->hasMany(RemessaDocente::class, 'professor_id', 'id');
-    }
 
     /**
      * @return HasMany<Frequencia, $this>
      */
-    // Registros de frequência do aluno
+    // Registros de frequência do aluno (populados via CSV pelo Especialista)
     public function frequencias(): HasMany
     {
         return $this->hasMany(Frequencia::class, 'usuario_id', 'id');
@@ -130,25 +128,9 @@ class User extends Authenticatable
     /**
      * @return HasMany<Nota, $this>
      */
-    // Registros de notas e avaliações do aluno
+    // Registros de notas e avaliações do aluno (populados via CSV pelo Especialista)
     public function notas(): HasMany
     {
         return $this->hasMany(Nota::class, 'usuario_id', 'id');
-    }
-
-    /**
-     * @return HasMany<Atividade, $this>
-     */
-    public function atividadesCriadas(): HasMany
-    {
-        return $this->hasMany(Atividade::class, 'usuario_id', 'id');
-    }
-
-    /**
-     * @return HasMany<Submissao, $this>
-     */
-    public function submissoes(): HasMany
-    {
-        return $this->hasMany(Submissao::class, 'usuario_id', 'id');
     }
 }

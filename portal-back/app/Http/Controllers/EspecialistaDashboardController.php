@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ImportarRelatorioTurmaRequest;
+use App\Http\Resources\RelatorioImportadoResource;
 use App\Models\Disciplina;
 use App\Models\Turma;
 use App\Services\EspecialistaDashboardService;
@@ -45,14 +46,13 @@ class EspecialistaDashboardController extends Controller
             $dataAula
         );
 
-        return response()->json([
-            'message' => 'Relatório da turma importado e sincronizado com sucesso.',
+        return (new RelatorioImportadoResource([
             'turma' => [
                 'id_turma' => $turma->id_turma,
                 'nome_identificador' => $turma->nome_identificador,
             ],
             'dados' => $resultado,
-        ], 200);
+        ]))->response()->setStatusCode(200);
     }
 
     /**

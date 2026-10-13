@@ -3,16 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreDisciplinaRequest;
+use App\Http\Resources\DisciplinaResource;
 use App\Models\Disciplina;
 use App\Models\TurmaDisciplina;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
-// Controller responsável pela gestão de disciplinas e vínculo com docentes.
+/**
+ * Controller responsável pelo cadastro de disciplinas e vinculação docente.
+ */
 class DisciplinaController extends Controller
 {
-    // Lista as disciplinas cadastradas, com filtro opcional por termo de busca.
+    /**
+     * Lista as disciplinas curriculares cadastradas.
+     *
+     * @return JsonResponse Coleção de disciplinas formatada pelo DisciplinaResource
+     */
     public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', Disciplina::class);
@@ -20,49 +27,61 @@ class DisciplinaController extends Controller
         $query = Disciplina::query();
 
         if ($request->filled('q')) {
-            $query->where('nome', 'like', '%'.$request->string('q')->toString().'%');
+            $query->where('nome_disciplina', 'like', '%'.$request->string('q')->toString().'%');
         }
 
-        return response()->json($query->orderBy('nome')->get(), 200);
+        $disciplinas = $query->orderBy('nome_disciplina')->get();
+
+        return response()->json(DisciplinaResource::collection($disciplinas), 200);
     }
 
-    // Cria e persiste uma nova disciplina.
+    /**
+     * Cadastra e persiste uma nova disciplina.
+     *
+     * @param  StoreDisciplinaRequest  $request  Form Request validada
+     */
     public function store(StoreDisciplinaRequest $request): JsonResponse
     {
         Gate::authorize('create', Disciplina::class);
 
         $disciplina = Disciplina::create($request->validated());
 
-        return response()->json($disciplina, 201);
+        return response()->json(new DisciplinaResource($disciplina), 201);
     }
 
-    // Exibe os detalhes de uma disciplina e suas turmas associadas.
+    /**
+     * Exibe os detalhes de uma disciplina.
+     */
     public function show(Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('view', $disciplina);
 
-        $disciplina->load(['turmas']);
-
-        return response()->json($disciplina, 200);
+        return response()->json(new DisciplinaResource($disciplina), 200);
     }
 
-    // Atualiza os dados cadastrais da disciplina.
+    /**
+     * Atualiza os dados cadastrais da disciplina.
+     */
     public function update(Request $request, Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('update', $disciplina);
 
         $validated = $request->validate([
-            'nome' => ['sometimes', 'required', 'string', 'max:255'],
-            'carga_horaria_anual' => ['sometimes', 'required', 'integer', 'min:1'],
-            'descricao' => ['nullable', 'string', 'max:1000'],
+            'nome_disciplina' => ['sometimes', 'required', 'string', 'max:255'],
+            'codigo' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'carga_horaria' => ['sometimes', 'required', 'integer', 'min:1'],
         ]);
 
         $disciplina->update($validated);
 
-        return response()->json($disciplina, 200);
+        return response()->json(new DisciplinaResource($disciplina), 200);
     }
 
-    // Exclui uma disciplina do sistema.
+    /**
+     * Exclui uma disciplina do catálogo.
+     *
+     * @return JsonResponse Retorno HTTP 204
+     */
     public function destroy(Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('delete', $disciplina);
@@ -72,7 +91,9 @@ class DisciplinaController extends Controller
         return response()->json(null, 204);
     }
 
-    // Vincula ou atualiza o professor responsável por uma disciplina em determinada turma.
+    /**
+     * Vincula o professor responsável por lecionar uma disciplina em determinada turma.
+     */
     public function vincularProfessor(Request $request, Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('update', $disciplina);

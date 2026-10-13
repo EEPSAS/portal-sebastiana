@@ -31,7 +31,6 @@ class NotaFactory extends Factory
             'valor_nota' => fake()->randomFloat(2, 4, 10),
             'valor_maximo' => 10.00,
             'data_registro' => now()->format('Y-m-d'),
-            'remessa_origem_id' => null,
             'observacoes' => null,
         ];
     }

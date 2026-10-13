@@ -3,91 +3,100 @@
 namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
+use App\Http\Requests\AuthLoginRequest;
+use App\Http\Requests\AuthRegisterRequest;
+use App\Http\Resources\AuthUserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
-// Controller responsável pela autenticação (registro, login, logout e geração de tokens).
+/**
+ * Controller responsável pela autenticação via Laravel Sanctum (registro, login e logout).
+ */
 class AuthController extends Controller
 {
-    // Registra um novo usuário com perfil padrão e retorna seu token de acesso.
-    public function register(Request $request): JsonResponse
+    /**
+     * Registra um novo usuário com papel 'aluno' e emite o token Sanctum.
+     *
+     * @param  AuthRegisterRequest  $request  Form Request validada
+     * @return JsonResponse Payload padronizado por AuthUserResource
+     */
+    public function register(AuthRegisterRequest $request): JsonResponse
     {
-        // Valida os dados de entrada (requer confirmação do campo 'password' via 'password_confirmation')
-        $validated = $request->validate([
-            'name' => ['nullable', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', 'min:8'],
-        ]);
+        $validated = $request->validated();
 
+        // Se o nome vier vazio, define um identificador derivado do e-mail
         if (empty($validated['name'])) {
-            $validated['name'] = strstr($validated['email'], '@', true) ?: 'Usuário';
+            $validated['name'] = strstr($validated['email'], '@', true) ?: 'Aluno';
         }
 
-        // Garante que todo novo registro seja criado exclusivamente como perfil padrão
-        $validated['role'] = UserRole::PADRAO;
+        // Auto-cadastro público recebe exclusivamente o papel 'aluno'
+        $validated['role'] = UserRole::ALUNO;
 
-        // Persiste o usuário no banco (a senha é hasheada automaticamente pelo cast do model)
+        // Persiste o usuário no banco (a senha é hasheada via cast do model)
         $user = User::create($validated);
 
-        // Retorna o token com status HTTP 201 (Created)
-        return $this->tokenResponse($user, 201);
+        return $this->tokenResponse($user, 201, 'Cadastro realizado com sucesso.');
     }
 
-    // Autentica o usuário por e-mail e senha, gerando um novo token de API.
-    public function login(Request $request): JsonResponse
+    /**
+     * Autentica o usuário por e-mail e senha, emitindo um novo Bearer token.
+     *
+     * @param  AuthLoginRequest  $request  Form Request com credenciais validadas
+     */
+    public function login(AuthLoginRequest $request): JsonResponse
     {
-        // Valida os campos obrigatórios para login
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-        ]);
+        $credentials = $request->validated();
 
-        // Busca o usuário pelo e-mail informado
+        // Busca o usuário pelo e-mail
         $user = User::where('email', $credentials['email'])->first();
 
-        // Valida se o usuário existe e se o hash da senha confere
+        // Verifica a existência e a integridade da senha hasheada
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'message' => 'As credenciais informadas são inválidas.',
             ], 401);
         }
 
-        /** Bloqueio de usuário inativado
-        *if (! $user->ativo) {
-        *    return response()->json([
-        *        'message' => 'Usuário bloqueado pelo administrador. Acesso negado.',
-        *    ], 403);
-        *} */
+        // Verifica se a conta do usuário foi desativada/bloqueada pela administração
+        if (isset($user->ativo) && ! $user->ativo) {
+            return response()->json([
+                'message' => 'Usuário bloqueado pelo administrador. Acesso negado.',
+            ], 403);
+        }
 
-        // Retorna o token de acesso com status HTTP 200 (OK)
-        return $this->tokenResponse($user);
+        return $this->tokenResponse($user, 200, 'Login realizado com sucesso.');
     }
 
-    // Invalida o token Sanctum atualmente em uso pelo cliente.
+    /**
+     * Invalida o token Sanctum ativo da sessão atual.
+     */
     public function logout(Request $request): JsonResponse
     {
-        // Deleta apenas o token ativo desta sessão/dispositivo
+        // Deleta o token atual do dispositivo
         $request->user()->currentAccessToken()?->delete();
 
         return response()->json([
             'message' => 'Logout realizado com sucesso.',
-        ]);
+        ], 200);
     }
 
-    // Monta o payload JSON padronizado com o usuário e o token Bearer gerado.
-    private function tokenResponse(User $user, int $status = 200): JsonResponse
+    /**
+     * Gera o token Bearer e monta a resposta encapsulada pelo AuthUserResource.
+     *
+     * @param  User  $user  Model do usuário autenticado
+     * @param  int  $status  Código HTTP (200 ou 201)
+     * @param  string  $message  Mensagem amigável de sucesso
+     */
+    private function tokenResponse(User $user, int $status = 200, string $message = 'Autenticado com sucesso.'): JsonResponse
     {
         $user->load('roleModel.permissions');
 
-        $userData = $user->toArray();
-        $userData['permissoes'] = $user->getPermissionsSlugs();
+        $token = $user->createToken('portal-front')->plainTextToken;
 
-        return response()->json([
-            'user' => $userData,
-            'token' => $user->createToken('portal-front')->plainTextToken,
-            'token_type' => 'Bearer',
-        ], $status);
+        return (new AuthUserResource($user, $token, $message))
+            ->response()
+            ->setStatusCode($status);
     }
 }

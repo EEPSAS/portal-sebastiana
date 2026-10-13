@@ -27,10 +27,6 @@ return new class extends Migration
             $table->decimal('valor_nota', 5, 2);
             $table->decimal('valor_maximo', 5, 2)->default(10.00);
             $table->date('data_registro')->nullable();
-            $table->foreignId('remessa_origem_id')
-                ->nullable()
-                ->constrained('remessas_docentes', 'id_remessa')
-                ->onDelete('set null');
             $table->string('observacoes')->nullable();
             $table->timestamps();
 

@@ -25,10 +25,6 @@ return new class extends Migration
             $table->date('data_aula')->index();
             $table->unsignedTinyInteger('quantidade_aulas')->default(1);
             $table->string('status_presenca')->default('Presente')->index(); // Presente, Falta, Falta Justificada
-            $table->foreignId('remessa_origem_id')
-                ->nullable()
-                ->constrained('remessas_docentes', 'id_remessa')
-                ->onDelete('set null');
             $table->text('justificativa')->nullable();
             $table->timestamps();
 

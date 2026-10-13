@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Atividade;
 use App\Models\Disciplina;
 use App\Models\Emprestimo;
 use App\Models\Evento;
@@ -525,30 +524,12 @@ class AlunoDashboardService
             ];
         }
 
-        // 4. Próxima notificação (próxima atividade com prazo ou evento)
-        $proximaAtividade = Atividade::where('turma_id', $turma->id_turma)
-            ->where('status_atividade', 'Aberta')
-            ->where(function ($q) {
-                $q->whereNull('data_limite_entrega')
-                    ->orWhere('data_limite_entrega', '>=', Carbon::now());
-            })
-            ->orderBy('data_limite_entrega')
-            ->first();
-
+        // 4. Próxima notificação (próximo evento ou data pedagógica da agenda escolar)
         $proximoEvento = Evento::where('data_inicio', '>=', Carbon::now()->format('Y-m-d'))
             ->orderBy('data_inicio')
             ->first();
 
-        if ($proximaAtividade) {
-            $tempoRestante = $proximaAtividade->data_limite_entrega
-                ? 'Entrega em '.$proximaAtividade->data_limite_entrega->diffForHumans()
-                : 'Atividade Aberta';
-
-            $proximaNotificacao = [
-                'titulo' => $proximaAtividade->titulo,
-                'tempoRestante' => $tempoRestante,
-            ];
-        } elseif ($proximoEvento) {
+        if ($proximoEvento) {
             $tempoRestante = Carbon::parse($proximoEvento->data_inicio)->diffForHumans();
             $proximaNotificacao = [
                 'titulo' => $proximoEvento->titulo,

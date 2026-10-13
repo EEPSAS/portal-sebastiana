@@ -29,7 +29,6 @@ class Nota extends Model
         'valor_nota',
         'valor_maximo',
         'data_registro',
-        'remessa_origem_id',
         'observacoes',
     ];
 
@@ -73,14 +72,5 @@ class Nota extends Model
     public function aluno(): BelongsTo
     {
         return $this->belongsTo(User::class, 'usuario_id', 'id');
-    }
-
-    /**
-     * @return BelongsTo<RemessaDocente, $this>
-     */
-    // Remessa docente de origem do lançamento
-    public function remessaOrigem(): BelongsTo
-    {
-        return $this->belongsTo(RemessaDocente::class, 'remessa_origem_id', 'id_remessa');
     }
 }

@@ -6,7 +6,6 @@ use App\Models\Disciplina;
 use App\Models\Frequencia;
 use App\Models\Matricula;
 use App\Models\Nota;
-use App\Models\RemessaDocente;
 use App\Models\Turma;
 use App\Models\TurmaDisciplina;
 use App\Models\User;
@@ -143,40 +142,7 @@ class AcademicoSeeder extends Seeder
             );
         }
 
-        // 6. Remessa Docente
-        if ($profCarlos) {
-            RemessaDocente::firstOrCreate(
-                [
-                    'professor_id' => $profCarlos->id,
-                    'turma_id' => $turma1A->id_turma,
-                    'disciplina_id' => $discMat->id_disciplina,
-                    'tipo_dado' => 'Frequência',
-                ],
-                [
-                    'arquivo_anexo' => 'remessas/chamada_fevereiro_carlos.pdf',
-                    'data_envio' => now()->subDays(15),
-                    'status_processamento' => 'Anexado',
-                    'observacoes' => 'Chamada de Fevereiro lançada com êxito.',
-                ]
-            );
-
-            RemessaDocente::firstOrCreate(
-                [
-                    'professor_id' => $profCarlos->id,
-                    'turma_id' => $turma1A->id_turma,
-                    'disciplina_id' => $discFis->id_disciplina,
-                    'tipo_dado' => 'Notas',
-                ],
-                [
-                    'arquivo_anexo' => 'remessas/notas_lab_fisica.xlsx',
-                    'data_envio' => now()->subDay(),
-                    'status_processamento' => 'Pendente',
-                    'observacoes' => 'Notas das práticas laboratoriais de Física.',
-                ]
-            );
-        }
-
-        // 7. Frequências (para alunos da Turma 1A em Matemática e Português)
+        // 6. Frequências (para alunos da Turma 1A em Matemática e Português)
         $datasAulas = ['2026-03-02', '2026-03-04', '2026-03-09', '2026-03-11', '2026-03-16'];
         foreach ($datasAulas as $idx => $dataAula) {
             foreach ($alunosTurma1A as $aluno) {
@@ -192,7 +158,6 @@ class AcademicoSeeder extends Seeder
                     [
                         'quantidade_aulas' => 2,
                         'status_presenca' => $presencaMat,
-                        'remessa_origem_id' => null,
                     ]
                 );
 

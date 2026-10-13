@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Atividade;
+// use App\Models\Atividade; (Fora de escopo)
 use App\Models\Disciplina;
 use App\Models\Livro;
 use App\Models\Turma;
@@ -147,21 +147,7 @@ test('testa rotas academicas de turmas, disciplinas e matriculas', function () {
         ->assertJsonFragment(['nome_identificador' => '1º Ano A - Ensino Médio']);
 });
 
-test('testa rotas de remessas docentes', function () {
-    $profCarlos = User::where('email', 'carlos.silva@sebastiana.edu.br')->first();
-    $admin = User::where('email', 'admin@sebastiana.edu.br')->first();
-
-    // 1. Professor Carlos consulta suas remessas enviadas (2 remessas)
-    $this->actingAs($profCarlos, 'sanctum')->getJson('/api/remessas/minhas')
-        ->assertOk()
-        ->assertJsonCount(2);
-
-    // 2. Admin lista remessas pendentes (1 pendente de Física)
-    $this->actingAs($admin, 'sanctum')->getJson('/api/remessas/pendentes')
-        ->assertOk()
-        ->assertJsonCount(1)
-        ->assertJsonPath('0.status_processamento', 'Pendente');
-});
+// [FORA DE ESCOPO - ARQUIVADO] test('testa rotas de remessas docentes', ...);
 
 test('testa rotas de frequencia e relatorio de faltas', function () {
     $admin = User::where('email', 'admin@sebastiana.edu.br')->first();
@@ -215,38 +201,4 @@ test('testa rotas de notas, medias e boletim escolar', function () {
         ->assertJsonFragment(['disciplina' => 'Língua Portuguesa e Literatura']);
 });
 
-test('testa rotas de atividades e submissoes povoadas', function () {
-    $yasmin = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
-    $profCarlos = User::where('email', 'carlos.silva@sebastiana.edu.br')->first();
-    $turma1A = Turma::where('nome_identificador', '1º Ano A - Ensino Médio')->first();
-    $discMat = Disciplina::where('nome', 'Matemática')->first();
-
-    // 1. Aluna Yasmin lista atividades com status de sua submissão
-    $respAtividades = $this->actingAs($yasmin, 'sanctum')->getJson('/api/atividades');
-    $respAtividades->assertOk()
-        ->assertJsonCount(4)
-        ->assertJsonStructure([
-            '*' => ['id_atividade', 'titulo', 'status_atividade', 'minha_submissao'],
-        ]);
-
-    // 2. Listar atividades por turma e disciplina (1º Ano A / Matemática)
-    $this->actingAs($yasmin, 'sanctum')
-        ->getJson("/api/turmas/{$turma1A->id_turma}/disciplinas/{$discMat->id_disciplina}/atividades")
-        ->assertOk()
-        ->assertJsonCount(1)
-        ->assertJsonFragment(['titulo' => 'Lista de Exercícios: Equações do 2º Grau e Vértice da Parábola']);
-
-    // 3. Professor Carlos lista submissões da atividade de Física
-    $ativFisica = Atividade::where('titulo', 'like', '%Leis de Newton%')->first();
-    $this->actingAs($profCarlos, 'sanctum')
-        ->getJson("/api/atividades/{$ativFisica->id_atividade}/submissoes")
-        ->assertOk()
-        ->assertJsonPath('total', 3);
-
-    // 4. Yasmin consulta sua submissão na atividade de Física avaliada
-    $this->actingAs($yasmin, 'sanctum')
-        ->getJson("/api/atividades/{$ativFisica->id_atividade}/minha-submissao")
-        ->assertOk()
-        ->assertJsonPath('nota_atribuida', 9.8)
-        ->assertJsonPath('feedback_comentario_professor', 'Excelente trabalho! Os gráficos e o cálculo do desvio padrão ficaram impecáveis.');
-});
+// [FORA DE ESCOPO - ARQUIVADO] test('testa rotas de atividades e submissoes povoadas', ...);

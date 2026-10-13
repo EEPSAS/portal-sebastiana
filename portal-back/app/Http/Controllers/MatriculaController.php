@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreMatriculaRequest;
+use App\Http\Resources\MatriculaResource;
+use App\Http\Resources\TurmaResource;
 use App\Models\Matricula;
 use App\Models\Turma;
 use App\Models\User;
@@ -10,22 +12,31 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
-// Controller responsável pelo gerenciamento de matrículas e movimentação de alunos em turmas.
+/**
+ * Controller responsável pelo vínculo de matrículas e movimentação de alunos em turmas.
+ */
 class MatriculaController extends Controller
 {
-    // Realiza a matrícula de um aluno em uma turma respeitando a capacidade máxima.
+    /**
+     * Realiza a matrícula de um aluno em uma turma escolar.
+     *
+     * @param  StoreMatriculaRequest  $request  Form Request validada
+     * @return JsonResponse Matrícula criada formatada por MatriculaResource
+     */
     public function matricularAluno(StoreMatriculaRequest $request): JsonResponse
     {
         Gate::authorize('create', Turma::class);
 
         $turma = Turma::findOrFail($request->integer('turma_id'));
 
+        // Valida se a capacidade física da turma foi atingida
         if ($turma->matriculas()->where('status_matricula', 'Ativo')->count() >= $turma->capacidade_maxima) {
             return response()->json([
                 'message' => 'A turma já atingiu a capacidade máxima de alunos.',
             ], 422);
         }
 
+        // Impede duplicação de matrícula na mesma turma
         $jaMatriculado = Matricula::where('turma_id', $turma->id_turma)
             ->where('usuario_id', $request->integer('usuario_id'))
             ->exists();
@@ -43,10 +54,14 @@ class MatriculaController extends Controller
             'status_matricula' => $request->filled('status_matricula') ? $request->string('status_matricula')->toString() : 'Ativo',
         ]);
 
-        return response()->json($matricula->load(['turma', 'aluno:id,name,email']), 201);
+        $matricula->load(['turma', 'aluno:id,name,email']);
+
+        return response()->json(new MatriculaResource($matricula), 201);
     }
 
-    // Transfere a matrícula do aluno para uma nova turma.
+    /**
+     * Transfere a matrícula do aluno para uma nova turma.
+     */
     public function transferirTurma(Request $request, Matricula $matricula): JsonResponse
     {
         Gate::authorize('update', $matricula->turma);
@@ -75,12 +90,14 @@ class MatriculaController extends Controller
         ]);
 
         return response()->json([
-            'matricula_anterior' => $matricula,
-            'nova_matricula' => $novaMatricula->load(['turma', 'aluno:id,name,email']),
+            'matricula_anterior' => new MatriculaResource($matricula),
+            'nova_matricula' => new MatriculaResource($novaMatricula->load(['turma', 'aluno:id,name,email'])),
         ], 200);
     }
 
-    // Cancela ou encerra a matrícula de um aluno (transferência ou evasão).
+    /**
+     * Cancela a matrícula ativa de um aluno.
+     */
     public function cancelarMatricula(Request $request, Matricula $matricula): JsonResponse
     {
         Gate::authorize('update', $matricula->turma);
@@ -93,24 +110,28 @@ class MatriculaController extends Controller
             'status_matricula' => $validated['status_matricula'] ?? 'Evadido',
         ]);
 
-        return response()->json($matricula, 200);
+        return response()->json(new MatriculaResource($matricula), 200);
     }
 
-    // Lista as turmas em que determinado aluno está matriculado.
+    /**
+     * Consulta as turmas em que o aluno especificado possui matrícula.
+     */
     public function listarTurmasDoAluno(User $usuario): JsonResponse
     {
         Gate::authorize('viewAny', Turma::class);
 
         $turmas = $usuario->turmas()->orderByDesc('ano_letivo')->get();
 
-        return response()->json($turmas, 200);
+        return response()->json(TurmaResource::collection($turmas), 200);
     }
 
-    // Lista as turmas do próprio aluno autenticado.
+    /**
+     * Retorna a lista de turmas em que o aluno autenticado está matriculado.
+     */
     public function minhasTurmas(Request $request): JsonResponse
     {
         $turmas = $request->user()->turmas()->orderByDesc('ano_letivo')->get();
 
-        return response()->json($turmas, 200);
+        return response()->json(TurmaResource::collection($turmas), 200);
     }
 }

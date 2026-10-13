@@ -29,7 +29,6 @@ class FrequenciaFactory extends Factory
             'data_aula' => now()->format('Y-m-d'),
             'quantidade_aulas' => 2,
             'status_presenca' => 'Presente',
-            'remessa_origem_id' => null,
             'justificativa' => null,
         ];
     }

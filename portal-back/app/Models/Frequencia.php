@@ -27,7 +27,6 @@ class Frequencia extends Model
         'data_aula',
         'quantidade_aulas',
         'status_presenca',
-        'remessa_origem_id',
         'justificativa',
     ];
 
@@ -70,14 +69,5 @@ class Frequencia extends Model
     public function aluno(): BelongsTo
     {
         return $this->belongsTo(User::class, 'usuario_id', 'id');
-    }
-
-    /**
-     * @return BelongsTo<RemessaDocente, $this>
-     */
-    // Remessa docente de origem do lançamento
-    public function remessaOrigem(): BelongsTo
-    {
-        return $this->belongsTo(RemessaDocente::class, 'remessa_origem_id', 'id_remessa');
     }
 }

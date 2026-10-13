@@ -1,10 +1,8 @@
 <?php
 
-use App\Models\Disciplina;
 use App\Models\Livro;
 use App\Models\Noticia;
 use App\Models\Turma;
-use App\Models\TurmaDisciplina;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\UsuarioSeeder;
@@ -143,32 +141,6 @@ test('professor pode criar e editar apenas noticias proprias e enviar remessas s
     $this->actingAs($profaMarina, 'sanctum')->putJson("/api/noticias/{$noticiaId}", [
         'titulo' => 'Tentativa de Edição por Outro Docente',
     ])->assertForbidden();
-
-    // 4. Teste de vinculação em remessas docentes:
-    $turma = Turma::factory()->create();
-    $disciplina = Disciplina::factory()->create();
-
-    // Prof Carlos tenta enviar remessa para turma onde NÃO está vinculado -> deve retornar 403
-    $this->actingAs($profCarlos, 'sanctum')->postJson('/api/remessas', [
-        'turma_id' => $turma->id_turma,
-        'disciplina_id' => $disciplina->id_disciplina,
-        'tipo_dado' => 'Frequência',
-    ])->assertStatus(403)
-        ->assertJsonPath('message', 'Você só pode enviar remessas para turmas e disciplinas às quais está formalmente vinculado.');
-
-    // Vincula Prof Carlos à turma e disciplina
-    TurmaDisciplina::create([
-        'turma_id' => $turma->id_turma,
-        'disciplina_id' => $disciplina->id_disciplina,
-        'professor_id' => $profCarlos->id,
-    ]);
-
-    // Agora Prof Carlos consegue enviar a remessa com sucesso
-    $this->actingAs($profCarlos, 'sanctum')->postJson('/api/remessas', [
-        'turma_id' => $turma->id_turma,
-        'disciplina_id' => $disciplina->id_disciplina,
-        'tipo_dado' => 'Frequência',
-    ])->assertCreated();
 });
 
 test('aluno tem acesso restrito ao consumo e e bloqueado em operacoes de gestao', function () {

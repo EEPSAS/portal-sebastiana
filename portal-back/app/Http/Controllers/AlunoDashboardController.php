@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\BoletimResource;
 use App\Models\Disciplina;
 use App\Models\Matricula;
 use App\Models\Turma;
@@ -64,7 +65,7 @@ class AlunoDashboardController extends Controller
             $trimestre
         );
 
-        return response()->json($boletim, 200);
+        return response()->json(new BoletimResource($boletim), 200);
     }
 
     /**
