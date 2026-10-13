@@ -1,90 +1,93 @@
-# Frontend — Convenções React e Mentoria Socrática
+# Frontend — Convenções React e Mentoria Socrática (`portal-front/AGENTS.md`)
 
-> As diretrizes pedagógicas e convenções gerais em `../AGENTS.md` são obrigatórias e aplicam-se integralmente aqui.
+> **Diretriz Máxima Pedagógica:** As diretrizes pedagógicas e convenções gerais em `../AGENTS.md` são obrigatórias e aplicam-se integralmente aqui.
 
-## Comandos do Projeto
-- `npm run dev`: Servidor Vite | `npm run lint`: ESLint | `npm run build`: Build de produção.
-- `.env` (baseado em `.env.example`): define `VITE_API_URL`.
-- **Definição de Pronto:** `npm run lint` sem erros + `npm run build` ok + verificação manual na tela alterada.
+---
 
-## Stack e Limites Tecnológicos
-- **Permitido:** React 19, Vite, React Router, Bootstrap 5 e Icons (CDN no `index.html`), `fetch` nativo.
-- **Recursos JS:** Arrow functions, destructuring, `?.`, template literals, `async/await` com `try/catch`, `map/filter/find`.
-- **Proibido sem aprovação prévia:**
-  - Bibliotecas externas de estado ou HTTP (Redux, Zustand, Axios, React Query).
-  - Componentes prontos (Tailwind, MUI, Chakra).
-  - TypeScript ou abstrações avançadas (`useReducer`, `useMemo`, `useCallback`, `React.memo`, `lazy`).
-  - Custom hooks genéricos em excesso (permitido apenas para consumo de API ex.: `useEventos`, e auth `useAuth`).
+## 1. Comandos e Definição de Pronto
+* `npm run dev`: Inicia o servidor Vite local.
+* `npm run lint`: Executa o ESLint para checagem estática de código.
+* `npm run build`: Compila a aplicação para produção.
+* **Definição de Pronto (DoD):** `npm run lint` sem erros + `npm run build` bem-sucedido + verificação manual na tela alterada + bloco de fechamento explicativo.
 
-## Estrutura Base de Diretórios
+---
+
+## 2. Stack Tecnológica e Limites de Bibliotecas
+* **Permitido**: React 19, Vite, React Router, Bootstrap 5 e Bootstrap Icons (via CDN no `index.html`), `fetch` nativo com JavaScript moderno (arrow functions, destructuring, `?.`, template literals, `async/await`).
+* **Proibido sem aprovação prévia em `/plan`**:
+  * Bibliotecas externas de estado ou HTTP (Redux, Zustand, Axios, React Query).
+  * Frameworks de CSS adicionais ou componentes prontos (Tailwind, MUI, Chakra, AntDesign).
+  * TypeScript ou abstrações avançadas (`useReducer`, `useMemo`, `useCallback`, `React.memo`, `lazy`).
+  * Custom hooks genéricos em excesso (permitido apenas para consumo de serviços, ex.: `useAuth`, `useEventos`, `useNoticias`).
+
+---
+
+## 3. Mentoria Socrática no Frontend (UI/UX e Componentes)
+Antes de criar qualquer componente, página, layout ou formulário, formule **perguntas de decisão** ao desenvolvedor júnior (em lote de até 5 perguntas com recomendação destacada):
+1. *"Como podemos dividir visualmente esta tela em componentes menores e reutilizáveis?"*
+2. *"Quais propriedades (`props`) este componente precisa receber para renderizar?"*
+3. *"Quais variáveis de estado local (`useState`) serão necessárias e qual é o valor inicial de cada uma?"*
+4. *"Como a tela deve se comportar visualmente nos 3 estados assíncronos: Carregando, Erro Amigável e Vazio?"*
+
+---
+
+## 4. Os 7 Módulos Oficiais no Frontend
+
+1. **Autenticação (`/login`)**:
+   * Formulário simples integrado a `authService.login()`. Armazena token Sanctum no `localStorage` e dados do usuário via `AuthProvider`.
+2. **Notícias (`/`, `/noticias/:id`, `/dashboard/noticias`)**:
+   * Feed público na Home, leitura detalhada e painel administrativo CRUD para Especialista e Adm.
+3. **Biblioteca (`/dashboard/biblioteca`)**:
+   * Interface organizada em 3 abas fundamentais:
+     * *Acervo de Livros*: Catálogo físico escolar e controle de empréstimos.
+     * *Videoaulas*: Pesquisa e reprodução de vídeos educativos consumindo a API pública do Google (YouTube).
+     * *Conteúdo Web*: Busca de artigos e referências pedagógicas consumindo a API pública do Google (Search).
+4. **Eventos / Agenda (`/dashboard/agenda`)**:
+   * Calendário letivo escolar e listagem de datas comemorativas/reuniões.
+5. **Turmas / Boletim (`/dashboard/turmas`, `/dashboard/geral`)**:
+   * **Especialista**: Aba/tela para upload do arquivo CSV do diário escolar (`importarRelatorioCSV`).
+   * **Professor**: Visualização consultiva de suas turmas e rendimento dos alunos.
+   * **Aluno**: Visualização do Boletim com notas por disciplina, faltas e situação acadêmica.
+   * *Atenção:* Não construa interfaces para criação manual de tarefas ou chamada diária avulsa.
+6. **Configurações (`/dashboard/configuracoes`)**:
+   * Edição de dados do perfil, alteração de senha e gestão de usuários (para Adm).
+7. **Geral (`/dashboard/geral`)**:
+   * Painel de indicadores com cruzamento estatístico customizado por perfil de usuário.
+
+---
+
+## 5. Estrutura Base de Diretórios
 ```
 portal-front/src/
 ├── main.jsx                     # Renderiza AuthProvider e App
-├── App.jsx                      # Declaração única de todas as rotas
+├── App.jsx                      # Declaração única de todas as rotas da aplicação
 ├── index.css                    # Estilos puramente globais (:root, body, resets)
 ├── layouts/                     # Portal/PortalLayout.jsx | Dashboard/DashboardLayout.jsx (+ .css)
 ├── pages/                       # Login.jsx | Portal/ (Home, Noticia) | Dashboard/ (Geral, Biblioteca, Turmas, Agenda, Noticias, Configuracoes)
 ├── components/                  # AuthProvider.jsx | ProtectedRoute.jsx | Portal/ | Dashboard/
 ├── hooks/                       # Custom hooks didáticos (useAuth, useEventos, useNoticias)
-├── services/                    # api.js (único fetch) | authService.js | eventosService.js | noticiasService.js
-└── utils/                       # Funções puras utilitárias (datas, formatações, categorias)
+├── services/                    # api.js (único fetch central) | authService.js | eventosService.js | turmasService.js | bibliotecaService.js
+└── utils/                       # Funções puras utilitárias (formatadores de data, helpers)
 ```
-- **Page:** ligada a uma rota. **Component:** bloco reutilizável. Sem componentes "casca" vazios (1-2 linhas).
 
-## Convenção de Nomenclatura
-| Artefato | Padrão | Exemplo |
-|---|---|---|
-| Componentes, Pages e Layouts | `PascalCase.jsx` (nome do arquivo = componente) | `NoticiaCard.jsx` |
-| Arquivos CSS vinculados | `PascalCase.css` (ao lado do componente) | `Noticias.css` |
-| Pastas de domínio | Minúsculas, sem acento | `portal/`, `dashboard/`, `agenda/` |
-| Custom Hooks | `useCamelCase.js` | `useAuth.js`, `useEventos.js` |
-| Serviços de API | `camelCaseService.js` (exceto `api.js`) | `eventosService.js` |
-| Utilitários | `camelCase.js` | `calendario.js` |
-| Imagens em `public/img/` | Minúsculas com hífen, sem acento | `foto-escola.jpg` |
-| Variáveis e funções | `camelCase`; constantes em `MAIUSCULA_SNAKE` | `usuarioAtivo`, `API_URL` |
-| Event handlers | `handleAcao` interno, `onAcao` nas props | `handleSalvar` -> `onSalvar` |
+---
 
-## Convenção de Rotas (React Router)
-- Declaradas exclusivamente em `src/App.jsx`. URLs minúsculas, substantivos no plural, item específico com `:id`.
-- Rotas do painel sob `/dashboard` e protegidas por `ProtectedRoute`. Diferenças de permissão tratadas na página/menu.
-- Toda navegação interna DEVE usar `<Link>` ou `<NavLink>` (SPA: sem recarregar a página). Nunca use `<a href>` interno ou `target="_blank"`.
+## 6. Comunicação com a API e Contrato (`apiContract.md`)
+* Toda requisição HTTP passa obrigatoriamente por [`src/services/api.js`](file:///c:/Users/prent/OneDrive/Documentos/repositorios/portal-sebastiana/portal-front/src/services/api.js). Componentes nunca utilizam `fetch` direto.
+* `api.js` injeta o header `Authorization: Bearer <token>` a partir do `localStorage`, trata respostas sem corpo (204) e lança `Error` amigável em português em caso de falha.
+* As chaves enviadas e recebidas nos arquivos em `src/services/` devem respeitar estritamente as especificações do [`apiContract.md`](file:///c:/Users/prent/OneDrive/Documentos/repositorios/portal-sebastiana/apiContract.md) e dos Eloquent API Resources do backend.
 
-| Rota | Acesso | Descrição |
-|---|---|---|
-| `/` | Público | Home do portal escolar |
-| `/login` | Público | Login de alunos e servidores |
-| `/noticias/:id` | Público | Detalhe da notícia |
-| `/dashboard` (-> `geral`) | Logado | Entrada do painel |
-| `/dashboard/geral` | Logado | Visão geral do painel |
-| `/dashboard/biblioteca` | Logado | Acervo escolar |
-| `/dashboard/turmas` | Professor/Especialista/Adm | Gestão de turmas |
-| `/dashboard/agenda` | Logado | Calendário e eventos |
-| `/dashboard/noticias` | Especialista/Adm | CRUD de notícias |
-| `/dashboard/configuracoes` | Logado | Perfil e preferências |
-| `*` | Público | Fallback 404 |
+---
 
-## Serviços e Comunicação com API
-- Toda requisição HTTP passa exclusivamente por `src/services/api.js`. Componentes nunca chamam `fetch` direto.
-- `api.js` injeta `Authorization: Bearer <token>` do `localStorage`, trata 204 (sem corpo) e lança `Error` amigável em caso de falha.
-- Módulos específicos exportam funções limpas (`listarEventos`, `criarEvento`). Tokens não são repassados por props.
+## 7. Estados de Tela Obrigatórios
+Toda tela assíncrona deve tratar visualmente:
+1. **Carregando**: Spinner ou *placeholder* visual indicando que os dados estão sendo buscados.
+2. **Erro Amigável**: Alerta ou mensagem explicativa em português (ex.: *"Não foi possível carregar os dados no momento. Tente novamente mais tarde."*).
+3. **Vazio**: Mensagem amigável quando a consulta não retornar registros (ex.: *"Nenhum livro encontrado no acervo."*).
 
-## Autenticação e Sessão
-- `AuthProvider` centraliza usuário em `useState`. Hook `useAuth()` expõe `{ user, login, logout, isAuthenticated }`.
-- `ProtectedRoute` redireciona não autenticados para `/login`. Botão de sair deve invocar `logout()`.
+---
 
-## Hooks e Ensino de Estado (Regra Didática)
-- `useState`: comentar o estado inicial, o que representa na memória e o evento que o altera.
-- `useEffect`: comentar o motivo do efeito e o array de dependências (`[]` = executa uma vez na montagem).
-
-## Estados de Tela Obrigatórios
-Toda tela assíncrona deve tratar 3 estados: **Carregando** (spinner/loading), **Erro Amigável** (mensagem de falha) e **Vazio** (sem dados). Nunca use mock/dados falsos para mascarar erro da API.
-
-## Estilização e Escopo de CSS
-1. **Global (`index.css`):** `:root` (variáveis de cor), `body` e resets.
-2. **Layout:** Arquivo próprio do layout (ex.: `DashboardLayout.css`).
-3. **Componente:** Arquivo `.css` isolado ao lado do componente (`Noticias.css`).
-- Prefira classes Bootstrap 5 (`d-flex`, `gap-3`, `rounded-4`, `btn`). `style={{}}` inline apenas para valores estritamente dinâmicos. Cores via variáveis CSS (`var(--cor-primaria)`).
-
-## Código Legado e Transição
-- Arquivos novos ou alterados devem seguir este guia na íntegra.
-- Não refatore ou renomeie arquivos legados sem aprovação prévia em `/plan`.
+## 8. Estilização e CSS
+* Prefira as classes nativas do **Bootstrap 5** (`d-flex`, `gap-3`, `rounded-4`, `btn`, `card`).
+* Para estilos personalizados, utilize arquivos `.css` isolados ao lado do respectivo componente ou layout (ex.: `Noticias.css`).
+* Cores devem utilizar as variáveis CSS globais definidas em `index.css` (ex.: `var(--cor-primaria)`).

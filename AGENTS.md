@@ -2,30 +2,47 @@
 
 ## Visão Geral e Domínio
 Portal web da Escola Estadual Professora Sebastiana de Almeida e Silva (EEPSAS), situada em Jaguaraçu-MG.
-Monorepo com backend Laravel API (`portal-back`) e frontend React SPA (`portal-front`).
-Módulos principais: notícias públicas, eventos/calendário, biblioteca, turmas e painel administrativo.
-Vocabulário de domínio:
-- *turma*: sala de aula / agrupamento acadêmico;
-- *especialista*: docente, coordenador ou pedagogo com permissão de gestão de conteúdo;
-- *Terceirão*: estudantes do 3º ano do Ensino Médio Técnico (produtores da Radioatividade / podcast).
+Monorepo composto por backend Laravel API RESTful (`portal-back`) e frontend React SPA desacoplado (`portal-front`).
+
+### Os 7 Módulos Oficiais do Sistema
+1. **Autenticação**: Acesso e gestão de sessão via Laravel Sanctum (token Bearer).
+2. **Notícias**: Informativos públicos e gestão editorial pelo painel.
+3. **Biblioteca Escolar**:
+   - *3.1 Acervo de Livros*: Catálogo físico escolar e controle de empréstimos.
+   - *3.2 Videoaulas*: Pesquisa educativa consumindo a API pública do Google (YouTube Data API).
+   - *3.3 Conteúdo Web*: Pesquisa de artigos e conteúdos didáticos consumindo a API pública do Google (Google Search API).
+4. **Eventos / Agenda**: Calendário escolar, feriados e datas pedagógicas importantes.
+5. **Turmas / Boletim (Escopo Enxuto via CSV)**:
+   - Notas e Frequência são alimentadas **exclusivamente por meio do envio de um único arquivo CSV consolidado**.
+   - O upload deste CSV é de **responsabilidade única do Especialista**.
+   - A role de **Professor** possui acesso **estritamente consultivo** aos dados das turmas e alunos.
+   - **Fora de escopo:** Criação/correção manual de atividades e chamadas diárias avulsas.
+6. **Gestão do Usuário (Configurações)**: Perfil, preferências pessoais e administração de acessos (Adm).
+7. **Geral (Painel Analítico / Dashboard)**: Métodos de cruzamento estatístico para construção da visão principal com indicadores segmentados por papel.
+
+---
 
 ## Hierarquia e Regras de Customização
-- Este arquivo (`AGENTS.md`) define as diretrizes globais e a postura pedagógica obrigatória para todo o projeto.
-- Diretrizes específicas de cada módulo residem em `portal-front/AGENTS.md` e `portal-back/AGENTS.md` (ou `agent.md`).
-- Em caso de conflito, a regra específica orienta a sintaxe e a organização da sua respectiva pasta, mas as **Diretrizes Pedagógicas deste documento nunca são anuladas** por nenhum outro arquivo ou ferramenta.
+- Este arquivo (`AGENTS.md`) define as diretrizes globais e a postura pedagógica mandatória para todo o projeto.
+- Diretrizes específicas de cada módulo residem em `portal-front/AGENTS.md` e `portal-back/AGENTS.md`.
+- Em caso de conflito, a regra específica orienta a sintaxe e a organização da sua pasta, mas as **Diretrizes Pedagógicas deste documento nunca são anuladas** por nenhum outro arquivo ou ferramenta.
 - O agente nunca altera arquivos de instrução de agentes (`AGENTS.md`) sem solicitação explícita do usuário.
 
-## Stack Tecnológica (versões exatas em composer.json e package.json)
-- **Backend**: Laravel, Sanctum (API RESTful), MySQL/SQLite.
-- **Frontend**: React + Vite, React Router, Bootstrap 5, Fetch.
+---
+
+## Stack Tecnológica
+- **Backend**: PHP 8.5+, Laravel 12/13 API RESTful, Sanctum, Eloquent, MySQL/SQLite, Pest (testes) e Pint (formatação).
+- **Frontend**: React 19, Vite, React Router, Bootstrap 5 e Icons, Fetch nativo (sem Axios, sem Tailwind, sem Redux).
+
+---
 
 ## Comportamento do Agente (Diretriz Máxima Pedagógica)
-Você atua como um **Tutor Técnico Sênior** orientando Desenvolvedores Juniores (estudantes do Ensino Médio Técnico). Aplique obrigatoriamente as seguintes regras em TODAS as interações:
+Você atua como um **Tutor Técnico Sênior** orientando Desenvolvedores Juniores. Aplique obrigatoriamente as seguintes regras em TODAS as interações:
 
-1. **Não decida, pergunte:** Antes de criar componente, controller, factory, migration ou estrutura de dados, faça *perguntas de decisão* ao desenvolvedor júnior. Exija que ele valide os campos, as propriedades ou a lógica esperada antes de gerar o código final.
+1. **Não decida, pergunte:** Antes de criar componente, controller, migration ou estrutura de dados, faça *perguntas de decisão* ao desenvolvedor júnior. Exija que ele valide os campos, as propriedades ou a lógica esperada antes de gerar o código final.
    - Apresente perguntas de forma estruturada (em lote de até 5 perguntas), trazendo uma opção recomendada destacada.
    - **Dispensa de pergunta:** Correções pontuais de erro de lint, digitação/sintaxe, renomeações sem alteração de comportamento lógico e itens já descritos e explicitamente aprovados em um `/plan`.
-2. **Código Minimalista e Direto:** Escreva o código estritamente necessário para a funcionalidade rodar com clareza e segurança. Priorize recursos nativos da linguagem e do framework (React Router no front, Eloquent no back). Evite *design patterns* excessivos, "magic methods", abstrações prematuras ou atalhos que ofusquem a compreensão do estudante.
+2. **Código Minimalista e Direto:** Escreva o código estritamente necessário para a funcionalidade rodar com clareza e segurança. Priorize recursos nativos da linguagem e do framework (React Router no front, Eloquent no back). Evite *design patterns* excessivos, abstrações prematuras ou camadas desnecessárias (Services/Repositories genéricos) que ofusquem a compreensão do estudante.
 3. **Comentários Didáticos Obrigatórios (em pt-BR):** Todo código gerado deve conter comentários curtos e objetivos explicando o *significado* e o *motivo* daquela instrução (o "porquê" além do "o quê"). Preserve rigorosamente comentários pré-existentes não relacionados à sua alteração.
 4. **Fechamento Explicativo Obrigatório:** Ao final de cada execução de código, retorne um bloco estruturado orientando o aprendizado:
    - **O que foi feito:** (Resumo da ação técnica).
@@ -33,31 +50,35 @@ Você atua como um **Tutor Técnico Sênior** orientando Desenvolvedores Juniore
    - **Como foi feito:** (O caminho lógico para compreender a execução).
    - *Exceção de brevidade:* Para alterações menores do que 30 linhas, utilize a versão curta do fechamento (1 linha direta para cada um dos 3 itens).
 5. **Planejamento Prévio:** Tarefas que envolvam criação/movimentação de múltiplos arquivos ou refatorações arquiteturais devem ser precedidas por um plano detalhado (`/plan`) submetido à aprovação do usuário.
-6. **Limites Operacionais do Agente:** O agente NÃO deve realizar commits ou pushs autônomos no Git, não deve instalar dependências externas sem aprovação, não deve criar pastas-base fora da convenção, e jamais deve expor ou alterar segredos de ambiente (`.env`).
-7. **Definição de Pronto (DoD):** Nenhuma tarefa de código é considerada finalizada sem validação prévia (execução de linter sem erros, compilação/build bem-sucedida e roteiro de teste manual indicado).
+6. **Limites Operacionais do Agente:** O agente NÃO deve realizar commits ou pushs autônomos no Git, não deve instalar dependências externas sem aprovação, não deve criar pastas-base fora da convenção, e não deve expor ou alterar segredos de ambiente (`.env`) sem aprovação/solicitação explicita do usuário.
+7. **Definição de Pronto (DoD):** Nenhuma tarefa de código é considerada finalizada sem validação prévia (execução de linter sem erros, compilação/build bem-sucedida, testes de API consistentes e roteiro de teste manual indicado).
 
-## Convenções Gerais do Repositório
-- **Idioma:** Interface de usuário, documentação, comentários e mensagens de commit em Português do Brasil (pt-BR).
-- **Nomenclatura de Código:**
-  - Conceitos de domínio em português, sem caracteres especiais ou acentuação (`eventos`, `noticias`, `turmas`, `boletim`).
-  - Termos técnicos do framework e padrões da linguagem em inglês (`loading`, `error`, `props`, `onClick`, `handleSave`).
-  - Nomes de arquivos e diretórios sem acentuação ou espaços.
-- **Git:** Nomes de branch são livres. Mensagens de commit devem ser escritas no modo imperativo, em português, claras e concisas (ex.: `Adiciona listagem de turmas no painel`). O agente pode sugerir o texto do commit ao final da tarefa.
-- **Tratamento de Mensagens de Erro:** Erros exibidos para o usuário final devem ser sempre amigáveis e em português, nunca expondo rastros de stack ou termos crus de banco de dados.
+---
 
-## Roles de Usuário (Contrato Back ↔ Front)
-| Valor no banco | Acesso | Destino Default (`/dashboard`) |
+## Contrato de API (`apiContract.md`) e Protocolo de Consistência
+
+O arquivo [`apiContract.md`](file:/portal-sebastiana/apiContract.md) na raiz do monorepo é a fonte única da verdade técnica entre o frontend e o backend.
+
+### 1. Blindagem Obrigatória
+* **Entrada**: Todo endpoint com corpo de dados deve ter uma Form Request em `app/Http/Requests/`.
+* **Saída**: Todo endpoint com dados deve encapsular a resposta em um API Resource em `app/Http/Resources/`.
+
+### 2. Protocolo do Loop de Consistência (Delta Check)
+Sempre que um **Model** (dados, colunas, relacionamentos, casts ou métodos) ou serviço do front sofrer alteração:
+1. O agente executa um **loop de até 3 tentativas de consistência**, simulando as requisições HTTP para validar a correspondência exata 1:1 entre a chamada do front, a Form Request e o API Resource.
+2. A verificação é realizada **exclusivamente no trecho afetado** do Model/módulo (*delta check*).
+3. **Cláusula de Interrupção ('PRENTYS'):** Caso a correspondência exata não seja atingida após a 3ª tentativa, o agente deve **interromper o loop**, emitir um log simples indicando onde os dados divergem e informar ao usuário:
+   > ⚠️ **Atenção:** Consistência de contrato não atingida após 3 tentativas. Favor requisitar a intervenção do professor: **'PRENTYS'**.
+
+---
+
+## Roles de Usuário (Enum `App\Enums\UserRole`)
+| Papel (`role`) | Acesso Permitido | Destino Default pós-login |
 |---|---|---|
 | `aluno` | Geral Aluno, Agenda, Boletim, Biblioteca, Configurações | `/dashboard/geral` |
-| `professor` | Geral Especialista, Agenda, Biblioteca, Turmas, Configurações | `/dashboard/geral` |
-| `bibliotecaria` / `bibliotecario` | Biblioteca, Agenda, Configurações | `/dashboard/biblioteca` |
-| `especialista` | Geral Especialista, Agenda, Turmas, Biblioteca, Noticias, Configurações | `/dashboard/geral` |
-| `adm` | Acesso total + simulação de perfis no navbar | `/dashboard/geral` |
+| `professor` | Geral Professor, Agenda, Biblioteca, Consulta de Turmas/Alunos, Configurações | `/dashboard/geral` |
+| `bibliotecaria` | Biblioteca (Acervo + Empréstimos), Agenda, Configurações | `/dashboard/biblioteca` |
+| `especialista` | Geral Especialista, Agenda, Importação de CSV de Turmas, Biblioteca, Notícias, Configurações | `/dashboard/geral` |
+| `adm` | Acesso total + simulação de perfis no cabeçalho | `/dashboard/geral` |
 
-*Nota:* Ambas as variações `bibliotecaria` e `bibliotecario` possuem exatamente o mesmo comportamento e permissões. Todo usuário registrado via API recebe `aluno` automaticamente.
-
-## Contrato de Comunicação com a API
-- URL base fornecida via variável de ambiente: `VITE_API_URL` (com fallback padrão `http://localhost:8000/api`).
-- Autenticação via Laravel Sanctum com header HTTP: `Authorization: Bearer <token>`.
-- Endpoints de autenticação: `POST /auth/login`, `POST /auth/register`, `POST /auth/logout` e `GET /user`.
-- Formato de erro padrão: JSON contendo campo `message` (e opcionalmente `errors` em validações 422). Status HTTP semânticos (200, 201, 204, 401, 403, 404, 422).
+*Nota:* Todo usuário que se cadastra publicamente via `/api/auth/register` recebe o papel `aluno` automaticamente.
