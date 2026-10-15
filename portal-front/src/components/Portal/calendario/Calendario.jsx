@@ -114,7 +114,8 @@ const getCalendarDays = (month) => {
 
 const CalendarioSection = () => {
   const [visibleMonth, setVisibleMonth] = useState(initialMonth);
-  const [selectedDate, setSelectedDate] = useState(null);
+  // A data inicial selecionada acompanha o dia em que o calendário é aberto.
+  const [selectedDate, setSelectedDate] = useState(() => formatDateKey(new Date()));
   const [activeCategories, setActiveCategories] = useState(
     () => new Set(categoryOptions.map(({ key }) => key)),
   );
