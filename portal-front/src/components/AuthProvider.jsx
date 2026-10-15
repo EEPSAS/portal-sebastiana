@@ -79,6 +79,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
+   * Autentica o usuário com credencial emitida pelo Google Identity Services.
+   */
+  const loginWithGoogle = async (googlePayload) => {
+    const data = await authService.googleLogin(googlePayload);
+    setToken(data.token);
+    setUser(data.user);
+    setLoading(false);
+    return data;
+  };
+
+  /**
    * Função para encerrar a sessão do usuário.
    * Redireciona obrigatoriamente para a página inicial pública do portal (/).
    */
@@ -132,6 +143,7 @@ export const AuthProvider = ({ children }) => {
     token,
     loading,
     login,
+    loginWithGoogle,
     logout,
     switchSimulatedRole,
     isRealAdmin,

@@ -48,7 +48,8 @@ Sempre que um **Model**, **Migration**, **Form Request**, **API Resource** ou se
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front (`src/services/`) | Descrição |
 |---|---|---|---|---|---|---|
-| `POST` | `/api/auth/login` | Público | `AuthLoginRequest` | `AuthUserResource` | `authService.login()` | Login e emissão do token Sanctum |
+| `POST` | `/api/auth/google` | Público | `AuthGoogleRequest` | `AuthUserResource` | `authService.googleLogin()` | Login e auto-cadastro via Google OAuth (com turma em standby) |
+| `POST` | `/api/auth/login` | Público | `AuthLoginRequest` | `AuthUserResource` | `authService.login()` | Login tradicional e emissão do token Sanctum (fallback) |
 | `POST` | `/api/auth/register` | Público | `AuthRegisterRequest` | `AuthUserResource` | `authService.register()` | Auto-cadastro (recebe role `aluno`) |
 | `POST` | `/api/auth/logout` | Autenticado | N/A | Mensagem 200/204 | `authService.logout()` | Invalida o token atual |
 | `GET` | `/api/user` | Autenticado | N/A | `UsuarioResource` | `authService.getUser()` | Retorna o usuário logado e permissões |
