@@ -18,6 +18,24 @@ use Illuminate\Support\Facades\Gate;
 class MatriculaController extends Controller
 {
     /**
+     * Lista todas as matrículas ativas da escola com informações do estudante e da turma.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user || (! $user->canManageAcademic() && ! $user->isProfessor())) {
+            abort(403, 'Acesso restrito ao corpo docente e pedagógico.');
+        }
+
+        $matriculas = Matricula::with(['turma', 'aluno:id,name,email'])
+            ->where('status_matricula', 'Ativo')
+            ->orderByDesc('id_matricula')
+            ->get();
+
+        return response()->json(MatriculaResource::collection($matriculas), 200);
+    }
+
+    /**
      * Realiza a matrícula de um aluno em uma turma escolar.
      *
      * @param  StoreMatriculaRequest  $request  Form Request validada
@@ -36,15 +54,27 @@ class MatriculaController extends Controller
             ], 422);
         }
 
-        // Impede duplicação de matrícula na mesma turma
-        $jaMatriculado = Matricula::where('turma_id', $turma->id_turma)
+        // Verifica se o aluno já possui registro anterior nesta turma
+        $matriculaExistente = Matricula::where('turma_id', $turma->id_turma)
             ->where('usuario_id', $request->integer('usuario_id'))
-            ->exists();
+            ->first();
 
-        if ($jaMatriculado) {
-            return response()->json([
-                'message' => 'O aluno já está matriculado nesta turma.',
-            ], 422);
+        if ($matriculaExistente) {
+            if ($matriculaExistente->status_matricula === 'Ativo') {
+                return response()->json([
+                    'message' => 'O aluno já está matriculado nesta turma.',
+                ], 422);
+            }
+
+            // Se o registro prévio estava inativo (desvinculado/evadido), reativa a matrícula
+            $matriculaExistente->update([
+                'status_matricula' => 'Ativo',
+                'data_matricula' => $request->filled('data_matricula') ? $request->string('data_matricula')->toString() : now()->format('Y-m-d'),
+            ]);
+
+            $matriculaExistente->load(['turma', 'aluno:id,name,email']);
+
+            return response()->json(new MatriculaResource($matriculaExistente), 200);
         }
 
         $matricula = Matricula::create([

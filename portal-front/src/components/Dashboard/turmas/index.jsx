@@ -1,95 +1,139 @@
-// Importação exclusiva dos hooks necessários (dispensa 'import React' no Vite)
-import { useEffect, useMemo, useState } from "react";
-import { fetchTurmas, fetchTurmaNotas, fetchTurmaResumo } from "../../../services/turmasService";
+import { useEffect, useState } from "react";
+import { useAuth } from "../../../hooks/useAuth";
+import {
+  cancelarMatriculaAluno,
+  excluirTurma,
+  fetchMatriculas,
+  fetchResumoGeral,
+  fetchTurmaNotas,
+  fetchTurmas,
+} from "../../../services/turmasService";
+import GeralAba from "./GeralAba";
 import ModalImportarNotas from "./ModalImportarNotas";
+import ModalTurma from "./ModalTurma";
+import ModalVincularAluno from "./ModalVincularAluno";
+import NotasAba from "./NotasAba";
+import "./Turmas.css";
+import TurmasAba from "./TurmasAba";
+
+// Definição das 3 abas oficiais do módulo de turmas
+const ABAS = [
+  { id: "geral", label: "Visão Geral e Indicadores" },
+  { id: "turmas", label: "Quadro de Turmas e Alunos" },
+  { id: "notas", label: "Notas e Diário Escolar" },
+];
 
 /**
- * Componente principal da área Turmas do Especialista Pedagógico e Professor.
- * Consome dados 100% reais do backend (turmas, KPIs e notas registradas)
- * e oferece a funcionalidade de upload e sincronização via arquivo CSV.
+ * Orquestrador Central da área de Turmas.
+ * Segue a arquitetura da Biblioteca Escolar, organizando o módulo em abas:
+ * 1. `GeralAba`: Cards e gráficos analíticos de desempenho e presença (Recharts);
+ * 2. `TurmasAba`: CRUD de turmas e relação nominal de alunos matriculados;
+ * 3. `NotasAba`: Médias gerais por turma e listagem consolidada de notas.
  */
-const TurmaEspecialista = () => {
+const Turmas = () => {
+  const { user } = useAuth();
+  const role = user?.role || "aluno";
+  const podeGerenciar = role === "especialista" || role === "adm";
+
+  // Estados de navegação
+  const [abaAtiva, setAbaAtiva] = useState("geral");
+
+  // Dados centrais
   const [turmas, setTurmas] = useState([]);
+  const [resumoGeral, setResumoGeral] = useState([]);
+  const [matriculas, setMatriculas] = useState([]);
+
+  // Dados da aba de notas
   const [turmaSelecionadaId, setTurmaSelecionadaId] = useState("");
-  const [periodoFiltro, setPeriodoFiltro] = useState("");
-  const [termoBusca, setTermoBusca] = useState("");
-
-  const [resumo, setResumo] = useState(null);
   const [notas, setNotas] = useState([]);
+  const [periodoFiltro, setPeriodoFiltro] = useState("");
+  const [termoBuscaNota, setTermoBuscaNota] = useState("");
 
-  // Estado inicial já é carregando (loading = true) para a primeira renderização
-  const [loading, setLoading] = useState(true);
-  const [loadingDetalhes, setLoadingDetalhes] = useState(false);
-  const [erro, setErro] = useState("");
+  // Estados de carregamento e avisos
+  const [loadingGeral, setLoadingGeral] = useState(true);
+  const [loadingNotas, setLoadingNotas] = useState(false);
+  const [notificacao, setNotificacao] = useState("");
+  const [erroCarregamento, setErroCarregamento] = useState("");
+
+  // Modais de escrita
+  const [modalTurmaAberto, setModalTurmaAberto] = useState(false);
+  const [turmaParaEditar, setTurmaParaEditar] = useState(null);
+  const [modalVincularAberto, setModalVincularAberto] = useState(false);
+  const [turmaParaVincular, setTurmaParaVincular] = useState(null);
   const [modalImportarAberto, setModalImportarAberto] = useState(false);
-  const [mensagemSucesso, setMensagemSucesso] = useState("");
-  // Chave numérica para re-disparar a busca quando um CSV for importado
+
+  // Modais de confirmação de exclusão / desvinculação
+  const [turmaParaExcluir, setTurmaParaExcluir] = useState(null);
+  const [matriculaParaDesvincular, setMatriculaParaDesvincular] = useState(null);
+  const [processandoExclusao, setProcessandoExclusao] = useState(false);
+
+  // Chave numérica para disparo de recarga após operações de escrita
   const [recargaKey, setRecargaKey] = useState(0);
 
+  // Exibe mensagem temporária no toast flutuante
+  const dispararNotificacao = (mensagem) => {
+    setNotificacao(mensagem);
+    setTimeout(() => setNotificacao(""), 4500);
+  };
+
   /**
-   * 1. Efeito de Montagem: Busca a lista de turmas da escola.
-   * Didática: O array de dependências vazio `[]` garante que execute apenas uma vez.
-   * Evita chamadas síncronas de setState antes das Promises para não causar cascading render.
+   * 1. Efeito Central: Busca turmas, resumo agregado e matrículas ativas.
    */
   useEffect(() => {
     let cancelado = false;
 
-    fetchTurmas()
-      .then((lista) => {
+    Promise.all([
+      fetchTurmas().catch(() => []),
+      fetchResumoGeral().catch(() => []),
+      fetchMatriculas().catch(() => []),
+    ])
+      .then(([dadosTurmas, dadosResumo, dadosMatriculas]) => {
         if (!cancelado) {
-          setTurmas(lista);
-          if (lista.length > 0) {
-            setLoadingDetalhes(true);
-            setTurmaSelecionadaId(String(lista[0].id_turma));
+          setTurmas(dadosTurmas || []);
+          setResumoGeral(dadosResumo || []);
+          setMatriculas(dadosMatriculas || []);
+
+          // Seleciona a primeira turma se nenhuma estiver selecionada
+          if (dadosTurmas && dadosTurmas.length > 0 && !turmaSelecionadaId) {
+            setTurmaSelecionadaId(String(dadosTurmas[0].id_turma));
           }
         }
       })
       .catch((err) => {
         if (!cancelado) {
-          setErro(err.message || "Não foi possível carregar a lista de turmas.");
+          setErroCarregamento(err.message || "Erro ao carregar dados escolares.");
         }
       })
       .finally(() => {
-        if (!cancelado) setLoading(false);
+        if (!cancelado) setLoadingGeral(false);
       });
 
     return () => {
       cancelado = true;
     };
-  }, []);
-
-  // Turma atualmente selecionada no seletor
-  const turmaAtiva = useMemo(
-    () => turmas.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) || null,
-    [turmas, turmaSelecionadaId]
-  );
+  }, [recargaKey, turmaSelecionadaId]);
 
   /**
-   * 2. Efeito de Sincronização: Busca resumo e notas da turma selecionada.
-   * Executa sempre que `turmaSelecionadaId`, `periodoFiltro` ou `recargaKey` mudarem.
+   * 2. Efeito de Notas: Atualiza a lista de notas sempre que a turma ou período mudarem.
    */
   useEffect(() => {
     if (!turmaSelecionadaId) return;
 
     let cancelado = false;
 
-    Promise.all([
-      fetchTurmaResumo(turmaSelecionadaId, { periodo: periodoFiltro }).catch(() => null),
-      fetchTurmaNotas(turmaSelecionadaId, { periodo: periodoFiltro }),
-    ])
-      .then(([dadosResumo, dadosNotas]) => {
+    fetchTurmaNotas(turmaSelecionadaId, { periodo: periodoFiltro })
+      .then((dadosNotas) => {
         if (!cancelado) {
-          setResumo(dadosResumo);
-          setNotas(dadosNotas);
+          setNotas(dadosNotas || []);
         }
       })
-      .catch((err) => {
+      .catch(() => {
         if (!cancelado) {
-          setErro(err.message || "Erro ao carregar notas da turma.");
+          setNotas([]);
         }
       })
       .finally(() => {
-        if (!cancelado) setLoadingDetalhes(false);
+        if (!cancelado) setLoadingNotas(false);
       });
 
     return () => {
@@ -97,371 +141,316 @@ const TurmaEspecialista = () => {
     };
   }, [turmaSelecionadaId, periodoFiltro, recargaKey]);
 
-  // Callback chamado quando a importação de CSV é concluída com sucesso
-  const handleImportacaoSucesso = (resultado) => {
-    setMensagemSucesso(resultado?.message || "Notas importadas e sincronizadas com sucesso!");
-    setLoadingDetalhes(true);
-    setRecargaKey((prev) => prev + 1);
-    setTimeout(() => setMensagemSucesso(""), 6000);
+  // Abertura de modais
+  const handleAbrirCriarTurma = () => {
+    setTurmaParaEditar(null);
+    setModalTurmaAberto(true);
   };
 
-  // Atualização manual disparada pelo botão de refresh
-  const handleRecarregar = () => {
-    setLoadingDetalhes(true);
-    setRecargaKey((prev) => prev + 1);
+  const handleAbrirEditarTurma = (turma) => {
+    setTurmaParaEditar(turma);
+    setModalTurmaAberto(true);
   };
 
-  // Filtra as notas por busca de texto (aluno ou disciplina)
-  const notasFiltradas = useMemo(() => {
-    const termo = termoBusca.trim().toLowerCase();
-    if (!termo) return notas;
+  const handleAbrirVincularAluno = (turma) => {
+    setTurmaParaVincular(turma);
+    setModalVincularAberto(true);
+  };
 
-    return notas.filter((n) => {
-      const alunoNome = (n.aluno?.name || "").toLowerCase();
-      const discNome = (n.disciplina?.nome || "").toLowerCase();
-      const periodo = (n.periodo_letivo || "").toLowerCase();
-      return alunoNome.includes(termo) || discNome.includes(termo) || periodo.includes(termo);
-    });
-  }, [notas, termoBusca]);
+  const handleSelecionarTurmaNotas = (idTurma) => {
+    setLoadingNotas(true);
+    setTurmaSelecionadaId(idTurma);
+  };
 
-  if (loading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center py-5">
-        <div className="spinner-border text-primary me-3" role="status"></div>
-        <span className="text-muted fw-semibold">Carregando turmas...</span>
-      </div>
+  // Sucesso na criação / edição de turma
+  const handleSucessoTurma = (resultado, isEdicao) => {
+    dispararNotificacao(
+      isEdicao
+        ? `Turma "${resultado?.nome_identificador}" atualizada com sucesso!`
+        : `Turma "${resultado?.nome_identificador}" cadastrada com sucesso!`
     );
-  }
+    setRecargaKey((prev) => prev + 1);
+  };
+
+  // Sucesso na homologação de matrícula do aluno
+  const handleSucessoVincular = () => {
+    dispararNotificacao("Matrícula homologada com sucesso! Aluno confirmado na turma.");
+    setRecargaKey((prev) => prev + 1);
+  };
+
+  // Sucesso na importação de notas CSV
+  const handleSucessoImportacaoCSV = (resultado) => {
+    dispararNotificacao(resultado?.message || "Notas importadas e sincronizadas com sucesso!");
+    setRecargaKey((prev) => prev + 1);
+  };
+
+  // Confirmação e execução de exclusão de turma
+  const handleConfirmarExclusaoTurma = async () => {
+    if (!turmaParaExcluir) return;
+
+    setProcessandoExclusao(true);
+    try {
+      await excluirTurma(turmaParaExcluir.id_turma);
+      dispararNotificacao(`Turma "${turmaParaExcluir.nome_identificador}" excluída com sucesso.`);
+      setTurmaParaExcluir(null);
+      setRecargaKey((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || "Não foi possível excluir a turma.");
+    } finally {
+      setProcessandoExclusao(false);
+    }
+  };
+
+  // Confirmação e execução de desvinculação de aluno
+  const handleConfirmarDesvinculacao = async () => {
+    if (!matriculaParaDesvincular) return;
+
+    setProcessandoExclusao(true);
+    try {
+      await cancelarMatriculaAluno(matriculaParaDesvincular.id_matricula, { status: "Evadido" });
+      dispararNotificacao(`Matrícula de ${matriculaParaDesvincular.aluno?.name} desvinculada.`);
+      setMatriculaParaDesvincular(null);
+      setRecargaKey((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || "Erro ao desvincular o estudante.");
+    } finally {
+      setProcessandoExclusao(false);
+    }
+  };
+
+  // Turma atualmente ativa para o modal de importação de CSV
+  const turmaAtivaParaCSV =
+    turmas.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) || turmas[0] || null;
 
   return (
-    <div className="container-fluid p-0">
-      {/* Cabeçalho da Seção com Seletor e Ação */}
-      <div className="bg-white rounded-4 shadow-sm p-4 mb-4">
-        <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-          <div>
-            <h2 className="fw-bold mb-1 text-dark" style={{ fontSize: "1.45rem" }}>
-              Gestão de Turmas e Notas
-            </h2>
-            <p className="text-muted mb-0 small">
-              Acompanhamento de aproveitamento acadêmico e importação de diários escolares via CSV.
-            </p>
-          </div>
+    <div className="position-relative">
+      {/* Toast Flutuante no padrão da Biblioteca */}
+      {notificacao && <div className="turmas-toast">✓ {notificacao}</div>}
 
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            {/* Seletor de Turma */}
-            <div className="d-flex align-items-center gap-2">
-              <label htmlFor="turma-seletor" className="small fw-bold text-muted text-nowrap">
-                Turma:
-              </label>
-              <select
-                id="turma-seletor"
-                className="form-select form-select-sm fw-semibold"
-                style={{ minWidth: "220px" }}
-                value={turmaSelecionadaId}
-                onChange={(e) => setTurmaSelecionadaId(e.target.value)}
-              >
-                {turmas.map((t) => (
-                  <option key={t.id_turma} value={t.id_turma}>
-                    {t.nome_identificador} ({t.turno})
-                  </option>
-                ))}
-              </select>
+      {/* Alerta de Erro de Carregamento */}
+      {erroCarregamento && (
+        <div
+          className="alert alert-warning d-flex justify-content-between align-items-center mb-4 shadow-sm rounded-3 border-start border-4 border-warning"
+          role="alert"
+        >
+          <div className="d-flex align-items-center gap-2">
+            <span className="fs-5">⚠️</span>
+            <span className="fw-semibold text-warning-emphasis small">{erroCarregamento}</span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-dark rounded-pill fw-semibold"
+            onClick={() => setRecargaKey((prev) => prev + 1)}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {/* Painel Central Branco com Cantos Arredondados */}
+      <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
+        {/* Cabeçalho Central com Título e Menu de Abas */}
+        <header className="mb-4">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+            <div>
+              <h2 className="fw-bold mb-1 text-primary fs-4">Gestão de Turmas</h2>
+              <p className="text-muted mb-0 small">
+                Acompanhamento analítico, enturmação de estudantes e diários escolares consolidados.
+              </p>
             </div>
 
-            {/* Botão de Atualização Manual */}
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-secondary"
-              onClick={handleRecarregar}
-              title="Recarregar dados da turma"
-              disabled={loadingDetalhes}
-            >
-              <i className={`bi bi-arrow-clockwise ${loadingDetalhes ? "spinner-border spinner-border-sm" : ""}`}></i>
-            </button>
-
-            {/* Botão de Destaque: Cadastrar Notas (CSV) */}
-            <button
-              type="button"
-              className="btn btn-sm btn-primary fw-bold px-3 py-2 d-flex align-items-center gap-2 shadow-sm"
-              onClick={() => setModalImportarAberto(true)}
-              disabled={!turmaAtiva}
-            >
-              <i className="bi bi-file-earmark-arrow-up-fill"></i>
-              Cadastrar Notas (CSV)
-            </button>
+            <div className="d-flex align-items-center gap-2">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                onClick={() => setRecargaKey((prev) => prev + 1)}
+                title="Atualizar dados"
+                disabled={loadingGeral}
+              >
+                <i className={`bi bi-arrow-clockwise me-1 ${loadingGeral ? "spinner-border spinner-border-sm" : ""}`}></i>
+                Atualizar
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Notificação de Sucesso */}
-        {mensagemSucesso && (
-          <div className="alert alert-success alert-dismissible fade show mt-3 mb-0 py-2 px-3 small" role="alert">
-            <i className="bi bi-check-circle-fill me-2"></i>
-            <strong>{mensagemSucesso}</strong>
-            <button type="button" className="btn-close py-2" onClick={() => setMensagemSucesso("")}></button>
-          </div>
+          {/* Menu de Navegação em Abas (Idêntico ao da Biblioteca) */}
+          <nav className="d-flex gap-4 border-bottom pb-2" aria-label="Abas de Turmas">
+            {ABAS.map((aba) => (
+              <button
+                key={aba.id}
+                type="button"
+                onClick={() => setAbaAtiva(aba.id)}
+                className={`turmas-tab-btn ${abaAtiva === aba.id ? "is-active" : ""}`}
+              >
+                {aba.label}
+              </button>
+            ))}
+          </nav>
+        </header>
+
+        {/* 1. Conteúdo da Aba Geral: Indicadores e Gráficos */}
+        {abaAtiva === "geral" && (
+          <GeralAba
+            resumoGeral={resumoGeral}
+            totalMatriculados={matriculas.length}
+            loading={loadingGeral}
+          />
         )}
 
-        {/* Mensagem de Erro Geral */}
-        {erro && (
-          <div className="alert alert-danger mt-3 mb-0 py-2 px-3 small" role="alert">
-            <i className="bi bi-exclamation-octagon-fill me-2"></i>
-            {erro}
-          </div>
+        {/* 2. Conteúdo da Aba Turmas: Cards de Turma e Lista de Matriculados */}
+        {abaAtiva === "turmas" && (
+          <TurmasAba
+            turmas={turmas}
+            matriculas={matriculas}
+            podeGerenciar={podeGerenciar}
+            onCriarTurma={handleAbrirCriarTurma}
+            onEditarTurma={handleAbrirEditarTurma}
+            onVincularAluno={handleAbrirVincularAluno}
+            onExcluirTurma={setTurmaParaExcluir}
+            onDesvincularAluno={setMatriculaParaDesvincular}
+            loading={loadingGeral}
+          />
+        )}
+
+        {/* 3. Conteúdo da Aba Notas: Cards de Média e Diário Escolar */}
+        {abaAtiva === "notas" && (
+          <NotasAba
+            resumoGeral={resumoGeral}
+            turmaSelecionadaId={turmaSelecionadaId}
+            onSelecionarTurma={handleSelecionarTurmaNotas}
+            notas={notas}
+            periodoFiltro={periodoFiltro}
+            onPeriodoFiltroChange={(novoPeriodo) => {
+              setLoadingNotas(true);
+              setPeriodoFiltro(novoPeriodo);
+            }}
+            termoBusca={termoBuscaNota}
+            onTermoBuscaChange={setTermoBuscaNota}
+            podeGerenciar={podeGerenciar}
+            onAbrirImportarNotas={() => setModalImportarAberto(true)}
+            loadingNotas={loadingNotas}
+          />
         )}
       </div>
 
-      {/* Cards com Indicadores Reais (KPIs da Turma) */}
-      {resumo && (
-        <div className="row g-3 mb-4">
-          {/* Média Geral da Turma */}
-          <div className="col-12 col-sm-6 col-xl-3">
-            <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <small className="text-muted fw-semibold">Média Geral da Turma</small>
-                  <h3 className="fw-bold mb-0 text-dark mt-1">
-                    {resumo.kpis?.total_alunos_avaliados > 0 && resumo.kpis?.media_geral_turma !== undefined
-                      ? Number(resumo.kpis.media_geral_turma).toFixed(1)
-                      : "—"}
-                  </h3>
-                </div>
-                <div
-                  className="rounded-3 p-2 d-flex align-items-center justify-content-center"
-                  style={{ backgroundColor: "#e0f2fe", color: "#0284c7" }}
-                >
-                  <i className="bi bi-bar-chart-fill fs-5"></i>
-                </div>
-              </div>
-              <small className="text-muted mt-2 d-block">
-                {resumo.kpis?.total_alunos_avaliados || 0} alunos com notas registradas
-              </small>
-            </div>
-          </div>
+      {/* Modal 1: Criar / Editar Turma */}
+      <ModalTurma
+        isOpen={modalTurmaAberto}
+        turmaParaEditar={turmaParaEditar}
+        onClose={() => setModalTurmaAberto(false)}
+        onSuccess={handleSucessoTurma}
+      />
 
-          {/* Taxa de Presença */}
-          <div className="col-12 col-sm-6 col-xl-3">
-            <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <small className="text-muted fw-semibold">Taxa de Presença</small>
-                  <h3 className="fw-bold mb-0 text-dark mt-1">
-                    {resumo.kpis?.total_alunos_avaliados > 0 && resumo.kpis?.taxa_presenca !== undefined
-                      ? `${resumo.kpis.taxa_presenca}%`
-                      : "—"}
-                  </h3>
-                </div>
-                <div
-                  className="rounded-3 p-2 d-flex align-items-center justify-content-center"
-                  style={{ backgroundColor: "#dcfce7", color: "#16a34a" }}
-                >
-                  <i className="bi bi-person-check-fill fs-5"></i>
-                </div>
-              </div>
-              <small className="text-muted mt-2 d-block">
-                {resumo.kpis?.total_alunos_avaliados > 0
-                  ? `Absenteísmo: ${resumo.kpis?.taxa_absenteismo ?? 0}%`
-                  : "Nenhuma chamada registrada"}
-              </small>
-            </div>
-          </div>
+      {/* Modal 2: Confirmar Matrícula de Aluno */}
+      <ModalVincularAluno
+        turma={turmaParaVincular}
+        turmasDisponiveis={turmas}
+        isOpen={modalVincularAberto}
+        onClose={() => {
+          setModalVincularAberto(false);
+          setTurmaParaVincular(null);
+        }}
+        onSuccess={handleSucessoVincular}
+      />
 
-          {/* Alunos com Desempenho Excelente */}
-          <div className="col-12 col-sm-6 col-xl-3">
-            <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <small className="text-muted fw-semibold">Aproveitamento ≥ 80%</small>
-                  <h3 className="fw-bold mb-0 text-dark mt-1">
-                    {resumo.distribuicao_desempenho?.excelentes?.quantidade ?? 0}
-                  </h3>
-                </div>
-                <div
-                  className="rounded-3 p-2 d-flex align-items-center justify-content-center"
-                  style={{ backgroundColor: "#fef9c3", color: "#ca8a04" }}
-                >
-                  <i className="bi bi-award-fill fs-5"></i>
-                </div>
-              </div>
-              <small className="text-muted mt-2 d-block">
-                {resumo.distribuicao_desempenho?.excelentes?.percentual ?? 0}% da turma
-              </small>
-            </div>
-          </div>
+      {/* Modal 3: Importar CSV de Notas */}
+      <ModalImportarNotas
+        turma={turmaAtivaParaCSV}
+        isOpen={modalImportarAberto}
+        onClose={() => setModalImportarAberto(false)}
+        onSuccess={handleSucessoImportacaoCSV}
+      />
 
-          {/* Alunos em Situação Crítica */}
-          <div className="col-12 col-sm-6 col-xl-3">
-            <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <small className="text-muted fw-semibold">Alunos em Risco Crítico</small>
-                  <h3 className="fw-bold mb-0 text-danger mt-1">
-                    {resumo.distribuicao_desempenho?.criticos?.quantidade ?? 0}
-                  </h3>
-                </div>
-                <div
-                  className="rounded-3 p-2 d-flex align-items-center justify-content-center"
-                  style={{ backgroundColor: "#fee2e2", color: "#dc2626" }}
-                >
-                  <i className="bi bi-exclamation-diamond-fill fs-5"></i>
-                </div>
-              </div>
-              <small className="text-muted mt-2 d-block">
-                Aproveitamento &lt; 60% ou excesso de faltas
-              </small>
+      {/* Modal 4: Confirmação de Exclusão de Turma */}
+      {turmaParaExcluir && (
+        <div
+          className="turmas-modal-overlay"
+          onClick={() => setTurmaParaExcluir(null)}
+          role="presentation"
+        >
+          <div
+            className="turmas-modal-dialog turmas-modal-dialog--sm p-4"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirmar-exclusao-turma-titulo"
+          >
+            <div className="fs-1 mb-2">🗑️</div>
+            <h5 id="confirmar-exclusao-turma-titulo" className="fw-bold mb-2 text-dark">
+              Excluir Turma?
+            </h5>
+            <p className="text-muted mb-4 small">
+              Deseja realmente remover a turma <strong>"{turmaParaExcluir.nome_identificador}"</strong>?
+              Esta ação só será permitida se a turma não possuir alunos ativos.
+            </p>
+            <div className="d-flex gap-2 justify-content-center">
+              <button
+                type="button"
+                onClick={() => setTurmaParaExcluir(null)}
+                className="btn btn-sm btn-light border px-3 rounded-pill"
+                disabled={processandoExclusao}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmarExclusaoTurma}
+                className="btn btn-sm btn-danger px-4 fw-bold rounded-pill"
+                disabled={processandoExclusao}
+              >
+                {processandoExclusao ? "Excluindo..." : "Sim, excluir"}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tabela de Notas e Registros Reais */}
-      <div className="bg-white rounded-4 shadow-sm p-4">
-        {/* Barra de Filtros e Busca de Notas */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-          <div>
-            <h4 className="fw-bold mb-0 text-dark" style={{ fontSize: "1.15rem" }}>
-              Notas Registradas no Sistema
-            </h4>
-            <small className="text-muted">
-              Mostrando {notasFiltradas.length} de {notas.length} lançamentos da turma.
-            </small>
-          </div>
-
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            {/* Filtro de Período */}
-            <select
-              className="form-select form-select-sm"
-              style={{ width: "auto" }}
-              value={periodoFiltro}
-              onChange={(e) => setPeriodoFiltro(e.target.value)}
-            >
-              <option value="">Todos os Períodos</option>
-              <option value="1º Trimestre">1º Trimestre</option>
-              <option value="2º Trimestre">2º Trimestre</option>
-              <option value="3º Trimestre">3º Trimestre</option>
-              <option value="1º Bimestre">1º Bimestre</option>
-              <option value="2º Bimestre">2º Bimestre</option>
-              <option value="3º Bimestre">3º Bimestre</option>
-              <option value="4º Bimestre">4º Bimestre</option>
-            </select>
-
-            {/* Campo de Pesquisa */}
-            <div className="position-relative">
-              <input
-                type="text"
-                className="form-control form-control-sm ps-4"
-                placeholder="Buscar por aluno ou disciplina..."
-                value={termoBusca}
-                onChange={(e) => setTermoBusca(e.target.value)}
-                style={{ width: "240px" }}
-              />
-              <i
-                className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2 text-muted"
-                style={{ fontSize: "0.8rem" }}
-              ></i>
+      {/* Modal 5: Confirmação de Desvinculação de Estudante */}
+      {matriculaParaDesvincular && (
+        <div
+          className="turmas-modal-overlay"
+          onClick={() => setMatriculaParaDesvincular(null)}
+          role="presentation"
+        >
+          <div
+            className="turmas-modal-dialog turmas-modal-dialog--sm p-4"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirmar-desvinculo-titulo"
+          >
+            <div className="fs-1 mb-2">⚠️</div>
+            <h5 id="confirmar-desvinculo-titulo" className="fw-bold mb-2 text-dark">
+              Desvincular Estudante?
+            </h5>
+            <p className="text-muted mb-4 small">
+              Confirma a desvinculação de{" "}
+              <strong>"{matriculaParaDesvincular.aluno?.name}"</strong> da turma{" "}
+              <strong>"{matriculaParaDesvincular.turma?.nome_identificador}"</strong>?
+            </p>
+            <div className="d-flex gap-2 justify-content-center">
+              <button
+                type="button"
+                onClick={() => setMatriculaParaDesvincular(null)}
+                className="btn btn-sm btn-light border px-3 rounded-pill"
+                disabled={processandoExclusao}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmarDesvinculacao}
+                className="btn btn-sm btn-danger px-4 fw-bold rounded-pill"
+                disabled={processandoExclusao}
+              >
+                {processandoExclusao ? "Desvinculando..." : "Sim, desvincular"}
+              </button>
             </div>
           </div>
         </div>
-
-        {/* Tabela Responsiva */}
-        {loadingDetalhes ? (
-          <div className="text-center py-5">
-            <div className="spinner-border spinner-border-sm text-primary me-2"></div>
-            <span className="text-muted small">Carregando notas da turma...</span>
-          </div>
-        ) : notasFiltradas.length === 0 ? (
-          <div className="text-center py-5 border rounded-3 bg-light">
-            <i className="bi bi-journal-x fs-1 text-muted d-block mb-2"></i>
-            <h6 className="fw-bold text-dark mb-1">Nenhuma nota encontrada</h6>
-            <p className="text-muted small mb-3">
-              {termoBusca || periodoFiltro
-                ? "Nenhum resultado corresponde aos filtros aplicados."
-                : "Esta turma ainda não possui notas lançadas no banco de dados."}
-            </p>
-            {!termoBusca && (
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-primary fw-semibold"
-                onClick={() => setModalImportarAberto(true)}
-              >
-                <i className="bi bi-file-earmark-plus me-1"></i> Cadastrar Notas via CSV
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
-                <tr className="small text-muted text-uppercase">
-                  <th scope="col">Aluno</th>
-                  <th scope="col">Disciplina</th>
-                  <th scope="col">Período Letivo</th>
-                  <th scope="col" className="text-center">Nota</th>
-                  <th scope="col" className="text-center">Situação</th>
-                  <th scope="col" className="text-end">Data Registro</th>
-                </tr>
-              </thead>
-              <tbody>
-                {notasFiltradas.map((nota) => {
-                  const valor = Number(nota.valor_nota || 0);
-                  const valorMax = Number(nota.valor_maximo || 10);
-                  const isAprovado = valor >= valorMax * 0.6;
-
-                  return (
-                    <tr key={nota.id_nota}>
-                      <td>
-                        <strong className="d-block text-dark small">{nota.aluno?.name || "Estudante"}</strong>
-                        <small className="text-muted" style={{ fontSize: "0.75rem" }}>
-                          {nota.aluno?.email}
-                        </small>
-                      </td>
-                      <td>
-                        <span className="badge bg-light text-dark border fw-semibold">
-                          {nota.disciplina?.nome || "Geral"}
-                        </span>
-                      </td>
-                      <td>
-                        <small className="text-secondary fw-semibold">{nota.periodo_letivo}</small>
-                      </td>
-                      <td className="text-center">
-                        <span className={`fw-bold ${isAprovado ? "text-dark" : "text-danger"}`}>
-                          {valor.toFixed(1)}
-                        </span>
-                        <small className="text-muted"> / {valorMax.toFixed(0)}</small>
-                      </td>
-                      <td className="text-center">
-                        <span
-                          className={`badge rounded-pill small ${
-                            isAprovado ? "bg-success-subtle text-success border border-success-subtle" : "bg-danger-subtle text-danger border border-danger-subtle"
-                          }`}
-                        >
-                          {isAprovado ? "Aproveitamento Adequado" : "Abaixo da Média"}
-                        </span>
-                      </td>
-                      <td className="text-end">
-                        <small className="text-muted">
-                          {nota.data_registro
-                            ? new Date(nota.data_registro + "T00:00:00").toLocaleDateString("pt-BR")
-                            : "—"}
-                        </small>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Modal de Importação de Notas CSV */}
-      <ModalImportarNotas
-        turma={turmaAtiva}
-        isOpen={modalImportarAberto}
-        onClose={() => setModalImportarAberto(false)}
-        onSuccess={handleImportacaoSucesso}
-      />
+      )}
     </div>
   );
 };
 
-export default TurmaEspecialista;
+export default Turmas;

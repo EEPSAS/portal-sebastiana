@@ -67,7 +67,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('eventos', EventoController::class);
 
     // Módulo Acadêmico: Turmas
+    Route::get('/turmas/resumo-geral', [TurmaController::class, 'resumoGeral']);
     Route::get('/turmas/{turma}/alunos', [TurmaController::class, 'alunos']);
+    Route::get('/turmas/{turma}/alunos-disponiveis', [TurmaController::class, 'alunosDisponiveis']);
     Route::get('/turmas/{turma}/disciplinas', [TurmaController::class, 'disciplinas']);
     Route::get('/turmas/{turma}/notas', [TurmaController::class, 'notas']);
     Route::post('/turmas/{turma}/disciplinas', [TurmaController::class, 'vincularDisciplina']);
@@ -93,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('disciplinas', DisciplinaController::class);
 
     // Módulo Acadêmico: Matrículas
+    Route::get('/matriculas', [MatriculaController::class, 'index']);
     Route::post('/matriculas', [MatriculaController::class, 'matricularAluno']);
     Route::patch('/matriculas/{matricula}/transferir', [MatriculaController::class, 'transferirTurma']);
     Route::patch('/matriculas/{matricula}/cancelar', [MatriculaController::class, 'cancelarMatricula']);

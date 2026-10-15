@@ -117,6 +117,22 @@ class UsuarioSeeder extends Seeder
                 'name' => 'Lucas Rocha',
                 'email' => 'lucas.rocha@sebastiana.edu.br',
             ],
+            [
+                'name' => 'Sla',
+                'email' => 'sla.sla@sebastiana.edu.br',
+            ],
+            [
+                'name' => 'Sla 2',
+                'email' => 'sla.sla2@sebastiana.edu.br',
+            ],
+            [
+                'name' => 'Sla 3',
+                'email' => 'sla.sla3a@sebastiana.edu.br',
+            ],
+            [
+                'name' => 'Sla4',
+                'email' => 'sla.sla4@sebastiana.edu.br',
+            ],
         ];
 
         foreach ($alunos as $aluno) {

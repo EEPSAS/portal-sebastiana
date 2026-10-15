@@ -149,3 +149,135 @@ test('matricula de aluno respeita capacidade maxima e permite transferir e cance
         ->assertOk()
         ->assertJsonFragment(['id_turma' => $turmaB->id_turma]);
 });
+
+test('especialista pode consultar alunos disponiveis para matricula na turma', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $alunoMatriculado = User::factory()->create(['name' => 'Aluno Ja Matriculado', 'role' => UserRole::ALUNO]);
+    $alunoDisponivel = User::factory()->create(['name' => 'Aluno Disponivel', 'role' => UserRole::ALUNO]);
+
+    $turma = Turma::factory()->create(['status' => 'Ativa']);
+
+    // Matricula o primeiro aluno
+    $this->actingAs($especialista, 'sanctum')->postJson('/api/matriculas', [
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $alunoMatriculado->id,
+    ])->assertCreated();
+
+    // Consulta alunos disponíveis
+    $response = $this->actingAs($especialista, 'sanctum')
+        ->getJson("/api/turmas/{$turma->id_turma}/alunos-disponiveis");
+
+    $response->assertOk()
+        ->assertJsonFragment(['id' => $alunoDisponivel->id])
+        ->assertJsonMissing(['id' => $alunoMatriculado->id]);
+});
+
+test('especialista e professor podem consultar resumo geral das turmas, mas aluno e bloqueado', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $professor = User::factory()->create(['role' => UserRole::PROFESSOR]);
+    $aluno = User::factory()->create(['role' => UserRole::ALUNO]);
+
+    $turma = Turma::factory()->create(['nome_identificador' => '3º Ano Info', 'status' => 'Ativa']);
+
+    $this->actingAs($especialista, 'sanctum')
+        ->getJson('/api/turmas/resumo-geral')
+        ->assertOk()
+        ->assertJsonFragment(['nome_identificador' => '3º Ano Info']);
+
+    $this->actingAs($professor, 'sanctum')
+        ->getJson('/api/turmas/resumo-geral')
+        ->assertOk();
+
+    $this->actingAs($aluno, 'sanctum')
+        ->getJson('/api/turmas/resumo-geral')
+        ->assertForbidden();
+});
+
+test('bloqueia exclusao de turma com alunos matriculados ativos e permite quando vazia', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $aluno = User::factory()->create(['role' => UserRole::ALUNO]);
+
+    $turma = Turma::factory()->create(['status' => 'Ativa']);
+
+    // Matricula aluno
+    $this->actingAs($especialista, 'sanctum')->postJson('/api/matriculas', [
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $aluno->id,
+    ])->assertCreated();
+
+    // Tenta excluir turma com aluno ativo -> deve dar 422
+    $this->actingAs($especialista, 'sanctum')
+        ->deleteJson("/api/turmas/{$turma->id_turma}")
+        ->assertStatus(422)
+        ->assertJsonFragment(['message' => 'Não é possível excluir uma turma que possui estudantes com matrícula ativa. Desvincule ou transfira os alunos primeiro.']);
+
+    // Cancela a matrícula (desvincula)
+    $matricula = $turma->matriculas()->first();
+    $this->actingAs($especialista, 'sanctum')
+        ->patchJson("/api/matriculas/{$matricula->id_matricula}/cancelar", [
+            'status_matricula' => 'Evadido',
+        ])->assertOk();
+
+    // Agora deve permitir excluir a turma -> 204
+    $this->actingAs($especialista, 'sanctum')
+        ->deleteJson("/api/turmas/{$turma->id_turma}")
+        ->assertNoContent();
+});
+
+test('aluno desvinculado pode ser rematriculado na mesma turma reativando o vinculo', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $aluno = User::factory()->create(['role' => UserRole::ALUNO]);
+    $turma = Turma::factory()->create(['status' => 'Ativa']);
+
+    // 1. Primeira matrícula
+    $resp = $this->actingAs($especialista, 'sanctum')->postJson('/api/matriculas', [
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $aluno->id,
+    ])->assertCreated();
+
+    $matriculaId = $resp->json('id_matricula');
+
+    // 2. Desvincula
+    $this->actingAs($especialista, 'sanctum')
+        ->patchJson("/api/matriculas/{$matriculaId}/cancelar", [
+            'status_matricula' => 'Evadido',
+        ])->assertOk();
+
+    // 3. Rematricula na mesma turma -> deve reativar com sucesso (200)
+    $this->actingAs($especialista, 'sanctum')->postJson('/api/matriculas', [
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $aluno->id,
+    ])->assertOk()
+        ->assertJsonPath('status_matricula', 'Ativo')
+        ->assertJsonPath('id_matricula', $matriculaId);
+});
+
+test('especialista e professor podem listar todas as matriculas ativas', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $alunoAtivo = User::factory()->create(['name' => 'Aluno Matriculado Ativo', 'role' => UserRole::ALUNO]);
+    $alunoEvadido = User::factory()->create(['name' => 'Aluno Desvinculado', 'role' => UserRole::ALUNO]);
+    $turma = Turma::factory()->create();
+
+    // Matricula aluno ativo
+    $this->actingAs($especialista, 'sanctum')->postJson('/api/matriculas', [
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $alunoAtivo->id,
+    ])->assertCreated();
+
+    // Matricula e desvincula segundo aluno
+    $respEvadido = $this->actingAs($especialista, 'sanctum')->postJson('/api/matriculas', [
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $alunoEvadido->id,
+    ])->assertCreated();
+
+    $this->actingAs($especialista, 'sanctum')->patchJson("/api/matriculas/{$respEvadido->json('id_matricula')}/cancelar", [
+        'status_matricula' => 'Evadido',
+    ])->assertOk();
+
+    // Consulta listagem geral de matrículas
+    $this->actingAs($especialista, 'sanctum')
+        ->getJson('/api/matriculas')
+        ->assertOk()
+        ->assertJsonFragment(['name' => 'Aluno Matriculado Ativo'])
+        ->assertJsonMissing(['name' => 'Aluno Desvinculado']);
+});

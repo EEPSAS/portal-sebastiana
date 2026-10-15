@@ -2,12 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Http\Requests\StoreTurmaRequest;
 use App\Http\Requests\UpdateTurmaRequest;
+use App\Http\Resources\AlunoTurmaResource;
+use App\Http\Resources\NotaResource;
 use App\Http\Resources\TurmaResource;
+use App\Http\Resources\TurmaResumoResource;
+use App\Http\Resources\UsuarioResource;
 use App\Models\Disciplina;
 use App\Models\Turma;
 use App\Models\TurmaDisciplina;
+use App\Models\User;
+use App\Services\EspecialistaDashboardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -86,13 +93,20 @@ class TurmaController extends Controller
     }
 
     /**
-     * Remove uma turma escolar.
+     * Remove uma turma escolar, impedindo exclusão se houver alunos com matrícula ativa.
      *
-     * @return JsonResponse Retorno HTTP 204
+     * @return JsonResponse Retorno HTTP 204 ou 422
      */
     public function destroy(Turma $turma): JsonResponse
     {
         Gate::authorize('delete', $turma);
+
+        // Bloqueia a exclusão caso ainda existam alunos matriculados ativos
+        if ($turma->matriculas()->where('status_matricula', 'Ativo')->exists()) {
+            return response()->json([
+                'message' => 'Não é possível excluir uma turma que possui estudantes com matrícula ativa. Desvincule ou transfira os alunos primeiro.',
+            ], 422);
+        }
 
         $turma->delete();
 
@@ -100,7 +114,40 @@ class TurmaController extends Controller
     }
 
     /**
-     * Lista os alunos matriculados na turma (acesso consultivo).
+     * Retorna o resumo analítico consolidado de todas as turmas (médias, frequência e alunos).
+     * Otimizado para alimentar cards de KPI e gráficos no painel sem requisições N+1.
+     */
+    public function resumoGeral(Request $request, EspecialistaDashboardService $dashboardService): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user || (! $user->canManageAcademic() && ! $user->isProfessor())) {
+            abort(403, 'Acesso restrito ao corpo docente e pedagógico.');
+        }
+
+        $turmas = Turma::query()->orderBy('nome_identificador')->get();
+        $resultado = [];
+
+        foreach ($turmas as $turma) {
+            $resumo = $dashboardService->obterResumoGerencial($turma);
+            $resultado[] = [
+                'id_turma' => $turma->id_turma,
+                'nome_identificador' => $turma->nome_identificador,
+                'turno' => $turma->turno,
+                'ano_letivo' => $turma->ano_letivo,
+                'status' => $turma->status,
+                'total_alunos' => $resumo['turma']['total_alunos'] ?? 0,
+                'media_geral' => $resumo['kpis']['media_geral_turma'] ?? 0.0,
+                'taxa_presenca' => $resumo['kpis']['taxa_presenca'] ?? 0.0,
+                'taxa_absenteismo' => $resumo['kpis']['taxa_absenteismo'] ?? 0.0,
+                'total_avaliados' => $resumo['kpis']['total_alunos_avaliados'] ?? 0,
+            ];
+        }
+
+        return response()->json(TurmaResumoResource::collection(collect($resultado)), 200);
+    }
+
+    /**
+     * Lista os alunos matriculados na turma encapsulados pelo AlunoTurmaResource.
      */
     public function alunos(Turma $turma): JsonResponse
     {
@@ -108,7 +155,39 @@ class TurmaController extends Controller
 
         $alunos = $turma->alunos()->orderBy('name')->get();
 
-        return response()->json($alunos, 200);
+        return response()->json(AlunoTurmaResource::collection($alunos), 200);
+    }
+
+    /**
+     * Retorna os alunos cadastrados no sistema que não possuem matrícula ativa nesta turma.
+     * Utilizado para popular o modal de vínculo de alunos pelo Especialista ou Administrador.
+     */
+    public function alunosDisponiveis(Request $request, Turma $turma): JsonResponse
+    {
+        Gate::authorize('update', $turma);
+
+        // Identificadores de usuários já matriculados como ativos na turma
+        $matriculadosIds = $turma->matriculas()
+            ->where('status_matricula', 'Ativo')
+            ->pluck('usuario_id');
+
+        // Busca usuários com papel aluno e que não estão matriculados nesta turma
+        $query = User::query()
+            ->where('role', UserRole::ALUNO)
+            ->whereNotIn('id', $matriculadosIds);
+
+        // Suporte opcional a filtro de busca por nome ou e-mail
+        if ($request->filled('q')) {
+            $termo = '%'.$request->string('q')->toString().'%';
+            $query->where(function ($q) use ($termo) {
+                $q->where('name', 'like', $termo)
+                    ->orWhere('email', 'like', $termo);
+            });
+        }
+
+        $alunos = $query->orderBy('name')->limit(50)->get(['id', 'name', 'email']);
+
+        return response()->json(UsuarioResource::collection($alunos), 200);
     }
 
     /**
@@ -184,6 +263,6 @@ class TurmaController extends Controller
             $query->where('disciplina_id', $request->query('disciplina_id'));
         }
 
-        return response()->json($query->orderByDesc('id_nota')->get(), 200);
+        return response()->json(NotaResource::collection($query->orderByDesc('id_nota')->get()), 200);
     }
 }

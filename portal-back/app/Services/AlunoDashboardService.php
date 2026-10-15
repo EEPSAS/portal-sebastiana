@@ -216,7 +216,7 @@ class AlunoDashboardService
             $status = 'Aprovado';
             if ($totalAulas > 0 && ($totalFaltas / $totalAulas) > 0.25) {
                 $status = 'Risco de Reprovação por Falta';
-            } elseif ($notaObtida < 6.0) {
+            } elseif ($valorMaximo > 0 ? (($notaObtida / $valorMaximo) < 0.6) : ($notaObtida < 6.0)) {
                 $status = 'Abaixo da Média';
             }
 
