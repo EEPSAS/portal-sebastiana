@@ -72,38 +72,41 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
 
   return (
     <div
-      className="modal show d-block"
-      tabIndex="-1"
-      style={{ backgroundColor: "rgba(15, 23, 42, 0.6)", zIndex: 1055 }}
-      role="dialog"
-      aria-modal="true"
+      className="turmas-modal-overlay"
+      onClick={onClose}
+      role="presentation"
     >
-      <div className="modal-dialog modal-dialog-centered modal-lg">
-        <div className="modal-content rounded-4 border-0 shadow">
-          {/* Cabeçalho */}
-          <div className="modal-header border-bottom px-4 pt-4 pb-3">
-            <div>
-              <h5 className="modal-title fw-bold text-dark mb-1">
-                <i className="bi bi-file-earmark-spreadsheet me-2 text-primary"></i>
-                Cadastrar Notas via CSV
-              </h5>
-              <small className="text-muted">
-                Turma selecionada: <strong className="text-dark">{turma?.nome_identificador}</strong>
-              </small>
-            </div>
-            <button
-              type="button"
-              className="btn-close"
-              aria-label="Fechar"
-              onClick={onClose}
-              disabled={loading}
-            ></button>
+      <div
+        className="turmas-modal-dialog"
+        style={{ width: "min(680px, 100%)" }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-importar-titulo"
+      >
+        {/* Cabeçalho */}
+        <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+          <div>
+            <h5 id="modal-importar-titulo" className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+              <span style={{ color: "#e6007e" }}>📊</span>
+              Cadastrar Notas via CSV
+            </h5>
+            <small className="text-muted">
+              Turma selecionada: <strong className="text-dark">{turma?.nome_identificador}</strong>
+            </small>
           </div>
+          <button
+            type="button"
+            className="btn-close"
+            aria-label="Fechar"
+            onClick={onClose}
+            disabled={loading}
+          ></button>
+        </div>
 
-          {/* Formulário */}
-          <form onSubmit={handleSubmit}>
-            <div className="modal-body px-4 py-3">
-              {/* Alerta de Erro */}
+        {/* Formulário */}
+        <form onSubmit={handleSubmit}>
+          {/* Alerta de Erro */}
               {erro && (
                 <div className="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
                   <i className="bi bi-exclamation-triangle-fill fs-5"></i>
@@ -200,13 +203,12 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                   />
                 </div>
               </div>
-            </div>
 
             {/* Rodapé com Ações */}
-            <div className="modal-footer border-top px-4 pb-4 pt-3">
+            <div className="d-flex justify-content-end gap-2 pt-3 border-top mt-3">
               <button
                 type="button"
-                className="btn btn-outline-secondary"
+                className="btn btn-sm btn-light border px-3 rounded-pill"
                 onClick={onClose}
                 disabled={loading}
               >
@@ -214,7 +216,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
               </button>
               <button
                 type="submit"
-                className="btn btn-primary fw-semibold d-flex align-items-center gap-2"
+                className="btn btn-sm turmas-btn-primario px-4 rounded-pill d-flex align-items-center gap-2"
                 disabled={loading || !arquivo}
               >
                 {loading ? (
@@ -233,8 +235,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
           </form>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-export default ModalImportarNotas;
+  export default ModalImportarNotas;

@@ -124,23 +124,46 @@ class NotaController extends Controller
         foreach ($disciplinasAgrupadas as $disciplinaId => $listaNotas) {
             $nomeDisciplina = $listaNotas->first()->disciplina->nome ?? 'Disciplina '.$disciplinaId;
 
-            $bimestres = [
-                '1º Bimestre' => round($listaNotas->where('periodo_letivo', '1º Bimestre')->avg('valor_nota') ?? 0, 2),
-                '2º Bimestre' => round($listaNotas->where('periodo_letivo', '2º Bimestre')->avg('valor_nota') ?? 0, 2),
-                '3º Bimestre' => round($listaNotas->where('periodo_letivo', '3º Bimestre')->avg('valor_nota') ?? 0, 2),
-                '4º Bimestre' => round($listaNotas->where('periodo_letivo', '4º Bimestre')->avg('valor_nota') ?? 0, 2),
-            ];
+            // Detecta se a avaliação foi registrada por Trimestres (Rede Estadual de MG) ou Bimestres
+            $temTrimestres = $listaNotas->contains(fn ($n) => str_contains($n->periodo_letivo, 'Trimestre'));
 
-            $bimestresValidos = array_filter($bimestres, fn ($val) => $val > 0);
-            $mediaFinal = count($bimestresValidos) > 0 ? round(array_sum($bimestresValidos) / count($bimestresValidos), 2) : 0;
+            if ($temTrimestres) {
+                $periodos = [
+                    '1º Trimestre' => round((float) ($listaNotas->where('periodo_letivo', '1º Trimestre')->sum('valor_nota') ?? 0), 2),
+                    '2º Trimestre' => round((float) ($listaNotas->where('periodo_letivo', '2º Trimestre')->sum('valor_nota') ?? 0), 2),
+                    '3º Trimestre' => round((float) ($listaNotas->where('periodo_letivo', '3º Trimestre')->sum('valor_nota') ?? 0), 2),
+                ];
 
-            $boletimDisciplinas[] = [
-                'disciplina_id' => $disciplinaId,
-                'disciplina' => $nomeDisciplina,
-                'notas_periodo' => $bimestres,
-                'media_final' => $mediaFinal,
-                'status' => $mediaFinal >= 6.0 ? 'Aprovado' : 'Em Curso',
-            ];
+                $periodosValidos = array_filter($periodos, fn ($val) => $val > 0);
+                $totalAcumulado = round(array_sum($periodosValidos), 2);
+                $status = $totalAcumulado >= 60.0 ? 'Aprovado' : 'Em Curso';
+
+                $boletimDisciplinas[] = [
+                    'disciplina_id' => $disciplinaId,
+                    'disciplina' => $nomeDisciplina,
+                    'notas_periodo' => $periodos,
+                    'media_final' => $totalAcumulado,
+                    'status' => $status,
+                ];
+            } else {
+                $bimestres = [
+                    '1º Bimestre' => round($listaNotas->where('periodo_letivo', '1º Bimestre')->avg('valor_nota') ?? 0, 2),
+                    '2º Bimestre' => round($listaNotas->where('periodo_letivo', '2º Bimestre')->avg('valor_nota') ?? 0, 2),
+                    '3º Bimestre' => round($listaNotas->where('periodo_letivo', '3º Bimestre')->avg('valor_nota') ?? 0, 2),
+                    '4º Bimestre' => round($listaNotas->where('periodo_letivo', '4º Bimestre')->avg('valor_nota') ?? 0, 2),
+                ];
+
+                $bimestresValidos = array_filter($bimestres, fn ($val) => $val > 0);
+                $mediaFinal = count($bimestresValidos) > 0 ? round(array_sum($bimestresValidos) / count($bimestresValidos), 2) : 0;
+
+                $boletimDisciplinas[] = [
+                    'disciplina_id' => $disciplinaId,
+                    'disciplina' => $nomeDisciplina,
+                    'notas_periodo' => $bimestres,
+                    'media_final' => $mediaFinal,
+                    'status' => $mediaFinal >= 6.0 ? 'Aprovado' : 'Em Curso',
+                ];
+            }
         }
 
         return [
