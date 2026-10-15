@@ -133,7 +133,15 @@ Sempre que um **Model**, **Migration**, **Form Request**, **API Resource** ou se
 | `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista | `ImportarRelatorioTurmaRequest` | `RelatorioImportadoResource` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com notas e faltas consolidadas |
 | `GET` | `/api/turmas` | Especialista / Prof / Adm | N/A | `TurmaResource` (Coleção) | `turmasService.listarTurmas()` | Listagem de turmas para consulta |
 | `GET` | `/api/turmas/{turma_id}/alunos` | Especialista / Prof / Adm | N/A | `AlunoTurmaResource` (Coleção) | `turmasService.listarAlunosTurma()` | Alunos matriculados na turma (consulta) |
-| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/boletim` | Aluno / Prof / Esp / Adm | N/A | `BoletimResource` | `boletimService.obterBoletim()` | Boletim consolidado de notas e faltas |
+| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/boletim?trimestre={1\|2\|3}` | Aluno / Prof / Esp / Adm | N/A | `BoletimResource` | `boletimService.obterBoletim(alunoId, turmaId, trimestre)` | Notas, faltas e total de aulas por disciplina no trimestre |
+| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/comparativo-turma` | Aluno / Prof / Esp / Adm | N/A | JSON atual do controller (sem API Resource) | `boletimService.obterComparativoTurma(alunoId, turmaId)` | Notas individuais e médias agregadas da turma por disciplina |
+
+**Consumo do boletim no frontend:**
+* A tela consulta os três valores de `trimestre` em chamadas separadas e consome `boletim[].disciplina_id`, `boletim[].nome_disciplina`, `boletim[].nota_obtida`, `boletim[].somatorio_faltas` e `boletim[].total_aulas`.
+* A frequência individual é derivada no frontend por `(total_aulas - somatorio_faltas) / total_aulas`; quando `total_aulas` é zero, o percentual é indisponível.
+* A média final de notas segue os pesos letivos confirmados: 30% para o primeiro trimestre, 30% para o segundo e 40% para o terceiro. Até a API distinguir zero real de ausência de lançamento, notas `0.0` são exibidas como indisponíveis e não entram no cálculo.
+* O endpoint comparativo fornece `comparativo[]` com `disciplina_id`, `nome_disciplina`, `nota_aluno` e `media_turma`. A interface consome somente esses dados de nota; `media_faltas_turma` representa faltas médias, não percentual de frequência.
+* A comparação percentual de frequência da turma na interface é demonstrativa e não representa dados oficiais. A tela necessita receber `turma_id` por estado de navegação ou parâmetro de consulta; não há identificador fixo nem descoberta automática da turma.
 
 > **Regra de Escopo:** O Professor possui acesso **estritamente consultivo** aos dados da turma e dos alunos. Não há telas nem rotas para cadastro diário de tarefas ou chamada manual.
 
