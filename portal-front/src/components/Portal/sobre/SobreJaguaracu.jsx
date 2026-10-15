@@ -2,18 +2,21 @@ import { useEffect, useState } from "react";
 
 const areaTerritorial = "/img/area-territorial.png";
 const habitantes = "/img/habitantes.png";
+const fotoCidade = "/img/jaguaraçu1.jpg";
+const fotoCultura = "/img/jaguaraçu2.jpg";
+
 
 const slides = [
   {
-    src: "https://placehold.co/600x420/edf7ec/172951?text=Jaguara%C3%A7u",
+    src: fotoCidade,
     alt: "Paisagem de Jaguaraçu",
   },
   {
-    src: "https://placehold.co/600x420/fcf3d4/172951?text=Cultura",
+    src: fotoCultura,
     alt: "Cultura de Jaguaraçu",
   },
   {
-    src: "https://placehold.co/600x420/f3e2ff/172951?text=Tradi%C3%A7%C3%A3o",
+    src: fotoCidade,
     alt: "Tradições e belezas de Jaguaraçu",
   },
 ];

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 
 const fotoEscola = "/img/fotoescola.jpg";
+const fotoProfessora = "/img/escola-professora.jpeg";
+const fotoEstudantes = "/img/escola-estudantes.jpeg";
 
 const slides = [
   {
@@ -8,12 +10,12 @@ const slides = [
     alt: "Fachada da Escola Estadual Professora Sebastiana",
   },
   {
-    src: "https://placehold.co/600x420/e2ecf8/04328C?text=Escola",
-    alt: "Espaço interno da escola",
+    src: fotoProfessora,
+    alt: "Professora Sebastiana",
   },
   {
-    src: "https://placehold.co/600x420/e2f0ff/172951?text=Atividades",
-    alt: "Atividades e convivência escolar",
+    src: fotoEstudantes,
+    alt: "Estudantes da Escola Estadual Professora Sebastiana",
   },
 ];
 

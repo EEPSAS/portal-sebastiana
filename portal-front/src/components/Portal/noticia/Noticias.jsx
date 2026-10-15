@@ -4,7 +4,7 @@ import SmallNewsCard from './SmallNewsCard';
 import VerticalNewsCard from './VerticalNewsCard';
 import { useNoticias } from '../../../hooks/useNoticias';
 import { DEFAULT_NOTICIAS } from './noticiasMock';
-import './Noticias.css';
+import './noticias.css';
 
 const categorias = [
   { nome: 'Destaque', classe: 'category-control--featured' },
@@ -16,17 +16,26 @@ const NoticiasSection = () => {
   const [categoriaAtiva, setCategoriaAtiva] = useState(null);
   const { noticias: noticiasApi, loading } = useNoticias();
 
-  const list = (!loading && noticiasApi && noticiasApi.length > 0)
+  // Se houver notícias da API, usa elas; caso contrário, se ainda estiver carregando, exibe o esqueleto com os mocks
+  const list = (!loading && noticiasApi)
     ? noticiasApi
     : DEFAULT_NOTICIAS;
 
-  const noticiaDestaque = list.find((n) => n.destaque) || list[0];
+  // 1. Identifica a notícia de destaque (ou a primeira da lista)
+  const noticiaDestaque = list.length > 0 ? (list.find((n) => n.destaque) || list[0]) : null;
+
+  // 2. Filtra as demais notícias para compor a grade pequena e o card vertical sem repetição
   const noticiasRestantes = list.filter((n) => n.id !== noticiaDestaque?.id);
 
+  // 3. Monta a estrutura garantindo 3 posições pequenas e 1 vertical (preenchendo com null se não houver no BD)
   const noticias = {
     destaque: noticiaDestaque,
-    vertical: noticiasRestantes[3] || noticiasRestantes[noticiasRestantes.length - 1] || DEFAULT_NOTICIAS[4],
-    pequenas: noticiasRestantes.slice(0, 3),
+    pequenas: [
+      noticiasRestantes[0] || null,
+      noticiasRestantes[1] || null,
+      noticiasRestantes[2] || null,
+    ],
+    vertical: noticiasRestantes[3] || null,
   };
 
   return (
@@ -51,22 +60,22 @@ const NoticiasSection = () => {
           ))}
         </div>
 
-        <div className="news-layout row g-3 align-items-start">
-          <div className="col-12 col-lg-9">
+        <div className="news-layout row g-3">
+          <div className="col-12 col-lg-9 d-flex flex-column">
             <div className="news-group news-group--featured">
               <HorizontalNewsCard noticia={noticias.destaque} loading={loading} />
             </div>
-            <div className="news-group news-group--small-grid row g-3 mt-0">
+            <div className="news-group news-group--small-grid row g-3 mt-0 flex-grow-1">
               {noticias.pequenas.map((noticia, idx) => (
-                <div className="col-12 col-sm-6 col-lg-4" key={noticia.id || idx}>
+                <div className="col-12 col-sm-6 col-lg-4" key={noticia?.id || `small-slot-${idx}`}>
                   <SmallNewsCard noticia={noticia} loading={loading} />
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="news-group news-group--vertical col-12 col-lg-3">
-            {noticias.vertical && <VerticalNewsCard noticia={noticias.vertical} loading={loading} />}
+          <div className="news-group news-group--vertical col-12 col-lg-3 d-flex flex-column">
+            <VerticalNewsCard noticia={noticias.vertical} loading={loading} />
           </div>
         </div>
       </div>
