@@ -27,6 +27,9 @@ class UsuarioResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'avatar' => $this->avatar,
+            'data_nascimento' => $this->data_nascimento?->format('Y-m-d'),
+            'google_vinculado' => ! empty($this->google_id),
             // Controle de papel e permissões
             'role' => $roleValue,
             'role_label' => $roleLabel,

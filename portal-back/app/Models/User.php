@@ -16,7 +16,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 // Campos permitidos para gravacao em massa
-#[Fillable(['name', 'email', 'password', 'role', 'role_id', 'ativo'])]
+#[Fillable(['name', 'email', 'password', 'role', 'role_id', 'ativo', 'google_id', 'avatar', 'data_nascimento'])]
 // Campos ocultos na serializacao
 #[Hidden(['password', 'remember_token'])]
 // Model de usuário autenticável do sistema.
@@ -34,6 +34,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => UserRole::class,
             'ativo' => 'boolean',
+            'data_nascimento' => 'date:Y-m-d',
         ];
     }
 
@@ -60,6 +61,12 @@ class User extends Authenticatable
             || $this->hasPermissionTo('gerenciar_notas')
             || $this->hasPermissionTo('gerenciar_frequencia')
             || $this->isEspecialista();
+    }
+
+    // Verifica se a conta do usuário está vinculada ao Google OAuth
+    public function hasGoogleAccount(): bool
+    {
+        return ! empty($this->google_id);
     }
 
     // Relacionamento com as noticias criadas
