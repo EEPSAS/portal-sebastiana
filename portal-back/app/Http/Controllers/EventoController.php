@@ -146,7 +146,21 @@ class EventoController extends Controller
         Gate::authorize('update', $evento);
 
         $evento->update($request->validated());
-        $evento->load('criador:id,name');
+        $evento->load('criador');
+
+        // Se for evento de aniversário, sincroniza a nova data com o perfil do usuário
+        if ($evento->is_aniversario && $evento->criador && $evento->data_inicio) {
+            $dataEvento = $evento->data_inicio->format('Y-m-d');
+            $partesEvento = explode('-', $dataEvento);
+
+            if (count($partesEvento) === 3) {
+                $usuario = $evento->criador;
+                // Preserva o ano de nascimento original se já existia, ajustando mês e dia
+                $anoNascimento = $usuario->data_nascimento ? $usuario->data_nascimento->format('Y') : $partesEvento[0];
+                $novaDataNascimento = sprintf('%04d-%02d-%02d', (int) $anoNascimento, (int) $partesEvento[1], (int) $partesEvento[2]);
+                $usuario->update(['data_nascimento' => $novaDataNascimento]);
+            }
+        }
 
         return response()->json(new EventoResource($evento), 200);
     }
@@ -159,6 +173,11 @@ class EventoController extends Controller
     public function destroy(Request $request, Evento $evento): JsonResponse
     {
         Gate::authorize('delete', $evento);
+
+        // Se o evento excluído for o de aniversário, limpa a data de nascimento no perfil
+        if ($evento->is_aniversario && $evento->criador) {
+            $evento->criador->update(['data_nascimento' => null]);
+        }
 
         $evento->delete();
 

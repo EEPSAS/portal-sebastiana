@@ -36,6 +36,7 @@ const ROLE_DISPLAY_NAMES = {
 const Header = ({
   userName = "Maria Silva",
   role = "Usuário",
+  turma,
   userPhoto,
   onLogout,
 }) => {
@@ -82,6 +83,16 @@ const Header = ({
   const realRole = user?.realRole || user?.role || "aluno";
   const realRoleLabel = ROLE_DISPLAY_NAMES[realRole] || "Usuário";
   const activeRoleLabel = ROLE_DISPLAY_NAMES[user?.role] || role;
+
+  // Identifica se a sessão ativa corresponde a um aluno (seja papel real ou simulado)
+  const isAluno = (user?.role === "aluno" || user?.role === "padrao" || realRole === "aluno");
+  const turmaNome = turma || user?.turma;
+
+  // Didática: Se o usuário for Aluno e possuir turma ativa vinculada, exibe "Aluno - {Nome da Turma}".
+  // Se não possuir turma ou for outro papel acadêmico, mantém a exibição padrão do papel.
+  const tipoLoginLabel = isAluno && turmaNome
+    ? `Aluno - ${turmaNome}`
+    : (isRealAdmin && user?.role && user.role !== realRole ? activeRoleLabel : realRoleLabel);
 
   return (
     <>
@@ -138,8 +149,8 @@ const Header = ({
         <div className="d-flex align-items-center ms-auto gap-3">
           <div className="text-end">
             <span className="fw-bold d-block text-dark lh-sm">{userName}</span>
-            <small className="text-muted d-block text-capitalize">
-              {realRoleLabel}
+            <small className="text-muted d-block">
+              {tipoLoginLabel}
             </small>
           </div>
 

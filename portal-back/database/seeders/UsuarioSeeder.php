@@ -54,14 +54,6 @@ class UsuarioSeeder extends Seeder
                 'name' => 'Profa. Marina Souza',
                 'email' => 'marina.souza@sebastiana.edu.br',
             ],
-            [
-                'name' => 'Prof. Lucas Mendes',
-                'email' => 'lucas.mendes@sebastiana.edu.br',
-            ],
-            [
-                'name' => 'Profa. Helena Castro',
-                'email' => 'helena.castro@sebastiana.edu.br',
-            ],
         ];
 
         foreach ($professores as $prof) {
@@ -91,7 +83,7 @@ class UsuarioSeeder extends Seeder
             ]
         );
 
-        // 5. Alunos (Nível 1.1)
+        // 5. Alunos (Nível 1.1 - 1 aluno para cada uma das 3 turmas ativas)
         $alunos = [
             [
                 'name' => 'Yasmin Teixeira',
@@ -104,34 +96,6 @@ class UsuarioSeeder extends Seeder
             [
                 'name' => 'Beatriz Lima',
                 'email' => 'beatriz.lima@sebastiana.edu.br',
-            ],
-            [
-                'name' => 'Gabriel Costa',
-                'email' => 'gabriel.costa@sebastiana.edu.br',
-            ],
-            [
-                'name' => 'Camila Alves',
-                'email' => 'camila.alves@sebastiana.edu.br',
-            ],
-            [
-                'name' => 'Lucas Rocha',
-                'email' => 'lucas.rocha@sebastiana.edu.br',
-            ],
-            [
-                'name' => 'Sla',
-                'email' => 'sla.sla@sebastiana.edu.br',
-            ],
-            [
-                'name' => 'Sla 2',
-                'email' => 'sla.sla2@sebastiana.edu.br',
-            ],
-            [
-                'name' => 'Sla 3',
-                'email' => 'sla.sla3a@sebastiana.edu.br',
-            ],
-            [
-                'name' => 'Sla4',
-                'email' => 'sla.sla4@sebastiana.edu.br',
             ],
         ];
 
