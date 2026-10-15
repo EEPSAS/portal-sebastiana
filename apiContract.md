@@ -54,6 +54,28 @@ Sempre que um **Model**, **Migration**, **Form Request**, **API Resource** ou se
 | `POST` | `/api/auth/logout` | Autenticado | N/A | Mensagem 200/204 | `authService.logout()` | Invalida o token atual |
 | `GET` | `/api/user` | Autenticado | N/A | `UsuarioResource` | `authService.getUser()` | Retorna o usuário logado e permissões |
 
+#### Especificação de Payload: `UsuarioResource`
+Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api/auth/login`, `/api/auth/google` e `/api/auth/register`:
+```json
+{
+  "id": 1,
+  "name": "Yasmin Teixeira",
+  "nickname": "Yasmin",
+  "email": "yasmin.teixeira@sebastiana.edu.br",
+  "telefone": "(31) 98888-0001",
+  "avatar": "http://localhost:8000/storage/avatars/avatar.webp",
+  "data_nascimento": "2008-05-14",
+  "google_vinculado": false,
+  "tem_senha": true,
+  "role": "aluno",
+  "role_label": "Aluno",
+  "turma": "1º Ano A - Ensino Médio",
+  "ativo": true,
+  "permissoes": []
+}
+```
+* **Nota sobre `turma`**: Retorna a string com o `nome_identificador` da turma ativa do aluno (matrícula com status `Ativo`). Caso o usuário não seja aluno ou não possua matrícula ativa vinculada, o valor retornado é `null`.
+
 ---
 
 ### Módulo 2: Notícias
@@ -154,7 +176,9 @@ Sempre que um **Model**, **Migration**, **Form Request**, **API Resource** ou se
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
 |---|---|---|---|---|---|---|
-| `PUT` | `/api/usuarios/{id}` | Logado (próprio perfil) | `UpdateUsuarioRequest` | `UsuarioResource` | `usuarioService.atualizarPerfil()` | Atualiza nome, e-mail e senha própria |
+| `PUT` | `/api/usuarios/{id}` | Logado (próprio perfil) | `UpdateUsuarioRequest` | `UsuarioResource` | `usuarioService.atualizarPerfil()` | Atualiza nickname, nome, telefone, data de nascimento e senha (e-mail é fixo/bloqueado) |
+| `POST` | `/api/usuarios/{id}/avatar` | Logado (próprio perfil) | `UploadAvatarRequest` | `UsuarioResource` | `usuarioService.uploadAvatar()` | Envia e atualiza a foto de perfil (avatar) |
+| `DELETE` | `/api/usuarios/{id}/avatar` | Logado (próprio perfil) | N/A | `UsuarioResource` | `usuarioService.removerAvatar()` | Remove a foto de perfil atual do usuário |
 | `GET` | `/api/usuarios` | Adm | N/A | `UsuarioResource` (Coleção) | `usuarioService.listarTodos()` | Gestão administrativa de usuários |
 | `PATCH`| `/api/usuarios/{id}/bloquear` | Adm | N/A | `UsuarioResource` | `usuarioService.alternarBloqueio()` | Ativa ou desativa acesso do usuário |
 | `PATCH`| `/api/usuarios/{id}/papel` | Adm | `AlterarPapelRequest` | `UsuarioResource` | `usuarioService.alterarPapel()` | Atualiza o `UserRole` do usuário |

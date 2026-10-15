@@ -1,27 +1,65 @@
 /**
- * Configuracoes.jsx - Página de Perfil e Preferências
+ * Configuracoes.jsx - Página Global de Configurações e Perfil do Usuário
  *
  * Papel Didático:
- * Permite ao usuário editar suas informações de contato e preferências.
- * Direciona para o formulário de configurações adequado com base no perfil.
+ * Rota `/dashboard/configuracoes`. Acesso universal para todos os perfis do sistema
+ * (Aluno, Professor, Bibliotecária, Especialista e Administrador).
+ * Permite a edição de dados pessoais, foto de perfil, preferências e segurança.
  */
 
-import ConfigPadrao from "../../components/Dashboard/configuracoes/ConfigPadrao";
-import ConfigEspecialista from "../../components/Dashboard/configuracoes/ConfigEspecialista";
 import { useAuth } from "../../hooks/useAuth";
+import AvatarCard from "../../components/Dashboard/configuracoes/AvatarCard";
+import DadosPessoaisCard from "../../components/Dashboard/configuracoes/DadosPessoaisCard";
+import SegurancaCard from "../../components/Dashboard/configuracoes/SegurancaCard";
+import "../../components/Dashboard/configuracoes/Configuracoes.css";
 
 const ConfiguracoesPage = () => {
-  const { user } = useAuth();
-  const role = user?.role || "aluno";
+  const { user, updateUser } = useAuth();
 
-  const isServidorEscolar =
-    role === "professor" ||
-    role === "especialista" ||
-    role === "adm" ||
-    role === "bibliotecario" ||
-    role === "bibliotecaria";
+  // Atualiza o estado global de autenticação e re-renderiza cabeçalho e layout
+  const handleUserUpdated = (usuarioAtualizado) => {
+    if (updateUser) {
+      updateUser(usuarioAtualizado);
+    }
+  };
 
-  return isServidorEscolar ? <ConfigEspecialista /> : <ConfigPadrao />;
+  if (!user) {
+    return (
+      <div className="d-flex justify-content-center align-items-center py-5">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Carregando perfil...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="configuracoes-page container-fluid px-0">
+      {/* Cabeçalho da Página */}
+      <div className="mb-4">
+        <h3 className="fw-bold text-dark mb-1">Configurações de Conta</h3>
+        <p className="text-muted mb-0">
+          Personalize sua foto, dados de contato e preferências no Portal Sebastiana.
+        </p>
+      </div>
+
+      {/* Grid de Cartões Modulares */}
+      <div className="row g-4">
+        {/* Coluna Lateral: Cartão de Foto de Perfil */}
+        <div className="col-12 col-lg-4 col-xl-3">
+          <AvatarCard user={user} onUserUpdated={handleUserUpdated} />
+        </div>
+
+        {/* Coluna Principal: Dados Pessoais e Segurança */}
+        <div className="col-12 col-lg-8 col-xl-9">
+          <div className="d-flex flex-column gap-4">
+            <DadosPessoaisCard user={user} onUserUpdated={handleUserUpdated} />
+            <SegurancaCard user={user} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default ConfiguracoesPage;

@@ -31,6 +31,7 @@ class EventoResource extends JsonResource
             // Categoria e sinalizadores visuais
             'tipo' => $this->tipo,
             'importante' => (bool) $this->importante,
+            'is_aniversario' => (bool) $this->is_aniversario,
             'local' => $this->local,
             'cor' => $this->cor,
             // Autor do cadastro

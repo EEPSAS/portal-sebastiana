@@ -15,40 +15,62 @@ const LoginSection = () => {
 
   // Inicializa o Google Identity Services (GIS) quando disponível e renderiza o botão oficial
   useEffect(() => {
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!googleClientId || !window.google?.accounts?.id) return;
+    // Client ID do Google OAuth institucional (lido do .env com fallback seguro)
+    const googleClientId =
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      "165413597858-7eavnsmrf0am8gukjeo8itrbe6gcvbtn.apps.googleusercontent.com";
 
-    // Inicialização segura com suporte a FedCM ativado
-    window.google.accounts.id.initialize({
-      client_id: googleClientId,
-      use_fedcm_for_prompt: true,
-      callback: async (response) => {
-        if (!response?.credential) return;
-        setGoogleSubmitting(true);
-        setError(null);
-        try {
-          // Envia o id_token do Google para autenticação no backend Laravel
-          await loginWithGoogle({ credential: response.credential });
-          navigate("/dashboard");
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setGoogleSubmitting(false);
-        }
-      },
-    });
+    // Função para inicializar e renderizar o botão oficial do Google
+    const initGoogle = () => {
+      if (!googleClientId || !window.google?.accounts?.id) return false;
 
-    // Renderiza o botão oficial do Google sem disparadores obsoletos
-    const buttonTarget = document.getElementById("googleButtonContainer");
-    if (buttonTarget) {
-      window.google.accounts.id.renderButton(buttonTarget, {
-        theme: "outline",
-        size: "large",
-        shape: "pill",
-        text: "signin_with",
-        width: 320,
+      // Inicialização segura com suporte a FedCM ativado
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        use_fedcm_for_prompt: true,
+        callback: async (response) => {
+          if (!response?.credential) return;
+          setGoogleSubmitting(true);
+          setError(null);
+          try {
+            // Envia o id_token do Google para autenticação no backend Laravel
+            await loginWithGoogle({ credential: response.credential });
+            navigate("/dashboard");
+          } catch (err) {
+            setError(err.message);
+          } finally {
+            setGoogleSubmitting(false);
+          }
+        },
       });
-    }
+
+      // Renderiza o botão oficial do Google no contêiner dedicado
+      const buttonTarget = document.getElementById("googleButtonContainer");
+      if (buttonTarget) {
+        buttonTarget.innerHTML = "";
+        window.google.accounts.id.renderButton(buttonTarget, {
+          theme: "outline",
+          size: "large",
+          shape: "pill",
+          text: "signin_with",
+          width: 320,
+        });
+      }
+
+      return true;
+    };
+
+    // Tenta inicializar de imediato
+    if (initGoogle()) return;
+
+    // Caso o script do Google ainda esteja baixando (async/defer), tenta a cada 250ms
+    const interval = setInterval(() => {
+      if (initGoogle()) {
+        clearInterval(interval);
+      }
+    }, 250);
+
+    return () => clearInterval(interval);
   }, [loginWithGoogle, navigate]);
 
   const handleSubmit = async (event) => {
