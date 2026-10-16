@@ -1,16 +1,77 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./Login.css";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
 
 const LoginSection = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+
+  // Inicializa o Google Identity Services (GIS) quando disponível e renderiza o botão oficial
+  useEffect(() => {
+    // Client ID do Google OAuth institucional (lido do .env com fallback seguro)
+    const googleClientId =
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      "165413597858-7eavnsmrf0am8gukjeo8itrbe6gcvbtn.apps.googleusercontent.com";
+
+    // Função para inicializar e renderizar o botão oficial do Google
+    const initGoogle = () => {
+      if (!googleClientId || !window.google?.accounts?.id) return false;
+
+      // Inicialização segura com suporte a FedCM ativado
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        use_fedcm_for_prompt: true,
+        callback: async (response) => {
+          if (!response?.credential) return;
+          setGoogleSubmitting(true);
+          setError(null);
+          try {
+            // Envia o id_token do Google para autenticação no backend Laravel
+            await loginWithGoogle({ credential: response.credential });
+            navigate("/dashboard");
+          } catch (err) {
+            setError(err.message);
+          } finally {
+            setGoogleSubmitting(false);
+          }
+        },
+      });
+
+      // Renderiza o botão oficial do Google no contêiner dedicado
+      const buttonTarget = document.getElementById("googleButtonContainer");
+      if (buttonTarget) {
+        buttonTarget.innerHTML = "";
+        window.google.accounts.id.renderButton(buttonTarget, {
+          theme: "outline",
+          size: "large",
+          shape: "pill",
+          text: "signin_with",
+          width: 320,
+        });
+      }
+
+      return true;
+    };
+
+    // Tenta inicializar de imediato
+    if (initGoogle()) return;
+
+    // Caso o script do Google ainda esteja baixando (async/defer), tenta a cada 250ms
+    const interval = setInterval(() => {
+      if (initGoogle()) {
+        clearInterval(interval);
+      }
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [loginWithGoogle, navigate]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -41,8 +102,32 @@ const LoginSection = () => {
                 <div className="text-center mb-4">
                   <h2 className="fw-bold text-dark mb-2">Acesso ao Portal</h2>
                   <p className="text-secondary small">
-                    Informe suas credenciais para acessar o painel.
+                    Identifique-se com sua conta Google institucional ou credenciais.
                   </p>
+                </div>
+
+                {/* Botão Oficial: Renderização direta do Google Identity Services com FedCM */}
+                <div className="d-flex flex-column align-items-center mb-4">
+                  {googleSubmitting && (
+                    <div className="spinner-border text-primary mb-2" role="status">
+                      <span className="visually-hidden">Conectando ao Google...</span>
+                    </div>
+                  )}
+                  <div
+                    id="googleButtonContainer"
+                    data-testid="loginwithgoogle"
+                    className="w-100 d-flex justify-content-center"
+                    style={{ minHeight: "44px" }}
+                  ></div>
+                </div>
+
+                {/* Divisor Visual */}
+                <div className="d-flex align-items-center mb-4">
+                  <hr className="flex-grow-1 my-0 text-muted" />
+                  <span className="px-3 text-secondary small fw-medium text-uppercase" style={{ fontSize: "0.75rem", letterSpacing: "0.05em" }}>
+                    ou acesse com e-mail e senha
+                  </span>
+                  <hr className="flex-grow-1 my-0 text-muted" />
                 </div>
 
                 {/* Alerta de erro */}
@@ -52,7 +137,7 @@ const LoginSection = () => {
                   </div>
                 )}
 
-                {/* Formulário de Login */}
+                {/* Formulário de Login Tradicional */}
                 <form onSubmit={handleSubmit}>
                   <div className="mb-4">
                     <label htmlFor="loginEmail" className="form-label fw-medium text-dark">

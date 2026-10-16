@@ -11,14 +11,23 @@ use App\Models\TurmaDisciplina;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
+/**
+ * AcademicoSeeder - Povoamento enxuto do ambiente acadêmico.
+ *
+ * Estrutura:
+ * - 3 Turmas ativas com exatamente 1 aluno canônico em cada.
+ * - Disciplinas fundamentais vinculadas ao professor.
+ * - Exatamente 3 registros de frequência por disciplina (1 por período).
+ * - Exatamente 3 registros de notas cumulativas por disciplina (1º, 2º e 3º Trimestres).
+ */
 class AcademicoSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Executa o povoamento acadêmico sem redundâncias ou dados dispersos.
      */
     public function run(): void
     {
-        // 1. Turmas
+        // 1. As 3 Turmas Escolares Ativas
         $turma1A = Turma::updateOrCreate(
             ['nome_identificador' => '1º Ano A - Ensino Médio'],
             [
@@ -49,7 +58,7 @@ class AcademicoSeeder extends Seeder
             ]
         );
 
-        // 2. Disciplinas
+        // 2. Componentes Curriculares (Disciplinas)
         $discMat = Disciplina::updateOrCreate(
             ['nome' => 'Matemática'],
             [
@@ -90,163 +99,132 @@ class AcademicoSeeder extends Seeder
             ]
         );
 
-        // 3. Professores
+        // 3. Vínculo de Professores às Turmas (Carlos Silva leciona nas turmas)
         $profCarlos = User::where('email', 'carlos.silva@sebastiana.edu.br')->first();
-        $profaMarina = User::where('email', 'marina.souza@sebastiana.edu.br')->first();
-        $profLucas = User::where('email', 'lucas.mendes@sebastiana.edu.br')->first();
+        $profId = $profCarlos?->id;
 
-        // 4. Vinculações (TurmaDisciplina)
-        if ($profCarlos) {
-            TurmaDisciplina::firstOrCreate(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discMat->id_disciplina, 'professor_id' => $profCarlos->id]);
-            TurmaDisciplina::firstOrCreate(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discFis->id_disciplina, 'professor_id' => $profCarlos->id]);
-            TurmaDisciplina::firstOrCreate(['turma_id' => $turma3A->id_turma, 'disciplina_id' => $discDev->id_disciplina, 'professor_id' => $profCarlos->id]);
-        }
+        $disciplinasPorTurma = [
+            $turma1A->id_turma => [$discMat, $discPort, $discFis, $discHist],
+            $turma2B->id_turma => [$discMat, $discPort, $discFis, $discHist],
+            $turma3A->id_turma => [$discDev, $discMat, $discPort, $discHist],
+        ];
 
-        if ($profaMarina) {
-            TurmaDisciplina::firstOrCreate(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discPort->id_disciplina, 'professor_id' => $profaMarina->id]);
-            TurmaDisciplina::firstOrCreate(['turma_id' => $turma3A->id_turma, 'disciplina_id' => $discPort->id_disciplina, 'professor_id' => $profaMarina->id]);
-        }
-
-        if ($profLucas) {
-            TurmaDisciplina::firstOrCreate(['turma_id' => $turma1A->id_turma, 'disciplina_id' => $discHist->id_disciplina, 'professor_id' => $profLucas->id]);
-            TurmaDisciplina::firstOrCreate(['turma_id' => $turma2B->id_turma, 'disciplina_id' => $discHist->id_disciplina, 'professor_id' => $profLucas->id]);
-        }
-
-        // 5. Alunos e Matrículas
-        $yasmin = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
-        $pedro = User::where('email', 'pedro.santos@sebastiana.edu.br')->first();
-        $beatriz = User::where('email', 'beatriz.lima@sebastiana.edu.br')->first();
-        $gabriel = User::where('email', 'gabriel.costa@sebastiana.edu.br')->first();
-        $camila = User::where('email', 'camila.alves@sebastiana.edu.br')->first();
-        $lucasR = User::where('email', 'lucas.rocha@sebastiana.edu.br')->first();
-
-        $alunosTurma1A = array_filter([$yasmin, $pedro, $beatriz, $gabriel]);
-        foreach ($alunosTurma1A as $aluno) {
-            Matricula::firstOrCreate(
-                ['turma_id' => $turma1A->id_turma, 'usuario_id' => $aluno->id],
-                [
-                    'data_matricula' => '2026-02-01',
-                    'status_matricula' => 'Ativo',
-                ]
-            );
-        }
-
-        $alunosTurma3A = array_filter([$camila, $lucasR]);
-        foreach ($alunosTurma3A as $aluno) {
-            Matricula::firstOrCreate(
-                ['turma_id' => $turma3A->id_turma, 'usuario_id' => $aluno->id],
-                [
-                    'data_matricula' => '2026-02-01',
-                    'status_matricula' => 'Ativo',
-                ]
-            );
-        }
-
-        // 6. Frequências (para alunos da Turma 1A em Matemática e Português)
-        $datasAulas = ['2026-03-02', '2026-03-04', '2026-03-09', '2026-03-11', '2026-03-16'];
-        foreach ($datasAulas as $idx => $dataAula) {
-            foreach ($alunosTurma1A as $aluno) {
-                // Matemática
-                $presencaMat = ($aluno->email === 'beatriz.lima@sebastiana.edu.br' && $idx === 2) ? 'Falta' : 'Presente';
-                Frequencia::updateOrCreate(
+        foreach ($disciplinasPorTurma as $turmaId => $disciplinas) {
+            foreach ($disciplinas as $disc) {
+                TurmaDisciplina::firstOrCreate(
                     [
-                        'turma_id' => $turma1A->id_turma,
-                        'disciplina_id' => $discMat->id_disciplina,
-                        'usuario_id' => $aluno->id,
-                        'data_aula' => $dataAula,
+                        'turma_id' => $turmaId,
+                        'disciplina_id' => $disc->id_disciplina,
                     ],
                     [
-                        'quantidade_aulas' => 2,
-                        'status_presenca' => $presencaMat,
-                    ]
-                );
-
-                // Língua Portuguesa
-                $presencaPort = ($aluno->email === 'pedro.santos@sebastiana.edu.br' && $idx === 3) ? 'Falta Justificada' : 'Presente';
-                Frequencia::updateOrCreate(
-                    [
-                        'turma_id' => $turma1A->id_turma,
-                        'disciplina_id' => $discPort->id_disciplina,
-                        'usuario_id' => $aluno->id,
-                        'data_aula' => $dataAula,
-                    ],
-                    [
-                        'quantidade_aulas' => 2,
-                        'status_presenca' => $presencaPort,
-                        'justificativa' => $presencaPort === 'Falta Justificada' ? 'Consulta Odontológica' : null,
+                        'professor_id' => $profId,
                     ]
                 );
             }
         }
 
-        // 8. Notas (Boletim com 1º e 2º Bimestres)
-        $notasBase = [
-            'yasmin.teixeira@sebastiana.edu.br' => [
-                'Matemática' => ['1º Bimestre' => [9.0, 9.5], '2º Bimestre' => [8.5, 9.0]],
-                'Língua Portuguesa e Literatura' => ['1º Bimestre' => [9.5, 10.0], '2º Bimestre' => [9.0, 9.5]],
-                'Física' => ['1º Bimestre' => [8.0, 8.5], '2º Bimestre' => [8.0, 9.0]],
-                'História Geral e do Brasil' => ['1º Bimestre' => [9.0, 9.0], '2º Bimestre' => [9.5, 10.0]],
-            ],
-            'pedro.santos@sebastiana.edu.br' => [
-                'Matemática' => ['1º Bimestre' => [8.0, 8.5], '2º Bimestre' => [7.5, 8.0]],
-                'Língua Portuguesa e Literatura' => ['1º Bimestre' => [7.5, 8.0], '2º Bimestre' => [8.0, 8.5]],
-                'Física' => ['1º Bimestre' => [9.5, 10.0], '2º Bimestre' => [9.0, 9.5]],
-                'História Geral e do Brasil' => ['1º Bimestre' => [8.0, 8.5], '2º Bimestre' => [8.5, 9.0]],
-            ],
-            'beatriz.lima@sebastiana.edu.br' => [
-                'Matemática' => ['1º Bimestre' => [7.0, 7.5], '2º Bimestre' => [8.0, 8.5]],
-                'Língua Portuguesa e Literatura' => ['1º Bimestre' => [8.5, 9.0], '2º Bimestre' => [8.5, 9.0]],
-                'Física' => ['1º Bimestre' => [7.0, 7.5], '2º Bimestre' => [7.5, 8.0]],
-                'História Geral e do Brasil' => ['1º Bimestre' => [8.5, 9.0], '2º Bimestre' => [9.0, 9.0]],
-            ],
+        // 4. Matrícula: Exatamente 1 Aluno Canônico por Turma
+        $distribuicaoCanonica = [
+            'yasmin.teixeira@sebastiana.edu.br' => $turma1A,
+            'pedro.santos@sebastiana.edu.br' => $turma2B,
+            'beatriz.lima@sebastiana.edu.br' => $turma3A,
         ];
 
-        $disciplinasMap = [
-            'Matemática' => $discMat->id_disciplina,
-            'Língua Portuguesa e Literatura' => $discPort->id_disciplina,
-            'Física' => $discFis->id_disciplina,
-            'História Geral e do Brasil' => $discHist->id_disciplina,
+        foreach ($distribuicaoCanonica as $email => $turma) {
+            $aluno = User::where('email', $email)->first();
+            if ($aluno) {
+                Matricula::updateOrCreate(
+                    [
+                        'turma_id' => $turma->id_turma,
+                        'usuario_id' => $aluno->id,
+                    ],
+                    [
+                        'data_matricula' => '2026-02-01',
+                        'status_matricula' => 'Ativo',
+                    ]
+                );
+            }
+        }
+
+        // 5. Frequências: Exatamente 3 registros por matéria (1 aula por trimestre)
+        $datasAulas = [
+            '2026-03-10', // 1º Trimestre
+            '2026-06-10', // 2º Trimestre
+            '2026-09-10', // 3º Trimestre
         ];
 
-        foreach ($notasBase as $email => $discs) {
-            $user = User::where('email', $email)->first();
-            if (! $user) {
+        foreach ($distribuicaoCanonica as $email => $turma) {
+            $aluno = User::where('email', $email)->first();
+            if (! $aluno) {
                 continue;
             }
 
-            foreach ($discs as $discNome => $periodos) {
-                $disciplinaId = $disciplinasMap[$discNome];
+            $disciplinas = $disciplinasPorTurma[$turma->id_turma] ?? [];
 
-                foreach ($periodos as $periodo => $valores) {
-                    // Avaliação 1: Prova Bimestral
-                    Nota::updateOrCreate(
+            foreach ($disciplinas as $disc) {
+                foreach ($datasAulas as $dataAula) {
+                    Frequencia::updateOrCreate(
                         [
-                            'turma_id' => $turma1A->id_turma,
-                            'disciplina_id' => $disciplinaId,
-                            'usuario_id' => $user->id,
-                            'periodo_letivo' => $periodo,
-                            'tipo_avaliacao' => 'Prova Bimestral',
+                            'turma_id' => $turma->id_turma,
+                            'disciplina_id' => $disc->id_disciplina,
+                            'usuario_id' => $aluno->id,
+                            'data_aula' => $dataAula,
                         ],
                         [
-                            'valor_nota' => $valores[0],
-                            'valor_maximo' => 10.0,
-                            'data_registro' => now()->format('Y-m-d'),
+                            'quantidade_aulas' => 2,
+                            'status_presenca' => 'Presente',
+                            'justificativa' => null,
                         ]
                     );
+                }
+            }
+        }
 
-                    // Avaliação 2: Trabalho em Grupo
+        // 6. Notas: Exatamente 3 registros por matéria (1º, 2º e 3º Trimestres da rede estadual MG)
+        $trimestresConfig = [
+            '1º Trimestre' => [
+                'valor_maximo' => 30.00,
+                'nota_padrao' => 28.5,
+                'data_registro' => '2026-04-28',
+                'tipo_avaliacao' => 'Avaliação Trimestral Consolidada',
+            ],
+            '2º Trimestre' => [
+                'valor_maximo' => 35.00,
+                'nota_padrao' => 33.5,
+                'data_registro' => '2026-08-25',
+                'tipo_avaliacao' => 'Avaliação Trimestral Consolidada',
+            ],
+            '3º Trimestre' => [
+                'valor_maximo' => 35.00,
+                'nota_padrao' => 34.0,
+                'data_registro' => '2026-11-20',
+                'tipo_avaliacao' => 'Avaliação Trimestral Consolidada',
+            ],
+        ];
+
+        foreach ($distribuicaoCanonica as $email => $turma) {
+            $aluno = User::where('email', $email)->first();
+            if (! $aluno) {
+                continue;
+            }
+
+            $disciplinas = $disciplinasPorTurma[$turma->id_turma] ?? [];
+
+            foreach ($disciplinas as $disc) {
+                foreach ($trimestresConfig as $periodo => $cfg) {
                     Nota::updateOrCreate(
                         [
-                            'turma_id' => $turma1A->id_turma,
-                            'disciplina_id' => $disciplinaId,
-                            'usuario_id' => $user->id,
+                            'turma_id' => $turma->id_turma,
+                            'disciplina_id' => $disc->id_disciplina,
+                            'usuario_id' => $aluno->id,
                             'periodo_letivo' => $periodo,
-                            'tipo_avaliacao' => 'Trabalho em Grupo',
                         ],
                         [
-                            'valor_nota' => $valores[1],
-                            'valor_maximo' => 10.0,
-                            'data_registro' => now()->format('Y-m-d'),
+                            'tipo_avaliacao' => $cfg['tipo_avaliacao'],
+                            'valor_nota' => $cfg['nota_padrao'],
+                            'valor_maximo' => $cfg['valor_maximo'],
+                            'data_registro' => $cfg['data_registro'],
+                            'observacoes' => "Pontuação cumulativa oficial do {$periodo}",
                         ]
                     );
                 }

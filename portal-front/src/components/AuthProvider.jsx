@@ -79,6 +79,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
+   * Autentica o usuário com credencial emitida pelo Google Identity Services.
+   */
+  const loginWithGoogle = async (googlePayload) => {
+    const data = await authService.googleLogin(googlePayload);
+    setToken(data.token);
+    setUser(data.user);
+    setLoading(false);
+    return data;
+  };
+
+  /**
    * Função para encerrar a sessão do usuário.
    * Redireciona obrigatoriamente para a página inicial pública do portal (/).
    */
@@ -127,12 +138,25 @@ export const AuthProvider = ({ children }) => {
       }
     : null;
 
+  /**
+   * Atualiza os dados do usuário no estado do React e no localStorage.
+   */
+  const updateUser = (novosDados) => {
+    setUser((prevUser) => {
+      const merged = { ...prevUser, ...novosDados };
+      localStorage.setItem('auth_user', JSON.stringify(merged));
+      return merged;
+    });
+  };
+
   const value = {
     user: effectiveUser,
     token,
     loading,
     login,
+    loginWithGoogle,
     logout,
+    updateUser,
     switchSimulatedRole,
     isRealAdmin,
     simulatedRole,

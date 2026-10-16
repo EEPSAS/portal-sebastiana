@@ -31,6 +31,7 @@ class Evento extends Model
         'dia_inteiro',
         'tipo',
         'importante',
+        'is_aniversario',
         'local',
         'cor',
         'criador_id',
@@ -44,6 +45,7 @@ class Evento extends Model
             'data_fim' => 'date:Y-m-d',
             'dia_inteiro' => 'boolean',
             'importante' => 'boolean',
+            'is_aniversario' => 'boolean',
         ];
     }
 

@@ -132,6 +132,36 @@ export async function updateStudentReading(novosDadosLeitura) {
   return novosDadosLeitura;
 }
 
+export async function fetchAlunoDesempenho() {
+  // Simulação de dados para o painel de Desempenho por Disciplina e Frequência
+  return {
+    disciplinas: {
+      melhores: [
+        { posicao: 1, nome: "Língua Portuguesa", valor: 9.8, cor: "#10b981", corBadge: "#10b981" },
+        { posicao: 2, nome: "História", valor: 9.5, cor: "#3b82f6", corBadge: "#3b82f6" },
+        { posicao: 3, nome: "Biologia", valor: 9.2, cor: "#8b5cf6", corBadge: "#8b5cf6" },
+      ],
+      piores: [
+        { posicao: 1, nome: "Matemática", valor: 5.6, cor: "#ef4444", corBadge: "#ef4444" },
+        { posicao: 2, nome: "Inglês", valor: 6.3, cor: "#f59e0b", corBadge: "#f59e0b" },
+        { posicao: 3, nome: "Química", valor: 6.8, cor: "#06b6d4", corBadge: "#06b6d4" },
+      ]
+    },
+    frequencias: {
+      melhores: [
+        { posicao: 1, nome: "Educação Física", valor: 100, cor: "#10b981", corBadge: "#10b981" },
+        { posicao: 2, nome: "Artes", valor: 98, cor: "#3b82f6", corBadge: "#3b82f6" },
+        { posicao: 3, nome: "Geografia", valor: 96, cor: "#8b5cf6", corBadge: "#8b5cf6" },
+      ],
+      piores: [
+        { posicao: 1, nome: "Filosofia", valor: 76, cor: "#ef4444", corBadge: "#ef4444" },
+        { posicao: 2, nome: "Física", valor: 80, cor: "#f59e0b", corBadge: "#f59e0b" },
+        { posicao: 3, nome: "Sociologia", valor: 84, cor: "#06b6d4", corBadge: "#06b6d4" },
+      ]
+    }
+  };
+}
+
 //medium cards
 export async function fetchBoletimDados() {
   // Simulação de chamada à API. 

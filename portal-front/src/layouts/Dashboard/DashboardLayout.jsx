@@ -28,7 +28,8 @@ const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const role = user?.role || "aluno";
   const roleLabel = ROLE_DISPLAY_NAMES[role] || "Usuário";
-  const userName = user?.name || "Usuário";
+  const displayName = user?.nickname || user?.name || "Usuário";
+  const userPhoto = user?.avatar || null;
 
   return (
     <div className="dashboard-shell d-flex min-vh-100 bg-light">
@@ -37,7 +38,13 @@ const DashboardLayout = () => {
 
       {/* Conteúdo Principal com Topbar e Painel Dinâmico */}
       <div className="dashboard-content flex-grow-1 d-flex flex-column">
-        <Header userName={userName} role={roleLabel} onLogout={logout} />
+        <Header
+          userName={displayName}
+          role={roleLabel}
+          turma={user?.turma}
+          userPhoto={userPhoto}
+          onLogout={logout}
+        />
         <Panel>
           <Outlet />
         </Panel>

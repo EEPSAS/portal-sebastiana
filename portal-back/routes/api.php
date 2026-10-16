@@ -15,6 +15,7 @@ use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\TurmaController;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Resources\UsuarioResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +43,7 @@ Route::get('/livros/{livro}/disponibilidade', [LivroController::class, 'verifica
 Route::prefix('auth')->name('auth.')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('register');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login');
+    Route::post('/google', [AuthController::class, 'googleLogin'])->middleware('throttle:10,1')->name('google');
 
     Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
@@ -50,10 +52,9 @@ Route::prefix('auth')->name('auth.')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         $user = $request->user()->load('roleModel.permissions');
-        $userData = $user->toArray();
-        $userData['permissoes'] = $user->getPermissionsSlugs();
 
-        return response()->json($userData);
+        // Retorna os dados do usuário logado padronizados e blindados via UsuarioResource
+        return new UsuarioResource($user);
     });
 
     Route::apiResource('noticias', NoticiaController::class)->except(['index', 'show']);
@@ -66,7 +67,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('eventos', EventoController::class);
 
     // Módulo Acadêmico: Turmas
+    Route::get('/turmas/resumo-geral', [TurmaController::class, 'resumoGeral']);
     Route::get('/turmas/{turma}/alunos', [TurmaController::class, 'alunos']);
+    Route::get('/turmas/{turma}/alunos-disponiveis', [TurmaController::class, 'alunosDisponiveis']);
     Route::get('/turmas/{turma}/disciplinas', [TurmaController::class, 'disciplinas']);
     Route::get('/turmas/{turma}/notas', [TurmaController::class, 'notas']);
     Route::post('/turmas/{turma}/disciplinas', [TurmaController::class, 'vincularDisciplina']);
@@ -92,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('disciplinas', DisciplinaController::class);
 
     // Módulo Acadêmico: Matrículas
+    Route::get('/matriculas', [MatriculaController::class, 'index']);
     Route::post('/matriculas', [MatriculaController::class, 'matricularAluno']);
     Route::patch('/matriculas/{matricula}/transferir', [MatriculaController::class, 'transferirTurma']);
     Route::patch('/matriculas/{matricula}/cancelar', [MatriculaController::class, 'cancelarMatricula']);
@@ -124,7 +128,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/papeis', [UsuarioController::class, 'papeis']);
     Route::get('/permissoes', [UsuarioController::class, 'permissoes']);
 
-    // Gestão de Usuários (Administrador)
+    // Gestão de Usuários e Foto de Perfil
+    Route::post('/usuarios/{usuario}/avatar', [UsuarioController::class, 'uploadAvatar'])->name('usuarios.avatar.upload');
+    Route::delete('/usuarios/{usuario}/avatar', [UsuarioController::class, 'deleteAvatar'])->name('usuarios.avatar.delete');
     Route::patch('/usuarios/{usuario}/bloquear', [UsuarioController::class, 'bloquear']);
     Route::patch('/usuarios/{usuario}/papel', [UsuarioController::class, 'alterarPapel']);
     Route::post('/usuarios/{usuario}/permissoes', [UsuarioController::class, 'atribuirPermissoes']);
