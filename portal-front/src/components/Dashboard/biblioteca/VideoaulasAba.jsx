@@ -11,7 +11,7 @@
 import { useYouTubeVideoaulas } from '../../../hooks/biblioteca/useYouTubeVideoaulas';
 import './Biblioteca.css';
 
-const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula }) => {
+const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula, onAdicionarAoPlano }) => {
   const {
     videoBusca,
     setVideoBusca,
@@ -130,6 +130,7 @@ const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula }) => {
                   <h4 className="videoaulas-card__title">{video.title}</h4>
                   <p className="videoaulas-card__info">
                     {video.channelTitle}
+                    {video.duration ? ` · ⏱️ ${video.duration}` : ''}
                     {video.publishedAt
                       ? ` · ${new Date(video.publishedAt).toLocaleDateString(
                           'pt-BR'
@@ -142,9 +143,12 @@ const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula }) => {
                     </p>
                   )}
                   <a
-                    href={`https://www.youtube.com/watch?v=${encodeURIComponent(
-                      video.videoId
-                    )}`}
+                    href={
+                      video.url ||
+                      `https://www.youtube.com/watch?v=${encodeURIComponent(
+                        video.videoId
+                      )}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn-primary mt-auto btn-sm"
@@ -155,6 +159,26 @@ const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula }) => {
                       ? 'Verificando...'
                       : 'Assistir no YouTube'}
                   </a>
+                  <button
+                    type="button"
+                    className="btn btn-outline-success btn-sm w-100 mt-2 rounded-pill fw-semibold"
+                    onClick={() =>
+                      onAdicionarAoPlano?.({
+                        tipo: 'videoaula',
+                        conteudo_id: video.videoId,
+                        titulo: video.title,
+                        descricao: video.description,
+                        url:
+                          video.url ||
+                          `https://www.youtube.com/watch?v=${encodeURIComponent(video.videoId)}`,
+                        thumbnail: video.thumbnail,
+                        fonte: video.channelTitle,
+                        duracao: video.duration || null,
+                      })
+                    }
+                  >
+                    + Adicionar aos planos
+                  </button>
                 </div>
               </article>
             ))}
@@ -197,9 +221,33 @@ const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula }) => {
       </div>
 
       {videoSelecionado && (
-        <p className="videoaulas-selected-title small text-muted mt-2">
-          Selecionado: <strong>{videoSelecionado.title}</strong>
-        </p>
+        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mt-2 gap-2">
+          <p className="videoaulas-selected-title small text-muted mb-0">
+            Selecionado: <strong>{videoSelecionado.title}</strong>
+            {videoSelecionado.duration ? ` (⏱️ ${videoSelecionado.duration})` : ''}
+          </p>
+          <button
+            type="button"
+            className="btn btn-outline-success btn-sm rounded-pill fw-semibold"
+            onClick={() =>
+              onAdicionarAoPlano?.({
+                tipo: 'videoaula',
+                conteudo_id: videoSelecionado.videoId,
+                titulo: videoSelecionado.title,
+                descricao: videoSelecionado.description,
+                url:
+                  urlVideoSelecionada ||
+                  videoSelecionado.url ||
+                  `https://www.youtube.com/watch?v=${videoSelecionado.videoId}`,
+                thumbnail: videoSelecionado.thumbnail,
+                fonte: videoSelecionado.channelTitle,
+                duracao: videoSelecionado.duration || null,
+              })
+            }
+          >
+            + Adicionar aos planos
+          </button>
+        </div>
       )}
 
       {videoPlayerErro && (

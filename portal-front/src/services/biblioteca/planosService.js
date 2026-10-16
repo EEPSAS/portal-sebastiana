@@ -1,0 +1,100 @@
+/**
+ * planosService.js - Camada de Serviço de Planos de Estudos
+ *
+ * Papel Didático:
+ * Centraliza as requisições HTTP RESTful para a gestão de trilhas de estudo:
+ * - Listagem com contadores reais por tipo;
+ * - Criação de novos planos;
+ * - Consulta de plano completo com seus itens;
+ * - Adição de conteúdos (com proteção contra duplicidade);
+ * - Remoção de conteúdos preservando a fonte original.
+ */
+
+import { api } from '../api';
+
+export const planosService = {
+  /**
+   * Lista todos os planos de estudos do usuário autenticado.
+   */
+  async listar(signal) {
+    const res = await api('/planos-estudos', { signal });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Erro ao carregar planos de estudo.');
+    }
+    return res.json();
+  },
+
+  /**
+   * Cria um novo plano de estudos.
+   */
+  async criar(dados) {
+    const res = await api('/planos-estudos', {
+      method: 'POST',
+      body: dados,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Erro ao criar plano de estudos.');
+    }
+    return res.json();
+  },
+
+  /**
+   * Obtém os detalhes completos de um plano de estudos com todos os seus itens associados.
+   */
+  async obterPorId(id, signal) {
+    const res = await api(`/planos-estudos/${id}`, { signal });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Erro ao carregar detalhes do plano de estudos.');
+    }
+    return res.json();
+  },
+
+  /**
+   * Exclui um plano de estudos (e itens em cascata).
+   */
+  async excluir(id) {
+    const res = await api(`/planos-estudos/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Erro ao excluir plano de estudos.');
+    }
+    return res.json();
+  },
+
+  /**
+   * Adiciona um conteúdo didático (livro, videoaula ou conteúdo web) ao plano especificado.
+   */
+  async adicionarItem(planoId, itemDados) {
+    const res = await api(`/planos-estudos/${planoId}/itens`, {
+      method: 'POST',
+      body: itemDados,
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      // Se houver erro de validação (ex: duplicidade), extrai a mensagem detalhada
+      const mensagemValidacao = data.errors?.conteudo?.[0] || data.message || 'Erro ao adicionar item ao plano.';
+      throw new Error(mensagemValidacao);
+    }
+    return data;
+  },
+
+  /**
+   * Remove um item associado a um plano de estudos sem excluir o conteúdo da Biblioteca.
+   */
+  async removerItem(planoId, itemId) {
+    const res = await api(`/planos-estudos/${planoId}/itens/${itemId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Erro ao remover item do plano.');
+    }
+    return res.json();
+  },
+};

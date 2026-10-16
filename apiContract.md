@@ -75,30 +75,33 @@ Sempre que um **Model**, **Migration**, **Form Request**, **API Resource** ou se
 #### 3.1 Acervo de Livros Físicos e Empréstimos
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
 |---|---|---|---|---|---|---|
-| `GET` | `/api/livros` | Público / Logado | N/A | `LivroResource` (Coleção) | `bibliotecaService.listarLivros()` | Catálogo da biblioteca escolar |
+| `GET` | `/api/livros` | Público / Logado (Leitura para Aluno e Prof) | N/A | `LivroResource` (Coleção) | `bibliotecaService.listarLivros()` | Catálogo da biblioteca (pré-carrega os 5 últimos cadastrados; busca completa via `?q=`) |
 | `GET` | `/api/livros/{id}` | Público / Logado | N/A | `LivroResource` | `bibliotecaService.detalharLivro()` | Detalhes e disponibilidade do livro |
-| `POST` | `/api/livros` | Bibliotecária / Adm | `StoreLivroRequest` | `LivroResource` | `bibliotecaService.cadastrarLivro()` | Cadastra exemplar no acervo |
-| `PUT` | `/api/livros/{id}` | Bibliotecária / Adm | `UpdateLivroRequest` | `LivroResource` | `bibliotecaService.editarLivro()` | Atualiza dados do exemplar |
-| `DELETE` | `/api/livros/{id}` | Bibliotecária / Adm | N/A | Mensagem 200/204 | `bibliotecaService.excluirLivro()` | Exclui exemplar do acervo |
+| `POST` | `/api/livros` | Bibliotecária / Especialista / Adm | `StoreLivroRequest` | `LivroResource` | `bibliotecaService.cadastrarLivro()` | Cadastra exemplar no acervo (`codigo_livro`, `titulo`, `editora`, `autor`, `genero`, `data_lancamento`) |
+| `POST` | `/api/livros/importar-csv` | Bibliotecária / Especialista / Adm | `ImportarLivrosCsvRequest` | `LivroResource` (Coleção) | `bibliotecaService.importarLivrosCSV()` | **Mass Assignment via CSV** (`titulo`, `editora`, `autor`, `genero`, `data_lancamento`, `codigo_livro`) |
+| `PUT` | `/api/livros/{id}` | Bibliotecária / Especialista / Adm | `UpdateLivroRequest` | `LivroResource` | `bibliotecaService.editarLivro()` | Atualiza dados do exemplar |
+| `DELETE` | `/api/livros/{id}` | Bibliotecária / Especialista / Adm | N/A | Mensagem 200/204 | `bibliotecaService.excluirLivro()` | Exclui exemplar do acervo |
 | `POST` | `/api/emprestimos/solicitar` | Logado | `SolicitarEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.solicitarEmprestimo()` | Solicita retirada de livro |
 | `GET` | `/api/emprestimos/meus-emprestimos` | Logado | N/A | `EmprestimoResource` (Coleção)| `bibliotecaService.meusEmprestimos()` | Consulta histórico pessoal |
-| `PATCH`| `/api/emprestimos/{id}/status` | Bibliotecária / Adm | `AtualizarStatusEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.atualizarEmprestimo()` | Aprova, renova ou registra devolução |
+| `PATCH`| `/api/emprestimos/{id}/status` | Bibliotecária / Especialista / Adm | `AtualizarStatusEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.atualizarEmprestimo()` | Aprova, renova ou registra devolução |
 
 #### 3.2 Videoaulas (Google YouTube Data API)
 *Consulta de vídeos e videoaulas educativas através de integração frontend com API do Google.*
-* **Parâmetros da Consulta**: `q` (termo de busca educativa), `part=snippet`, `type=video`, `maxResults=12`.
+* **Parâmetros da Consulta**: `q` (termo de busca educativa), `part=snippet`, `type=video`, `maxResults=12`, enriquecido com `videos?part=contentDetails,status` para captura automática da duração (`ISO 8601`).
 * **Payload Esperado (Front)**:
   ```json
   {
-    "id": "string (videoId)",
-    "titulo": "string",
-    "descricao": "string",
+    "videoId": "string (11 chars)",
+    "title": "string",
+    "description": "string",
     "thumbnail": "string (url)",
-    "canal": "string"
+    "channelTitle": "string",
+    "url": "string (https://www.youtube.com/watch?v=...)",
+    "duration": "string (MM:SS ou HH:MM:SS)"
   }
   ```
 
-#### 3.3 Conteúdo Web (Google Search API)
+#### 3.3 Conteúdo Web (Google Search API / Google Books API)
 *Pesquisa de artigos, referências didáticas e materiais pedagógicos na web.*
 * **Parâmetros da Consulta**: `q` (termo de busca acadêmica), `num=10`.
 * **Payload Esperado (Front)**:
@@ -110,6 +113,18 @@ Sempre que um **Model**, **Migration**, **Form Request**, **API Resource** ou se
     "fonte": "string"
   }
   ```
+
+#### 3.4 Planos de Estudos (Integração da Biblioteca)
+*Trilhas de estudo personalizadas agrupando livros do acervo, videoaulas do YouTube e conteúdos didáticos web.*
+
+| Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front (`src/services/biblioteca/planosService.js`) | Descrição |
+|---|---|---|---|---|---|---|
+| `GET` | `/api/planos-estudos` | Logado | N/A | `PlanoEstudoResource` (Coleção) | `planosService.listar()` | Lista os planos do usuário com contadores reais por tipo |
+| `POST` | `/api/planos-estudos` | Logado | `StorePlanoEstudoRequest` | `PlanoEstudoResource` | `planosService.criar()` | Cria um novo plano de estudos |
+| `GET` | `/api/planos-estudos/{id}` | Logado (Dono/Adm) | N/A | `PlanoEstudoResource` | `planosService.obterPorId()` | Detalhes do plano completo com itens aninhados |
+| `DELETE` | `/api/planos-estudos/{id}` | Logado (Dono/Adm) | N/A | Mensagem 200 | `planosService.excluir()` | Remove o plano (itens associados em cascata) |
+| `POST` | `/api/planos-estudos/{id}/itens` | Logado (Dono/Adm) | `StorePlanoEstudoItemRequest` | `PlanoEstudoItemResource` | `planosService.adicionarItem()` | Adiciona conteúdo ao plano (com prevenção de duplicata) |
+| `DELETE` | `/api/planos-estudos/{id}/itens/{item_id}` | Logado (Dono/Adm) | N/A | Mensagem 200 | `planosService.removerItem()` | Remove o conteúdo do plano (preserva fonte original) |
 
 ---
 

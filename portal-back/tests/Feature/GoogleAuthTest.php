@@ -173,4 +173,3 @@ test('mantem login tradicional por email e senha funcionando normalmente (fallba
     $response->assertOk()
         ->assertJsonStructure(['user', 'token', 'token_type']);
 });
-

@@ -28,17 +28,25 @@ class LivroResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        // Sincroniza data_lancamento e data_publicacao para manter paridade no contrato
+        $dataLancamento = $this->data_lancamento?->format('Y-m-d')
+            ?? $this->data_publicacao?->format('Y-m-d')
+            ?? $this->data_lancamento
+            ?? $this->data_publicacao;
+
         return [
             // Identificador primário do livro (id e id_livro para compatibilidade)
             'id' => $this->id_livro ?? $this->id,
             'id_livro' => $this->id_livro ?? $this->id,
-            // Informações bibliográficas do catálogo
+            'codigo_livro' => $this->codigo_livro,
+            // Informações bibliográficas definitivas do catálogo
             'titulo' => $this->titulo,
             'autor' => $this->autor,
             'editora' => $this->editora,
-            'isbn' => $this->isbn,
-            'data_publicacao' => $this->data_publicacao?->format('Y-m-d') ?? $this->data_publicacao,
-            'ano_publicacao' => $this->ano_publicacao ?? ($this->data_publicacao ? (int) substr((string) $this->data_publicacao, 0, 4) : null),
+            'isbn' => $this->isbn ?? $this->codigo_livro,
+            'data_lancamento' => $dataLancamento,
+            'data_publicacao' => $dataLancamento,
+            'ano_publicacao' => $this->ano_publicacao ?? ($dataLancamento ? (int) substr((string) $dataLancamento, 0, 4) : null),
             'genero' => $this->genero,
             'prateleira_localizacao' => $this->prateleira_localizacao,
             'localizacao' => $this->prateleira_localizacao ?? $this->localizacao,

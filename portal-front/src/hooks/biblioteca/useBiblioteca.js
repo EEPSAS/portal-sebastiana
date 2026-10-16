@@ -1,435 +1,230 @@
 /**
- * useBiblioteca.js - Hook Customizado de Gestão de Dados do Acervo Escolar
+ * useBiblioteca.js - Hook Customizado de Gestão de Dados da Biblioteca Escolar
  *
  * Papel Didático:
- * Centraliza o estado reativo da biblioteca escolar (Livros, Planos de Estudo,
- * Videoaulas e Conteúdos Web/Apostilas), abstraindo o ciclo de vida assíncrono:
- * 1. Carregamento inicial via API com fallback seguro em dados mock;
- * 2. Autosave debounced (500ms) com fila de promessas para evitar conflitos de concorrência;
- * 3. Operações atômicas de CRUD e notificações temporárias de feedback ao usuário.
+ * Centraliza o estado reativo da biblioteca escolar, integrando o front-end
+ * diretamente com a API RESTful do Laravel (`/api/livros`, `/api/emprestimos`)
+ * e gerenciando estados assíncronos (carregando, erro e notificações).
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useState, useCallback } from 'react';
 import {
   hasPortalSession,
-  loadBiblioteca,
-  saveBiblioteca,
+  listarLivros,
+  cadastrarLivro,
+  importarLivrosCSV,
+  editarLivro,
+  excluirLivro,
+  solicitarEmprestimo,
+  meusEmprestimos,
 } from '../../services/biblioteca/bibliotecaService';
 
-const MOCK_LIVROS = [
-  {
-    id: 1,
-    titulo: 'Dom Casmurro',
-    autor: 'Machado de Assis',
-    status: 'Disponível',
-    nota: '4.8',
-    imagem:
-      'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80',
-    comentarios: [
-      {
-        nome: 'João Santos',
-        texto:
-          'Uma leitura emocionante que faz pensar sobre a realidade dos personagens.',
-        nota: 5,
-        data: '14/09/2026',
-      },
-      {
-        nome: 'Beatriz Costa',
-        texto: 'Gostei muito da narrativa e recomendo para a turma.',
-        nota: 4,
-        data: '10/09/2026',
-      },
-    ],
-  },
-  {
-    id: 2,
-    titulo: 'O Cortiço',
-    autor: 'Aluísio Azevedo',
-    status: 'Emprestado',
-    aluno: 'João Silva',
-    nota: '4.4',
-    imagem:
-      'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80',
-    comentarios: [],
-  },
-  {
-    id: 3,
-    titulo: 'Vidas Secas',
-    autor: 'Graciliano Ramos',
-    status: 'Disponível',
-    nota: '4.6',
-    imagem:
-      'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&q=80',
-    comentarios: [],
-  },
-  {
-    id: 4,
-    titulo: 'Capitães da Areia',
-    autor: 'Jorge Amado',
-    status: 'Disponível',
-    nota: '4.7',
-    imagem:
-      'https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=400&q=80',
-    comentarios: [],
-  },
-];
-
-const MOCK_PLANOS = [
-  {
-    id: 1,
-    nome: 'Geopolítica para o ENEM',
-    disciplina: 'Geografia',
-    livroIds: [1, 2],
-    apostilaIds: [1],
-    ativo: true,
-  },
-  {
-    id: 2,
-    nome: 'Inglês Básico: Gramática',
-    disciplina: 'Inglês',
-    livroIds: [1],
-    apostilaIds: [],
-    ativo: false,
-  },
-  {
-    id: 3,
-    nome: 'Intensivo de Exatas',
-    disciplina: 'Matemática',
-    livroIds: [],
-    apostilaIds: [1, 2, 3],
-    ativo: false,
-  },
-];
-
-const MOCK_APOSTILAS = [
-  {
-    id: 1,
-    titulo: 'Apostila Completa de Funções — 1º Ano',
-    materia: 'Matemática',
-    descricao: 'Conteúdo de apoio e exercícios de funções.',
-    topico: 'Funções',
-    tipo: 'Apostila',
-    nivel: '1º ano',
-    autor: 'Equipe pedagógica',
-    corBadge: '#e0f2fe',
-    corTexto: '#0284c7',
-  },
-  {
-    id: 2,
-    titulo: 'Resumo Ilustrado de Brasil Colônia',
-    materia: 'História',
-    descricao: 'Resumo dos principais períodos e acontecimentos.',
-    topico: 'Brasil Colônia',
-    tipo: 'Resumo',
-    nivel: 'Ensino médio',
-    autor: 'Equipe pedagógica',
-    corBadge: '#fef3c7',
-    corTexto: '#b45309',
-  },
-  {
-    id: 3,
-    titulo: 'Manual de Redação ENEM',
-    materia: 'Redação',
-    descricao:
-      'Orientações para estruturar e revisar textos dissertativos.',
-    topico: 'Redação dissertativa',
-    tipo: 'Manual',
-    nivel: 'ENEM',
-    autor: 'Equipe pedagógica',
-    corBadge: '#ffe4e6',
-    corTexto: '#e11d48',
-  },
-];
-
-export const useBiblioteca = () => {
-  const navigate = useNavigate();
-
-  // Estados principais das 4 entidades do acervo
-  const [livros, setLivros] = useState(MOCK_LIVROS);
-  const [planos, setPlanos] = useState(MOCK_PLANOS);
+export const useBiblioteca = (termoBusca = '') => {
+  // Estado do catálogo de livros físicos e empréstimos
+  const [livros, setLivros] = useState([]);
+  const [emprestimos, setEmprestimos] = useState([]);
   const [videoaulas, setVideoaulas] = useState([]);
-  const [apostilas, setApostilas] = useState(MOCK_APOSTILAS);
 
-  // Estados de controle de requisição e persistência
-  const [carregandoBiblioteca, setCarregandoBiblioteca] = useState(true);
-  const [bibliotecaCarregada, setBibliotecaCarregada] = useState(false);
+  // Estados assíncronos obrigatórios (Carregando, Erro e Feedback)
+  const [carregandoLivros, setCarregandoLivros] = useState(true);
   const [erroCarregamento, setErroCarregamento] = useState('');
-  const [estadoSalvamento, setEstadoSalvamento] = useState('');
-  const [tentativaCarregamento, setTentativaCarregamento] = useState(0);
-  const [tentativaSalvamento, setTentativaSalvamento] = useState(0);
-
-  // Notificação flutuante de feedback (toast)
   const [notificacao, setNotificacao] = useState(null);
-
-  // Controle de concorrência de requisições de salvamento
-  const filaSalvamento = useRef(Promise.resolve());
-  const versaoSalvamento = useRef(0);
-
-  const dispararAviso = (msg) => {
-    setNotificacao(msg);
-    setTimeout(() => setNotificacao(null), 3500);
-  };
-
-  const tentarCarregarBiblioteca = () => {
-    setCarregandoBiblioteca(true);
-    setErroCarregamento('');
-    setTentativaCarregamento((valor) => valor + 1);
-  };
-
-  const tentarSalvarNovamente = () => {
-    setTentativaSalvamento((valor) => valor + 1);
-  };
+  const [triggerRecarregar, setTriggerRecarregar] = useState(0);
 
   /**
-   * Efeito 1: Carregamento inicial da API com fallback
+   * Dispara aviso flutuante temporário (toast) para feedback ao usuário.
    */
-  useEffect(() => {
-    if (!hasPortalSession()) {
-      navigate('/login', { replace: true });
-      return undefined;
-    }
+  const dispararAviso = useCallback((mensagem) => {
+    setNotificacao(mensagem);
+    const timeout = setTimeout(() => setNotificacao(null), 3500);
+    return () => clearTimeout(timeout);
+  }, []);
 
+  // Efeito de inicialização, pré-carregamento (5 últimos livros) e busca dinâmica no acervo
+  useEffect(() => {
     const controller = new AbortController();
 
-    loadBiblioteca({ signal: controller.signal })
-      .then(({ dados }) => {
-        if (dados) {
-          setLivros(
-            dados.livros && dados.livros.length > 0 ? dados.livros : MOCK_LIVROS
-          );
-          setPlanos(
-            (dados.planos && dados.planos.length > 0 ? dados.planos : MOCK_PLANOS).map(
-              (plano) => ({
-                ...plano,
-                livroIds: plano.livroIds ?? [],
-                apostilaIds: plano.apostilaIds ?? [],
-              })
-            )
-          );
-          setVideoaulas(dados.videoaulas ?? []);
-          setApostilas(
-            dados.apostilas && dados.apostilas.length > 0
-              ? dados.apostilas
-              : MOCK_APOSTILAS
-          );
-        }
-        setBibliotecaCarregada(true);
+    // Carrega o catálogo público de livros (5 últimos no pré-carregamento ou filtrados por busca)
+    const buscarDados = async () => {
+      try {
+        const buscaLimpa = termoBusca.trim();
+        const filtros = buscaLimpa ? { q: buscaLimpa } : { limit: 5 };
+
+        const livrosPromessa = listarLivros(filtros, { signal: controller.signal });
+        const emprestimosPromessa = hasPortalSession()
+          ? meusEmprestimos({ signal: controller.signal }).catch(() => [])
+          : Promise.resolve([]);
+
+        const [resultadoLivros, resultadoEmprestimos] = await Promise.all([
+          livrosPromessa,
+          emprestimosPromessa,
+        ]);
+
+        const listaLivros = Array.isArray(resultadoLivros)
+          ? resultadoLivros
+          : resultadoLivros?.data ?? [];
+
+        const listaEmprestimos = Array.isArray(resultadoEmprestimos)
+          ? resultadoEmprestimos
+          : resultadoEmprestimos?.data ?? [];
+
+        // No pré-carregamento (sem busca ativa), garante no máximo 5 livros na lista
+        setLivros(buscaLimpa ? listaLivros : listaLivros.slice(0, 5));
+        setEmprestimos(listaEmprestimos);
         setErroCarregamento('');
-      })
-      .catch((error) => {
-        if (error.name === 'AbortError') return;
-        if (error.status === 401) {
-          navigate('/login', { replace: true });
-          return;
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+
+        setErroCarregamento(
+          'Não foi possível conectar à API do acervo escolar. Verifique se o servidor local está em execução.'
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setCarregandoLivros(false);
         }
-        setLivros((prev) => (prev && prev.length > 0 ? prev : MOCK_LIVROS));
-        setPlanos((prev) => (prev && prev.length > 0 ? prev : MOCK_PLANOS));
-        setApostilas((prev) => (prev && prev.length > 0 ? prev : MOCK_APOSTILAS));
-        setErroCarregamento('Problemas de Conexão, tente novamente mais tarde');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setCarregandoBiblioteca(false);
-      });
+      }
+    };
+
+    buscarDados();
 
     return () => controller.abort();
-  }, [navigate, tentativaCarregamento]);
+  }, [triggerRecarregar, termoBusca]);
+
+  const tentarCarregarBiblioteca = () => {
+    setCarregandoLivros(true);
+    setErroCarregamento('');
+    setTriggerRecarregar((prev) => prev + 1);
+  };
+
+  // ================= Operações de Livros Físicos =================
 
   /**
-   * Efeito 2: Autosave debounced com fila serializada
+   * Salva um exemplar no acervo (criação ou atualização).
    */
-  useEffect(() => {
-    if (!bibliotecaCarregada) return undefined;
-
-    let cancelado = false;
-    const versaoAtual = ++versaoSalvamento.current;
-    const dados = { livros, planos, videoaulas, apostilas };
-
-    const timeout = window.setTimeout(() => {
-      setEstadoSalvamento('salvando');
-      filaSalvamento.current = filaSalvamento.current
-        .catch(() => undefined)
-        .then(() => saveBiblioteca(dados))
-        .then(() => {
-          if (!cancelado && versaoAtual === versaoSalvamento.current) {
-            setEstadoSalvamento('salvo');
-          }
-        })
-        .catch((error) => {
-          if (error.status === 401) {
-            navigate('/login', { replace: true });
-            return;
-          }
-          if (!cancelado && versaoAtual === versaoSalvamento.current) {
-            setEstadoSalvamento('erro');
-          }
-        });
-    }, 500);
-
-    return () => {
-      cancelado = true;
-      window.clearTimeout(timeout);
-    };
-  }, [
-    bibliotecaCarregada,
-    livros,
-    planos,
-    videoaulas,
-    apostilas,
-    tentativaSalvamento,
-    navigate,
-  ]);
-
-  // ================= Operações de Livros =================
-  const salvarLivro = (dadosLivro) => {
-    if (dadosLivro.id) {
-      setLivros((prev) =>
-        prev.map((l) => (l.id === dadosLivro.id ? { ...l, ...dadosLivro } : l))
-      );
-      dispararAviso('Livro atualizado!');
-    } else {
-      setLivros((prev) => [
-        { ...dadosLivro, id: Date.now(), comentarios: [] },
-        ...prev,
-      ]);
-      dispararAviso('Livro cadastrado!');
+  const salvarLivro = async (dadosLivro) => {
+    try {
+      if (dadosLivro.id) {
+        const atualizado = await editarLivro(dadosLivro.id, dadosLivro);
+        const livroFormatado = atualizado?.data ?? atualizado;
+        setLivros((prev) =>
+          prev.map((l) => (l.id === dadosLivro.id ? { ...l, ...livroFormatado } : l))
+        );
+        dispararAviso('Livro atualizado no catálogo!');
+      } else {
+        const criado = await cadastrarLivro(dadosLivro);
+        const novoLivro = criado?.data ?? criado;
+        // Mantém no máximo 5 livros no pré-carregamento ao inserir novo exemplar no topo
+        setLivros((prev) => [novoLivro, ...prev].slice(0, termoBusca.trim() ? undefined : 5));
+        dispararAviso('Livro cadastrado com sucesso!');
+      }
+      return true;
+    } catch (error) {
+      dispararAviso(error.message || 'Erro ao salvar o livro.');
+      return false;
     }
   };
 
-  const removerLivro = (id) => {
-    setLivros((prev) => prev.filter((item) => item.id !== id));
-    setPlanos((prev) =>
-      prev.map((plano) => ({
-        ...plano,
-        livroIds: (plano.livroIds ?? []).filter((livroId) => livroId !== id),
-      }))
-    );
-    dispararAviso('Livro removido.');
+  /**
+   * Importa livros em massa via arquivo CSV e atualiza o pré-carregamento dos 5 últimos livros.
+   */
+  const importarCsvLivros = async (arquivoCsv) => {
+    try {
+      const formData = new FormData();
+      formData.append('arquivo', arquivoCsv);
+
+      const resposta = await importarLivrosCSV(formData);
+      dispararAviso(resposta?.message || 'Livros importados via CSV com sucesso!');
+      setTriggerRecarregar((prev) => prev + 1);
+      return true;
+    } catch (error) {
+      dispararAviso(error.message || 'Falha ao importar o arquivo CSV de livros.');
+      return false;
+    }
   };
 
-  const adicionarComentarioLivro = (livroId, comentario) => {
-    setLivros((prev) =>
-      prev.map((livro) =>
-        livro.id === livroId
-          ? { ...livro, comentarios: [comentario, ...(livro.comentarios ?? [])] }
-          : livro
-      )
-    );
+  /**
+   * Remove um exemplar físico do acervo.
+   */
+  const removerLivro = async (id) => {
+    try {
+      await excluirLivro(id);
+      setLivros((prev) => prev.filter((item) => item.id !== id));
+      dispararAviso('Exemplar removido do acervo escolar.');
+      setTriggerRecarregar((prev) => prev + 1);
+      return true;
+    } catch (error) {
+      dispararAviso(error.message || 'Falha ao excluir exemplar.');
+      return false;
+    }
   };
 
-  // ================= Operações de Planos =================
-  const criarPlano = ({ nome, disciplina }) => {
-    const novo = {
-      id: Date.now(),
-      nome,
-      disciplina,
-      livroIds: [],
-      apostilaIds: [],
-      ativo: false,
-    };
-    setPlanos((prev) => [novo, ...prev]);
-    dispararAviso('Plano de Estudos criado!');
-  };
+  /**
+   * Solicita o empréstimo de um livro físico para o usuário logado.
+   */
+  const solicitarEmprestimoLivro = async (livroId, observacoes = '') => {
+    try {
+      const resposta = await solicitarEmprestimo({
+        livro_id: livroId,
+        observacoes,
+      });
+      const novoEmprestimo = resposta?.data ?? resposta;
+      setEmprestimos((prev) => [novoEmprestimo, ...prev]);
 
-  const removerPlano = (id) => {
-    setPlanos((prev) => prev.filter((item) => item.id !== id));
-    dispararAviso('Plano de estudos removido.');
-  };
+      // Atualiza a disponibilidade local para feedback instantâneo na tela
+      setLivros((prev) =>
+        prev.map((l) => {
+          if (l.id === livroId) {
+            const novaQtd = Math.max(0, (l.quantidade_disponivel ?? 1) - 1);
+            return {
+              ...l,
+              quantidade_disponivel: novaQtd,
+              disponivel: novaQtd > 0,
+            };
+          }
+          return l;
+        })
+      );
 
-  const alternarMaterialPlano = (planoId, tipo, itemId) => {
-    const propriedade = tipo === 'livro' ? 'livroIds' : 'apostilaIds';
-    const selecionado =
-      planos.find((plano) => plano.id === planoId)?.[propriedade] ?? [];
-    const removendo = selecionado.includes(itemId);
-
-    setPlanos((prev) =>
-      prev.map((plano) =>
-        plano.id === planoId
-          ? {
-              ...plano,
-              [propriedade]: removendo
-                ? selecionado.filter((id) => id !== itemId)
-                : [...selecionado, itemId],
-            }
-          : plano
-      )
-    );
-    dispararAviso(
-      removendo ? 'Material removido do plano.' : 'Material adicionado ao plano.'
-    );
+      dispararAviso('Empréstimo solicitado com sucesso! Retire seu exemplar na biblioteca.');
+      return true;
+    } catch (error) {
+      dispararAviso(error.message || 'Não foi possível solicitar este empréstimo.');
+      return false;
+    }
   };
 
   // ================= Operações de Videoaulas =================
+
   const adicionarVideoaula = (videoaula) => {
     if (videoaulas.some((video) => video.url === videoaula.url)) {
-      dispararAviso('Esta videoaula já foi adicionada.');
+      dispararAviso('Esta videoaula já foi adicionada à sua lista.');
       return false;
     }
     setVideoaulas((prev) => [videoaula, ...prev]);
-    dispararAviso('Videoaula adicionada à biblioteca.');
+    dispararAviso('Videoaula salva com sucesso!');
     return true;
   };
 
   const removerVideoaula = (id) => {
     setVideoaulas((prev) => prev.filter((item) => item.id !== id));
-    dispararAviso('Videoaula removida.');
-  };
-
-  // ================= Operações de Conteúdo Web / Apostilas =================
-  const salvarApostila = (dadosApostila) => {
-    if (dadosApostila.id) {
-      setApostilas((prev) =>
-        prev.map((apostila) =>
-          apostila.id === dadosApostila.id
-            ? { ...apostila, ...dadosApostila }
-            : apostila
-        )
-      );
-      dispararAviso('Conteúdo web atualizado.');
-    } else {
-      setApostilas((prev) => [
-        { ...dadosApostila, url: dadosApostila.url.trim(), id: Date.now() },
-        ...prev,
-      ]);
-      dispararAviso('Conteúdo web cadastrado.');
-    }
-  };
-
-  const removerApostila = (id) => {
-    setApostilas((prev) => prev.filter((item) => item.id !== id));
-    setPlanos((prev) =>
-      prev.map((plano) => ({
-        ...plano,
-        apostilaIds: (plano.apostilaIds ?? []).filter(
-          (apostilaId) => apostilaId !== id
-        ),
-      }))
-    );
-    dispararAviso('Conteúdo web removido.');
+    dispararAviso('Videoaula removida da lista.');
   };
 
   return {
     livros,
-    planos,
+    emprestimos,
     videoaulas,
-    apostilas,
-    carregandoBiblioteca,
+    carregandoBiblioteca: carregandoLivros,
     erroCarregamento,
-    estadoSalvamento,
     notificacao,
     tentarCarregarBiblioteca,
-    tentarSalvarNovamente,
     dispararAviso,
     salvarLivro,
+    importarCsvLivros,
     removerLivro,
-    adicionarComentarioLivro,
-    criarPlano,
-    removerPlano,
-    alternarMaterialPlano,
+    solicitarEmprestimoLivro,
     adicionarVideoaula,
     removerVideoaula,
-    salvarApostila,
-    removerApostila,
   };
 };
 

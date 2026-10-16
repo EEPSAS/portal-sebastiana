@@ -26,6 +26,7 @@ import DashboardIndexRedirect from "./components/Dashboard/DashboardIndexRedirec
 import GeralPage from "./pages/Dashboard/Geral";
 import BoletimPage from "./pages/Dashboard/Boletim";
 import BibliotecaPage from "./pages/Dashboard/Biblioteca";
+import PlanoDetalhe from "./pages/Dashboard/PlanoDetalhe";
 import TurmaPage from "./pages/Dashboard/Turma";
 import AgendaPage from "./pages/Dashboard/Agenda";
 import NoticiasAdminPage from "./pages/Dashboard/Noticias";
@@ -57,6 +58,7 @@ const App = () => {
             {/* Rotas de acesso comum para usuários do painel */}
             <Route path="geral" element={<GeralPage />} />
             <Route path="biblioteca" element={<BibliotecaPage />} />
+            <Route path="biblioteca/planos/:id" element={<PlanoDetalhe />} />
             <Route path="agenda" element={<AgendaPage />} />
             <Route path="configuracoes" element={<ConfiguracoesPage />} />
 

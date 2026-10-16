@@ -22,14 +22,16 @@ class StoreLivroRequest extends FormRequest
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
-    // Regras de validação para os dados cadastrais do livro
+    // Regras de validação para os dados cadastrais definitivos do livro
     public function rules(): array
     {
         return [
+            'codigo_livro' => ['nullable', 'string', 'max:100'],
             'titulo' => ['required', 'string', 'max:255'],
             'capa' => ['nullable', 'string', 'max:500'],
             'autor' => ['required', 'string', 'max:255'],
             'editora' => ['nullable', 'string', 'max:255'],
+            'data_lancamento' => ['nullable', 'date'],
             'data_publicacao' => ['nullable', 'date'],
             'prateleira_localizacao' => ['nullable', 'string', 'max:255'],
             'genero' => ['nullable', 'string', 'max:100'],

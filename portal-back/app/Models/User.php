@@ -44,10 +44,17 @@ class User extends Authenticatable
         return $this->isAdm() || $this->hasPermissionTo('gerenciar_noticias') || $this->isEspecialista();
     }
 
-    // Permissao para gerenciamento de biblioteca (livros e emprestimos)
+    // Permissao para gerenciamento de biblioteca (livros, importação CSV e emprestimos)
+    // Restrito a Bibliotecária, Especialista e Administrador (Aluno e Professor têm acesso apenas consultivo)
     public function canManageLibrary(): bool
     {
+        if ($this->isAluno() || $this->isProfessor()) {
+            return false;
+        }
+
         return $this->isAdm()
+            || $this->isBibliotecaria()
+            || $this->isEspecialista()
             || $this->hasPermissionTo('gerenciar_livros')
             || $this->hasPermissionTo('gerenciar_emprestimos')
             || $this->hasPermissionTo('gerenciar_biblioteca');
@@ -139,5 +146,14 @@ class User extends Authenticatable
     public function notas(): HasMany
     {
         return $this->hasMany(Nota::class, 'usuario_id', 'id');
+    }
+
+    /**
+     * @return HasMany<PlanoEstudo, $this>
+     */
+    // Planos de estudo criados pelo usuário
+    public function planosEstudos(): HasMany
+    {
+        return $this->hasMany(PlanoEstudo::class, 'user_id', 'id');
     }
 }
