@@ -1,18 +1,35 @@
-const SmallNewsCard = ({ noticia, loading }) => (
-	<a className="noticias-card-link" href={`/noticia/${noticia?.id || '#'}`} target="_blank" rel="noreferrer">
-		<article className="noticias-card h-100 rounded-4 bg-white p-3 shadow-sm">
-			{loading ? (
-				<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100 noticias-card__skeleton--small">
-					<div className="spinner-border text-primary" role="status">
-						<span className="visually-hidden">Carregando...</span>
-					</div>
+const SmallNewsCard = ({ noticia, loading }) => {
+	// Se terminou de carregar e não há notícia cadastrada para este slot,
+	// exibe card vazio centralizado preenchendo a altura completa da grade
+	if (!loading && !noticia) {
+		return (
+			<article className="noticias-card h-100 flex-grow-1 w-100 rounded-4 bg-white p-3 shadow-sm d-flex flex-column justify-content-center text-center text-muted py-4">
+				<div className="mb-2">
+					<i className="bi bi-newspaper fs-1 text-secondary opacity-50" aria-hidden="true" />
 				</div>
-			) : (
-				<img className="img-fluid w-100 rounded-3" src={noticia?.miniatura} alt="" />
-			)}
-			<h3 className="h5 text-secondary mt-3 mb-0">{noticia?.titulo || "Notícia"}</h3>
-		</article>
-	</a>
-);
+				<h3 className="h6 text-secondary mb-1">Sem notícia disponível</h3>
+				<p className="small mb-0 text-muted">Em breve novas publicações da EEPSAS.</p>
+			</article>
+		);
+	}
+
+	// Renderiza o card menor garantindo altura uniforme (flex-grow-1) com os demais cards
+	return (
+		<a className="noticias-card-link d-flex flex-column flex-grow-1 h-100 w-100" href={noticia?.id ? `/noticia/${noticia.id}` : '#!'} target={noticia?.id ? '_blank' : '_self'} rel="noreferrer">
+			<article className="noticias-card h-100 flex-grow-1 rounded-4 bg-white p-3 shadow-sm d-flex flex-column">
+				{loading ? (
+					<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100 noticias-card__skeleton--small">
+						<div className="spinner-border text-primary" role="status">
+							<span className="visually-hidden">Carregando...</span>
+						</div>
+					</div>
+				) : (
+					<img className="img-fluid w-100 rounded-3" src={noticia?.miniatura} alt={noticia?.titulo || ''} />
+				)}
+				<h3 className="h5 text-secondary mt-3 mb-0">{noticia?.titulo || "Notícia"}</h3>
+			</article>
+		</a>
+	);
+};
 
 export default SmallNewsCard;

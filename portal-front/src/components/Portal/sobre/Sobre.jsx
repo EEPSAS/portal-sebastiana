@@ -1,5 +1,6 @@
 import { useState } from "react";
-import "./Sobre.css";
+// Import em minúsculo compatível com sistemas de arquivos case-sensitive (Linux/CI)
+import "./sobre.css";
 
 import SobreJaguaracu from "./SobreJaguaracu";
 import SobreDesenvolvedores from "./SobreDesenvolvedores";
@@ -51,7 +52,8 @@ const SobreSlider = () => {
   };
 
   return (
-    <section id="Sobre-nos" className="py-5">
+    // Removido py-5 para evitar padding vertical duplicado com o CSS da seção
+    <section id="Sobre-nos">
       <div className="container">
         <div className="sobre-tabs" role="tablist" aria-label="Sobre">
           {sections.map((section, index) => (
@@ -74,6 +76,7 @@ const SobreSlider = () => {
 
         <div
           key={sections[current].id}
+          // Container unificado para todas as abas seguindo o padrão centralizado
           className="sobre-content"
           id={`panel-${sections[current].id}`}
           role="tabpanel"

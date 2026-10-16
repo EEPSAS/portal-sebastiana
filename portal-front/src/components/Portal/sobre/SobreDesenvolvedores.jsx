@@ -1,221 +1,417 @@
 import { useEffect, useRef, useState } from "react";
 
-const developers = [
-  "Ana Lívia",
-  "Yasmin Teixeira",
-  "Yasmim Gomes",
-  "Carlos Eduardo",
-  "Rhaynner",
-  "Prentys",
-  "Dalton",
-  "Davi",
-  "Natã",
-].map((name) => ({
-  name,
-  role: "Desenvolvimento · Front-end",
-  profile: "https://github.com/",
-}));
+// ==============================================================================
+// DADOS DA LIDERANÇA
+// Dois cards de liderança em destaque, alinhados horizontalmente no desktop.
+// Cada líder possui caminho dedicado para fotografia (/img/devs/<nome>.jpg)
+// e fallback automático com as iniciais caso a foto ainda não esteja presente.
+// ==============================================================================
+// DADOS DA LIDERANÇA
+// Dois cards de liderança em destaque, alinhados horizontalmente no desktop.
+// Cada líder possui caminho dedicado para fotografia com calibração individual
+// de enquadramento facial (objectPosition) para garantir visualização perfeita do rosto.
+// ==============================================================================
+const leaders = [
+  {
+    name: "Ana Lívia",
+    role: "",
+    badge: "Liderança · Back-end",
+    description: "Coordena o desenvolvimento do back-end e a integração dos dados da aplicação.",
+    photo: "/img/ana-perfil.jpeg",
+    // Classe CSS específica para ajuste fino do enquadramento facial
+    photoClassName: "foto-ana-livia",
+    // Centraliza perfeitamente o rosto (olhos/sorriso) dentro do avatar quadrado
+    objectPosition: "50% 36%",
+    // Link configurável para o portfólio pessoal do desenvolvedor
+    portfolioUrl: "https://github.com/",
+  },
+  {
+    name: "Yasmin Teixeira",
+    role: "",
+    badge: "Liderança · Front-end",
+    description: "Coordena o desenvolvimento da interface, o design e a navegação do portal.",
+    // Utiliza o arquivo PNG de altíssima definição (859x731) em vez do JPEG comprimido
+    photo: "/img/teixeira-perfil.png",
+    objectPosition: "center 22%",
+    // Link configurável para o portfólio pessoal do desenvolvedor
+    portfolioUrl: "https://github.com/",
+  },
+];
 
-const cardsPerPage = 3;
-const pageCount = Math.ceil(developers.length / cardsPerPage);
+// ==============================================================================
+// DADOS DA EQUIPE — DIVISÃO EM EXATAMENTE 2 PÁGINAS POR ÁREA
+// Página 1: exclusivamente Front-end (3 integrantes)
+// Página 2: exclusivamente Back-end (2 integrantes)
+// Dalton e Prentys foram removidos permanentemente conforme especificação.
+// ==============================================================================
+const teamPages = [
+  {
+    id: "frontend",
+    title: "Front-end",
+    members: [
+      {
+        name: "Davi",
+        role: "Desenvolvedor Front-end",
+        photo: "/img/davi-perfil.png",
+        // Enquadramento no terço superior para evitar corte da cabeça
+        objectPosition: "center 20%",
+        portfolioUrl: "https://github.com/",
+      },
+      {
+        name: "Natã",
+        role: "Desenvolvedor Front-end",
+        photo: "/img/nata-perfil.png",
+        objectPosition: "center 20%",
+        portfolioUrl: "https://github.com/",
+      },
+      {
+        name: "Rhaynner",
+        role: "Desenvolvedor Front-end",
+        photo: "/img/perfil-rhaynner.png",
+        objectPosition: "center 20%",
+        portfolioUrl: "https://github.com/",
+      },
+    ],
+  },
+  {
+    id: "backend",
+    title: "Back-end",
+    members: [
+      {
+        name: "Yasmim Gomes",
+        role: "Desenvolvedora Back-end",
+        photo: "/img/gomes-perfil.jpeg",
+        // Classe CSS específica para ajuste fino do enquadramento facial
+        photoClassName: "foto-yasmim-gomes",
+        // Centraliza com precisão o rosto e o sorriso, preservando o volume dos cachos
+        objectPosition: "50% 45%",
+        portfolioUrl: "https://github.com/",
+      },
+      {
+        name: "Cadu",
+        role: "Desenvolvedor Back-end",
+        photo: "/img/cadu-perfil.png",
+        objectPosition: "center 25%",
+        portfolioUrl: "https://github.com/",
+      },
+    ],
+  },
+];
 
+const AUTOPLAY_INTERVAL_MS = 5000; // Tempo de rotação automática do carrossel (5 segundos)
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
+/**
+ * Função utilitária pura para extrair até duas iniciais em maiúsculo do nome.
+ */
 const getInitials = (name) => {
-  const parts = name.split(" ");
+  const parts = name.trim().split(" ");
   const initials = parts.length > 1
-    ? parts.slice(0, 2).map((part) => part[0]).join("")
+    ? parts[0][0] + parts[1][0]
     : name.slice(0, 2);
 
   return initials.toLocaleUpperCase("pt-BR");
 };
 
-const SobreDesenvolvedores = () => {
-  const [current, setCurrent] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
-  const touchStart = useRef(null);
-  const visibleDevelopers = developers.slice(
-    current * cardsPerPage,
-    (current + 1) * cardsPerPage,
+/**
+ * Componente didático para renderização da foto com fallback de iniciais.
+ * Utiliza o evento onError da tag <img> para alternar transparentemente para o avatar textual.
+ * O elemento wrapper interno (.sobre-dev-photo-wrapper) garante recorte suave de cantos (antialiasing)
+ * sem cortar o indicador amarelo ::after posicionado na borda externa.
+ */
+const DevPhoto = ({ name, src, size = "md", objectPosition, photoClassName }) => {
+  const [hasError, setHasError] = useState(false);
+
+  return (
+    <div className={`sobre-dev-photo sobre-dev-photo--${size}`}>
+      {hasError ? (
+        <div className="sobre-dev-photo-fallback" role="img" aria-label={name}>
+          {getInitials(name)}
+        </div>
+      ) : (
+        <div className="sobre-dev-photo-wrapper">
+          <img
+            className={`sobre-dev-photo-img ${photoClassName || ""}`.trim()}
+            src={src}
+            alt={name}
+            loading="lazy"
+            decoding="async"
+            style={objectPosition ? { objectPosition } : undefined}
+            onError={() => setHasError(true)}
+          />
+        </div>
+      )}
+    </div>
   );
+};
 
+/**
+ * Card individual de Liderança:
+ * Foto à esquerda, badge em pílula, nome, cargo com traço rosa característico, descrição e botão de portfólio.
+ */
+const LeaderCard = ({ leader }) => (
+  <article className="sobre-dev-leader-card">
+    <DevPhoto
+      name={leader.name}
+      src={leader.photo}
+      size="lg"
+      objectPosition={leader.objectPosition}
+      photoClassName={leader.photoClassName}
+    />
+    <div className="sobre-dev-leader-info">
+      <span className="sobre-dev-leader-badge">{leader.badge}</span>
+      <h3 className="sobre-dev-leader-name">{leader.name}</h3>
+      <p className="sobre-dev-leader-role">{leader.role}</p>
+      <span className="sobre-dev-leader-divider" aria-hidden="true" />
+      <p className="sobre-dev-leader-description">{leader.description}</p>
+      {leader.portfolioUrl && (
+        <a
+          href={leader.portfolioUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="sobre-dev-portfolio-btn sobre-dev-portfolio-btn--leader"
+          aria-label={`Acessar portfólio de ${leader.name}`}
+        >
+          <span>Portfólio</span>
+          <span className="sobre-dev-portfolio-arrow" aria-hidden="true">↗</span>
+        </a>
+      )}
+    </div>
+  </article>
+);
+
+/**
+ * Card individual de Integrante da Equipe:
+ * Avatar no topo à esquerda com ponto amarelo, nome, função técnica e botão de portfólio na base.
+ */
+const TeamMemberCard = ({ member }) => (
+  <article className="sobre-dev-member-card">
+    <div className="sobre-dev-member-top">
+      <DevPhoto
+        name={member.name}
+        src={member.photo}
+        size="sm"
+        objectPosition={member.objectPosition}
+        photoClassName={member.photoClassName}
+      />
+      <h4 className="sobre-dev-member-name" title={member.name}>{member.name}</h4>
+      <p className="sobre-dev-member-role" title={member.role}>{member.role}</p>
+    </div>
+    {member.portfolioUrl && (
+      <a
+        href={member.portfolioUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="sobre-dev-portfolio-btn"
+        aria-label={`Acessar portfólio de ${member.name}`}
+      >
+        <span>Portfólio</span>
+        <span className="sobre-dev-portfolio-arrow" aria-hidden="true">↗</span>
+      </a>
+    )}
+  </article>
+);
+
+/**
+ * Componente Principal da Seção de Desenvolvedores
+ */
+const SobreDesenvolvedores = () => {
+  // Estado que armazena a página ativa do carrossel (0 = Front-end, 1 = Back-end)
+  const [currentPage, setCurrentPage] = useState(0);
+  // Estado de controle para pausar rotação durante interação do usuário
+  const [isPaused, setIsPaused] = useState(false);
+  // Preferência do usuário por redução de animações e movimentos
+  const [reducedMotion, setReducedMotion] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(REDUCED_MOTION_QUERY).matches,
+  );
+  // Posição X inicial do gesto de arrasto (touch/mouse)
+  const touchStartX = useRef(null);
+
+  const totalPages = teamPages.length; // Exatamente 2 páginas
+
+  // Monitora mudanças na preferência de movimento reduzido no sistema operacional
   useEffect(() => {
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const updateMotionPreference = () => setReducedMotion(motionQuery.matches);
+    const motionQuery = window.matchMedia(REDUCED_MOTION_QUERY);
+    const handleMotionChange = () => setReducedMotion(motionQuery.matches);
 
-    updateMotionPreference();
-    motionQuery.addEventListener("change", updateMotionPreference);
-
-    return () => motionQuery.removeEventListener("change", updateMotionPreference);
+    motionQuery.addEventListener("change", handleMotionChange);
+    return () => motionQuery.removeEventListener("change", handleMotionChange);
   }, []);
 
+  // Temporizador de 5 segundos para avanço automático de páginas
   useEffect(() => {
+    // Se o usuário estiver interagindo ou tiver movimento reduzido ativo, não agenda o temporizador
     if (isPaused || reducedMotion) {
       return undefined;
     }
 
-    const interval = window.setInterval(() => {
-      setCurrent((index) => (index + 1) % pageCount);
-    }, 7000);
+    const timer = window.setTimeout(() => {
+      // Avanço circular suave: 0 -> 1 -> 0
+      setCurrentPage((prev) => (prev + 1) % totalPages);
+    }, AUTOPLAY_INTERVAL_MS);
 
-    return () => window.clearInterval(interval);
-  }, [isPaused, reducedMotion]);
+    // Limpeza obrigatória do temporizador para prevenir memory leaks
+    return () => window.clearTimeout(timer);
+  }, [currentPage, isPaused, reducedMotion, totalPages]);
 
-  const move = (direction) => {
-    setCurrent((index) => (
-      (index + direction + pageCount) % pageCount
-    ));
+  // Função para navegar entre as páginas (+1 ou -1)
+  const navigate = (direction) => {
+    setCurrentPage((prev) => (prev + direction + totalPages) % totalPages);
   };
 
+  // Suporte a navegação por teclado acessível
   const handleKeyDown = (event) => {
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      move(1);
+      navigate(1);
     } else if (event.key === "ArrowLeft") {
       event.preventDefault();
-      move(-1);
+      navigate(-1);
     } else if (event.key === "Home") {
       event.preventDefault();
-      setCurrent(0);
+      setCurrentPage(0);
     } else if (event.key === "End") {
       event.preventDefault();
-      setCurrent(pageCount - 1);
+      setCurrentPage(totalPages - 1);
     }
   };
 
+  // Gestos de arrasto e toque para dispositivos móveis
   const handlePointerDown = (event) => {
-    touchStart.current = event.clientX;
+    touchStartX.current = event.clientX;
     setIsPaused(true);
   };
 
   const handlePointerUp = (event) => {
-    if (touchStart.current === null) {
-      return;
+    if (touchStartX.current === null) return;
+
+    const diff = event.clientX - touchStartX.current;
+    if (Math.abs(diff) > 40) {
+      navigate(diff < 0 ? 1 : -1);
     }
 
-    const distance = event.clientX - touchStart.current;
-    if (Math.abs(distance) > 40) {
-      move(distance < 0 ? 1 : -1);
-    }
-
-    touchStart.current = null;
+    touchStartX.current = null;
     setIsPaused(false);
   };
 
   const handlePointerCancel = () => {
-    touchStart.current = null;
+    touchStartX.current = null;
     setIsPaused(false);
   };
 
   return (
     <section
       id="sobre-desenvolvedores"
-      className="sobre-panel sobre-developers-panel"
+      className="sobre-developers-panel"
       role="region"
-      aria-roledescription="carrossel"
-      aria-label="Desenvolvedores do portal"
-      onKeyDown={handleKeyDown}
-      onFocus={() => setIsPaused(true)}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          setIsPaused(false);
-        }
-      }}
+      aria-label="Desenvolvedores do Portal Sebastiana"
     >
-      <div className="sobre-developers-intro">
+      {/* 1. Apresentação Inicial: Título "Nossa equipe" e descrição curta */}
+      <div className="sobre-dev-header">
         <p className="sobre-eyebrow">Quem faz o portal</p>
-        <h2>Desenvolvedores</h2>
-        <p className="sobre-developers-tagline">
-          que transformam ideias em código.
+        <h2 className="sobre-dev-title">Nossa equipe</h2>
+        <p className="sobre-dev-subtitle">
+          Ideias, design e tecnologia que aproximam a escola da comunidade.
         </p>
-        <p className="sobre-developers-description">
-          Conheça as pessoas que construíram este portal para aproximar a escola
-          de sua comunidade.
-        </p>
-        <span className="sobre-developers-code" aria-hidden="true">&lt; portal &gt;</span>
       </div>
 
+      {/* 2. Área de Liderança: Dois cards brancos lado a lado */}
+      <div className="sobre-dev-leaders-grid">
+        {leaders.map((leader) => (
+          <LeaderCard key={leader.name} leader={leader} />
+        ))}
+      </div>
+
+      {/* 3. Área da Equipe de Desenvolvimento com Carrossel de 2 Páginas */}
       <div
-        className="sobre-developers-feature"
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
+        className="sobre-dev-team-section"
+        onKeyDown={handleKeyDown}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
+        onFocus={(event) => {
+          if (event.target.matches(":focus-visible")) setIsPaused(true);
+        }}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false);
+        }}
       >
-        <div className="sobre-developers-carousel">
+        <h3 className="sobre-dev-team-heading">Equipe de desenvolvimento</h3>
+
+        <div className="sobre-dev-carousel-container">
+          {/* Seta Lateral Esquerda */}
           <button
-            className="sobre-carousel-button sobre-carousel-button-previous"
+            className="sobre-dev-arrow sobre-dev-arrow--prev"
             type="button"
-            onClick={() => move(-1)}
-            aria-label="Mostrar desenvolvedor anterior"
+            onClick={() => navigate(-1)}
+            aria-label="Mostrar página anterior da equipe"
           >
             <span aria-hidden="true">&#8592;</span>
           </button>
 
-          <div className="sobre-developers-cards" aria-live="polite">
-            {visibleDevelopers.map((developer, index) => {
-              const developerNumber = current * cardsPerPage + index + 1;
-
-              return (
-                <article className="sobre-developer-card" key={developer.name}>
-                  <div className="sobre-developer-card-meta">
-                    <span>
-                      <strong>{String(developerNumber).padStart(2, "0")}</strong>
-                      <span aria-hidden="true"> · </span>
-                      DEV
-                    </span>
-                    <span className="sobre-developer-count" aria-hidden="true">
-                      {String(developerNumber).padStart(2, "0")} / {String(developers.length).padStart(2, "0")}
-                    </span>
+          {/* Janela de Visualização (Viewport) */}
+          <div
+            className="sobre-dev-viewport"
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
+            aria-live={isPaused || reducedMotion ? "polite" : "off"}
+          >
+            {/* Trilho Deslizante com translateX */}
+            <div
+              className="sobre-dev-track"
+              style={{ transform: `translateX(-${currentPage * 100}%)` }}
+            >
+              {teamPages.map((page, pageIndex) => (
+                <div
+                  key={page.id}
+                  className={`sobre-dev-page sobre-dev-page--${page.id}`}
+                  role="group"
+                  aria-roledescription="página"
+                  aria-label={`Página ${pageIndex + 1} de ${totalPages}: ${page.title}`}
+                  inert={pageIndex !== currentPage}
+                >
+                  <div className="sobre-dev-members-row">
+                    {page.members.map((member) => (
+                      <TeamMemberCard key={member.name} member={member} />
+                    ))}
                   </div>
-
-                  <div className="sobre-developer-initials" aria-hidden="true">
-                    {getInitials(developer.name)}
-                  </div>
-
-                  <div className="sobre-developer-info">
-                    <h3 title={developer.name}>{developer.name}</h3>
-                    <p title={developer.role}>{developer.role}</p>
-                    <a
-                      className="sobre-developer-link"
-                      href={developer.profile}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Abrir GitHub de ${developer.name}`}
-                    >
-                      <span>GitHub</span>
-                      <span aria-hidden="true">&#8594;</span>
-                    </a>
-                  </div>
-                </article>
-              );
-            })}
+                </div>
+              ))}
+            </div>
           </div>
 
+          {/* Seta Lateral Direita */}
           <button
-            className="sobre-carousel-button sobre-carousel-button-next"
+            className="sobre-dev-arrow sobre-dev-arrow--next"
             type="button"
-            onClick={() => move(1)}
-            aria-label="Mostrar próximo desenvolvedor"
+            onClick={() => navigate(1)}
+            aria-label="Mostrar próxima página da equipe"
           >
             <span aria-hidden="true">&#8594;</span>
           </button>
         </div>
 
-        <div className="sobre-carousel-dots" role="tablist" aria-label="Selecionar página de desenvolvedores">
-          {Array.from({ length: pageCount }, (_, index) => (
+        {/* Indicadores de Página: exatamente 2 pontos */}
+        <div
+          className="sobre-dev-indicators"
+          role="tablist"
+          aria-label="Indicadores de página da equipe"
+        >
+          {teamPages.map((page, index) => (
             <button
-              className={`sobre-carousel-dot${current === index ? " is-active" : ""}`}
-              key={index}
+              key={page.id}
               type="button"
               role="tab"
-              aria-selected={current === index}
-              aria-label={`Mostrar página ${index + 1} de ${pageCount}`}
-              onClick={() => setCurrent(index)}
+              className={`sobre-dev-indicator-dot${currentPage === index ? " is-active" : ""}`}
+              aria-selected={currentPage === index}
+              aria-label={`Página ${index + 1}: ${page.title}`}
+              onClick={() => setCurrentPage(index)}
             />
           ))}
         </div>
       </div>
+
+
     </section>
   );
 };
