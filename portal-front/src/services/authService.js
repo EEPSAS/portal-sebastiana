@@ -1,6 +1,31 @@
 import { api } from './api';
 
 /**
+ * POST /auth/google — Autentica via credencial do Google e retorna { user, token, token_type }.
+ * Salva o token Sanctum e os dados do usuário no localStorage em caso de sucesso.
+ */
+export const googleLogin = async ({ credential, turma_id }) => {
+  // Envia a credencial institucional recebida do Google Identity Services para a API
+  const response = await api('/auth/google', {
+    method: 'POST',
+    body: { credential, turma_id },
+  });
+
+  const data = await response.json();
+
+  // Em caso de falha de validação ou credencial expirada, dispara o erro com a mensagem do servidor
+  if (!response.ok) {
+    throw new Error(data.message || 'Erro ao realizar login institucional com Google.');
+  }
+
+  // Persiste a sessão autenticada localmente para manter o estado após recarregar
+  localStorage.setItem('auth_token', data.token);
+  localStorage.setItem('auth_user', JSON.stringify(data.user));
+
+  return data;
+};
+
+/**
  * POST /auth/login — Autentica e retorna { user, token, token_type }.
  * Armazena token e user no localStorage em caso de sucesso.
  */

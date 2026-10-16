@@ -29,11 +29,15 @@ class RelatorioImportadoResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'message' => $this->message,
+            // Status do processamento: 'sucesso' ou 'pendente_confirmacao'
+            'status' => $this->resource['status'] ?? 'sucesso',
+            'message' => $this->resource['message'] ?? $this->message,
             'turma' => [
                 'id_turma' => $this->resource['turma']['id_turma'] ?? null,
                 'nome_identificador' => $this->resource['turma']['nome_identificador'] ?? null,
             ],
+            // Lista de estudantes com nomes homônimos ou similares que necessitam de confirmação manual
+            'ambiguidades' => $this->resource['ambiguidades'] ?? [],
             'dados' => $this->resource['dados'] ?? [],
         ];
     }

@@ -87,11 +87,12 @@ export const fetchTurmaResumo = async (turmaId, { periodo, signal } = {}) => {
   return response.json();
 };
 
-// Busca as notas reais registradas para os alunos da turma
-export const fetchTurmaNotas = async (turmaId, { periodo, disciplinaId, signal } = {}) => {
+// Busca as notas reais registradas para os alunos da turma (com suporte a filtros opcionais)
+export const fetchTurmaNotas = async (turmaId, { periodo, disciplinaId, alunoId, signal } = {}) => {
   const params = new URLSearchParams();
   if (periodo) params.set("periodo_letivo", periodo);
   if (disciplinaId) params.set("disciplina_id", disciplinaId);
+  if (alunoId) params.set("aluno_id", alunoId);
   const query = params.toString() ? `?${params.toString()}` : "";
 
   const response = await api(`/turmas/${turmaId}/notas${query}`, { signal });
@@ -100,6 +101,26 @@ export const fetchTurmaNotas = async (turmaId, { periodo, disciplinaId, signal }
     throw new Error(errorData?.message || "Não foi possível carregar as notas da turma.");
   }
   return response.json();
+};
+
+// Exclui notas e frequências importadas via CSV para a turma e período selecionados
+export const excluirDadosCsv = async (turmaId, { periodo, signal } = {}) => {
+  const params = new URLSearchParams();
+  if (periodo) params.set("periodo_letivo", periodo);
+  const query = params.toString() ? `?${params.toString()}` : "";
+
+  const response = await api(`/turmas/${turmaId}/dados-csv${query}`, {
+    method: "DELETE",
+    signal,
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Não foi possível excluir os dados do diário escolar.");
+  }
+
+  return data;
 };
 
 // Envia o arquivo CSV de notas/faltas para importação e sincronização

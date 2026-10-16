@@ -70,11 +70,12 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
   "role": "aluno",
   "role_label": "Aluno",
   "turma": "1º Ano A - Ensino Médio",
+  "turma_id": 1,
   "ativo": true,
   "permissoes": []
 }
 ```
-* **Nota sobre `turma`**: Retorna a string com o `nome_identificador` da turma ativa do aluno (matrícula com status `Ativo`). Caso o usuário não seja aluno ou não possua matrícula ativa vinculada, o valor retornado é `null`.
+* **Nota sobre `turma` e `turma_id`**: Retorna a string com o `nome_identificador` e o ID numérico da turma ativa do aluno (matrícula com status `Ativo`). Caso o usuário não seja aluno ou não possua matrícula ativa vinculada, os valores retornados são `null`.
 
 ---
 
@@ -163,8 +164,9 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 | `GET` | `/api/matriculas` | Especialista / Prof / Adm | N/A | `MatriculaResource` (Coleção) | `turmasService.listarMatriculas()` | Relação nominal de todos os matriculados ativos |
 | `POST` | `/api/matriculas` | Especialista / Adm | `StoreMatriculaRequest` | `MatriculaResource` | `turmasService.vincularAluno()` | Matricula/vincula aluno na turma |
 | `PATCH`| `/api/matriculas/{matricula_id}/cancelar` | Especialista / Adm | N/A | `MatriculaResource` | `turmasService.cancelarMatricula()` | Cancela/desvincula matrícula de aluno |
-| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista | `ImportarRelatorioTurmaRequest` | `RelatorioImportadoResource` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com notas e faltas consolidadas |
-| `GET` | `/api/turmas/{turma_id}/notas` | Especialista / Prof / Adm | N/A | `NotaResource` (Coleção) | `turmasService.listarNotasTurma()` | Consulta notas lançadas na turma com filtros de período e disciplina |
+| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista | `ImportarRelatorioTurmaRequest` | `RelatorioImportadoResource` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com notas/faltas consolidadas, heurística de primeiro/último nome e desambiguação de homônimos (suporta `mapeamentos_alunos`) |
+| `DELETE`| `/api/turmas/{turma_id}/dados-csv` | Especialista / Adm | N/A | Mensagem 200 | `turmasService.excluirDadosCsv()` | Exclui notas e faltas carregadas via CSV da turma (suporta ?periodo_letivo=) |
+| `GET` | `/api/turmas/{turma_id}/notas` | Especialista / Prof / Adm | N/A | `NotaResource` (Coleção) | `turmasService.listarNotasTurma()` | Consulta notas lançadas na turma com filtros de período, disciplina e aluno (`aluno_id`) |
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/boletim` | Aluno / Prof / Esp / Adm | N/A | `BoletimResource` | `boletimService.obterBoletim()` | Boletim consolidado de notas e faltas |
 
 > **Regra de Escopo:** O Professor possui acesso **estritamente consultivo** aos dados da turma e dos alunos. Não há telas nem rotas para cadastro diário de tarefas ou chamada manual. A criação de turmas e a vinculação de alunos são privativas do Especialista e Administrador.

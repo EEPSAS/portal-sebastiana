@@ -21,16 +21,17 @@ const ABAS = [
   },
 ];
 
-export default function Boletim({ turmaId }) {
+export default function Boletim({ turmaId, alunoId }) {
   const [abaAtiva, setAbaAtiva] = useState("resumo");
   const referenciasAbas = useRef([]);
   const {
     dados,
     carregando,
     erro,
+    semMatricula,
     podeTentarNovamente,
     tentarNovamente,
-  } = useBoletim(turmaId);
+  } = useBoletim(turmaId, alunoId);
 
   // As setas permitem trocar de aba sem exigir que o estudante use o mouse.
   const navegarAbas = (evento, indiceAtual) => {
@@ -136,16 +137,30 @@ export default function Boletim({ turmaId }) {
               )}
 
               {abaAtiva === aba.id && !carregando && erro && (
-                <div className="alert alert-warning mb-0" role="alert">
-                  <p className="mb-2">{erro}</p>
+                <div
+                  className={`alert ${semMatricula ? "alert-info" : "alert-warning"} d-flex flex-column gap-2 mb-0 rounded-4 shadow-sm`}
+                  role="alert"
+                >
+                  <div className="d-flex align-items-center gap-2">
+                    <i
+                      className={`bi ${semMatricula ? "bi-info-circle-fill text-info" : "bi-exclamation-triangle-fill text-warning"} fs-5`}
+                      aria-hidden="true"
+                    />
+                    <strong className="fw-semibold">
+                      {semMatricula ? "Aviso de Matrícula Escolar" : "Atenção"}
+                    </strong>
+                  </div>
+                  <p className="mb-0 text-secondary">{erro}</p>
                   {podeTentarNovamente && (
-                    <button
-                      type="button"
-                      className="btn btn-sm boletim__btn-primary rounded-pill px-3"
-                      onClick={tentarNovamente}
-                    >
-                      Tentar novamente
-                    </button>
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        className="btn btn-sm boletim__btn-primary rounded-pill px-3"
+                        onClick={tentarNovamente}
+                      >
+                        Tentar novamente
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

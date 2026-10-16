@@ -38,19 +38,25 @@ class EspecialistaDashboardController extends Controller
         $arquivo = $request->file('arquivo') ?? $request->file('planilha');
         $periodo = $request->input('periodo_letivo');
         $dataAula = $request->input('data_aula');
+        // Mapeamentos manuais de resolução de homônimos enviados pelo especialista
+        $mapeamentosAlunos = $request->input('mapeamentos_alunos', []);
 
         $resultado = $this->dashboardService->processarPlanilhaConsolidada(
             $turma,
             $arquivo,
             $periodo,
-            $dataAula
+            $dataAula,
+            $mapeamentosAlunos
         );
 
         return (new RelatorioImportadoResource([
+            'status' => $resultado['status'] ?? 'sucesso',
+            'message' => $resultado['message'] ?? 'Relatório da turma importado e sincronizado com sucesso.',
             'turma' => [
                 'id_turma' => $turma->id_turma,
                 'nome_identificador' => $turma->nome_identificador,
             ],
+            'ambiguidades' => $resultado['ambiguidades'] ?? [],
             'dados' => $resultado,
         ]))->response()->setStatusCode(200);
     }

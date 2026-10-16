@@ -146,7 +146,7 @@ cp .env.example .env
 php artisan key:generate
 
 # 4. Executar as migrações e popular o banco com dados pedagógicos
-php artisan migrate --seed
+php artisan key:generate
 
 # 5. Iniciar o servidor da API
 php artisan serve

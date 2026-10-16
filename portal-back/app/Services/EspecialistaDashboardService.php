@@ -11,6 +11,7 @@ use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -29,13 +30,15 @@ class EspecialistaDashboardService
      * @param  UploadedFile|string  $arquivo  Arquivo enviado via upload ou caminho em disco
      * @param  string|null  $periodoLetivo  Período dos lançamentos (ex: '1º Trimestre' ou '1º Bimestre')
      * @param  string|null  $dataAula  Data de referência para as faltas (formato Y-m-d)
+     * @param  array  $mapeamentosManuais  Mapeamento de homônimos confirmados pelo Especialista [nome_csv => id_usuario|'novo']
      * @return array Resumo com quantidade de registros processados e alertas
      */
     public function processarPlanilhaConsolidada(
         Turma $turma,
         UploadedFile|string $arquivo,
         ?string $periodoLetivo = null,
-        ?string $dataAula = null
+        ?string $dataAula = null,
+        array $mapeamentosManuais = []
     ): array {
         // Lê o conteúdo bruto do arquivo
         $conteudo = $arquivo instanceof UploadedFile
@@ -65,12 +68,37 @@ class EspecialistaDashboardService
             }
         }
 
-        // Utiliza o período e a data informados ou os valores detectados automaticamente
+        // Utiliza o período detectado ou informado
         $periodo = $periodoLetivo ?: ($periodoDetectado ?: '1º Trimestre');
-        $data = $dataAula ?: ($dataExtracaoDetectada ?: now()->format('Y-m-d'));
 
-        // Extrai os dados estruturados de notas e faltas por aluno
-        $dadosExtraidos = $this->extrairNotasEFaltasPorAluno($linhas, $turma);
+        // Determina uma data de referência alinhada ao período caso não haja data explícita no arquivo ou formulário
+        $anoAtual = (int) ($turma->ano_letivo ?: date('Y'));
+        $dataPadraoPeriodo = match (true) {
+            str_contains($periodo, '1º') => "{$anoAtual}-04-15",
+            str_contains($periodo, '2º') => "{$anoAtual}-08-15",
+            str_contains($periodo, '3º') => "{$anoAtual}-11-15",
+            default => now()->format('Y-m-d'),
+        };
+
+        $data = $dataAula ?: ($dataExtracaoDetectada ?: $dataPadraoPeriodo);
+
+        // Extrai os dados estruturados de notas e faltas por aluno com suporte a desambiguação
+        $dadosExtraidos = $this->extrairNotasEFaltasPorAluno($linhas, $turma, $mapeamentosManuais);
+
+        // Se houver estudantes com homônimos que ainda não foram confirmados pelo especialista,
+        // interrompemos a persistência para solicitar a confirmação manual sem corromper o banco.
+        if (! empty($dadosExtraidos['ambiguidades'])) {
+            return [
+                'status' => 'pendente_confirmacao',
+                'message' => 'Identificamos alunos com o mesmo nome na planilha ou escola. Por favor, confirme a correspondência de cada um.',
+                'ambiguidades' => array_values($dadosExtraidos['ambiguidades']),
+                'linhas_lidas' => count($linhas),
+                'alunos_identificados' => count($dadosExtraidos['alunos_dados']),
+                'notas_sincronizadas' => 0,
+                'frequencias_sincronizadas' => 0,
+                'alertas' => $dadosExtraidos['alertas'],
+            ];
+        }
 
         // Efetua a gravação e upsert no banco de dados de maneira transacional
         $resultadoSincronizacao = $this->sincronizarRegistrosAcademicos(
@@ -81,6 +109,7 @@ class EspecialistaDashboardService
         );
 
         return [
+            'status' => 'sucesso',
             'linhas_lidas' => count($linhas),
             'periodo_aplicado' => $periodo,
             'data_referencia' => $data,
@@ -92,32 +121,132 @@ class EspecialistaDashboardService
     }
 
     /**
+     * Normaliza e separa os termos significativos de um nome completo (removendo acentos e conectivos).
+     *
+     * @return array{primeiro: string, ultimo: string, termos: array<string>}
+     */
+    public function normalizarTermosNome(string $nomeCompleto): array
+    {
+        // Converte para minúsculas e remove acentos
+        $limpo = Str::ascii(mb_strtolower(trim($nomeCompleto)));
+        // Remove pontuações e caracteres que não sejam letras e espaços
+        $limpo = preg_replace('/[^a-z0-9\s]/', '', $limpo);
+
+        $palavras = array_values(array_filter(explode(' ', (string) $limpo)));
+
+        // Preposições e conectivos comuns da língua portuguesa a serem desconsiderados
+        $conectivos = ['de', 'da', 'do', 'das', 'dos', 'e'];
+        $termos = array_values(array_filter($palavras, fn ($p) => ! in_array($p, $conectivos) && strlen($p) > 1));
+
+        if (empty($termos)) {
+            $termos = $palavras;
+        }
+
+        $primeiro = $termos[0] ?? '';
+        $ultimo = $termos[count($termos) - 1] ?? $primeiro;
+
+        return [
+            'primeiro' => $primeiro,
+            'ultimo' => $ultimo,
+            'termos' => $termos,
+        ];
+    }
+
+    /**
+     * Localiza candidatos a aluno correspondentes ao identificador ou nome vindo do CSV.
+     * Heurística:
+     * 1. Correspondência exata por ID, e-mail ou nome civil.
+     * 2. Padrão de e-mail institucional (primeiro.ultimo@...).
+     * 3. Nome cadastrado contendo primeiro e último termo.
+     * Prioriza os alunos já matriculados na turma atual; recorre aos demais alunos da escola se vazio.
+     *
+     * @return Collection<int, User>
+     */
+    public function buscarCandidatosAluno(string $identificadorAluno, Turma $turma): Collection
+    {
+        $identificadorLimpo = trim($identificadorAluno);
+        $slugNome = Str::slug($identificadorLimpo);
+        $nomeNormalizado = Str::ascii(mb_strtolower($identificadorLimpo));
+        $infoTermos = $this->normalizarTermosNome($identificadorLimpo);
+        $primeiro = $infoTermos['primeiro'];
+        $ultimo = $infoTermos['ultimo'];
+
+        $testarUsuario = function (User $usuario) use ($identificadorLimpo, $nomeNormalizado, $slugNome, $primeiro, $ultimo) {
+            $userNameNorm = Str::ascii(mb_strtolower($usuario->name));
+            $userEmailNorm = Str::ascii(mb_strtolower($usuario->email));
+
+            // 1. Correspondência exata por nome ou e-mail
+            if ($userNameNorm === $nomeNormalizado || $usuario->email === $identificadorLimpo || $usuario->name === $identificadorLimpo) {
+                return true;
+            }
+
+            // 2. Slug exato no e-mail (ex: yasmin-teixeira-santos...)
+            if (str_starts_with($userEmailNorm, "{$slugNome}@") || str_starts_with($userEmailNorm, "{$slugNome}.")) {
+                return true;
+            }
+
+            // 3. Padrão institucional de primeiro e último nome no e-mail (ex: yasmin.santos@...)
+            if (! empty($primeiro) && ! empty($ultimo)) {
+                $padraoEmailPonto = "{$primeiro}.{$ultimo}@";
+                $padraoEmailUnderline = "{$primeiro}_{$ultimo}@";
+                $padraoEmailJunto = "{$primeiro}{$ultimo}@";
+
+                if (str_starts_with($userEmailNorm, $padraoEmailPonto)
+                    || str_starts_with($userEmailNorm, $padraoEmailUnderline)
+                    || str_starts_with($userEmailNorm, $padraoEmailJunto)) {
+                    return true;
+                }
+
+                // 4. Nome cadastrado no banco contendo primeiro e último termo
+                $termosCadastrados = $this->normalizarTermosNome($usuario->name);
+                if ($termosCadastrados['primeiro'] === $primeiro && $termosCadastrados['ultimo'] === $ultimo) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        // 1ª Prioridade: Buscar entre os alunos ativos matriculados na turma
+        $alunosDaTurma = $turma->alunos()->get();
+        $candidatosNaTurma = $alunosDaTurma->filter($testarUsuario)->values();
+
+        if ($candidatosNaTurma->isNotEmpty()) {
+            return $candidatosNaTurma;
+        }
+
+        // 2ª Prioridade: Buscar entre todos os alunos cadastrados no sistema
+        $todosAlunos = User::where('role', UserRole::ALUNO)->get();
+
+        return $todosAlunos->filter($testarUsuario)->values();
+    }
+
+    /**
      * Faz a leitura das linhas do diário escolar da EEPSAS, suportando cabeçalhos de disciplinas
      * em múltiplas linhas (ex: "CONCEITOS AVANÇADOS EM ARQUITETURA DE" + "SISTEMAS") e sub-cabeçalhos
      * alternados de "1º TRIMESTRE" e "FALTAS".
      *
      * @param  array  $linhas  Linhas de texto do CSV
      * @param  Turma  $turma  Turma que está sendo processada
-     * @return array Dados estruturados contendo 'alunos_dados' e 'alertas'
+     * @param  array  $mapeamentosManuais  Mapeamentos de homônimos resolvidos pelo especialista [nome_csv => id_usuario|'novo']
+     * @return array Dados estruturados contendo 'alunos_dados', 'ambiguidades' e 'alertas'
      */
-    public function extrairNotasEFaltasPorAluno(array $linhas, Turma $turma): array
+    public function extrairNotasEFaltasPorAluno(array $linhas, Turma $turma, array $mapeamentosManuais = []): array
     {
         $alertas = [];
         $alunosDados = [];
+        $ambiguidades = [];
 
         // 1. Detectar o delimitador predominante do arquivo (; ou , ou tab)
         $delimitador = ',';
+        $totalPontosEVirgulas = 0;
+        $totalVirgulas = 0;
         foreach ($linhas as $linha) {
-            $virgulas = substr_count($linha, ',');
-            $pontosEVirgulas = substr_count($linha, ';');
-            if ($pontosEVirgulas > $virgulas && $pontosEVirgulas > 2) {
-                $delimitador = ';';
-                break;
-            }
-            if ($virgulas > 2) {
-                $delimitador = ',';
-                break;
-            }
+            $totalVirgulas += substr_count($linha, ',');
+            $totalPontosEVirgulas += substr_count($linha, ';');
+        }
+        if ($totalPontosEVirgulas >= $totalVirgulas && $totalPontosEVirgulas > 0) {
+            $delimitador = ';';
         }
 
         // 2. Localizar o índice da linha de cabeçalho principal que contém "ALUNO"
@@ -271,31 +400,43 @@ class EspecialistaDashboardService
                 continue;
             }
 
-            // Localiza ou cadastra o aluno dinamicamente
-            $slugNome = Str::slug($identificadorAluno);
-            $emailGerado = "{$slugNome}.{$turma->id_turma}@aluno.mg.gov.br";
+            // Localiza ou cadastra o aluno dinamicamente através da heurística inteligente
+            $alunoEncontrado = null;
 
-            // 1. Busca por nome exato, e-mail informado ou e-mail padrão já gerado para a turma
-            $alunoEncontrado = User::where('name', $identificadorAluno)
-                ->orWhere('email', $identificadorAluno)
-                ->orWhere('email', $emailGerado)
-                ->first();
+            // 1. Caso o Especialista já tenha resolvido a ambiguidade manualmente pelo modal
+            if (isset($mapeamentosManuais[$identificadorAluno])) {
+                $opcaoEscolhida = $mapeamentosManuais[$identificadorAluno];
+                if ($opcaoEscolhida !== 'novo' && $opcaoEscolhida !== 'criar_novo') {
+                    $alunoEncontrado = User::find((int) $opcaoEscolhida);
+                }
+            } else {
+                // 2. Heurística de correspondência resiliente (primeiro e último nome, e-mail institucional)
+                $candidatos = $this->buscarCandidatosAluno($identificadorAluno, $turma);
 
-            // 2. Busca aproximada pelo slug do e-mail (caso o estudante já exista no sistema)
-            if (! $alunoEncontrado) {
-                $alunoEncontrado = User::where('email', 'like', "{$slugNome}%")->first();
+                if ($candidatos->count() === 1) {
+                    $alunoEncontrado = $candidatos->first();
+                } elseif ($candidatos->count() > 1) {
+                    // Detectada ambiguidade/homônimo: armazena para confirmação manual no modal
+                    if (! isset($ambiguidades[$identificadorAluno])) {
+                        $ambiguidades[$identificadorAluno] = [
+                            'nome_csv' => $identificadorAluno,
+                            'candidatos' => $candidatos->map(fn (User $u) => [
+                                'id' => $u->id,
+                                'name' => $u->name,
+                                'email' => $u->email,
+                                'ja_matriculado' => $turma->alunos()->where('users.id', $u->id)->exists(),
+                            ])->values()->all(),
+                        ];
+                    }
+
+                    continue; // Não processa as notas desta linha até que o Especialista confirme
+                }
             }
 
-            // 3. Busca insensível a maiúsculas e acentos em nível de aplicação (compatível com SQLite)
+            // 3. Se o aluno não foi encontrado e não era homônimo pendente, ou foi marcado como 'novo':
             if (! $alunoEncontrado) {
-                $nomeNormalizado = Str::ascii(mb_strtolower($identificadorAluno));
-                $alunoEncontrado = User::all()->first(function ($user) use ($nomeNormalizado) {
-                    return Str::ascii(mb_strtolower($user->name)) === $nomeNormalizado;
-                });
-            }
-
-            // 4. Se o aluno realmente não existir, cadastra no sistema garantindo e-mail único
-            if (! $alunoEncontrado) {
+                $slugNome = Str::slug($identificadorAluno);
+                $emailGerado = "{$slugNome}.{$turma->id_turma}@aluno.mg.gov.br";
                 $emailFinal = $emailGerado;
                 $contador = 1;
                 while (User::where('email', $emailFinal)->exists()) {
@@ -307,7 +448,7 @@ class EspecialistaDashboardService
                     'name' => $identificadorAluno,
                     'email' => $emailFinal,
                     'password' => bcrypt('12345678'),
-                    'role' => UserRole::PADRAO,
+                    'role' => UserRole::ALUNO,
                     'ativo' => true,
                 ]);
             }
@@ -358,6 +499,7 @@ class EspecialistaDashboardService
 
         return [
             'alunos_dados' => $alunosDados,
+            'ambiguidades' => $ambiguidades,
             'alertas' => $alertas,
         ];
     }

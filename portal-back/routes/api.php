@@ -72,6 +72,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/turmas/{turma}/alunos-disponiveis', [TurmaController::class, 'alunosDisponiveis']);
     Route::get('/turmas/{turma}/disciplinas', [TurmaController::class, 'disciplinas']);
     Route::get('/turmas/{turma}/notas', [TurmaController::class, 'notas']);
+    Route::delete('/turmas/{turma}/dados-csv', [TurmaController::class, 'excluirDadosCsv']);
     Route::post('/turmas/{turma}/disciplinas', [TurmaController::class, 'vincularDisciplina']);
     Route::delete('/turmas/{turma}/disciplinas/{disciplina}', [TurmaController::class, 'desvincularDisciplina']);
     Route::apiResource('turmas', TurmaController::class);
