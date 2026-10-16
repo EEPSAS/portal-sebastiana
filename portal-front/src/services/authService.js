@@ -1,6 +1,28 @@
 import { api } from './api';
 
 /**
+ * POST /auth/google — Valida a credencial institucional e cria a sessão local.
+ */
+export const googleLogin = async ({ credential, turma_id }) => {
+  const response = await api('/auth/google', {
+    method: 'POST',
+    body: { credential, turma_id },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Erro ao realizar login institucional com Google.');
+  }
+
+  // Persiste a sessão retornada após o backend validar o token do Google.
+  localStorage.setItem('auth_token', data.token);
+  localStorage.setItem('auth_user', JSON.stringify(data.user));
+
+  return data;
+};
+
+/**
  * POST /auth/login — Autentica e retorna { user, token, token_type }.
  * Armazena token e user no localStorage em caso de sucesso.
  */

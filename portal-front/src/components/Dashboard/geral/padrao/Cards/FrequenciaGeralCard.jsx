@@ -11,7 +11,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 export default function FrequenciaGeralCard({
   porcentagem = 94,
   classificacao = "Ótima",
-  bgColor = "#d6006e"
+  bgColor = "var(--dashboard-pink)"
 }) {
   // Prepara os dados para o gráfico de Rosca (Donut) do Recharts
   const data = [
@@ -20,15 +20,14 @@ export default function FrequenciaGeralCard({
   ];
 
   // Cores: fatia ativa em branco puro, fatia restante translúcida
-  const COLORS = ["#ffffff", "rgba(255, 255, 255, 0.28)"];
+  const COLORS = ["var(--dashboard-white)", "rgba(var(--dashboard-white-rgb), 0.28)"];
 
   return (
     <div className="col-12 col-sm-6 col-lg-3">
       <div
-        className="card h-100 border-0 shadow-sm rounded-4 text-white p-3 d-flex flex-row align-items-center"
+        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-4 text-white p-3 d-flex flex-row align-items-center"
         style={{
           backgroundColor: bgColor,
-          minHeight: "158px",
         }}
       >
         {/* Gráfico Circular Recharts */}

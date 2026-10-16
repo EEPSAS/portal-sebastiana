@@ -82,7 +82,7 @@ const GraficoDesempenho = ({ titulo, descricao, dados, maximo, unidade }) => (
               {dados.map((item) => (
                 <Cell
                   key={`${item.nome}-${item.tipo}`}
-                  fill={item.tipo === "Destaque" ? "#16a34a" : "#f97316"}
+                  fill={item.tipo === "Destaque" ? "var(--dashboard-navy)" : "var(--dashboard-amber)"}
                 />
               ))}
             </Bar>

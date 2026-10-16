@@ -163,7 +163,7 @@ const CadastroEventoModal = ({ categories, event, initialDate, error, saving, on
 							maxLength={30}
 							value={color}
 							onChange={(inputEvent) => setColor(inputEvent.target.value)}
-							placeholder="Ex.: #4287f5"
+							placeholder="Ex.: #08047D"
 							className="agenda-form-input"
 						/>
 					</label>

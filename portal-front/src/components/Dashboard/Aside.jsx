@@ -118,7 +118,6 @@ const Aside = () => {
   return (
     <aside
       className="dashboard-aside d-flex flex-column flex-shrink-0 p-3 bg-white shadow-sm"
-      style={{ width: "260px", minHeight: "100vh" }}
     >
       {/* Cabeçalho do Aside: Logotipo e Badge exclusivo do Admin */}
       <Link

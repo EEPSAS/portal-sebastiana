@@ -205,8 +205,8 @@ const TurmasAba = ({
                             style={{
                               width: "36px",
                               height: "36px",
-                              backgroundColor: "#fce7f3",
-                              color: "#e6007e",
+                              backgroundColor: "var(--dashboard-pink-soft)",
+                              color: "var(--dashboard-pink)",
                               fontSize: "0.85rem",
                             }}
                           >

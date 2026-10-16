@@ -14,14 +14,13 @@ export function MelhorNotaCard({
   return (
     <div className="col-12 col-sm-6 col-lg-3">
       <div
-        className="card h-100 border-0 shadow-sm rounded-4 p-3 d-flex flex-column justify-content-between bg-white"
-        style={{ minHeight: "158px" }}
+        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-4 p-3 d-flex flex-column justify-content-between bg-white"
       >
         <div>
           <div className="d-flex align-items-center gap-2 mb-2">
             <span
               className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
-              style={{ backgroundColor: "#eff6ff", color: "#3b82f6", width: "28px", height: "28px" }}
+              style={{ backgroundColor: "var(--dashboard-navy-soft)", color: "var(--dashboard-navy)", width: "28px", height: "28px" }}
             >
               <i className="bi bi-star-fill" style={{ fontSize: "0.85rem" }}></i>
             </span>
@@ -36,7 +35,7 @@ export function MelhorNotaCard({
 
         <div
           className="rounded-3 p-2 mt-2"
-          style={{ backgroundColor: "#f0fdf4", border: "1px solid #dcfce7" }}
+          style={{ backgroundColor: "var(--dashboard-navy-soft)", border: "1px solid var(--dashboard-navy-soft)" }}
         >
           <p className="mb-0 text-success" style={{ fontSize: "0.74rem", lineHeight: 1.3 }}>
             {mensagem}
@@ -55,14 +54,13 @@ export function NotaAtencaoCard({
   return (
     <div className="col-12 col-sm-6 col-lg-3">
       <div
-        className="card h-100 border-0 shadow-sm rounded-4 p-3 d-flex flex-column justify-content-between bg-white"
-        style={{ minHeight: "158px" }}
+        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-4 p-3 d-flex flex-column justify-content-between bg-white"
       >
         <div>
           <div className="d-flex align-items-center gap-2 mb-2">
             <span
               className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
-              style={{ backgroundColor: "#fef2f2", color: "#ef4444", width: "28px", height: "28px" }}
+              style={{ backgroundColor: "var(--dashboard-pink-soft)", color: "var(--dashboard-pink)", width: "28px", height: "28px" }}
             >
               <i className="bi bi-exclamation-circle-fill" style={{ fontSize: "0.85rem" }}></i>
             </span>
@@ -77,7 +75,7 @@ export function NotaAtencaoCard({
 
         <div
           className="rounded-3 p-2 mt-2"
-          style={{ backgroundColor: "#fff1f2", border: "1px solid #ffe4e6" }}
+          style={{ backgroundColor: "var(--dashboard-pink-soft)", border: "1px solid var(--dashboard-pink-soft)" }}
         >
           <p className="mb-0 text-danger" style={{ fontSize: "0.74rem", lineHeight: 1.3 }}>
             {mensagem}

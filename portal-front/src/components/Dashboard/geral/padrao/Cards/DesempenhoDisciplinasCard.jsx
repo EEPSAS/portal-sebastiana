@@ -12,7 +12,7 @@ import { BarChart, Bar, ResponsiveContainer, YAxis, Tooltip } from "recharts";
  */
 
 // Componente didático para a mini-barra Recharts horizontal
-function MiniProgressBar({ valor, max = 10, cor = "#10b981", sufixo = "" }) {
+function MiniProgressBar({ valor, max = 10, cor = "var(--dashboard-navy)", sufixo = "" }) {
   const chartData = [{ name: "progresso", valor, restante: Math.max(0, max - valor) }];
 
   return (
@@ -26,10 +26,17 @@ function MiniProgressBar({ valor, max = 10, cor = "#10b981", sufixo = "" }) {
           <YAxis type="category" dataKey="name" hide />
           <Tooltip
             formatter={(val) => [`${val}${sufixo}`, "Valor"]}
-            contentStyle={{ borderRadius: "8px", fontSize: "0.75rem", padding: "4px 8px" }}
+            contentStyle={{
+              borderRadius: "8px",
+              fontSize: "0.75rem",
+              padding: "4px 8px",
+              backgroundColor: "var(--dashboard-white)",
+              color: "var(--dashboard-navy)",
+              borderColor: "var(--dashboard-gray-border)",
+            }}
           />
           <Bar dataKey="valor" stackId="a" fill={cor} radius={[4, 4, 4, 4]} />
-          <Bar dataKey="restante" stackId="a" fill="#e2e8f0" radius={[0, 4, 4, 0]} />
+          <Bar dataKey="restante" stackId="a" fill="var(--dashboard-gray-border)" radius={[0, 4, 4, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -41,28 +48,28 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
 
   // Dados padrão mockados para Disciplinas (Notas)
   const topMelhoresNotas = dadosDisciplinas?.melhores || [
-    { posicao: 1, nome: "Língua Portuguesa", valor: 9.8, cor: "#10b981", corBadge: "#10b981" },
-    { posicao: 2, nome: "História", valor: 9.5, cor: "#3b82f6", corBadge: "#3b82f6" },
-    { posicao: 3, nome: "Biologia", valor: 9.2, cor: "#8b5cf6", corBadge: "#8b5cf6" },
+    { posicao: 1, nome: "Língua Portuguesa", valor: 9.8, cor: "var(--dashboard-navy)", corBadge: "var(--dashboard-navy)" },
+    { posicao: 2, nome: "História", valor: 9.5, cor: "var(--dashboard-navy)", corBadge: "var(--dashboard-navy)" },
+    { posicao: 3, nome: "Biologia", valor: 9.2, cor: "var(--dashboard-navy)", corBadge: "var(--dashboard-navy)" },
   ];
 
   const topPioresNotas = dadosDisciplinas?.piores || [
-    { posicao: 1, nome: "Matemática", valor: 5.6, cor: "#ef4444", corBadge: "#ef4444" },
-    { posicao: 2, nome: "Inglês", valor: 6.3, cor: "#f59e0b", corBadge: "#f59e0b" },
-    { posicao: 3, nome: "Química", valor: 6.8, cor: "#06b6d4", corBadge: "#06b6d4" },
+    { posicao: 1, nome: "Matemática", valor: 5.6, cor: "var(--dashboard-pink)", corBadge: "var(--dashboard-pink)" },
+    { posicao: 2, nome: "Inglês", valor: 6.3, cor: "var(--dashboard-amber)", corBadge: "var(--dashboard-amber)" },
+    { posicao: 3, nome: "Química", valor: 6.8, cor: "var(--dashboard-gray)", corBadge: "var(--dashboard-gray)" },
   ];
 
   // Dados padrão mockados para Frequências
   const topMelhoresFreq = dadosFrequencias?.melhores || [
-    { posicao: 1, nome: "Educação Física", valor: 100, cor: "#10b981", corBadge: "#10b981" },
-    { posicao: 2, nome: "Artes", valor: 98, cor: "#3b82f6", corBadge: "#3b82f6" },
-    { posicao: 3, nome: "Geografia", valor: 96, cor: "#8b5cf6", corBadge: "#8b5cf6" },
+    { posicao: 1, nome: "Educação Física", valor: 100, cor: "var(--dashboard-navy)", corBadge: "var(--dashboard-navy)" },
+    { posicao: 2, nome: "Artes", valor: 98, cor: "var(--dashboard-navy)", corBadge: "var(--dashboard-navy)" },
+    { posicao: 3, nome: "Geografia", valor: 96, cor: "var(--dashboard-navy)", corBadge: "var(--dashboard-navy)" },
   ];
 
   const topPioresFreq = dadosFrequencias?.piores || [
-    { posicao: 1, nome: "Filosofia", valor: 76, cor: "#ef4444", corBadge: "#ef4444" },
-    { posicao: 2, nome: "Física", valor: 80, cor: "#f59e0b", corBadge: "#f59e0b" },
-    { posicao: 3, nome: "Sociologia", valor: 84, cor: "#06b6d4", corBadge: "#06b6d4" },
+    { posicao: 1, nome: "Filosofia", valor: 76, cor: "var(--dashboard-pink)", corBadge: "var(--dashboard-pink)" },
+    { posicao: 2, nome: "Física", valor: 80, cor: "var(--dashboard-amber)", corBadge: "var(--dashboard-amber)" },
+    { posicao: 3, nome: "Sociologia", valor: 84, cor: "var(--dashboard-gray)", corBadge: "var(--dashboard-gray)" },
   ];
 
   const isNotas = visaoAtiva === "disciplina";
@@ -72,13 +79,13 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
   const sufixo = isNotas ? "" : "%";
 
   return (
-    <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+    <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 w-100">
       {/* Cabeçalho do Card com Seletor Disciplina vs Frequência */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
         <div className="d-flex align-items-center gap-3">
           <div
             className="rounded-3 d-flex align-items-center justify-content-center p-2 text-primary"
-            style={{ backgroundColor: "#eff6ff", width: "42px", height: "42px" }}
+            style={{ backgroundColor: "var(--dashboard-navy-soft)", width: "42px", height: "42px" }}
           >
             <i className="bi bi-bar-chart-line-fill fs-5"></i>
           </div>
@@ -118,8 +125,8 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
       </div>
 
       {/* Seção 1: Top 3 - Melhores */}
-      <div className="mb-4">
-        <h4 className="fw-bold fs-6 text-dark mb-3">
+      <div className="mb-3">
+        <h4 className="fw-bold fs-6 text-dark mb-2">
           {isNotas ? "Top 3 - Melhores Notas" : "Top 3 - Melhores Frequências"}
         </h4>
         <div className="row g-3">
@@ -127,12 +134,12 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
             <div key={`melhor-${item.posicao}`} className="col-12 col-md-4">
               <div
                 className="p-3 rounded-4 h-100 d-flex flex-column justify-content-between"
-                style={{ backgroundColor: "#f8fafc", border: "1px solid #f1f5f9" }}
+                style={{ backgroundColor: "var(--dashboard-gray-soft)", border: "1px solid var(--dashboard-gray-soft)" }}
               >
                 <div className="d-flex align-items-center gap-3 mb-2">
                   <span
                     className="rounded-circle text-white fw-bold d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width: "32px", height: "32px", backgroundColor: item.corBadge, fontSize: "0.85rem" }}
+                    style={{ width: "32px", height: "32px", backgroundColor: "var(--dashboard-navy)", fontSize: "0.85rem" }}
                   >
                     {item.posicao}
                   </span>
@@ -146,7 +153,7 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
                   </div>
                 </div>
 
-                <MiniProgressBar valor={item.valor} max={maxEscala} cor={item.cor} sufixo={sufixo} />
+                <MiniProgressBar valor={item.valor} max={maxEscala} cor="var(--dashboard-navy)" sufixo={sufixo} />
               </div>
             </div>
           ))}
@@ -155,7 +162,7 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
 
       {/* Seção 2: Top 3 - Piores / Atenção */}
       <div>
-        <h4 className="fw-bold fs-6 text-dark mb-3">
+        <h4 className="fw-bold fs-6 text-dark mb-2">
           {isNotas ? "Top 3 - Piores Notas" : "Top 3 - Menores Frequências"}
         </h4>
         <div className="row g-3">
@@ -163,12 +170,12 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
             <div key={`pior-${item.posicao}`} className="col-12 col-md-4">
               <div
                 className="p-3 rounded-4 h-100 d-flex flex-column justify-content-between"
-                style={{ backgroundColor: "#f8fafc", border: "1px solid #f1f5f9" }}
+                style={{ backgroundColor: "var(--dashboard-gray-soft)", border: "1px solid var(--dashboard-gray-soft)" }}
               >
                 <div className="d-flex align-items-center gap-3 mb-2">
                   <span
                     className="rounded-circle text-white fw-bold d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width: "32px", height: "32px", backgroundColor: item.corBadge, fontSize: "0.85rem" }}
+                    style={{ width: "32px", height: "32px", backgroundColor: "var(--dashboard-pink)", fontSize: "0.85rem" }}
                   >
                     {item.posicao}
                   </span>
@@ -182,7 +189,7 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
                   </div>
                 </div>
 
-                <MiniProgressBar valor={item.valor} max={maxEscala} cor={item.cor} sufixo={sufixo} />
+                <MiniProgressBar valor={item.valor} max={maxEscala} cor="var(--dashboard-pink)" sufixo={sufixo} />
               </div>
             </div>
           ))}

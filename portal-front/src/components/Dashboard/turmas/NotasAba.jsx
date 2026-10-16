@@ -99,20 +99,20 @@ const NotasAba = ({
                     <div
                       className="rounded-3 px-2 py-1 text-center"
                       style={{
-                        backgroundColor: isSelecionada ? "#fce7f3" : "#f8fafc",
-                        border: isSelecionada ? "1px solid #e6007e" : "1px solid #e2e8f0",
+                        backgroundColor: isSelecionada ? "var(--dashboard-pink-soft)" : "var(--dashboard-gray-soft)",
+                        border: isSelecionada ? "1px solid var(--dashboard-pink)" : "1px solid var(--dashboard-gray-border)",
                       }}
                     >
                       <span
                         className="fw-bold d-block"
                         style={{
                           fontSize: "1rem",
-                          color: isSelecionada ? "#e6007e" : temNota ? "#0f172a" : "#94a3b8",
+                          color: isSelecionada ? "var(--dashboard-pink)" : temNota ? "var(--dashboard-navy)" : "var(--dashboard-gray)",
                         }}
                       >
                         {temNota ? mediaNum.toFixed(1) : "—"}
                       </span>
-                      <small style={{ fontSize: "0.65rem", color: "#64748b" }}>Média</small>
+                      <small style={{ fontSize: "0.65rem", color: "var(--dashboard-ink-muted)" }}>Média</small>
                     </div>
                   </div>
 
@@ -121,7 +121,7 @@ const NotasAba = ({
                       {turma.total_avaliados || 0} avaliados
                     </small>
                     {isSelecionada && (
-                      <span className="badge rounded-pill" style={{ backgroundColor: "#e6007e", fontSize: "0.65rem" }}>
+                      <span className="badge rounded-pill" style={{ backgroundColor: "var(--dashboard-pink)", fontSize: "0.65rem" }}>
                         Ativa
                       </span>
                     )}
@@ -140,7 +140,7 @@ const NotasAba = ({
           <div>
             <h4 className="fw-bold mb-0 text-dark fs-6">
               Notas da Turma:{" "}
-              <span style={{ color: "#e6007e" }}>
+              <span style={{ color: "var(--dashboard-pink)" }}>
                 {turmaSelecionada?.nome_identificador || "Selecione uma turma"}
               </span>
             </h4>

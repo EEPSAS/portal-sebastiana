@@ -49,12 +49,13 @@ const GeralPadrao = () => {
   }
 
   return (
-    <div className="pb-4">
+    <div className="student-overview">
+      {/* As classes de visão geral ajustam a densidade sem alterar conteúdo ou cores. */}
       {/* 1. Banner de Boas-Vindas */}
       <AlunoBoasVindasCard />
 
       {/* 2. Grid de 4 Cards Superiores */}
-      <div className="row g-3 mb-4">
+      <div className="student-overview__metrics row g-3 mb-3">
         {/* Card 1: Frequência Geral (Magenta com Recharts) */}
         <FrequenciaGeralCard
           porcentagem={stats?.frequenciaGeral?.porcentagem || 94}
@@ -83,14 +84,14 @@ const GeralPadrao = () => {
       </div>
 
       {/* 3. Seção Principal: Desempenho (8 colunas) e Cardápio (4 colunas) */}
-      <div className="row g-3 align-items-stretch">
-        <div className="col-12 col-xl-8 col-lg-7 d-flex">
+      <div className="student-overview__details row g-3 align-items-stretch">
+        <div className="col-12 col-lg-8 d-flex">
           <DesempenhoDisciplinasCard
             dadosDisciplinas={desempenho?.disciplinas}
             dadosFrequencias={desempenho?.frequencias}
           />
         </div>
-        <div className="col-12 col-xl-4 col-lg-5 d-flex">
+        <div className="col-12 col-lg-4 d-flex">
           <CardapioSemanalCard />
         </div>
       </div>
