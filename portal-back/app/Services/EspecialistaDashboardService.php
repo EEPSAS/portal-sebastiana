@@ -7,7 +7,9 @@ use App\Models\Disciplina;
 use App\Models\Frequencia;
 use App\Models\Matricula;
 use App\Models\Nota;
+use App\Models\Noticia;
 use App\Models\Turma;
+use App\Models\TurmaDisciplina;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
@@ -1027,5 +1029,180 @@ class EspecialistaDashboardService
         } else {
             $query->where('periodo_letivo', $periodo);
         }
+    }
+
+    /**
+     * Gera a visão geral consolidada com KPIs, médias por turma e atualizações recentes
+     * para o painel geral (/dashboard/geral), customizada por papel (Especialista vs Professor).
+     */
+    public function obterVisaoGeral(User $usuario): array
+    {
+        // 1. Determina as turmas do escopo com base no papel do usuário
+        $isDocenteEstrito = $usuario->isProfessor() && ! $usuario->canManageAcademic();
+
+        if ($isDocenteEstrito) {
+            // Identifica as turmas e disciplinas onde o professor atua
+            $vinculosDocente = TurmaDisciplina::where('professor_id', $usuario->id)->get();
+            $turmasIds = $vinculosDocente->pluck('turma_id')->unique()->filter()->values();
+            $disciplinasIdsProf = $vinculosDocente->pluck('disciplina_id')->unique()->filter()->values();
+
+            // Se o professor possui turmas atribuídas, filtra por elas; caso contrário, fallback para turmas ativas
+            if ($turmasIds->isNotEmpty()) {
+                $turmas = Turma::whereIn('id_turma', $turmasIds)
+                    ->where('status', 'Ativa')
+                    ->orderBy('nome_identificador')
+                    ->get();
+            } else {
+                $turmas = Turma::where('status', 'Ativa')->orderBy('nome_identificador')->get();
+                $disciplinasIdsProf = collect();
+            }
+        } else {
+            // Especialistas e Administradores visualizam todas as turmas ativas da instituição
+            $turmas = Turma::where('status', 'Ativa')->orderBy('nome_identificador')->get();
+            $disciplinasIdsProf = collect();
+        }
+
+        // Caso a escola não tenha turmas com status 'Ativa', busca todas
+        if ($turmas->isEmpty()) {
+            $turmas = Turma::orderBy('nome_identificador')->get();
+        }
+
+        $turmasIdsList = $turmas->pluck('id_turma')->toArray();
+
+        // 2. Calcula os indicadores por turma (Médias de notas e Frequências)
+        $mediasTurmas = [];
+        $frequenciasTurmas = [];
+        $somaMediasTurmas = 0.0;
+        $turmasComNota = 0;
+        $totalAulasGeral = 0;
+        $totalFaltasGeral = 0;
+
+        foreach ($turmas as $turma) {
+            // Consulta de notas da turma (filtrando disciplinas do docente caso aplicável)
+            $queryNotas = Nota::where('turma_id', $turma->id_turma);
+            if ($isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()) {
+                $queryNotas->whereIn('disciplina_id', $disciplinasIdsProf);
+            }
+            $notas = $queryNotas->get();
+
+            if ($notas->isNotEmpty()) {
+                // Converte cada avaliação proporcionalmente para a escala de 0 a 10
+                $aproveitamentoTurma = $notas->map(function ($nota) {
+                    $max = $nota->valor_maximo > 0 ? (float) $nota->valor_maximo : 10.0;
+
+                    return ((float) $nota->valor_nota / $max) * 10;
+                })->avg();
+
+                $mediaTurma = round((float) $aproveitamentoTurma, 1);
+                $somaMediasTurmas += $mediaTurma;
+                $turmasComNota++;
+            } else {
+                $mediaTurma = 0.0;
+            }
+
+            // Consulta de faltas e presenças da turma
+            $queryFreq = Frequencia::where('turma_id', $turma->id_turma);
+            if ($isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()) {
+                $queryFreq->whereIn('disciplina_id', $disciplinasIdsProf);
+            }
+            $aulasTurma = (int) (clone $queryFreq)->sum('quantidade_aulas');
+            $faltasTurma = (int) (clone $queryFreq)->whereIn('status_presenca', ['Falta', 'Falta Justificada'])->sum('quantidade_aulas');
+
+            $totalAulasGeral += $aulasTurma;
+            $totalFaltasGeral += $faltasTurma;
+
+            $presencaTurma = $aulasTurma > 0
+                ? (int) round((1 - ($faltasTurma / $aulasTurma)) * 100)
+                : 100;
+
+            $mediasTurmas[] = [
+                'id' => $turma->id_turma,
+                'turma' => $turma->nome_identificador,
+                'nota' => $mediaTurma,
+            ];
+
+            $frequenciasTurmas[] = [
+                'id' => $turma->id_turma,
+                'turma' => $turma->nome_identificador,
+                'percentual' => $presencaTurma,
+            ];
+        }
+
+        // 3. Consolidação dos KPIs Superiores
+        // Total de alunos ativos distintos no escopo
+        $totalAlunos = Matricula::whereIn('turma_id', $turmasIdsList)
+            ->where('status_matricula', 'Ativo')
+            ->distinct('usuario_id')
+            ->count('usuario_id');
+
+        // Média geral agregada (escala 0-10)
+        $mediaGeral = $turmasComNota > 0 ? round($somaMediasTurmas / $turmasComNota, 1) : 0.0;
+
+        // Frequência média global em percentual
+        $frequenciaMediaPercentual = $totalAulasGeral > 0
+            ? round((1 - ($totalFaltasGeral / $totalAulasGeral)) * 100, 1)
+            : 100.0;
+
+        // Total de notícias publicadas no sistema
+        $noticiasCount = Noticia::count();
+
+        // 4. Últimas Atualizações Reais (Notícias recentes + Atualizações recentes de notas)
+        $atualizacoes = [];
+
+        // Notícias recentes (até 3)
+        $noticiasRecentes = Noticia::orderByDesc('created_at')->limit(3)->get();
+        foreach ($noticiasRecentes as $noticia) {
+            $atualizacoes[] = [
+                'id' => "noticia-{$noticia->id}",
+                'tipo' => 'noticia',
+                'texto' => "Nova notícia publicada: {$noticia->titulo}",
+                'tempoAtras' => $noticia->created_at ? $noticia->created_at->locale('pt_BR')->diffForHumans() : 'recentemente',
+                'timestamp' => $noticia->created_at?->timestamp ?? 0,
+            ];
+        }
+
+        // Notas recentes (até 3)
+        $notasRecentes = Nota::with(['turma', 'disciplina'])
+            ->whereIn('turma_id', $turmasIdsList)
+            ->orderByDesc('updated_at')
+            ->limit(3)
+            ->get();
+
+        foreach ($notasRecentes as $nota) {
+            $nomeTurma = $nota->turma?->nome_identificador ?? 'Turma';
+            $nomeDisc = $nota->disciplina?->nome ?? 'Disciplina';
+            $atualizacoes[] = [
+                'id' => "nota-{$nota->id_nota}",
+                'tipo' => 'notas',
+                'texto' => "Notas atualizadas — {$nomeTurma} ({$nomeDisc})",
+                'tempoAtras' => $nota->updated_at ? $nota->updated_at->locale('pt_BR')->diffForHumans() : 'recentemente',
+                'timestamp' => $nota->updated_at?->timestamp ?? 0,
+            ];
+        }
+
+        // Ordena atualizações por cronologia decrescente (mais recentes primeiro)
+        usort($atualizacoes, fn ($a, $b) => $b['timestamp'] <=> $a['timestamp']);
+
+        // Remove a chave de ordenação interna antes de entregar
+        $ultimasAtualizacoes = array_map(function ($item) {
+            unset($item['timestamp']);
+
+            return $item;
+        }, array_slice($atualizacoes, 0, 5));
+
+        return [
+            'kpis' => [
+                'total_alunos' => $totalAlunos,
+                'media_geral' => $mediaGeral,
+                'frequencia_media' => "{$frequenciaMediaPercentual}%",
+                'noticias_publicadas' => $noticiasCount,
+                'total_turmas' => count($turmas),
+            ],
+            'resumo_turmas' => [
+                'medias' => $mediasTurmas,
+                'frequencias' => $frequenciasTurmas,
+            ],
+            'ultimas_atualizacoes' => $ultimasAtualizacoes,
+        ];
     }
 }

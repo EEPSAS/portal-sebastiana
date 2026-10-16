@@ -84,11 +84,47 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
 |---|---|---|---|---|---|---|
-| `GET` | `/api/noticias` | Público | N/A | `NoticiaResource` (Coleção) | `noticiasService.listar()` | Lista notícias publicadas (com paginação) |
-| `GET` | `/api/noticias/{id}` | Público | N/A | `NoticiaResource` | `noticiasService.obterPorId()` | Detalhes de uma notícia específica |
-| `POST` | `/api/noticias` | Especialista / Adm | `StoreNoticiaRequest` | `NoticiaResource` | `noticiasService.criar()` | Cria nova notícia escolar |
-| `PUT` | `/api/noticias/{id}` | Especialista / Adm | `UpdateNoticiaRequest` | `NoticiaResource` | `noticiasService.atualizar()` | Atualiza notícia existente |
-| `DELETE` | `/api/noticias/{id}` | Especialista / Adm | N/A | Mensagem 200/204 | `noticiasService.excluir()` | Remove notícia |
+| `GET` | `/api/noticias` | Público | N/A | `NoticiaResource` (Coleção) | `noticiasService.listarNoticias()` | Sem parâmetros: top 5 (Home). Com `?page`/`?per_page`: paginado (padrão 10). `?all=true`: todas |
+| `GET` | `/api/noticias/{id}` | Público | N/A | `NoticiaResource` | `noticiasService.obterNoticia()` | Detalhes de uma notícia específica |
+| `POST` | `/api/noticias` | Especialista / Adm (+ quem tiver `criar_noticia`) | `StoreNoticiaRequest` | `NoticiaResource` | `noticiasService.criarNoticia()` | Cria nova notícia escolar (autor = usuário logado) |
+| `PUT` | `/api/noticias/{id}` | Especialista / Adm (+ autor com `editar_noticia_propria`) | `UpdateNoticiaRequest` | `NoticiaResource` | `noticiasService.atualizarNoticia()` | Atualiza notícia existente |
+| `DELETE` | `/api/noticias/{id}` | Especialista / Adm | N/A | Mensagem 200 | `noticiasService.excluirNoticia()` | Remove notícia |
+
+* **Regra de destaque**: ao criar/atualizar com `destaque: true`, qualquer outra notícia em destaque é desmarcada (apenas uma notícia principal por vez).
+
+#### Especificação de Payload: Entrada (`StoreNoticiaRequest` / `UpdateNoticiaRequest`)
+```json
+{
+  "titulo": "string (obrigatório no POST, máx. 255)",
+  "conteudo": "string (obrigatório no POST)",
+  "categoria": "string | null (máx. 100, padrão 'Geral')",
+  "descricao": "string | null (máx. 500; se vazio, gerado dos 160 primeiros caracteres do conteúdo)",
+  "url_foto": "string | null (máx. 2048)",
+  "url_miniatura": "string | null (máx. 2048)",
+  "data_publicacao": "date | null",
+  "destaque": "boolean | null"
+}
+```
+
+#### Especificação de Payload: Saída (`NoticiaResource`)
+```json
+{
+  "id": 1,
+  "categoria": "Pedagógico",
+  "titulo": "Semana de Orientação Pedagógica",
+  "descricao": "Resumo da semana pedagógica.",
+  "conteudo": "Texto completo da matéria.",
+  "url_foto": "https://exemplo.com/foto.jpg",
+  "url_miniatura": "https://exemplo.com/foto.jpg",
+  "data_publicacao": "2026-10-16T15:00:00.000000Z",
+  "destaque": true,
+  "autor": { "id": 3, "name": "Clara Mendes", "nickname": "Clara" },
+  "created_at": "2026-10-16T15:00:00.000000Z",
+  "updated_at": "2026-10-16T15:00:00.000000Z"
+}
+```
+* **Listagem paginada** (`?page`/`?per_page`): envelope padrão Laravel `{ "data": [NoticiaResource...], "links": {...}, "meta": { "current_page", "last_page", "per_page", "total" } }`.
+* **Mapeamento interno**: `url_foto` ↔ coluna `imagem`, `url_miniatura` ↔ `miniatura`, `data_publicacao` ↔ `dataPublicacao` (via mutators/accessors do Model `Noticia`).
 
 ---
 
@@ -192,7 +228,48 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 
 | Método | Endpoint | Acesso | API Resource (Back) | Serviço Front | Dados Retornados por Perfil |
 |---|---|---|---|---|---|
+| `GET` | `/api/dashboard/geral` | Especialista / Prof / Adm | `DashboardGeralResource` | `geralService()` / `fetchDashboardGeral()` | Indicadores agregados (KPIs), médias por turma (0-10) e últimas atualizações reais |
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/resumo-global` | Aluno | `AlunoResumoGlobalResource` | `dashboardService.obterResumoAluno()` | Média geral, percentual de frequência e avisos |
 | `GET` | `/api/turmas/{turma_id}/resumo-gerencial` | Especialista / Adm | `EspecialistaResumoGerencialResource` | `dashboardService.obterResumoEspecialista()` | Médias por componente, evasão e índice de frequência |
 | `GET` | `/api/turmas/{turma_id}/alunos-criticos` | Especialista / Adm | `AlunoCriticoResource` (Coleção) | `dashboardService.obterAlunosCriticos()` | Alunos com risco de retenção por falta ou nota |
 | `GET` | `/api/turmas/{turma_id}/desempenho-componentes` | Professor / Especialista | `DesempenhoComponenteResource` | `dashboardService.obterDesempenhoTurma()` | Médias consolidadas por disciplina da turma |
+
+#### Especificação de Payload: `DashboardGeralResource`
+Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Administradores:
+```json
+{
+  "kpis": {
+    "total_alunos": 128,
+    "media_geral": 8.4,
+    "frequencia_media": "94.2%",
+    "noticias_publicadas": 12,
+    "total_turmas": 3
+  },
+  "resumo_turmas": {
+    "medias": [
+      { "id": 1, "turma": "1º Ano A - Ensino Médio", "nota": 8.5 },
+      { "id": 2, "turma": "2º Ano B - Ensino Médio", "nota": 7.9 }
+    ],
+    "frequencias": [
+      { "id": 1, "turma": "1º Ano A - Ensino Médio", "percentual": 96 },
+      { "id": 2, "turma": "2º Ano B - Ensino Médio", "percentual": 92 }
+    ]
+  },
+  "ultimas_atualizacoes": [
+    {
+      "id": "noticia-1",
+      "tipo": "noticia",
+      "texto": "Nova notícia publicada: Feira de Ciências 2026",
+      "tempoAtras": "há 2 horas"
+    },
+    {
+      "id": "nota-1",
+      "tipo": "notas",
+      "texto": "Notas atualizadas — 1º Ano A - Ensino Médio",
+      "tempoAtras": "há 1 dia"
+    }
+  ]
+}
+```
+* **Nota sobre Escopo**: Para o `especialista` e `adm`, os dados abrangem todas as turmas ativas da instituição. Para o `professor`, os KPIs e listagens de turmas são calculados dinamicamente com base nas turmas e disciplinas sob sua regência docente (com fallback automático para a visão da escola caso ainda não possua turmas atribuídas).
+

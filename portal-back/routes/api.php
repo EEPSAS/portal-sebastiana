@@ -3,6 +3,7 @@
 use App\Http\Controllers\AlunoDashboardController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BibliotecaController;
+use App\Http\Controllers\DashboardGeralController;
 use App\Http\Controllers\DisciplinaController;
 use App\Http\Controllers\EmprestimoController;
 use App\Http\Controllers\EspecialistaDashboardController;
@@ -76,6 +77,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/turmas/{turma}/disciplinas', [TurmaController::class, 'vincularDisciplina']);
     Route::delete('/turmas/{turma}/disciplinas/{disciplina}', [TurmaController::class, 'desvincularDisciplina']);
     Route::apiResource('turmas', TurmaController::class);
+
+    // Dashboard Geral Consolidado (Visão Docente e Especialista)
+    Route::get('/dashboard/geral', [DashboardGeralController::class, 'geral']);
 
     // Dashboard do Especialista (Inteligência Acadêmica e Gestão Pedagógica)
     Route::post('/turmas/{turma_id}/importar-relatorio', [EspecialistaDashboardController::class, 'importarRelatorio']);
