@@ -16,6 +16,7 @@ const NotasAba = ({
   podeGerenciar = false,
   onAbrirImportarNotas,
   loadingNotas = false,
+  trimestreAtual = "",
 }) => {
   // Turma atualmente selecionada
   const turmaSelecionada = useMemo(
@@ -145,7 +146,8 @@ const NotasAba = ({
               </span>
             </h4>
             <small className="text-muted">
-              Mostrando {notasFiltradas.length} de {notas.length} notas lançadas.
+              Mostrando {notasFiltradas.length} de {notas.length} notas lançadas
+              {periodoFiltro ? ` (${periodoFiltro})` : ""}.
             </small>
           </div>
 
@@ -156,11 +158,18 @@ const NotasAba = ({
               style={{ width: "auto" }}
               value={periodoFiltro}
               onChange={(e) => onPeriodoFiltroChange(e.target.value)}
+              aria-label="Filtrar por período letivo"
             >
               <option value="">Todos os Períodos</option>
-              <option value="1º Trimestre">1º Trimestre</option>
-              <option value="2º Trimestre">2º Trimestre</option>
-              <option value="3º Trimestre">3º Trimestre</option>
+              <option value="1º Trimestre">
+                1º Trimestre{trimestreAtual === "1º Trimestre" ? " (Atual)" : ""}
+              </option>
+              <option value="2º Trimestre">
+                2º Trimestre{trimestreAtual === "2º Trimestre" ? " (Atual)" : ""}
+              </option>
+              <option value="3º Trimestre">
+                3º Trimestre{trimestreAtual === "3º Trimestre" ? " (Atual)" : ""}
+              </option>
               <option value="1º Bimestre">1º Bimestre</option>
               <option value="2º Bimestre">2º Bimestre</option>
               <option value="3º Bimestre">3º Bimestre</option>
@@ -197,18 +206,32 @@ const NotasAba = ({
             <h6 className="fw-bold text-dark mb-1">Nenhuma nota encontrada</h6>
             <p className="text-muted small mb-3">
               {termoBusca || periodoFiltro
-                ? "Nenhum resultado corresponde aos filtros aplicados."
+                ? `Nenhum resultado corresponde aos filtros aplicados${
+                    periodoFiltro ? ` (${periodoFiltro})` : ""
+                  }.`
                 : "Esta turma ainda não possui notas lançadas no diário."}
             </p>
-            {podeGerenciar && !termoBusca && (
-              <button
-                type="button"
-                className="btn btn-sm turmas-btn-primario px-3 py-1 rounded-pill"
-                onClick={onAbrirImportarNotas}
-              >
-                <i className="bi bi-file-earmark-plus me-1"></i> Cadastrar Notas via CSV
-              </button>
-            )}
+            <div className="d-flex justify-content-center gap-2">
+              {/* Facilitador para exibir todos os períodos caso o trimestre padrão ainda não tenha notas */}
+              {periodoFiltro && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary px-3 py-1 rounded-pill"
+                  onClick={() => onPeriodoFiltroChange("")}
+                >
+                  <i className="bi bi-calendar3 me-1"></i> Ver todos os períodos
+                </button>
+              )}
+              {podeGerenciar && !termoBusca && (
+                <button
+                  type="button"
+                  className="btn btn-sm turmas-btn-primario px-3 py-1 rounded-pill"
+                  onClick={onAbrirImportarNotas}
+                >
+                  <i className="bi bi-file-earmark-plus me-1"></i> Cadastrar Notas via CSV
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="table-responsive">

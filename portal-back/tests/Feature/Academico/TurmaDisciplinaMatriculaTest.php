@@ -281,3 +281,42 @@ test('especialista e professor podem listar todas as matriculas ativas', functio
         ->assertJsonFragment(['name' => 'Aluno Matriculado Ativo'])
         ->assertJsonMissing(['name' => 'Aluno Desvinculado']);
 });
+
+test('contagem de total_alunos da turma atualiza imediatamente ao desvincular aluno', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $aluno1 = User::factory()->create(['role' => UserRole::ALUNO]);
+    $aluno2 = User::factory()->create(['role' => UserRole::ALUNO]);
+    $turma = Turma::factory()->create(['status' => 'Ativa']);
+
+    // Matricula 2 alunos na turma
+    $resp1 = $this->actingAs($especialista, 'sanctum')->postJson('/api/matriculas', [
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $aluno1->id,
+    ])->assertCreated();
+
+    $this->actingAs($especialista, 'sanctum')->postJson('/api/matriculas', [
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $aluno2->id,
+    ])->assertCreated();
+
+    // Verifica que a turma tem total_alunos = 2
+    $this->actingAs($especialista, 'sanctum')->getJson('/api/turmas')
+        ->assertOk()
+        ->assertJsonFragment([
+            'id_turma' => $turma->id_turma,
+            'total_alunos' => 2,
+        ]);
+
+    // Desvincula aluno 1 (Evadido)
+    $this->actingAs($especialista, 'sanctum')->patchJson("/api/matriculas/{$resp1->json('id_matricula')}/cancelar", [
+        'status_matricula' => 'Evadido',
+    ])->assertOk();
+
+    // Verifica que a contagem total_alunos da turma agora é 1
+    $this->actingAs($especialista, 'sanctum')->getJson('/api/turmas')
+        ->assertOk()
+        ->assertJsonFragment([
+            'id_turma' => $turma->id_turma,
+            'total_alunos' => 1,
+        ]);
+});

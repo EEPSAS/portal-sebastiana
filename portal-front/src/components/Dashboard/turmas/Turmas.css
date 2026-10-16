@@ -111,32 +111,135 @@
    ========================================================================== */
 
 .turma-card {
-  border-radius: 16px;
+  position: relative;
+  border-radius: 20px;
   background-color: #ffffff;
-  border: 1px solid #f1f5f9;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  border: 2px solid #e2e8f0;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease,
+              background-color 0.25s ease;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+  cursor: pointer;
+  overflow: hidden;
 }
 
 .turma-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(-4px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+  border-color: #cbd5e1;
 }
 
 .turma-card.is-selected {
   border-color: #e6007e;
-  box-shadow: 0 0 0 2px rgba(230, 0, 126, 0.15);
+  background: linear-gradient(180deg, #fff5f9 0%, #ffffff 38%);
+  box-shadow: 0 16px 32px rgba(230, 0, 126, 0.16), 0 0 0 3px rgba(230, 0, 126, 0.2);
+}
+
+/* Faixa temática colorida no topo do card */
+.turma-card-top-stripe {
+  height: 6px;
+  width: 100%;
+  background: linear-gradient(90deg, #e6007e 0%, #ff6b9d 100%);
+}
+
+.turma-card.is-selected .turma-card-top-stripe {
+  height: 8px;
+  background: linear-gradient(90deg, #e6007e 0%, #c20067 100%);
+}
+
+/* Caixa métrica interna para contagem e destaque */
+.turma-card-metric {
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 14px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.turma-card:hover .turma-card-metric {
+  background-color: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.turma-card.is-selected .turma-card-metric {
+  background-color: #ffffff;
+  border-color: #fbcfe8;
 }
 
 .turma-stat-card {
-  border-radius: 16px;
+  border-radius: 20px;
   background-color: #ffffff;
-  border: 1px solid #f1f5f9;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.03);
 }
 
 /* ==========================================================================
-   5. Campo de Busca
+   5. Barra de Filtros e Controles
+   ========================================================================== */
+
+.turmas-filtro-box {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
+}
+
+.turmas-filtro-select {
+  font-size: 0.88rem;
+  border-color: #cbd5e1;
+  border-radius: 10px;
+  background-color: #f8fafc;
+  color: #0f172a;
+  font-weight: 500;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.turmas-filtro-select:focus {
+  border-color: #e6007e;
+  box-shadow: 0 0 0 3px rgba(230, 0, 126, 0.15);
+  background-color: #ffffff;
+}
+
+/* ==========================================================================
+   6. Badges Interativos e Tabela de Matrículas
+   ========================================================================== */
+
+.matricula-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f172a;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.matricula-badge-btn:hover {
+  background-color: #e6007e;
+  color: #ffffff;
+  border-color: #e6007e;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(230, 0, 126, 0.25);
+}
+
+.aluno-clickable-row {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.aluno-clickable-row:hover .aluno-nome-destaque {
+  color: #e6007e !important;
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   7. Campo de Busca
    ========================================================================== */
 
 .turmas-search-wrapper {
@@ -159,3 +262,4 @@
   width: min(70vw, 280px);
   background-color: #f8fafc;
 }
+
