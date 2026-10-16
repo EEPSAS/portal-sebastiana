@@ -55,10 +55,11 @@ class Turma extends Model
     /**
      * @return BelongsToMany<User, $this>
      */
-    // Alunos matriculados na turma
+    // Alunos matriculados na turma com vínculo ativo
     public function alunos(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'matriculas', 'turma_id', 'usuario_id')
+            ->wherePivot('status_matricula', 'Ativo')
             ->withPivot(['id_matricula', 'data_matricula', 'status_matricula'])
             ->withTimestamps();
     }

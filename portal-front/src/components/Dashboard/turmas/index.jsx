@@ -16,6 +16,19 @@ import NotasAba from "./NotasAba";
 import "./Turmas.css";
 import TurmasAba from "./TurmasAba";
 
+/**
+ * Determina o trimestre escolar corrente com base no mês do calendário (padrão rede estadual de MG):
+ * - Meses 1 a 4 (Jan a Abr): 1º Trimestre
+ * - Meses 5 a 8 (Mai a Ago): 2º Trimestre
+ * - Meses 9 a 12 (Set a Dez): 3º Trimestre
+ */
+const obterTrimestreAtual = () => {
+  const mesAtual = new Date().getMonth() + 1; // getMonth() retorna 0 (Jan) a 11 (Dez)
+  if (mesAtual <= 4) return "1º Trimestre";
+  if (mesAtual <= 8) return "2º Trimestre";
+  return "3º Trimestre";
+};
+
 // Definição das 3 abas oficiais do módulo de turmas
 const ABAS = [
   { id: "geral", label: "Visão Geral e Indicadores" },
@@ -43,10 +56,10 @@ const Turmas = () => {
   const [resumoGeral, setResumoGeral] = useState([]);
   const [matriculas, setMatriculas] = useState([]);
 
-  // Dados da aba de notas
+  // Dados da aba de notas: por padrão, filtra pelo trimestre atual do calendário letivo
   const [turmaSelecionadaId, setTurmaSelecionadaId] = useState("");
   const [notas, setNotas] = useState([]);
-  const [periodoFiltro, setPeriodoFiltro] = useState("");
+  const [periodoFiltro, setPeriodoFiltro] = useState(() => obterTrimestreAtual());
   const [termoBuscaNota, setTermoBuscaNota] = useState("");
 
   // Estados de carregamento e avisos
@@ -83,19 +96,45 @@ const Turmas = () => {
     let cancelado = false;
 
     Promise.all([
-      fetchTurmas().catch(() => []),
-      fetchResumoGeral().catch(() => []),
-      fetchMatriculas().catch(() => []),
+      fetchTurmas().catch((err) => {
+        console.warn("Falha ao buscar turmas:", err);
+        return [];
+      }),
+      fetchResumoGeral().catch((err) => {
+        console.warn("Falha ao buscar resumo analítico:", err);
+        return [];
+      }),
+      fetchMatriculas().catch((err) => {
+        console.warn("Falha ao buscar matrículas escolares:", err);
+        return [];
+      }),
     ])
       .then(([dadosTurmas, dadosResumo, dadosMatriculas]) => {
         if (!cancelado) {
-          setTurmas(dadosTurmas || []);
-          setResumoGeral(dadosResumo || []);
-          setMatriculas(dadosMatriculas || []);
+          // Extração segura de dados independente de envelope API Resource
+          const listaTurmas = Array.isArray(dadosTurmas)
+            ? dadosTurmas
+            : Array.isArray(dadosTurmas?.data)
+            ? dadosTurmas.data
+            : [];
+          const listaResumo = Array.isArray(dadosResumo)
+            ? dadosResumo
+            : Array.isArray(dadosResumo?.data)
+            ? dadosResumo.data
+            : [];
+          const listaMatriculas = Array.isArray(dadosMatriculas)
+            ? dadosMatriculas
+            : Array.isArray(dadosMatriculas?.data)
+            ? dadosMatriculas.data
+            : [];
+
+          setTurmas(listaTurmas);
+          setResumoGeral(listaResumo);
+          setMatriculas(listaMatriculas);
 
           // Seleciona a primeira turma se nenhuma estiver selecionada
-          if (dadosTurmas && dadosTurmas.length > 0 && !turmaSelecionadaId) {
-            setTurmaSelecionadaId(String(dadosTurmas[0].id_turma));
+          if (listaTurmas.length > 0) {
+            setTurmaSelecionadaId((prev) => prev || String(listaTurmas[0].id_turma));
           }
         }
       })
@@ -111,7 +150,7 @@ const Turmas = () => {
     return () => {
       cancelado = true;
     };
-  }, [recargaKey, turmaSelecionadaId]);
+  }, [recargaKey]);
 
   /**
    * 2. Efeito de Notas: Atualiza a lista de notas sempre que a turma ou período mudarem.
@@ -207,8 +246,33 @@ const Turmas = () => {
 
     setProcessandoExclusao(true);
     try {
-      await cancelarMatriculaAluno(matriculaParaDesvincular.id_matricula, { status: "Evadido" });
-      dispararNotificacao(`Matrícula de ${matriculaParaDesvincular.aluno?.name} desvinculada.`);
+      const idMatricula = matriculaParaDesvincular.id_matricula ?? matriculaParaDesvincular.id;
+      const turmaIdDesvinculada = matriculaParaDesvincular.turma_id ?? matriculaParaDesvincular.turma?.id_turma;
+      const nomeAluno = matriculaParaDesvincular.aluno?.name || matriculaParaDesvincular.name || "Estudante";
+
+      await cancelarMatriculaAluno(idMatricula, { status: "Evadido" });
+
+      // Atualização otimista imediata na listagem de matrículas
+      setMatriculas((prev) =>
+        prev.filter((m) => (m.id_matricula ?? m.id) !== idMatricula)
+      );
+
+      // Atualização otimista imediata no contador total_alunos da turma afetada
+      if (turmaIdDesvinculada) {
+        setTurmas((prev) =>
+          prev.map((t) => {
+            if ((t.id_turma ?? t.id) === turmaIdDesvinculada) {
+              return {
+                ...t,
+                total_alunos: Math.max(0, (t.total_alunos ?? 1) - 1),
+              };
+            }
+            return t;
+          })
+        );
+      }
+
+      dispararNotificacao(`Matrícula de ${nomeAluno} desvinculada.`);
       setMatriculaParaDesvincular(null);
       setRecargaKey((prev) => prev + 1);
     } catch (err) {
@@ -329,6 +393,7 @@ const Turmas = () => {
             podeGerenciar={podeGerenciar}
             onAbrirImportarNotas={() => setModalImportarAberto(true)}
             loadingNotas={loadingNotas}
+            trimestreAtual={obterTrimestreAtual()}
           />
         )}
       </div>
@@ -425,8 +490,8 @@ const Turmas = () => {
             </h5>
             <p className="text-muted mb-4 small">
               Confirma a desvinculação de{" "}
-              <strong>"{matriculaParaDesvincular.aluno?.name}"</strong> da turma{" "}
-              <strong>"{matriculaParaDesvincular.turma?.nome_identificador}"</strong>?
+              <strong>"{matriculaParaDesvincular.aluno?.name || matriculaParaDesvincular.name || "Estudante"}"</strong> da turma{" "}
+              <strong>"{matriculaParaDesvincular.turma?.nome_identificador || matriculaParaDesvincular.turma_nome || "Turma"}"</strong>?
             </p>
             <div className="d-flex gap-2 justify-content-center">
               <button
