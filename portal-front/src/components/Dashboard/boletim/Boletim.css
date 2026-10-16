@@ -1,0 +1,383 @@
+.boletim-page {
+  color: #0f172a;
+  padding-bottom: 24px;
+}
+
+.boletim-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.boletim-page__eyebrow {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.boletim__shell {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.boletim__tabs {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid #e2e8f0;
+  scrollbar-width: thin;
+}
+
+.boletim__tab {
+  display: inline-flex;
+  min-width: 170px;
+  min-height: 58px;
+  flex: 1 0 170px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: #ffffff;
+  color: #475569;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.2s ease, background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.boletim__tab:hover {
+  color: #e6007e;
+  background-color: #fff7fb;
+}
+
+.boletim__tab.is-active {
+  border-bottom-color: #e6007e;
+  background-color: #fff7fb;
+  color: #c9006d;
+}
+
+.boletim__tab:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid rgba(230, 0, 126, 0.3);
+  outline-offset: -3px;
+}
+
+.boletim__content {
+  min-height: 300px;
+  padding: 24px;
+}
+
+.boletim__content:focus {
+  outline: none;
+}
+
+.boletim__card,
+.boletim__frequencia-card,
+.boletim__compare-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background-color: #ffffff;
+}
+
+.boletim__card {
+  padding: 20px;
+}
+
+.boletim__card-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 16px;
+  color: #0f172a;
+}
+
+.boletim__card-heading > i {
+  color: #e6007e;
+  font-size: 18px;
+}
+
+.boletim__chart {
+  width: 100%;
+  height: 300px;
+}
+
+.boletim__caption {
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.boletim__empty {
+  padding: 20px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  color: #64748b;
+  text-align: center;
+}
+
+.boletim__badge {
+  padding: 7px 12px;
+  background-color: #fce7f3;
+  color: #9d174d;
+  font-size: 12px;
+}
+
+.boletim__badge--demo {
+  background-color: #fff7ed;
+  color: #9a3412;
+}
+
+.boletim__table-wrap {
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.boletim__table {
+  min-width: 720px;
+  color: #334155;
+}
+
+.boletim__table thead th {
+  padding: 14px 16px;
+  background-color: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.boletim__table tbody th,
+.boletim__table tbody td {
+  padding: 14px 16px;
+  border-color: #f1f5f9;
+  text-align: center;
+}
+
+.boletim__table tbody th {
+  color: #0f172a;
+  text-align: left;
+}
+
+.boletim__table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.boletim__nota {
+  display: inline-flex;
+  min-width: 44px;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.boletim__nota--alta,
+.boletim__legenda-ponto--alta {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.boletim__nota--media,
+.boletim__legenda-ponto--media {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.boletim__nota--baixa,
+.boletim__legenda-ponto--baixa {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.boletim__nota--indisponivel {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.boletim__legenda {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 16px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.boletim__legenda > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.boletim__legenda-ponto {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.boletim__frequencia-card {
+  padding: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.boletim__frequencia-card:hover {
+  border-color: #f9a8d4;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+.boletim__frequencia-trimestre + .boletim__frequencia-trimestre {
+  margin-top: 14px;
+}
+
+.boletim__frequencia-valor {
+  min-width: 48px;
+  color: #15803d;
+  text-align: right;
+}
+
+.boletim__frequencia-valor--atencao {
+  color: #c2410c;
+}
+
+.boletim__progress {
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background-color: #e2e8f0;
+}
+
+.boletim__progress-bar--alta {
+  background-color: #22c55e;
+}
+
+.boletim__progress-bar--atencao {
+  background-color: #f97316;
+}
+
+.boletim__progress-bar--vazio {
+  background-color: #94a3b8;
+}
+
+.boletim__compare-card {
+  overflow: hidden;
+  padding: 0 18px 18px;
+}
+
+.boletim__compare-card > .boletim__card-heading {
+  margin: 0 -18px 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.boletim__comparativo-item + .boletim__comparativo-item {
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.boletim__comparativo-progress {
+  height: 7px;
+  margin-top: 5px;
+  background-color: #f1f5f9;
+}
+
+.boletim__frequencia-global {
+  padding: 18px 12px;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  background-color: #f8fafc;
+  text-align: center;
+}
+
+.boletim__global-percentual {
+  display: block;
+  color: #c9006d;
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.boletim__global-percentual--turma {
+  color: #64748b;
+}
+
+.boletim__frequencia-comparativo {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.boletim__state {
+  display: flex;
+  min-height: 250px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #64748b;
+}
+
+.boletim__state .spinner-border {
+  color: #e6007e;
+}
+
+.boletim__btn-primary {
+  background-color: #e6007e;
+  color: #ffffff;
+}
+
+.boletim__btn-primary:hover {
+  background-color: #d00071;
+  color: #ffffff;
+}
+
+@media (max-width: 767.98px) {
+  .boletim__content {
+    padding: 18px 14px;
+  }
+
+  .boletim__card {
+    padding: 16px 12px;
+  }
+
+  .boletim__chart {
+    height: 280px;
+  }
+
+  .boletim__frequencia-trimestre > .d-flex {
+    flex-wrap: wrap;
+  }
+
+  .boletim__frequencia-trimestre > .d-flex > span:nth-child(2) {
+    order: 3;
+    width: 100%;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .boletim-page__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .boletim__tab {
+    min-width: 150px;
+    min-height: 54px;
+    flex-basis: 150px;
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .boletim__global-percentual {
+    font-size: 24px;
+  }
+}

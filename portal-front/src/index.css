@@ -127,3 +127,41 @@ button {
   width: 3rem;
   height: 1.6rem;
 }
+
+/* Mantém a navegação e o conteúdo do painel utilizáveis em telas estreitas. */
+@media (max-width: 767.98px) {
+  .dashboard-shell {
+    flex-direction: column;
+  }
+
+  .dashboard-aside {
+    position: static;
+    width: 100% !important;
+    height: auto;
+    min-height: auto !important;
+    border-radius: 0;
+  }
+
+  .dashboard-aside .nav {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .dashboard-aside .nav-link {
+    justify-content: center;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.875rem;
+  }
+
+  .dashboard-content {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+  }
+
+  .dashboard-panel {
+    min-width: 0;
+    padding: 1rem !important;
+  }
+}
