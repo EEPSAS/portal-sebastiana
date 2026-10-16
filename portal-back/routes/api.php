@@ -13,6 +13,7 @@ use App\Http\Controllers\LivroController;
 use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\NotaController;
 use App\Http\Controllers\NoticiaController;
+use App\Http\Controllers\PlanoEstudoController;
 use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\TurmaController;
 use App\Http\Controllers\UsuarioController;
@@ -114,7 +115,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notas/boletim/{usuario}', [NotaController::class, 'gerarBoletim']);
     Route::get('/notas/meu-boletim', [NotaController::class, 'consultarNotaPropria']);
 
-    // Gestão de Livros (Criação, Edição, Deleção)
+    // Gestão de Livros (Criação, Importação em Massa via CSV, Edição, Deleção)
+    Route::post('/livros/importar-csv', [LivroController::class, 'importarCsv']);
     Route::post('/livros', [LivroController::class, 'store']);
     Route::put('/livros/{livro}', [LivroController::class, 'update']);
     Route::patch('/livros/{livro}', [LivroController::class, 'update']);
@@ -128,6 +130,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/emprestimos/{emprestimo}/devolver', [EmprestimoController::class, 'registrarDevolucao']);
     Route::patch('/emprestimos/{emprestimo}/status', [EmprestimoController::class, 'atualizarStatus']);
     Route::apiResource('emprestimos', EmprestimoController::class)->only(['index', 'show']);
+
+    // Planos de Estudos (Trilhas Didáticas da Biblioteca)
+    Route::get('/planos-estudos', [PlanoEstudoController::class, 'index']);
+    Route::post('/planos-estudos', [PlanoEstudoController::class, 'store']);
+    Route::get('/planos-estudos/{plano}', [PlanoEstudoController::class, 'show']);
+    Route::delete('/planos-estudos/{plano}', [PlanoEstudoController::class, 'destroy']);
+    Route::post('/planos-estudos/{plano}/itens', [PlanoEstudoController::class, 'adicionarItem']);
+    Route::delete('/planos-estudos/{plano}/itens/{item}', [PlanoEstudoController::class, 'removerItem']);
 
     // Gestão de Papéis e Permissões (Administrador)
     Route::get('/papeis', [UsuarioController::class, 'papeis']);

@@ -125,7 +125,7 @@ trait HasRolesAndPermissions
 
     public function isBibliotecaria(): bool
     {
-        return $this->hasRole('bibliotecaria');
+        return $this->hasRole(['bibliotecaria', 'bibliotecario']);
     }
 
     public function isAluno(): bool

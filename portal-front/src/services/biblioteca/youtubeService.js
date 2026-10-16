@@ -51,10 +51,33 @@ const requestYouTubeApi = async (resource, params, signal) => {
 };
 
 /**
- * Pesquisa videoaulas no YouTube pelo termo informado.
+ * Converte a string de duração no padrão ISO 8601 do YouTube (ex: PT1H05M20S ou PT15M33S)
+ * para um formato legível (HH:MM:SS ou MM:SS).
+ * @param {string} isoDuration String ISO 8601 retornada em contentDetails.duration.
+ * @returns {string} Duração formatada (ex: "15:33").
+ */
+export const formatarDuracaoISO8601 = (isoDuration) => {
+  if (!isoDuration || typeof isoDuration !== 'string') return '';
+
+  const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return '';
+
+  const horas = Number(match[1] || 0);
+  const minutos = Number(match[2] || 0);
+  const segundos = Number(match[3] || 0);
+
+  if (horas > 0) {
+    return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+  }
+
+  return `${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+};
+
+/**
+ * Pesquisa videoaulas no YouTube pelo termo informado e enriquece com duração e URL.
  * @param {string} searchTerm Termo de busca digitado pelo usuário.
  * @param {object} options Opções com signal para cancelamento.
- * @returns {Promise<Array>} Lista de vídeos formatados.
+ * @returns {Promise<Array>} Lista de vídeos formatados com duration e url.
  */
 export const searchYouTubeVideos = async (searchTerm, { signal } = {}) => {
   const payload = await requestYouTubeApi('search', {
@@ -64,7 +87,7 @@ export const searchYouTubeVideos = async (searchTerm, { signal } = {}) => {
     q: searchTerm
   }, signal);
 
-  return (payload.items ?? [])
+  const videosBasicos = (payload.items ?? [])
     .map((item) => {
       const videoId = item.id?.videoId;
       if (!VIDEO_ID_PATTERN.test(videoId ?? '')) {
@@ -78,14 +101,48 @@ export const searchYouTubeVideos = async (searchTerm, { signal } = {}) => {
         description: item.snippet?.description ?? '',
         channelTitle: item.snippet?.channelTitle ?? 'Canal do YouTube',
         publishedAt: item.snippet?.publishedAt ?? '',
-        thumbnail: thumbnails.high?.url ?? thumbnails.medium?.url ?? thumbnails.default?.url ?? ''
+        thumbnail: thumbnails.high?.url ?? thumbnails.medium?.url ?? thumbnails.default?.url ?? '',
+        url: `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`,
+        duration: ''
       };
     })
     .filter(Boolean);
+
+  if (videosBasicos.length === 0) {
+    return [];
+  }
+
+  // Consulta o endpoint 'videos?part=contentDetails,status' em lote para capturar a duração de cada vídeo
+  try {
+    const ids = videosBasicos.map((v) => v.videoId).join(',');
+    const detalhesPayload = await requestYouTubeApi('videos', {
+      part: 'contentDetails,status',
+      id: ids
+    }, signal);
+
+    const mapaDuracoes = {};
+    (detalhesPayload.items ?? []).forEach((item) => {
+      if (item.id && item.contentDetails?.duration) {
+        mapaDuracoes[item.id] = formatarDuracaoISO8601(item.contentDetails.duration);
+      }
+    });
+
+    return videosBasicos.map((video) => ({
+      ...video,
+      duration: mapaDuracoes[video.videoId] || ''
+    }));
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw error;
+    }
+    // Se a consulta complementar falhar, retorna os vídeos com os metadados básicos
+    return videosBasicos;
+  }
 };
 
 /**
- * Valida se um vídeo específico existe e está disponível publicamente no YouTube.
+ * Valida se um vídeo específico existe e está disponível publicamente no YouTube,
+ * retornando também sua duração formatada e URL oficial.
  * @param {string} videoId ID de 11 caracteres do YouTube.
  */
 export const validateYouTubeVideo = async (videoId) => {
@@ -94,7 +151,7 @@ export const validateYouTubeVideo = async (videoId) => {
   }
 
   const payload = await requestYouTubeApi('videos', {
-    part: 'status',
+    part: 'status,contentDetails',
     id: videoId
   });
   const video = payload.items?.[0];
@@ -102,4 +159,10 @@ export const validateYouTubeVideo = async (videoId) => {
   if (!video) {
     throw createApiError('VIDEO_UNAVAILABLE');
   }
+
+  return {
+    videoId,
+    url: `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`,
+    duration: formatarDuracaoISO8601(video.contentDetails?.duration ?? '')
+  };
 };

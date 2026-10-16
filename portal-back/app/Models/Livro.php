@@ -20,12 +20,14 @@ class Livro extends Model
     // Chave primária customizada
     protected $primaryKey = 'id_livro';
 
-    // Campos preenchíveis em massa
+    // Campos preenchíveis em massa (Mass Assignment seguro)
     protected $fillable = [
+        'codigo_livro',
         'titulo',
         'capa',
         'autor',
         'editora',
+        'data_lancamento',
         'data_publicacao',
         'prateleira_localizacao',
         'genero',
@@ -42,6 +44,7 @@ class Livro extends Model
     protected function casts(): array
     {
         return [
+            'data_lancamento' => 'date:Y-m-d',
             'data_publicacao' => 'date:Y-m-d',
             'quantidade_total' => 'integer',
             'quantidade_disponivel' => 'integer',
@@ -55,6 +58,15 @@ class Livro extends Model
     public function emprestimos(): HasMany
     {
         return $this->hasMany(Emprestimo::class, 'livro_id', 'id_livro');
+    }
+
+    /**
+     * @return HasMany<PlanoEstudoItem, $this>
+     */
+    // Itens de planos de estudos que referenciam este livro físico do acervo
+    public function planoEstudoItens(): HasMany
+    {
+        return $this->hasMany(PlanoEstudoItem::class, 'livro_id', 'id_livro');
     }
 
     // Verifica se há exemplares disponíveis para empréstimo
@@ -77,11 +89,12 @@ class Livro extends Model
      * @param  Builder<self>  $query
      * @return Builder<self>
      */
-    // Escopo local de busca textual por título, autor, gênero ou editora
+    // Escopo local de busca textual por código, título, autor, gênero ou editora
     public function scopeBuscar(Builder $query, string $termo): Builder
     {
         return $query->where(function (Builder $q) use ($termo) {
             $q->where('titulo', 'like', "%{$termo}%")
+                ->orWhere('codigo_livro', 'like', "%{$termo}%")
                 ->orWhere('autor', 'like', "%{$termo}%")
                 ->orWhere('genero', 'like', "%{$termo}%")
                 ->orWhere('editora', 'like', "%{$termo}%");

@@ -29,27 +29,27 @@ class LivroPolicy
     /**
      * Determine whether the user can create models.
      */
-    // Autoriza cadastro de novos livros para gestores da biblioteca
+    // Autoriza cadastro e importação CSV de livros apenas para Bibliotecária, Especialista e Adm
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('gerenciar_livros') || $user->hasPermissionTo('gerenciar_biblioteca');
+        return $user->canManageLibrary();
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    // Autoriza edição dos dados do livro para gestores da biblioteca
+    // Autoriza edição dos dados do livro apenas para Bibliotecária, Especialista e Adm
     public function update(User $user, Livro $livro): bool
     {
-        return $user->hasPermissionTo('gerenciar_livros') || $user->hasPermissionTo('gerenciar_biblioteca');
+        return $user->canManageLibrary();
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    // Autoriza exclusão de livros do acervo para gestores da biblioteca
+    // Autoriza exclusão de livros do acervo apenas para Bibliotecária, Especialista e Adm
     public function delete(User $user, Livro $livro): bool
     {
-        return $user->hasPermissionTo('gerenciar_livros') || $user->hasPermissionTo('gerenciar_biblioteca');
+        return $user->canManageLibrary();
     }
 }

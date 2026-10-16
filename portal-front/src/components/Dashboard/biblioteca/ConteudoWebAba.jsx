@@ -1,75 +1,104 @@
 /**
- * ConteudoWebAba.jsx - Aba Coesa de Gestão de Conteúdos Digitais e Apostilas
+ * ConteudoWebAba.jsx - Pesquisa de Conteúdos Didáticos no Google Books API
  *
  * Papel Didático:
- * Centraliza o acervo de materiais pedagógicos digitais (resumos, apostilas, links):
- * - Grid responsivo de cartões com tags temáticas e links de acesso;
- * - Modal controlado para cadastro e edição de materiais web com preenchimento seguro.
+ * Centraliza a pesquisa em tempo real de referências pedagógicas, apostilas,
+ * livros digitais e resumos acadêmicos consumindo a API oficial do Google Books.
+ * Trata rigorosamente os 3 estados assíncronos: Carregando, Erro Amigável e Vazio.
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { searchGoogleBooks } from '../../../services/biblioteca/googleBooksService';
 
-const MATERIAS_PADRAO = [
-  'Matemática',
-  'Português',
-  'Redação',
-  'Física',
-  'Química',
-  'Biologia',
-  'História',
-  'Geografia',
-  'Filosofia',
-  'Sociologia',
-  'Inglês',
-  'Espanhol',
+const TERMOS_SUGERIDOS = [
+  'Literatura Brasileira',
+  'História do Brasil',
+  'Matemática Ensino Médio',
+  'Física Mecânica',
+  'Biologia Celular',
+  'Redação ENEM',
 ];
 
-const TIPOS_MATERIAL = [
-  'Apostila',
-  'Resumo',
-  'Lista de exercícios',
-  'Manual',
-  'Texto',
-];
+const ConteudoWebAba = ({ onAviso, onAdicionarAoPlano }) => {
+  const [busca, setBusca] = useState('Literatura Brasileira');
+  const [resultados, setResultados] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+  const [buscaRealizada, setBuscaRealizada] = useState(false);
 
-const ESTADO_MATERIAL_INICIAL = {
-  id: null,
-  titulo: '',
-  materia: 'Matemática',
-  descricao: '',
-  url: '',
-  topico: '',
-  tipo: 'Apostila',
-  nivel: '',
-  autor: '',
-  corBadge: 'var(--dashboard-navy-soft)',
-  corTexto: 'var(--dashboard-navy)',
-};
+  const abortControllerRef = useRef(null);
 
-const ConteudoWebAba = ({
-  apostilas = [],
-  onSalvarApostila,
-  onExcluirApostila,
-}) => {
-  const [modalFormAberto, setModalFormAberto] = useState(false);
-  const [formApostila, setFormApostila] = useState(ESTADO_MATERIAL_INICIAL);
+  // Carrega automaticamente sugestões pedagógicas na montagem do componente
+  useEffect(() => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
-  const abrirNovoMaterial = () => {
-    setFormApostila(ESTADO_MATERIAL_INICIAL);
-    setModalFormAberto(true);
-  };
+    searchGoogleBooks('Literatura Brasileira', { signal: controller.signal })
+      .then((itens) => {
+        setResultados(itens);
+        setBuscaRealizada(true);
+      })
+      .catch((error) => {
+        if (error?.name !== 'AbortError') {
+          setErro(
+            error.message ||
+            'Não foi possível consultar os materiais no Google Books no momento. Tente novamente mais tarde.'
+          );
+          setBuscaRealizada(true);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setCarregando(false);
+        }
+      });
 
-  const abrirEdicaoMaterial = (apostila) => {
-    setFormApostila({ ...apostila });
-    setModalFormAberto(true);
+    return () => controller.abort();
+  }, []);
+
+  /**
+   * Executa a busca assíncrona ao submeter o formulário ou clicar numa sugestão.
+   */
+  const executarBusca = async (termoPesquisa) => {
+    const termo = (termoPesquisa ?? busca).trim();
+    if (!termo) {
+      onAviso?.('Digite um termo para pesquisar conteúdos no Google Books.');
+      return;
+    }
+
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setCarregando(true);
+    setErro('');
+    setBuscaRealizada(true);
+
+    try {
+      const itens = await searchGoogleBooks(termo, { signal: controller.signal });
+      setResultados(itens);
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      setResultados([]);
+      setErro(
+        error.message ||
+        'Não foi possível consultar os materiais no Google Books no momento. Tente novamente mais tarde.'
+      );
+    } finally {
+      if (!controller.signal.aborted) {
+        setCarregando(false);
+      }
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formApostila.titulo.trim()) return;
+    executarBusca();
+  };
 
-    onSalvarApostila(formApostila);
-    setModalFormAberto(false);
+  const handleSelecionarSugestao = (sugestao) => {
+    setBusca(sugestao);
+    executarBusca(sugestao);
   };
 
   return (
@@ -180,218 +209,161 @@ const ConteudoWebAba = ({
           <div className="col-12 text-center text-muted py-5">
             <p className="mb-0 fs-6">Nenhum conteúdo web encontrado.</p>
           </div>
-        )}
+          <button
+            type="submit"
+            className="btn btn-primary rounded-pill px-4 fw-semibold"
+            disabled={carregando}
+          >
+            {carregando ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" />
+                Pesquisando...
+              </>
+            ) : (
+              'Pesquisar'
+            )}
+          </button>
+        </form>
+
+        {/* Pílulas de Sugestões de Estudo */}
+        <div className="d-flex flex-wrap gap-2 align-items-center">
+          <span className="text-muted small fw-semibold">Sugestões de temas:</span>
+          {TERMOS_SUGERIDOS.map((termo) => (
+            <button
+              key={termo}
+              type="button"
+              onClick={() => handleSelecionarSugestao(termo)}
+              className="btn btn-sm btn-white bg-white border rounded-pill text-secondary py-1 px-3 small"
+            >
+              {termo}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ================= Modal: Cadastro / Edição de Material ================= */}
-      {modalFormAberto && (
+      {/* Estado 1: Alerta de Erro Amigável */}
+      {erro && (
         <div
-          className="biblioteca-modal-overlay"
-          onClick={() => setModalFormAberto(false)}
-          role="presentation"
+          className="alert alert-warning d-flex justify-content-between align-items-center mb-4 rounded-3 shadow-sm"
+          role="alert"
         >
-          <div
-            className="biblioteca-modal-dialog p-4 position-relative"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="form-apostila-titulo"
-          >
-            <button
-              type="button"
-              onClick={() => setModalFormAberto(false)}
-              className="btn-close position-absolute top-0 end-0 m-3"
-              aria-label="Fechar formulário"
-            />
-
-            <h3 id="form-apostila-titulo" className="h5 fw-bold mb-3 text-dark">
-              {formApostila.id ? 'Editar material' : 'Cadastrar material'}
-            </h3>
-
-            <form onSubmit={handleSubmit}>
-              <div className="mb-3">
-                <label className="form-label small fw-semibold" htmlFor="apostila-titulo">
-                  Título
-                </label>
-                <input
-                  id="apostila-titulo"
-                  type="text"
-                  className="form-control form-control-sm"
-                  placeholder="Ex: Resumo de Genética"
-                  value={formApostila.titulo}
-                  onChange={(e) =>
-                    setFormApostila((prev) => ({
-                      ...prev,
-                      titulo: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label small fw-semibold" htmlFor="apostila-url">
-                  Link do conteúdo web
-                </label>
-                <input
-                  id="apostila-url"
-                  type="url"
-                  className="form-control form-control-sm"
-                  value={formApostila.url ?? ''}
-                  onChange={(e) =>
-                    setFormApostila((prev) => ({
-                      ...prev,
-                      url: e.target.value,
-                    }))
-                  }
-                  maxLength={2048}
-                  placeholder="https://..."
-                  required={!formApostila.id}
-                />
-              </div>
-
-              <div className="row g-2 mb-3">
-                <div className="col-12 col-md-6">
-                  <label className="form-label small fw-semibold" htmlFor="apostila-materia">
-                    Disciplina
-                  </label>
-                  <select
-                    id="apostila-materia"
-                    className="form-select form-select-sm"
-                    value={formApostila.materia}
-                    onChange={(e) =>
-                      setFormApostila((prev) => ({
-                        ...prev,
-                        materia: e.target.value,
-                      }))
-                    }
-                  >
-                    {MATERIAS_PADRAO.map((materia) => (
-                      <option key={materia} value={materia}>
-                        {materia}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="col-12 col-md-6">
-                  <label className="form-label small fw-semibold" htmlFor="apostila-tipo">
-                    Tipo de material
-                  </label>
-                  <select
-                    id="apostila-tipo"
-                    className="form-select form-select-sm"
-                    value={formApostila.tipo}
-                    onChange={(e) =>
-                      setFormApostila((prev) => ({
-                        ...prev,
-                        tipo: e.target.value,
-                      }))
-                    }
-                  >
-                    {TIPOS_MATERIAL.map((tipo) => (
-                      <option key={tipo} value={tipo}>
-                        {tipo}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label small fw-semibold" htmlFor="apostila-descricao">
-                  Descrição
-                </label>
-                <textarea
-                  id="apostila-descricao"
-                  className="form-control form-control-sm"
-                  rows="3"
-                  maxLength={500}
-                  placeholder="Breve descrição do conteúdo..."
-                  value={formApostila.descricao}
-                  onChange={(e) =>
-                    setFormApostila((prev) => ({
-                      ...prev,
-                      descricao: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="row g-2 mb-3">
-                <div className="col-12 col-md-6">
-                  <label className="form-label small fw-semibold" htmlFor="apostila-topico">
-                    Assunto ou tópico
-                  </label>
-                  <input
-                    id="apostila-topico"
-                    type="text"
-                    className="form-control form-control-sm"
-                    placeholder="Ex: Mitose e Meiose"
-                    value={formApostila.topico}
-                    onChange={(e) =>
-                      setFormApostila((prev) => ({
-                        ...prev,
-                        topico: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="col-12 col-md-6">
-                  <label className="form-label small fw-semibold" htmlFor="apostila-nivel">
-                    Nível ou ano
-                  </label>
-                  <input
-                    id="apostila-nivel"
-                    type="text"
-                    className="form-control form-control-sm"
-                    value={formApostila.nivel}
-                    onChange={(e) =>
-                      setFormApostila((prev) => ({
-                        ...prev,
-                        nivel: e.target.value,
-                      }))
-                    }
-                    placeholder="Ex.: 1º ano, ENEM"
-                  />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="form-label small fw-semibold" htmlFor="apostila-autor">
-                  Autor ou origem
-                </label>
-                <input
-                  id="apostila-autor"
-                  type="text"
-                  className="form-control form-control-sm"
-                  placeholder="Ex.: Equipe Pedagógica"
-                  value={formApostila.autor}
-                  onChange={(e) =>
-                    setFormApostila((prev) => ({
-                      ...prev,
-                      autor: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="d-flex justify-content-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setModalFormAberto(false)}
-                  className="btn btn-sm btn-light border px-3 rounded-pill"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-sm biblioteca-btn-primario px-4 rounded-pill"
-                >
-                  Salvar material
-                </button>
-              </div>
-            </form>
+          <div className="d-flex align-items-center gap-2">
+            <span className="fs-5">⚠️</span>
+            <span className="small fw-semibold text-warning-emphasis">{erro}</span>
           </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-dark rounded-pill fw-semibold"
+            onClick={() => executarBusca()}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {/* Estado 2: Carregando com Spinner */}
+      {carregando && (
+        <div className="py-5 text-center text-muted" role="status">
+          <div className="spinner-border text-primary mb-3" role="status" />
+          <p className="fw-semibold mb-0">Consultando referências no Google Books...</p>
+        </div>
+      )}
+
+      {/* Grade de Resultados */}
+      {!carregando && resultados.length > 0 && (
+        <div className="row g-4">
+          {resultados.map((obra) => (
+            <div key={obra.id} className="col-12 col-md-6">
+              <div className="card h-100 border-0 shadow-sm p-3 rounded-4 hover-shadow">
+                <div className="d-flex gap-3">
+                  {/* Capa da Obra */}
+                  <div
+                    className="flex-shrink-0 rounded-3 overflow-hidden bg-light d-flex align-items-center justify-content-center"
+                    style={{ width: '84px', height: '120px' }}
+                  >
+                    {obra.thumbnail ? (
+                      <img
+                        src={obra.thumbnail}
+                        alt={obra.titulo}
+                        className="w-100 h-100 object-fit-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="fs-2 text-primary">📖</span>
+                    )}
+                  </div>
+
+                  {/* Informações Bibliográficas */}
+                  <div className="d-flex flex-column flex-grow-1 overflow-hidden">
+                    <h5
+                      className="card-title fw-bold text-dark mb-1 fs-6 text-truncate"
+                      title={obra.titulo}
+                    >
+                      {obra.titulo}
+                    </h5>
+
+                    <p className="card-subtitle text-muted small mb-2 text-truncate">
+                      Por <strong>{obra.fonte}</strong>
+                      {obra.dataPublicacao && ` · ${obra.dataPublicacao.slice(0, 4)}`}
+                    </p>
+
+                    <p className="card-text text-secondary small flex-grow-1 mb-3 line-clamp-3">
+                      {obra.snippet}
+                    </p>
+
+                    <div className="d-flex justify-content-between align-items-center pt-2 border-top flex-wrap gap-2">
+                      <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small">
+                        Google Books
+                      </span>
+
+                      <div className="d-flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-success rounded-pill px-3 fw-semibold small"
+                          onClick={() =>
+                            onAdicionarAoPlano?.({
+                              tipo: 'conteudo_web',
+                              conteudo_id: obra.id,
+                              titulo: obra.titulo,
+                              descricao: obra.snippet,
+                              url: obra.link,
+                              thumbnail: obra.thumbnail,
+                              fonte: obra.fonte,
+                              duracao: null,
+                            })
+                          }
+                        >
+                          + Adicionar aos planos
+                        </button>
+
+                        {obra.link && (
+                          <a
+                            href={obra.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold small"
+                          >
+                            Acessar Obra ↗
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Estado 3: Vazio Obrigatório */}
+      {!carregando && buscaRealizada && resultados.length === 0 && !erro && (
+        <div className="py-5 text-center text-muted" role="status">
+          <span className="fs-1 d-block mb-2">🔍</span>
+          <p className="mb-1 fw-semibold fs-6">Nenhum conteúdo encontrado para "{busca}".</p>
+          <p className="small text-secondary">
+            Tente pesquisar com outras palavras-chave ou escolha uma das sugestões acima.
+          </p>
         </div>
       )}
     </section>

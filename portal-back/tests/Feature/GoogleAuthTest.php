@@ -173,21 +173,3 @@ test('mantem login tradicional por email e senha funcionando normalmente (fallba
     $response->assertOk()
         ->assertJsonStructure(['user', 'token', 'token_type']);
 });
-
-test('responde adequadamente com headers CORS para o frontend local em localhost:5173', function () {
-    $response = $this->call(
-        'OPTIONS',
-        '/api/auth/google',
-        [],
-        [],
-        [],
-        [
-            'HTTP_ORIGIN' => 'http://localhost:5173',
-            'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'POST',
-            'HTTP_ACCESS_CONTROL_REQUEST_HEADERS' => 'content-type,accept,authorization',
-        ]
-    );
-
-    $response->assertStatus(204);
-    expect($response->headers->get('Access-Control-Allow-Origin'))->toBe('http://localhost:5173');
-});

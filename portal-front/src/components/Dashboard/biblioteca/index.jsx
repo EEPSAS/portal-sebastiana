@@ -2,92 +2,71 @@
  * index.jsx - Orquestrador Central da Biblioteca Escolar
  *
  * Papel Didático:
- * Atua como o container de alto nível da rota `/dashboard/biblioteca`.
- * Conecta o hook de regras de negócio (`useBiblioteca`) com as 4 abas pedagógicas:
- * 1. `AcervoAba`: acervo bibliográfico físico e digital;
- * 2. `PlanosAba`: trilhas de estudo estruturadas por disciplina;
- * 3. `VideoaulasAba`: curadoria e pesquisa integrada ao YouTube;
- * 4. `ConteudoWebAba`: resumos, apostilas e links pedagógicos externos.
- *
- * Arquitetura Equilibrada:
- * Cada aba é um componente coeso e independente, eliminando a fragmentação
- * excessiva de múltiplos subarquivos sem sobrecarregar um único arquivo monolítico.
+ * Container de alto nível da rota `/dashboard/biblioteca`.
+ * Conecta o hook de regras de negócio (`useBiblioteca`) com as 3 abas oficiais do contrato:
+ * 1. `AcervoAba`: Acervo bibliográfico físico e controle de empréstimos;
+ * 2. `VideoaulasAba`: Curadoria e pesquisa integrada ao YouTube Data API;
+ * 3. `ConteudoWebAba`: Pesquisa de livros, apostilas e referências didáticas no Google Books API.
  */
 
 import { useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { useBiblioteca } from '../../../hooks/biblioteca/useBiblioteca';
 import AcervoAba from './AcervoAba';
-import PlanosAba from './PlanosAba';
 import VideoaulasAba from './VideoaulasAba';
 import ConteudoWebAba from './ConteudoWebAba';
+import PlanosAba from './PlanosAba';
+import ModalAdicionarAoPlano from './ModalAdicionarAoPlano';
 import './Biblioteca.css';
 
 const ABAS = [
   { id: 'acervo', label: 'Acervo de Livros' },
   { id: 'videoaulas', label: 'Videoaulas' },
-  { id: 'apostilas', label: 'Conteúdo web' },
+  { id: 'conteudo-web', label: 'Conteúdo Web' },
   { id: 'planos', label: 'Planos de Estudos' },
 ];
 
-const normalizarTexto = (valor = '') =>
-  valor
-    .toString()
+const normalizarTexto = (valor) =>
+  String(valor ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
 export default function Biblioteca() {
-  const {
-    livros,
-    planos,
-    videoaulas,
-    apostilas,
-    carregandoBiblioteca,
-    erroCarregamento,
-    estadoSalvamento,
-    notificacao,
-    tentarCarregarBiblioteca,
-    tentarSalvarNovamente,
-    dispararAviso,
-    salvarLivro,
-    removerLivro,
-    adicionarComentarioLivro,
-    criarPlano,
-    removerPlano,
-    alternarMaterialPlano,
-    adicionarVideoaula,
-    removerVideoaula,
-    salvarApostila,
-    removerApostila,
-  } = useBiblioteca();
-
-  // Estados de Navegação e Filtros
-  const [abaAtiva, setAbaAtiva] = useState('acervo');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [abaAtiva, setAbaAtiva] = useState(
+    ABAS.some((a) => a.id === tabParam) ? tabParam : 'acervo'
+  );
   const [busca, setBusca] = useState('');
   const [itemParaExcluir, setItemParaExcluir] = useState(null);
+  const [itemParaAdicionarAoPlano, setItemParaAdicionarAoPlano] = useState(null);
 
-  // Filtro unificado de pesquisa
+  const {
+    livros,
+    videoaulas,
+    carregandoBiblioteca,
+    erroCarregamento,
+    notificacao,
+    tentarCarregarBiblioteca,
+    dispararAviso,
+    salvarLivro,
+    importarCsvLivros,
+    removerLivro,
+    solicitarEmprestimoLivro,
+    adicionarVideoaula,
+    removerVideoaula,
+  } = useBiblioteca(busca);
+
+  // Filtro complementar local blindado contra campos nulos (além da busca no servidor)
   const termoBusca = normalizarTexto(busca.trim());
-  const correspondeBusca = (...valores) =>
+  const listaSeguraLivros = Array.isArray(livros) ? livros : [];
+  const livrosFiltrados = listaSeguraLivros.filter((livro) =>
     !termoBusca ||
-    valores.some((valor) => normalizarTexto(valor ?? '').includes(termoBusca));
-
-  const livrosFiltrados = livros.filter((livro) =>
-    correspondeBusca(livro.titulo, livro.autor)
-  );
-  const planosFiltrados = planos.filter((plano) =>
-    correspondeBusca(plano.nome, plano.disciplina)
-  );
-  const apostilasFiltradas = apostilas.filter((apostila) =>
-    correspondeBusca(
-      apostila.titulo,
-      apostila.materia,
-      apostila.descricao,
-      apostila.topico,
-      apostila.tipo,
-      apostila.nivel,
-      apostila.autor
-    )
+    normalizarTexto(livro?.titulo).includes(termoBusca) ||
+    normalizarTexto(livro?.codigo_livro).includes(termoBusca) ||
+    normalizarTexto(livro?.autor).includes(termoBusca) ||
+    normalizarTexto(livro?.genero).includes(termoBusca)
   );
 
   const handleExecutarExclusao = () => {
@@ -95,9 +74,7 @@ export default function Biblioteca() {
     const { id, tipo } = itemParaExcluir;
 
     if (tipo === 'livro') removerLivro(id);
-    else if (tipo === 'plano') removerPlano(id);
     else if (tipo === 'video') removerVideoaula(id);
-    else if (tipo === 'apostila') removerApostila(id);
 
     setItemParaExcluir(null);
   };
@@ -105,23 +82,12 @@ export default function Biblioteca() {
   const handleSelecionarAba = (idAba) => {
     setAbaAtiva(idAba);
     setBusca('');
+    setSearchParams({ tab: idAba });
   };
-
-  if (carregandoBiblioteca) {
-    return (
-      <div className="container py-5 text-center text-muted" role="status">
-        <div className="spinner-border spinner-border-sm text-primary me-2" role="status" />
-        Carregando sua biblioteca...
-      </div>
-    );
-  }
-
-  const labelAbaAtiva =
-    ABAS.find((aba) => aba.id === abaAtiva)?.label.toLowerCase() ?? 'biblioteca';
 
   return (
     <div className="position-relative">
-      {/* Alerta de Falha de Conexão */}
+      {/* Alerta de Falha de Conexão com o Back-end */}
       {erroCarregamento && (
         <div
           className="alert alert-warning d-flex justify-content-between align-items-center mb-4 shadow-sm rounded-3 border-start border-4 border-warning"
@@ -138,24 +104,40 @@ export default function Biblioteca() {
             className="btn btn-sm btn-outline-dark rounded-pill fw-semibold"
             onClick={tentarCarregarBiblioteca}
           >
-            Tentar novamente
+            <span>Tentar novamente</span>
           </button>
         </div>
       )}
 
       {/* Toast Flutuante de Confirmação */}
       {notificacao && (
-        <div className="biblioteca-toast">✓ {notificacao}</div>
+        <div className="biblioteca-toast">
+          <span>✓ {notificacao}</span>
+        </div>
       )}
 
-      {/* Painel Central Branco */}
-      <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
+      {/* Estado de Carregamento Estável na Árvore DOM */}
+      {carregandoBiblioteca ? (
+        <div className="container py-5 text-center text-muted" role="status">
+          <div className="spinner-border text-primary mb-3" role="status" />
+          <p className="fw-semibold">
+            <span>Carregando acervo da biblioteca escolar...</span>
+          </p>
+        </div>
+      ) : (
+        /* Painel Central Branco */
+        <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
         {/* Cabeçalho com Busca e Abas */}
         <header className="mb-4">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-            <h2 className="fw-bold mb-0 text-primary fs-4">Gerenciar Biblioteca</h2>
+            <div>
+              <h2 className="fw-bold mb-1 text-primary fs-4">Biblioteca Escolar</h2>
+              <p className="text-muted small mb-0">
+                Consulte o acervo físico, assista a videoaulas e pesquise conteúdos pedagógicos.
+              </p>
+            </div>
 
-            <div className="d-flex align-items-center gap-3">
+            {abaAtiva === 'acervo' && (
               <div className="biblioteca-search-wrapper">
                 <span className="biblioteca-search-icon" aria-hidden="true">
                   🔍
@@ -163,40 +145,13 @@ export default function Biblioteca() {
                 <input
                   type="text"
                   className="form-control rounded-pill ps-5 py-2 biblioteca-search-input"
-                  placeholder={`Pesquisar ${labelAbaAtiva}...`}
+                  placeholder="Pesquisar código, título, autor ou gênero..."
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  aria-label={`Pesquisar em ${labelAbaAtiva}`}
+                  aria-label="Pesquisar livros no acervo escolar"
                 />
               </div>
-
-              {estadoSalvamento && (
-                <span
-                  className={`d-none d-sm-inline small ${
-                    estadoSalvamento === 'erro'
-                      ? 'text-danger fw-semibold'
-                      : 'text-muted'
-                  }`}
-                  role="status"
-                >
-                  {estadoSalvamento === 'salvando'
-                    ? 'Salvando...'
-                    : estadoSalvamento === 'salvo'
-                    ? 'Salvo'
-                    : 'Falha ao salvar'}
-                </span>
-              )}
-
-              {estadoSalvamento === 'erro' && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-link p-0 text-danger"
-                  onClick={tentarSalvarNovamente}
-                >
-                  Tentar salvar
-                </button>
-              )}
-            </div>
+            )}
           </div>
 
           <nav className="d-flex gap-4 border-bottom pb-2" aria-label="Abas da Biblioteca">
@@ -219,40 +174,36 @@ export default function Biblioteca() {
         {abaAtiva === 'acervo' && (
           <AcervoAba
             livros={livrosFiltrados}
+            buscaAtiva={Boolean(termoBusca)}
             onSalvarLivro={salvarLivro}
+            onImportarCsv={importarCsvLivros}
             onExcluirLivro={setItemParaExcluir}
-            onAdicionarComentario={adicionarComentarioLivro}
+            onSolicitarEmprestimo={solicitarEmprestimoLivro}
             onAviso={dispararAviso}
+            onAdicionarAoPlano={setItemParaAdicionarAoPlano}
           />
         )}
-
 
         {abaAtiva === 'videoaulas' && (
           <VideoaulasAba
-          videoaulas={videoaulas}
-          onAdicionarVideoaula={adicionarVideoaula}
+            videoaulas={videoaulas}
+            onAdicionarVideoaula={adicionarVideoaula}
+            onAdicionarAoPlano={setItemParaAdicionarAoPlano}
           />
         )}
 
-        {abaAtiva === 'apostilas' && (
+        {abaAtiva === 'conteudo-web' && (
           <ConteudoWebAba
-          apostilas={apostilasFiltradas}
-          onSalvarApostila={salvarApostila}
-          onExcluirApostila={setItemParaExcluir}
+            onAviso={dispararAviso}
+            onAdicionarAoPlano={setItemParaAdicionarAoPlano}
           />
         )}
 
         {abaAtiva === 'planos' && (
-          <PlanosAba
-            planos={planosFiltrados}
-            livros={livros}
-            apostilas={apostilas}
-            onCriarPlano={criarPlano}
-            onExcluirPlano={setItemParaExcluir}
-            onAlternarMaterial={alternarMaterialPlano}
-          />
+          <PlanosAba onAviso={dispararAviso} />
         )}
       </div>
+      )}
 
       {/* Modal Genérico de Confirmação de Exclusão */}
       {itemParaExcluir && (
@@ -273,7 +224,7 @@ export default function Biblioteca() {
               Confirmar exclusão?
             </h5>
             <p className="text-muted mb-4 small">
-              Deseja mesmo eliminar <strong>"{itemParaExcluir.nome}"</strong>?
+              Deseja realmente remover <strong>"{itemParaExcluir.nome}"</strong>?
             </p>
             <div className="d-flex gap-2 justify-content-center">
               <button
@@ -293,6 +244,15 @@ export default function Biblioteca() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Adição de Conteúdos aos Planos de Estudos */}
+      {itemParaAdicionarAoPlano && (
+        <ModalAdicionarAoPlano
+          item={itemParaAdicionarAoPlano}
+          aoFechar={() => setItemParaAdicionarAoPlano(null)}
+          aoSucesso={(msg) => dispararAviso(msg)}
+        />
       )}
     </div>
   );

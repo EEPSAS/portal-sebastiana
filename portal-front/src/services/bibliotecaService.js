@@ -1,5 +1,7 @@
 /**
  * bibliotecaService.js (ponte raiz)
- * Reexporta o serviço de biblioteca centralizado em `src/services/biblioteca/bibliotecaService.js`.
+ * Reexporta os serviços do módulo de biblioteca escolar.
  */
 export * from './biblioteca/bibliotecaService';
+export * from './biblioteca/googleBooksService';
+export * from './biblioteca/youtubeService';

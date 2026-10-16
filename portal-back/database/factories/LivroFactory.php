@@ -19,12 +19,17 @@ class LivroFactory extends Factory
      */
     public function definition(): array
     {
+        $data = fake()->date();
+
         return [
+            // Gera um código único de catalogação para testes automatizados
+            'codigo_livro' => 'LIV-'.fake()->unique()->numerify('####'),
             'titulo' => fake()->sentence(3),
             'capa' => 'https://placehold.co/300x450',
             'autor' => fake()->name(),
             'editora' => fake()->company(),
-            'data_publicacao' => fake()->date(),
+            'data_lancamento' => $data,
+            'data_publicacao' => $data,
             'prateleira_localizacao' => 'Corredor '.fake()->randomElement(['A', 'B', 'C']).', Estante '.fake()->numberBetween(1, 10),
             'genero' => fake()->randomElement(['Ficção', 'Romance', 'Ciência', 'História', 'Matemática']),
             'quantidade_total' => 5,

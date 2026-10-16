@@ -1,14 +1,17 @@
 /**
- * PlanosAba.jsx - Aba Coesa de Gestão de Planos de Estudo
+ * PlanosAba.jsx - Aba de Gestão de Planos de Estudo da Biblioteca
  *
  * Papel Didático:
- * Reúne toda a lógica da trilha de estudos:
- * - Formulário de criação rápida de plano por disciplina;
- * - Listagem de cartões de planos com contadores e tags temáticas;
- * - Modal completo para vincular/desvincular livros e conteúdos web às trilhas.
+ * Centraliza as trilhas de estudo do estudante e professor:
+ * - Criação ágil de novos planos categorizados por disciplina;
+ * - Listagem de cartões de planos com contadores reais por tipo (livros, videoaulas e web);
+ * - Navegação direta para a visualização detalhada do plano ('/dashboard/biblioteca/planos/:id');
+ * - Exclusão de planos com confirmação visual e feedback.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { planosService } from '../../../services/biblioteca/planosService';
 
 const MATERIAS_DISPONIVEIS = [
   'Matemática',
@@ -25,28 +28,93 @@ const MATERIAS_DISPONIVEIS = [
   'Espanhol',
 ];
 
-const PlanosAba = ({
-  planos = [],
-  livros = [],
-  apostilas = [],
-  onCriarPlano,
-  onExcluirPlano,
-  onAlternarMaterial,
-}) => {
+export default function PlanosAba({ onAviso }) {
+  const navigate = useNavigate();
+
+  const [planos, setPlanos] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [criando, setCriando] = useState(false);
+  const [erro, setErro] = useState('');
   const [novoPlano, setNovoPlano] = useState({
     nome: '',
     disciplina: 'Matemática',
   });
-  const [planoSelecionadoId, setPlanoSelecionadoId] = useState(null);
 
-  const planoAtivo = planos.find((p) => p.id === planoSelecionadoId);
+  const recarregarPlanos = async () => {
+    try {
+      setCarregando(true);
+      setErro('');
+      const resposta = await planosService.listar();
+      const lista = Array.isArray(resposta) ? resposta : (resposta?.data || []);
+      setPlanos(lista);
+    } catch (err) {
+      setErro(err.message || 'Erro ao carregar seus planos de estudos.');
+    } finally {
+      setCarregando(false);
+    }
+  };
 
-  const handleSubmitCriar = (e) => {
+  // Carrega os planos do usuário ao montar o componente
+  useEffect(() => {
+    let montado = true;
+
+    planosService
+      .listar()
+      .then((resposta) => {
+        if (!montado) return;
+        const lista = Array.isArray(resposta) ? resposta : (resposta?.data || []);
+        setPlanos(lista);
+      })
+      .catch((err) => {
+        if (!montado) return;
+        setErro(err.message || 'Erro ao carregar seus planos de estudos.');
+      })
+      .finally(() => {
+        if (!montado) return;
+        setCarregando(false);
+      });
+
+    return () => {
+      montado = false;
+    };
+  }, []);
+
+  // Criação rápida de um novo plano
+  const handleSubmitCriar = async (e) => {
     e.preventDefault();
     if (!novoPlano.nome.trim()) return;
 
-    onCriarPlano(novoPlano);
-    setNovoPlano({ nome: '', disciplina: 'Matemática' });
+    try {
+      setCriando(true);
+      setErro('');
+      await planosService.criar({
+        nome: novoPlano.nome.trim(),
+        disciplina: novoPlano.disciplina,
+      });
+
+      onAviso?.('Plano de estudos criado com sucesso!');
+      setNovoPlano({ nome: '', disciplina: 'Matemática' });
+      await recarregarPlanos();
+    } catch (err) {
+      setErro(err.message || 'Erro ao criar plano de estudos.');
+    } finally {
+      setCriando(false);
+    }
+  };
+
+  // Exclusão de um plano
+  const handleExcluirPlano = async (plano) => {
+    if (!window.confirm(`Deseja realmente excluir o plano "${plano.nome}"? Esta ação removerá os vínculos dos conteúdos deste plano.`)) {
+      return;
+    }
+
+    try {
+      await planosService.excluir(plano.id);
+      onAviso?.('Plano de estudos excluído com sucesso.');
+      setPlanos((prev) => prev.filter((p) => p.id !== plano.id));
+    } catch (err) {
+      alert(err.message || 'Erro ao excluir plano de estudos.');
+    }
   };
 
   return (
@@ -54,7 +122,7 @@ const PlanosAba = ({
       <div className="mb-4">
         <h4 className="fw-bold mb-1 text-dark fs-6">Meus Planos de Estudos</h4>
         <p className="text-muted mb-0 small">
-          Crie pastas para organizar seus conteúdos web e livros por disciplina.
+          Organize seus livros do acervo, videoaulas do YouTube e referências didáticas em trilhas temáticas.
         </p>
       </div>
 
@@ -82,6 +150,7 @@ const PlanosAba = ({
                 setNovoPlano({ ...novoPlano, nome: e.target.value })
               }
               required
+              disabled={criando}
             />
           </div>
 
@@ -100,6 +169,7 @@ const PlanosAba = ({
               onChange={(e) =>
                 setNovoPlano({ ...novoPlano, disciplina: e.target.value })
               }
+              disabled={criando}
             >
               {MATERIAS_DISPONIVEIS.map((mat) => (
                 <option key={mat} value={mat}>
@@ -113,199 +183,115 @@ const PlanosAba = ({
             <button
               type="submit"
               className="btn btn-sm w-100 biblioteca-btn-primario py-2 rounded-3"
+              disabled={criando}
             >
-              + Confirmar Criação
+              {criando ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
+                  Criando...
+                </>
+              ) : (
+                '+ Confirmar Criação'
+              )}
             </button>
           </div>
         </div>
       </form>
 
-      {/* Grade de Cartões de Plano */}
-      <div className="row g-4 mt-2">
-        {planos.map((plano) => {
-          const totalLivros = plano.livroIds?.length ?? 0;
-          const totalApostilas = plano.apostilaIds?.length ?? 0;
+      {/* Alerta de Erro */}
+      {erro && (
+        <div className="alert alert-warning py-2 small mb-4 d-flex align-items-center gap-2" role="alert">
+          <span>⚠️</span>
+          <span>{erro}</span>
+        </div>
+      )}
 
-          return (
-            <div key={plano.id} className="col-12 col-md-6 col-xl-4">
-              <div
-                className={`card p-4 h-100 plano-estudo-card ${
-                  plano.ativo ? 'is-ativo' : ''
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    onExcluirPlano({
-                      id: plano.id,
-                      tipo: 'plano',
-                      nome: plano.nome,
-                    })
-                  }
-                  className="position-absolute plano-estudo-card-delete-btn p-1"
-                  title="Excluir Plano"
-                  aria-label={`Excluir plano ${plano.nome}`}
-                >
-                  ✕
-                </button>
+      {/* Estado de Carregamento */}
+      {carregando ? (
+        <div className="py-5 text-center text-muted" role="status">
+          <div className="spinner-border text-primary mb-3" role="status" />
+          <p className="fw-semibold small">Carregando seus planos de estudos...</p>
+        </div>
+      ) : (
+        /* Grade de Cartões de Plano */
+        <div className="row g-4 mt-1">
+          {planos.map((plano) => {
+            const totalLivros = plano.livros_count ?? 0;
+            const totalVideoaulas = plano.videoaulas_count ?? 0;
+            const totalWeb = plano.conteudos_web_count ?? 0;
 
-                <h6 className="fw-bold mb-3 text-dark fs-6 pe-4">
-                  {plano.nome}
-                </h6>
-
-                <div className="d-flex gap-2 mb-4">
-                  <span className="badge bg-secondary-subtle text-secondary-emphasis px-2 py-1 rounded">
-                    ENEM
-                  </span>
-                  <span className="badge bg-secondary-subtle text-secondary-emphasis px-2 py-1 rounded">
-                    {plano.disciplina}
-                  </span>
-                </div>
-
-                <div className="rounded-3 p-3 mb-4 bg-light border border-light-subtle">
-                  <div className="d-flex gap-3 mb-2 fw-semibold text-dark small">
-                    <span>
-                      {totalLivros} Livro{totalLivros !== 1 ? 's' : ''}
-                    </span>
-                    <span>
-                      {totalApostilas} Conteúdo{totalApostilas !== 1 ? 's' : ''} web
-                    </span>
-                  </div>
-                  <div className="d-flex gap-2" aria-hidden="true">
-                    <span title="Livros">📘📙</span>
-                    <span title="Conteúdo web">📄</span>
-                  </div>
-                </div>
-
-                <div className="mt-auto">
+            return (
+              <div key={plano.id} className="col-12 col-md-6 col-xl-4">
+                <div className="card p-4 h-100 plano-estudo-card">
                   <button
                     type="button"
-                    onClick={() => setPlanoSelecionadoId(plano.id)}
-                    className="btn btn-link p-0 text-decoration-none fw-semibold text-success small"
+                    onClick={() => handleExcluirPlano(plano)}
+                    className="position-absolute plano-estudo-card-delete-btn p-1"
+                    title="Excluir Plano"
+                    aria-label={`Excluir plano ${plano.nome}`}
                   >
-                    Ver Plano Completo
+                    ✕
                   </button>
+
+                  <h6 className="fw-bold mb-3 text-dark fs-6 pe-4">
+                    {plano.nome}
+                  </h6>
+
+                  <div className="d-flex gap-2 mb-4">
+                    <span className="badge bg-secondary-subtle text-secondary-emphasis px-2 py-1 rounded">
+                      {plano.disciplina}
+                    </span>
+                    <span className="badge bg-primary-subtle text-primary px-2 py-1 rounded">
+                      {plano.total_itens ?? (totalLivros + totalVideoaulas + totalWeb)} itens
+                    </span>
+                  </div>
+
+                  <div className="rounded-3 p-3 mb-4 bg-light border border-light-subtle">
+                    <div className="d-flex flex-wrap gap-2 mb-2 fw-semibold text-dark small">
+                      <span>
+                        {totalLivros} Livro{totalLivros !== 1 ? 's' : ''}
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {totalVideoaulas} Videoaula{totalVideoaulas !== 1 ? 's' : ''}
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {totalWeb} Web
+                      </span>
+                    </div>
+                    <div className="d-flex gap-2" aria-hidden="true">
+                      <span title="Livros">📘</span>
+                      <span title="Videoaulas">📺</span>
+                      <span title="Conteúdo web">📄</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/dashboard/biblioteca/planos/${plano.id}`)}
+                      className="btn btn-link p-0 text-decoration-none fw-semibold text-success small"
+                    >
+                      Ver Plano Completo →
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
 
-        {planos.length === 0 && (
-          <div className="col-12 text-center text-muted py-5">
-            <p className="mb-0 fs-6">Nenhum plano de estudos encontrado.</p>
-          </div>
-        )}
-      </div>
-
-      {/* ================= Modal: Gerenciamento de Materiais do Plano ================= */}
-      {planoAtivo && (
-        <div
-          className="biblioteca-modal-overlay"
-          onClick={() => setPlanoSelecionadoId(null)}
-          role="presentation"
-        >
-          <div
-            className="biblioteca-modal-dialog biblioteca-modal-dialog--lg p-4"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="plano-modal-titulo"
-          >
-            <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
-              <div>
-                <h3 id="plano-modal-titulo" className="h5 fw-bold mb-1 text-dark">
-                  {planoAtivo.nome}
-                </h3>
-                <p className="text-muted mb-0 small">
-                  {planoAtivo.disciplina} · {planoAtivo.livroIds?.length ?? 0} livros ·{' '}
-                  {planoAtivo.apostilaIds?.length ?? 0} conteúdos web
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn-close"
-                aria-label="Fechar"
-                onClick={() => setPlanoSelecionadoId(null)}
-              />
-            </div>
-
-            {/* Livros vinculados */}
-            <h4 className="h6 fw-bold mt-4 text-dark">Livros do acervo</h4>
-            {livros.length === 0 ? (
-              <p className="text-muted small">
-                Cadastre livros no acervo para adicioná-los a este plano.
+          {planos.length === 0 && (
+            <div className="col-12 text-center text-muted py-5">
+              <span className="fs-1 d-block mb-2">📁</span>
+              <p className="mb-1 fw-semibold fs-6">Nenhum plano de estudos cadastrado.</p>
+              <p className="small text-secondary">
+                Crie um plano acima ou utilize o botão "Adicionar aos planos" ao navegar pelas videoaulas e conteúdos web.
               </p>
-            ) : (
-              <div className="d-flex flex-column gap-2">
-                {livros.map((livro) => (
-                  <label
-                    key={livro.id}
-                    className="d-flex align-items-center gap-2 border rounded-3 p-2 small cursor-pointer"
-                  >
-                    <input
-                      className="form-check-input mt-0"
-                      type="checkbox"
-                      checked={planoAtivo.livroIds?.includes(livro.id) ?? false}
-                      onChange={() =>
-                        onAlternarMaterial(planoAtivo.id, 'livro', livro.id)
-                      }
-                    />
-                    <span>
-                      {livro.titulo}{' '}
-                      <small className="text-muted">· {livro.autor}</small>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
-
-            {/* Conteúdos web vinculados */}
-            <h4 className="h6 fw-bold mt-4 text-dark">Conteúdos web</h4>
-            {apostilas.length === 0 ? (
-              <p className="text-muted small">
-                Cadastre conteúdos web para adicioná-los a este plano.
-              </p>
-            ) : (
-              <div className="d-flex flex-column gap-2">
-                {apostilas.map((apostila) => (
-                  <label
-                    key={apostila.id}
-                    className="d-flex align-items-center gap-2 border rounded-3 p-2 small cursor-pointer"
-                  >
-                    <input
-                      className="form-check-input mt-0"
-                      type="checkbox"
-                      checked={
-                        planoAtivo.apostilaIds?.includes(apostila.id) ?? false
-                      }
-                      onChange={() =>
-                        onAlternarMaterial(planoAtivo.id, 'apostila', apostila.id)
-                      }
-                    />
-                    <span>
-                      {apostila.titulo}{' '}
-                      <small className="text-muted">· {apostila.materia}</small>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
-
-            <div className="d-flex justify-content-end mt-4">
-              <button
-                type="button"
-                className="btn btn-sm biblioteca-btn-primario px-4 rounded-pill"
-                onClick={() => setPlanoSelecionadoId(null)}
-              >
-                Concluir
-              </button>
             </div>
-          </div>
+          )}
         </div>
       )}
     </section>
   );
-};
-
-export default PlanosAba;
+}

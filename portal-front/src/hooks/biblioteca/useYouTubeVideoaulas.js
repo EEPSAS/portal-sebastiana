@@ -96,15 +96,24 @@ export const useYouTubeVideoaulas = () => {
       return;
     }
 
-    const url = `https://www.youtube.com/watch?v=${encodeURIComponent(
-      video.videoId
-    )}`;
-    setVideoSelecionado(video);
+    const url =
+      video.url ||
+      `https://www.youtube.com/watch?v=${encodeURIComponent(video.videoId)}`;
+    setVideoSelecionado({ ...video, url });
     setUrlVideoSelecionada(url);
     setVideoVerificandoId(video.videoId);
     setVideoPlayerErro('');
 
     validateYouTubeVideo(video.videoId)
+      .then((dadosValidados) => {
+        if (dadosValidados?.duration) {
+          setVideoSelecionado((prev) =>
+            prev && prev.videoId === video.videoId
+              ? { ...prev, duration: dadosValidados.duration, url: dadosValidados.url || url }
+              : prev
+          );
+        }
+      })
       .catch((error) => setVideoPlayerErro(traduzirErroYouTube(error)))
       .finally(() => setVideoVerificandoId(''));
   };
