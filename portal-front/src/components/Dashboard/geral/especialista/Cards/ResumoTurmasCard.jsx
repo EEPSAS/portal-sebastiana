@@ -17,8 +17,11 @@ export default function GeralMediumCards({ medias = [], frequencias = [], loadin
           <h5 className="fw-bold text-dark mb-4">Média de Notas por Turma</h5>
 
           <div className="d-flex flex-column gap-4">
+            {medias.length === 0 && (
+              <p className="text-muted small mb-0">Nenhuma turma encontrada no momento.</p>
+            )}
             {medias.map((item) => {
-              const percentagemBarra = item.nota ? (item.nota / 10) * 100 : 0;
+              const percentagemBarra = item.nota ? Math.min(100, (item.nota / 10) * 100) : 0;
 
               return (
                 <div key={item.id}>
@@ -50,6 +53,9 @@ export default function GeralMediumCards({ medias = [], frequencias = [], loadin
           <h5 className="fw-bold text-dark mb-4">Frequência por Turma</h5>
 
           <div className="d-flex flex-column gap-3">
+            {frequencias.length === 0 && (
+              <p className="text-muted small mb-0">Sem dados de frequência no momento.</p>
+            )}
             {frequencias.map((item) => (
               <div
                 key={item.id}

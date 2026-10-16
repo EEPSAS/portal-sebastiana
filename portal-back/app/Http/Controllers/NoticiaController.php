@@ -10,58 +10,106 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-// Controller responsável pela gestão e publicação de notícias e comunicados.
+/**
+ * NoticiaController - Gerenciamento de Notícias Escolares
+ *
+ * Papel Didático:
+ * Controlador RESTful responsável pelas operações do Módulo 2 (Notícias).
+ * Utiliza Form Requests para blindagem de entrada, Eloquent API Resources
+ * para blindagem de saída, e transações de banco para garantir consistência
+ * ao definir notícias em destaque.
+ */
 class NoticiaController extends Controller
 {
-    // Lista todas as noticias cadastradas
-    public function index(): JsonResponse
+    /**
+     * Lista as notícias cadastradas no portal.
+     * Suporta paginação declarativa quando informados os parâmetros 'page' ou 'per_page'.
+     * Retorna array direto de itens quando consultado sem parâmetros (compatibilidade com Home).
+     * Rota pública: GET /api/noticias
+     */
+    public function index(Request $request): JsonResponse
     {
-        $noticias = Noticia::query()
-            ->with('autor:id,name')
+        $query = Noticia::query()
+            ->with('autor:id,name,nickname')
             ->orderByDesc('destaque')
-            ->orderByDesc('data_publicacao')
-            ->orderByDesc('id')
-            ->limit(5)
-            ->get();
+            // Usa o nome real da coluna na migration; 'data_publicacao' é apenas alias do Model
+            ->orderByDesc('dataPublicacao')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        // Se houver parâmetro de paginação explícito, retorna a estrutura paginada da API
+        if ($request->has('page') || $request->has('per_page')) {
+            $perPage = (int) $request->query('per_page', 10);
+            $noticiasPaginadas = $query->paginate($perPage);
+
+            return NoticiaResource::collection($noticiasPaginadas)->response();
+        }
+
+        // Se explicitamente solicitado ?all=true, retorna todas as notícias
+        if ($request->boolean('all')) {
+            $noticias = $query->get();
+
+            return response()->json(NoticiaResource::collection($noticias), 200);
+        }
+
+        // Caso padrão para a Home pública: Retorna as 5 principais notícias
+        $noticias = $query->limit(5)->get();
 
         return response()->json(NoticiaResource::collection($noticias), 200);
     }
 
-    // Salva uma nova noticia no banco
+    /**
+     * Salva uma nova notícia escolar no banco de dados.
+     * Rota protegida: POST /api/noticias (Especialista, Administrador e usuários com permissão)
+     */
     public function store(StoreNoticiaRequest $request): JsonResponse
     {
         $noticia = DB::transaction(function () use ($request): Noticia {
             $data = $request->validated();
-            $data['autor_id'] = $request->user()->id;
-            $data['descricao'] = $data['descricao'] ?? substr(strip_tags($data['conteudo'] ?? ''), 0, 150);
 
-            if ($data['destaque'] ?? false) {
+            // Vincula automaticamente o usuário logado como autor da matéria
+            $data['autor_id'] = $request->user()->id;
+            $data['categoria'] = ! empty($data['categoria']) ? $data['categoria'] : 'Geral';
+            $data['descricao'] = ! empty($data['descricao'])
+                ? $data['descricao']
+                : substr(strip_tags($data['conteudo'] ?? ''), 0, 160);
+
+            // Regra pedagógica: Se a nova notícia é destaque, desmarca o destaque anterior
+            if (! empty($data['destaque'])) {
                 Noticia::where('destaque', true)->update(['destaque' => false]);
             }
 
             return Noticia::create($data);
         });
 
-        $noticia->load('autor:id,name');
+        // Eager loading do autor para compor o payload do Resource
+        $noticia->load('autor:id,name,nickname');
 
         return response()->json(new NoticiaResource($noticia), 201);
     }
 
-    // Exibe os detalhes de uma noticia especifica
+    /**
+     * Exibe os detalhes de uma notícia específica.
+     * Rota pública: GET /api/noticias/{noticia}
+     */
     public function show(Noticia $noticia): JsonResponse
     {
-        $noticia->load('autor:id,name');
+        $noticia->load('autor:id,name,nickname');
 
         return response()->json(new NoticiaResource($noticia), 200);
     }
 
-    // Atualiza os dados de uma noticia existente
+    /**
+     * Atualiza os dados de uma notícia existente.
+     * Rota protegida: PUT /api/noticias/{noticia}
+     */
     public function update(UpdateNoticiaRequest $request, Noticia $noticia): JsonResponse
     {
         DB::transaction(function () use ($request, $noticia): void {
             $data = $request->validated();
 
-            if (($data['destaque'] ?? false) === true) {
+            // Se alterou para destaque, desmarca destaque das demais notícias
+            if (isset($data['destaque']) && (bool) $data['destaque'] === true) {
                 Noticia::where('id', '!=', $noticia->id)
                     ->where('destaque', true)
                     ->update(['destaque' => false]);
@@ -70,20 +118,28 @@ class NoticiaController extends Controller
             $noticia->update($data);
         });
 
-        $noticia->load('autor:id,name');
+        $noticia->load('autor:id,name,nickname');
 
         return response()->json(new NoticiaResource($noticia), 200);
     }
 
-    // Remove uma noticia do sistema
+    /**
+     * Remove uma notícia do portal escolar.
+     * Rota protegida: DELETE /api/noticias/{noticia} (Especialista e Administrador)
+     */
     public function destroy(Request $request, Noticia $noticia): JsonResponse
     {
-        if (! $request->user()?->hasPermissionTo('gerenciar_noticias')) {
-            return response()->json(['message' => 'Não autorizado a remover notícias.'], 403);
+        $user = $request->user();
+
+        // Checagem semântica: Apenas Administrador e Especialista podem excluir notícias
+        if (! $user || (! $user->isAdm() && ! $user->isEspecialista() && ! $user->hasPermissionTo('gerenciar_noticias'))) {
+            return response()->json(['message' => 'Não autorizado a remover notícias escolares.'], 403);
         }
 
         $noticia->delete();
 
-        return response()->json(null, 204);
+        return response()->json([
+            'message' => 'Notícia removida com sucesso.',
+        ], 200);
     }
 }

@@ -1,18 +1,59 @@
-//ESPECIALISTA
-//small cards
+import { api } from './api';
+
+// Cache de curtíssima duração para evitar chamadas HTTP triplicadas quando os 3 hooks montam juntos
+let pendingPromise = null;
+let cachedPayload = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 2000;
+
+/**
+ * Busca os dados reais consolidados do painel geral (Especialista e Professor) no backend.
+ */
+export async function fetchDashboardGeral() {
+  const agora = Date.now();
+  if (cachedPayload && agora - cacheTimestamp < CACHE_TTL_MS) {
+    return cachedPayload;
+  }
+
+  if (pendingPromise) {
+    return pendingPromise;
+  }
+
+  pendingPromise = (async () => {
+    try {
+      const response = await api('/dashboard/geral');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(
+          errData?.message || 'Não foi possível carregar os indicadores do painel geral no momento.'
+        );
+      }
+
+      const json = await response.json();
+      // Compatível com retorno direto ou envelopado em data
+      const payload = json?.data && json?.data?.kpis ? json.data : json;
+      cachedPayload = payload;
+      cacheTimestamp = Date.now();
+      return payload;
+    } finally {
+      pendingPromise = null;
+    }
+  })();
+
+  return pendingPromise;
+}
+
+// ESPECIALISTA E PROFESSOR
+// Small cards superiores (KPIs reais do banco de dados)
 export async function geralService() {
-  const data = {
-    totalAlunos: 128,
-    mediaGeral: 8.4,
-    frequenciaMedia: '94%',
-    noticiasPublicadas: 12,
-  };
+  const payload = await fetchDashboardGeral();
+  const kpis = payload?.kpis || {};
 
   return [
     {
       id: 'total-alunos',
       titulo: 'Total de Alunos',
-      valor: data.totalAlunos,
+      valor: kpis.total_alunos ?? 0,
       bgIcone: 'bg-danger-subtle',
       textIcone: 'text-danger',
       tipoIcone: 'alunos'
@@ -20,7 +61,7 @@ export async function geralService() {
     {
       id: 'media-geral',
       titulo: 'Média Geral de Notas',
-      valor: data.mediaGeral,
+      valor: kpis.media_geral ?? 0,
       bgIcone: 'bg-success-subtle',
       textIcone: 'text-success',
       tipoIcone: 'notas'
@@ -28,7 +69,7 @@ export async function geralService() {
     {
       id: 'frequencia',
       titulo: 'Frequência Média',
-      valor: data.frequenciaMedia,
+      valor: kpis.frequencia_media ?? '100%',
       bgIcone: 'bg-warning-subtle',
       textIcone: 'text-warning',
       tipoIcone: 'frequencia'
@@ -36,7 +77,7 @@ export async function geralService() {
     {
       id: 'noticias',
       titulo: 'Notícias Publicadas',
-      valor: data.noticiasPublicadas,
+      valor: kpis.noticias_publicadas ?? 0,
       bgIcone: 'bg-primary-subtle',
       textIcone: 'text-primary',
       tipoIcone: 'noticias'
@@ -44,53 +85,21 @@ export async function geralService() {
   ];
 }
 
-//medium cards
+// Medium cards (Médias e Frequências por Turma reais do banco)
 export async function fetchResumoTurmas() {
-  // Quando o endpoint estiver pronto, substitua pelo seu fetch real:
-  // const response = await fetch('https://api.exemplo.com/turmas/resumo');
-  // if (!response.ok) throw new Error('Erro ao buscar dados das turmas');
-  // return await response.json();
+  const payload = await fetchDashboardGeral();
+  const resumo = payload?.resumo_turmas || {};
 
-  // Dados ilustrativos para os cards até a integração com a API.
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        medias: [
-          { id: 1, turma: '1º Ano', nota: 8.2, cor: '#d63384' },
-          { id: 2, turma: '2º Ano', nota: 7.6, cor: '#0d6efd' },
-          { id: 3, turma: '3º Ano', nota: 8.9, cor: '#0dcaf0' },
-        ],
-        frequencias: [
-          { id: 1, turma: '1º Ano', percentual: 96, cor: '#20c997' },
-          { id: 2, turma: '2º Ano', percentual: 92, cor: '#20c997' },
-          { id: 3, turma: '3º Ano', percentual: 97, cor: '#fd7e14' },
-        ],
-      });
-    }, 500);
-  });
+  return {
+    medias: resumo.medias || [],
+    frequencias: resumo.frequencias || [],
+  };
 }
 
-//ultimas atualizações
+// Últimas atualizações reais (Notícias publicadas e Lançamentos de notas)
 export async function fetchLatestUpdates() {
-  // Substitua pela chamada real à sua API
-  // const response = await fetch('https://api.exemplo.com/dashboard/updates');
-  // const data = await response.json();
-  
-  // Simulando o retorno estruturado da API
-  return [
-    {
-      id: 'upd-1',
-      tipo: 'noticia', // Usado para definir o ícone e a cor
-      texto: 'Nova notícia publicada: Feira de Ciências 2026',
-      tempoAtras: '2h atrás'
-    },
-    {
-      id: 'upd-2',
-      tipo: 'notas',
-      texto: 'Notas do 2º bimestre atualizadas — 3º Ano',
-      tempoAtras: '5h atrás'
-    }
-  ];
+  const payload = await fetchDashboardGeral();
+  return payload?.ultimas_atualizacoes || [];
 }
 
 //PADRAO
