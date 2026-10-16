@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { useAuth } from "../../../hooks/useAuth";
 import {
   cancelarMatriculaAluno,
+  excluirDadosCsv,
   excluirTurma,
   fetchMatriculas,
   fetchResumoGeral,
+  fetchTurmaAlunos,
   fetchTurmaNotas,
   fetchTurmas,
 } from "../../../services/turmasService";
@@ -44,6 +47,7 @@ const ABAS = [
  * 3. `NotasAba`: Médias gerais por turma e listagem consolidada de notas.
  */
 const Turmas = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const role = user?.role || "aluno";
   const podeGerenciar = role === "especialista" || role === "adm";
@@ -56,8 +60,10 @@ const Turmas = () => {
   const [resumoGeral, setResumoGeral] = useState([]);
   const [matriculas, setMatriculas] = useState([]);
 
-  // Dados da aba de notas: por padrão, filtra pelo trimestre atual do calendário letivo
+  // Dados da aba de notas: seleção individual de aluno para não carregar todos de uma vez
   const [turmaSelecionadaId, setTurmaSelecionadaId] = useState("");
+  const [alunosTurmaSelecionada, setAlunosTurmaSelecionada] = useState([]);
+  const [alunoFiltroNota, setAlunoFiltroNota] = useState("");
   const [notas, setNotas] = useState([]);
   const [periodoFiltro, setPeriodoFiltro] = useState(() => obterTrimestreAtual());
   const [termoBuscaNota, setTermoBuscaNota] = useState("");
@@ -78,7 +84,9 @@ const Turmas = () => {
   // Modais de confirmação de exclusão / desvinculação
   const [turmaParaExcluir, setTurmaParaExcluir] = useState(null);
   const [matriculaParaDesvincular, setMatriculaParaDesvincular] = useState(null);
+  const [modalExcluirCsvAberto, setModalExcluirCsvAberto] = useState(false);
   const [processandoExclusao, setProcessandoExclusao] = useState(false);
+  const [processandoExclusaoCsv, setProcessandoExclusaoCsv] = useState(false);
 
   // Chave numérica para disparo de recarga após operações de escrita
   const [recargaKey, setRecargaKey] = useState(0);
@@ -153,14 +161,48 @@ const Turmas = () => {
   }, [recargaKey]);
 
   /**
-   * 2. Efeito de Notas: Atualiza a lista de notas sempre que a turma ou período mudarem.
+   * 2. Efeito de Alunos da Turma: Busca a relação de estudantes da turma ativa
+   * para alimentar o filtro seletivo de notas, evitando a sobrecarga de carregar todos.
    */
   useEffect(() => {
     if (!turmaSelecionadaId) return;
 
     let cancelado = false;
 
-    fetchTurmaNotas(turmaSelecionadaId, { periodo: periodoFiltro })
+    fetchTurmaAlunos(turmaSelecionadaId)
+      .then((dadosAlunos) => {
+        if (!cancelado) {
+          const lista = Array.isArray(dadosAlunos)
+            ? dadosAlunos
+            : Array.isArray(dadosAlunos?.data)
+            ? dadosAlunos.data
+            : [];
+          setAlunosTurmaSelecionada(lista);
+        }
+      })
+      .catch((err) => {
+        console.warn("Falha ao carregar alunos da turma para o filtro de notas:", err);
+        if (!cancelado) setAlunosTurmaSelecionada([]);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [turmaSelecionadaId, recargaKey]);
+
+  /**
+   * 3. Efeito de Notas do Estudante: Consulta na API exclusivamente as notas
+   * do estudante selecionado no filtro, garantindo performance e granularidade.
+   */
+  useEffect(() => {
+    if (!turmaSelecionadaId || !alunoFiltroNota) return;
+
+    let cancelado = false;
+
+    fetchTurmaNotas(turmaSelecionadaId, {
+      periodo: periodoFiltro,
+      alunoId: alunoFiltroNota,
+    })
       .then((dadosNotas) => {
         if (!cancelado) {
           setNotas(dadosNotas || []);
@@ -178,7 +220,7 @@ const Turmas = () => {
     return () => {
       cancelado = true;
     };
-  }, [turmaSelecionadaId, periodoFiltro, recargaKey]);
+  }, [turmaSelecionadaId, alunoFiltroNota, periodoFiltro, recargaKey]);
 
   // Abertura de modais
   const handleAbrirCriarTurma = () => {
@@ -197,8 +239,49 @@ const Turmas = () => {
   };
 
   const handleSelecionarTurmaNotas = (idTurma) => {
-    setLoadingNotas(true);
     setTurmaSelecionadaId(idTurma);
+    setAlunoFiltroNota("");
+    setNotas([]);
+  };
+
+  const handleAlunoFiltroChange = (idAluno) => {
+    setAlunoFiltroNota(idAluno);
+    if (idAluno) {
+      setLoadingNotas(true);
+    } else {
+      setNotas([]);
+      setLoadingNotas(false);
+    }
+  };
+
+  // Navega para a visão individual do Boletim Escolar passando os identificadores do aluno e turma
+  const handleAbrirBoletimAluno = (idAluno) => {
+    navigate("/dashboard/boletim", {
+      state: {
+        aluno_id: idAluno,
+        turma_id: turmaSelecionadaId,
+      },
+    });
+  };
+
+  // Executa a exclusão segura dos dados carregados pelo CSV na turma selecionada
+  const handleConfirmarExclusaoCsv = async () => {
+    if (!turmaSelecionadaId) return;
+
+    setProcessandoExclusaoCsv(true);
+    try {
+      const resp = await excluirDadosCsv(turmaSelecionadaId, {
+        periodo: periodoFiltro,
+      });
+      dispararNotificacao(resp?.message || "Dados do diário escolar excluídos com sucesso!");
+      setModalExcluirCsvAberto(false);
+      setNotas([]);
+      setRecargaKey((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || "Erro ao excluir os dados do diário escolar.");
+    } finally {
+      setProcessandoExclusaoCsv(false);
+    }
   };
 
   // Sucesso na criação / edição de turma
@@ -385,15 +468,19 @@ const Turmas = () => {
             notas={notas}
             periodoFiltro={periodoFiltro}
             onPeriodoFiltroChange={(novoPeriodo) => {
-              setLoadingNotas(true);
               setPeriodoFiltro(novoPeriodo);
             }}
             termoBusca={termoBuscaNota}
             onTermoBuscaChange={setTermoBuscaNota}
             podeGerenciar={podeGerenciar}
             onAbrirImportarNotas={() => setModalImportarAberto(true)}
+            onAbrirExcluirDadosCsv={() => setModalExcluirCsvAberto(true)}
             loadingNotas={loadingNotas}
             trimestreAtual={obterTrimestreAtual()}
+            alunosTurma={alunosTurmaSelecionada}
+            alunoFiltroId={alunoFiltroNota}
+            onAlunoFiltroChange={handleAlunoFiltroChange}
+            onAbrirBoletimAluno={handleAbrirBoletimAluno}
           />
         )}
       </div>
@@ -509,6 +596,57 @@ const Turmas = () => {
                 disabled={processandoExclusao}
               >
                 {processandoExclusao ? "Desvinculando..." : "Sim, desvincular"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 6: Confirmação de Exclusão de Dados do CSV */}
+      {modalExcluirCsvAberto && (
+        <div
+          className="turmas-modal-overlay"
+          onClick={() => setModalExcluirCsvAberto(false)}
+          role="presentation"
+        >
+          <div
+            className="turmas-modal-dialog turmas-modal-dialog--sm p-4"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirmar-exclusao-csv-titulo"
+          >
+            <div className="fs-1 mb-2 text-danger">🗑️</div>
+            <h5 id="confirmar-exclusao-csv-titulo" className="fw-bold mb-2 text-dark">
+              Excluir Dados do CSV?
+            </h5>
+            <p className="text-muted mb-4 small">
+              Deseja realmente excluir as notas e faltas carregadas via CSV da turma{" "}
+              <strong>"{turmaAtivaParaCSV?.nome_identificador}"</strong>
+              {periodoFiltro ? (
+                <>
+                  {" "}para o período <strong>"{periodoFiltro}"</strong>
+                </>
+              ) : (
+                " de todos os períodos"
+              )}? Esta ação não poderá ser desfeita.
+            </p>
+            <div className="d-flex gap-2 justify-content-center">
+              <button
+                type="button"
+                onClick={() => setModalExcluirCsvAberto(false)}
+                className="btn btn-sm btn-light border px-3 rounded-pill"
+                disabled={processandoExclusaoCsv}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmarExclusaoCsv}
+                className="btn btn-sm btn-danger px-4 fw-bold rounded-pill"
+                disabled={processandoExclusaoCsv}
+              >
+                {processandoExclusaoCsv ? "Excluindo..." : "Sim, excluir dados"}
               </button>
             </div>
           </div>

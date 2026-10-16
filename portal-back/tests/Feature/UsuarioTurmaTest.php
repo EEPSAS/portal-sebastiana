@@ -28,6 +28,7 @@ test('usuario resource inclui o nome da turma ativa quando o usuario for aluno m
 
     expect($resource)
         ->toHaveKey('turma', '1º Ano A - Ensino Médio')
+        ->toHaveKey('turma_id', $turma->id_turma)
         ->and($resource['role'])->toBe('aluno');
 });
 
@@ -40,7 +41,8 @@ test('usuario resource retorna turma como null quando o aluno nao possui matricu
     $resource = (new UsuarioResource($aluno))->resolve();
 
     expect($resource)
-        ->toHaveKey('turma', null);
+        ->toHaveKey('turma', null)
+        ->toHaveKey('turma_id', null);
 });
 
 test('usuario resource retorna turma como null para usuarios que nao sao alunos', function () {
@@ -52,7 +54,8 @@ test('usuario resource retorna turma como null para usuarios que nao sao alunos'
     $resource = (new UsuarioResource($professor))->resolve();
 
     expect($resource)
-        ->toHaveKey('turma', null);
+        ->toHaveKey('turma', null)
+        ->toHaveKey('turma_id', null);
 });
 
 test('endpoint /api/user entrega o campo turma do aluno autenticado', function () {
@@ -79,6 +82,7 @@ test('endpoint /api/user entrega o campo turma do aluno autenticado', function (
 
     $response->assertOk()
         ->assertJsonPath('turma', '3º Ano B - Técnico em Informática')
+        ->assertJsonPath('turma_id', $turma->id_turma)
         ->assertJsonPath('role', 'aluno');
 });
 
@@ -109,5 +113,6 @@ test('login tradicional entrega os dados do aluno com o campo turma', function (
 
     $response->assertOk()
         ->assertJsonPath('user.role', 'aluno')
-        ->assertJsonPath('user.turma', '2º Ano A - Regular');
+        ->assertJsonPath('user.turma', '2º Ano A - Regular')
+        ->assertJsonPath('user.turma_id', $turma->id_turma);
 });

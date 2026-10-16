@@ -2,9 +2,13 @@
 
 use App\Enums\UserRole;
 use App\Models\Disciplina;
+use App\Models\Frequencia;
+use App\Models\Matricula;
+use App\Models\Nota;
 use App\Models\Turma;
 use App\Models\TurmaDisciplina;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 
 test('especialista e admin podem criar, listar, atualizar e deletar turmas', function () {
     $admin = User::factory()->create(['role' => UserRole::ADM]);
@@ -319,4 +323,206 @@ test('contagem de total_alunos da turma atualiza imediatamente ao desvincular al
             'id_turma' => $turma->id_turma,
             'total_alunos' => 1,
         ]);
+});
+
+test('especialista pode consultar notas filtrando por aluno individual para nao carregar todos de uma vez', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $turma = Turma::factory()->create();
+    $disc = Disciplina::factory()->create(['nome' => 'Matemática']);
+    $aluno1 = User::factory()->create(['name' => 'Aluno Um', 'role' => UserRole::ALUNO]);
+    $aluno2 = User::factory()->create(['name' => 'Aluno Dois', 'role' => UserRole::ALUNO]);
+
+    Nota::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $disc->id_disciplina,
+        'usuario_id' => $aluno1->id,
+        'valor_nota' => 9.0,
+    ]);
+    Nota::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $disc->id_disciplina,
+        'usuario_id' => $aluno2->id,
+        'valor_nota' => 7.0,
+    ]);
+
+    // Consulta filtrando por aluno1
+    $response = $this->actingAs($especialista, 'sanctum')
+        ->getJson("/api/turmas/{$turma->id_turma}/notas?aluno_id={$aluno1->id}");
+
+    $response->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.aluno.name', 'Aluno Um')
+        ->assertJsonPath('0.valor_nota', 9);
+});
+
+test('especialista pode excluir dados do csv de uma turma filtrando pelo periodo letivo', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $turma = Turma::factory()->create();
+    $disc = Disciplina::factory()->create(['nome' => 'História']);
+    $aluno = User::factory()->create(['role' => UserRole::ALUNO]);
+
+    // Notas de 1º Trimestre e 2º Trimestre
+    Nota::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $disc->id_disciplina,
+        'usuario_id' => $aluno->id,
+        'periodo_letivo' => '1º Trimestre',
+        'valor_nota' => 8.0,
+    ]);
+    Nota::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $disc->id_disciplina,
+        'usuario_id' => $aluno->id,
+        'periodo_letivo' => '2º Trimestre',
+        'valor_nota' => 9.0,
+    ]);
+
+    // Frequência de 1º Trimestre (mês 03)
+    Frequencia::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $disc->id_disciplina,
+        'usuario_id' => $aluno->id,
+        'data_aula' => '2026-03-15',
+        'quantidade_aulas' => 2,
+        'status_presenca' => 'Falta',
+    ]);
+
+    // Exclui apenas dados do 1º Trimestre
+    $response = $this->actingAs($especialista, 'sanctum')
+        ->deleteJson("/api/turmas/{$turma->id_turma}/dados-csv?periodo_letivo=1º Trimestre");
+
+    $response->assertOk()
+        ->assertJsonPath('notas_removidas', 1)
+        ->assertJsonPath('frequencias_removidas', 1);
+
+    // Nota de 1º Trimestre foi excluída
+    expect(Nota::where('turma_id', $turma->id_turma)->where('periodo_letivo', '1º Trimestre')->exists())->toBeFalse();
+
+    // Nota de 2º Trimestre permanece intacta
+    expect(Nota::where('turma_id', $turma->id_turma)->where('periodo_letivo', '2º Trimestre')->exists())->toBeTrue();
+});
+
+test('aluno comum nao pode excluir dados do csv de uma turma (403)', function () {
+    $aluno = User::factory()->create(['role' => UserRole::ALUNO]);
+    $turma = Turma::factory()->create();
+
+    $this->actingAs($aluno, 'sanctum')
+        ->deleteJson("/api/turmas/{$turma->id_turma}/dados-csv")
+        ->assertForbidden();
+});
+
+test('importacao csv reconhece aluno com nome completo quando email institucional tem apenas primeiro e ultimo nome', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $turma = Turma::factory()->create(['nome_identificador' => '3º Ano Informática', 'ano_letivo' => 2026]);
+    Disciplina::factory()->create(['nome' => 'Matemática']);
+
+    // Aluno já cadastrado no sistema com e-mail institucional primeiro.ultimo e nome civil
+    $aluno = User::factory()->create([
+        'name' => 'Yasmin Santos',
+        'email' => 'yasmin.santos@aluno.mg.gov.br',
+        'role' => UserRole::ALUNO,
+    ]);
+
+    // Matrícula ativa na turma
+    Matricula::create([
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $aluno->id,
+        'data_matricula' => '2026-02-01',
+        'status_matricula' => 'Ativo',
+    ]);
+
+    // CSV trazendo o nome completo com sobrenome do meio
+    $conteudoCsv = "Aluno;Matemática\nYASMIN TEIXEIRA SANTOS;9,5";
+    $arquivo = UploadedFile::fake()->createWithContent('notas.csv', $conteudoCsv);
+
+    $response = $this->actingAs($especialista, 'sanctum')->postJson("/api/turmas/{$turma->id_turma}/importar-relatorio", [
+        'arquivo' => $arquivo,
+        'periodo_letivo' => '1º Trimestre',
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('status', 'sucesso')
+        ->assertJsonPath('dados.notas_sincronizadas', 1);
+
+    // Verifica que a nota foi vinculada ao aluno existente Yasmin Santos (sem criar usuário duplicado)
+    $nota = Nota::where('turma_id', $turma->id_turma)
+        ->where('usuario_id', $aluno->id)
+        ->first();
+
+    expect($nota)->not->toBeNull()
+        ->and($nota->valor_nota)->toEqual(9.5);
+
+    // Não deve existir outro usuário criado
+    expect(User::where('name', 'YASMIN TEIXEIRA SANTOS')->exists())->toBeFalse();
+});
+
+test('importacao csv detecta homonimos e retorna status pendente_confirmacao com candidatos', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $turma = Turma::factory()->create(['nome_identificador' => '3º Ano B', 'ano_letivo' => 2026]);
+    Disciplina::factory()->create(['nome' => 'História']);
+
+    // Dois alunos com primeiro nome Lucas e último Lima na mesma turma (homônimos parciais)
+    $aluno1 = User::factory()->create([
+        'name' => 'Lucas Ferreira Lima',
+        'email' => 'lucas.lima@aluno.mg.gov.br',
+        'role' => UserRole::ALUNO,
+    ]);
+    $aluno2 = User::factory()->create([
+        'name' => 'Lucas Gabriel Lima',
+        'email' => 'lucas.gabriel.lima@aluno.mg.gov.br',
+        'role' => UserRole::ALUNO,
+    ]);
+
+    Matricula::create(['turma_id' => $turma->id_turma, 'usuario_id' => $aluno1->id, 'data_matricula' => '2026-02-01', 'status_matricula' => 'Ativo']);
+    Matricula::create(['turma_id' => $turma->id_turma, 'usuario_id' => $aluno2->id, 'data_matricula' => '2026-02-01', 'status_matricula' => 'Ativo']);
+
+    // CSV traz "LUCAS LIMA"
+    $conteudoCsv = "Aluno;História\nLUCAS LIMA;8,0";
+    $arquivo = UploadedFile::fake()->createWithContent('notas.csv', $conteudoCsv);
+
+    $response = $this->actingAs($especialista, 'sanctum')->postJson("/api/turmas/{$turma->id_turma}/importar-relatorio", [
+        'arquivo' => $arquivo,
+        'periodo_letivo' => '1º Trimestre',
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('status', 'pendente_confirmacao')
+        ->assertJsonCount(1, 'ambiguidades')
+        ->assertJsonPath('ambiguidades.0.nome_csv', 'LUCAS LIMA')
+        ->assertJsonCount(2, 'ambiguidades.0.candidatos');
+
+    // Nenhuma nota foi gravada ainda
+    expect(Nota::where('turma_id', $turma->id_turma)->count())->toBe(0);
+});
+
+test('importacao csv com mapeamentos_alunos resolve homonimos e sincroniza notas com aluno confirmado', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $turma = Turma::factory()->create(['nome_identificador' => '3º Ano C', 'ano_letivo' => 2026]);
+    Disciplina::factory()->create(['nome' => 'Física']);
+
+    $aluno1 = User::factory()->create(['name' => 'Lucas Ferreira Lima', 'email' => 'lucas.lima1@aluno.mg.gov.br', 'role' => UserRole::ALUNO]);
+    $aluno2 = User::factory()->create(['name' => 'Lucas Gabriel Lima', 'email' => 'lucas.lima2@aluno.mg.gov.br', 'role' => UserRole::ALUNO]);
+
+    Matricula::create(['turma_id' => $turma->id_turma, 'usuario_id' => $aluno1->id, 'data_matricula' => '2026-02-01', 'status_matricula' => 'Ativo']);
+    Matricula::create(['turma_id' => $turma->id_turma, 'usuario_id' => $aluno2->id, 'data_matricula' => '2026-02-01', 'status_matricula' => 'Ativo']);
+
+    $conteudoCsv = "Aluno;Física\nLUCAS LIMA;10,0";
+    $arquivo = UploadedFile::fake()->createWithContent('notas.csv', $conteudoCsv);
+
+    // Especialista confirma manualmente que LUCAS LIMA é o aluno2 ($aluno2->id)
+    $response = $this->actingAs($especialista, 'sanctum')->postJson("/api/turmas/{$turma->id_turma}/importar-relatorio", [
+        'arquivo' => $arquivo,
+        'periodo_letivo' => '1º Trimestre',
+        'mapeamentos_alunos' => [
+            'LUCAS LIMA' => $aluno2->id,
+        ],
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('status', 'sucesso')
+        ->assertJsonPath('dados.notas_sincronizadas', 1);
+
+    // Nota vinculada especificamente ao aluno2
+    expect(Nota::where('turma_id', $turma->id_turma)->where('usuario_id', $aluno2->id)->value('valor_nota'))->toEqual(10.0);
+    expect(Nota::where('turma_id', $turma->id_turma)->where('usuario_id', $aluno1->id)->exists())->toBeFalse();
 });

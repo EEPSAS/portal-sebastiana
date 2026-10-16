@@ -37,8 +37,9 @@ class UsuarioResource extends JsonResource
             // Controle de papel, turma vinculada e permissões
             'role' => $roleValue,
             'role_label' => $roleLabel,
-            // Nome da turma ativa do aluno (ou null caso não seja aluno ou não possua turma ativa)
+            // Nome e identificador numérico da turma ativa do aluno (ou null caso não seja aluno ou não possua turma ativa)
             'turma' => $this->turma_ativa?->nome_identificador,
+            'turma_id' => $this->turma_ativa?->id_turma,
             'ativo' => (bool) $this->ativo,
             'permissoes' => method_exists($this->resource, 'getPermissionsSlugs')
                 ? $this->getPermissionsSlugs()

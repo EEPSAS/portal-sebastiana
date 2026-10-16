@@ -19,6 +19,21 @@ class ImportarRelatorioTurmaRequest extends FormRequest
     }
 
     /**
+     * Prepara os dados antes da validação.
+     * Como o envio ocorre via FormData a partir do frontend React, o mapa de confirmação
+     * pode vir serializado como string JSON; fazemos o parsing prévio para array.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('mapeamentos_alunos') && is_string($this->input('mapeamentos_alunos'))) {
+            $decodificado = json_decode($this->input('mapeamentos_alunos'), true);
+            if (is_array($decodificado)) {
+                $this->merge(['mapeamentos_alunos' => $decodificado]);
+            }
+        }
+    }
+
+    /**
      * Regras de validação da requisição.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
@@ -31,6 +46,8 @@ class ImportarRelatorioTurmaRequest extends FormRequest
             'planilha' => ['required_without:arquivo', 'file', 'max:10240'],
             'periodo_letivo' => ['nullable', 'string', 'max:100'],
             'data_aula' => ['nullable', 'date'],
+            // Mapeamento opcional de confirmação manual em caso de homônimos [nome_csv => id_usuario|'novo']
+            'mapeamentos_alunos' => ['nullable', 'array'],
         ];
     }
 
