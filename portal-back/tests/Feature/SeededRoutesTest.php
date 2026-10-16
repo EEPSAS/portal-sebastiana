@@ -57,7 +57,7 @@ test('testa rotas publicas de noticias e biblioteca', function () {
     // 1. Notícias públicas
     $respNoticias = $this->getJson('/api/noticias');
     $respNoticias->assertOk()
-        ->assertJsonCount(3);
+        ->assertJsonCount(5);
 
     $primeiraNoticia = $respNoticias->json('0.id');
     $this->getJson("/api/noticias/{$primeiraNoticia}")

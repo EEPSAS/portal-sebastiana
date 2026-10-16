@@ -119,9 +119,13 @@ const normalizarComparativo = (resposta) => {
   });
 };
 
-export function useBoletim(turmaId) {
+export function useBoletim(turmaIdProp, alunoIdProp) {
   const { user } = useAuth();
-  const alunoId = user?.id;
+  // Se alunoIdProp for informado (ex: especialista ou professor visualizando o boletim de um estudante específico), usa-o; caso contrário, usa o usuário logado
+  const alunoId = alunoIdProp ?? user?.id;
+  // Reconhece a turma a partir da prop informada ou diretamente da turma ativa do aluno conectado
+  const turmaId = turmaIdProp ?? user?.turma_id;
+  const isAlunoSemTurma = Boolean(user && !turmaId && !alunoIdProp);
   const [tentativa, setTentativa] = useState(0);
   const chaveRequisicao = `${alunoId ?? ""}:${turmaId ?? ""}:${tentativa}`;
   const [resultado, setResultado] = useState({
@@ -178,9 +182,10 @@ export function useBoletim(turmaId) {
     carregando: Boolean(alunoId && turmaId && !resultadoAtual),
     erro: !alunoId
       ? "Não foi possível identificar o aluno autenticado."
-      : !turmaId
-        ? "Não foi possível identificar sua turma. Acesse o boletim pelo contexto da turma."
+      : isAlunoSemTurma
+        ? "Você ainda não possui matrícula ativa vinculada a uma turma. Por favor, entre em contato com a secretaria ou coordenação escolar."
         : resultadoAtual?.erro,
+    semMatricula: isAlunoSemTurma,
     podeTentarNovamente: Boolean(alunoId && turmaId),
     tentarNovamente: () => setTentativa((valor) => valor + 1),
   };
