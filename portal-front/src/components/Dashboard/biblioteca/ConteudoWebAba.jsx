@@ -42,8 +42,8 @@ const ESTADO_MATERIAL_INICIAL = {
   tipo: 'Apostila',
   nivel: '',
   autor: '',
-  corBadge: '#e0f2fe',
-  corTexto: '#0284c7',
+  corBadge: 'var(--dashboard-navy-soft)',
+  corTexto: 'var(--dashboard-navy)',
 };
 
 const ConteudoWebAba = ({
@@ -102,8 +102,8 @@ const ConteudoWebAba = ({
                 <div
                   className="material-web-icon"
                   style={{
-                    backgroundColor: apostila.corBadge || '#e0f2fe',
-                    color: apostila.corTexto || '#0284c7',
+                    backgroundColor: "var(--dashboard-navy-soft)",
+                    color: "var(--dashboard-navy)",
                   }}
                   aria-hidden="true"
                 >

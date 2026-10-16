@@ -96,7 +96,7 @@ const Header = ({
 
   return (
     <>
-      <header className="dashboard-header bg-white shadow-sm d-flex align-items-center justify-content-between px-4 py-2 mb-3">
+      <header className="dashboard-header bg-white shadow-sm d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center gap-3">
           <span className="fs-5 fw-bold text-dark">Painel de Controle</span>
 
@@ -188,7 +188,7 @@ const Header = ({
         <div
           className="modal fade show d-block"
           tabIndex="-1"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.55)", zIndex: 1060 }}
+          style={{ backgroundColor: "rgba(var(--dashboard-navy-rgb), 0.55)", zIndex: 1060 }}
           role="dialog"
         >
           <div className="modal-dialog modal-dialog-centered">

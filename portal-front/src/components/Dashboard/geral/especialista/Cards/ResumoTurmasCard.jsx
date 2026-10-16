@@ -26,13 +26,13 @@ export default function GeralMediumCards({ medias = [], frequencias = [], loadin
                     <span className="fw-semibold text-secondary small">{item.turma}</span>
                     <span className="fw-bold text-dark small">{item.nota ?? '—'}</span>
                   </div>
-                  <div className="progress" style={{ height: '8px', backgroundColor: '#f0f0f0' }}>
+                  <div className="progress" style={{ height: '8px', backgroundColor: 'var(--dashboard-gray-soft)' }}>
                     <div
                       className="progress-bar rounded-pill"
                       role="progressbar"
                       style={{
                         width: `${percentagemBarra}%`,
-                        backgroundColor: item.cor,
+                        backgroundColor: "var(--dashboard-navy)",
                         transition: 'width 0.4s ease'
                       }}
                     />
@@ -58,7 +58,7 @@ export default function GeralMediumCards({ medias = [], frequencias = [], loadin
                 <span className="fw-semibold text-secondary small">{item.turma}</span>
                 
                 <div className="d-flex align-items-center gap-2">
-                  <span className="fw-bold small" style={{ color: item.cor }}>
+                  <span className="fw-bold small" style={{ color: "var(--dashboard-navy)" }}>
                     {item.percentual !== null && item.percentual !== undefined 
                       ? `${item.percentual}%` 
                       : '—'}
@@ -66,13 +66,13 @@ export default function GeralMediumCards({ medias = [], frequencias = [], loadin
                   
                   <svg width="20" height="20" viewBox="0 0 36 36">
                     <path
-                      stroke="#e6e6e6"
+                      stroke="var(--dashboard-gray-subtle)"
                       strokeWidth="4"
                       fill="none"
                       d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     />
                     <path
-                      stroke={item.cor}
+                      stroke="var(--dashboard-navy)"
                       strokeDasharray={`${item.percentual || 0}, 100`}
                       strokeWidth="4"
                       strokeLinecap="round"

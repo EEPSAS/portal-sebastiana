@@ -14,7 +14,7 @@ export default function AlunoBoasVindasCard() {
   const nomeExibicao = user?.nickname || user?.name || "Maria Eduarda";
 
   return (
-    <div className="card border-0 shadow-sm rounded-4 p-3 p-md-4 mb-3 bg-white">
+    <div className="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
       <div className="d-flex align-items-center gap-3">
         {/* Avatar Ilustrado do Aluno */}
         <div
@@ -22,8 +22,8 @@ export default function AlunoBoasVindasCard() {
           style={{
             width: "58px",
             height: "58px",
-            backgroundColor: "#dbeafe",
-            color: "#1d4ed8",
+            backgroundColor: "var(--dashboard-navy-soft)",
+            color: "var(--dashboard-navy)",
             fontSize: "1.8rem"
           }}
         >

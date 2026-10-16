@@ -21,13 +21,13 @@ export default function CardapioSemanalCard({ itensCardapio = CARDAPIO_MOCK }) {
   const [mesAtual] = useState("Maio 2025");
 
   return (
-    <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 d-flex flex-column justify-content-between">
+    <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 w-100 d-flex flex-column justify-content-between">
       <div>
         {/* Cabeçalho */}
         <div className="d-flex align-items-center gap-2 mb-3">
           <div
             className="rounded-3 d-flex align-items-center justify-content-center p-2 text-primary"
-            style={{ backgroundColor: "#eff6ff", width: "38px", height: "38px" }}
+            style={{ backgroundColor: "var(--dashboard-navy-soft)", width: "38px", height: "38px" }}
           >
             <i className="bi bi-cup-hot-fill fs-5"></i>
           </div>
@@ -37,7 +37,7 @@ export default function CardapioSemanalCard({ itensCardapio = CARDAPIO_MOCK }) {
         {/* Seletor de Mês */}
         <div
           className="d-flex align-items-center justify-content-between px-3 py-2 rounded-3 mb-3"
-          style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0" }}
+          style={{ backgroundColor: "var(--dashboard-gray-soft)", border: "1px solid var(--dashboard-gray-border)" }}
         >
           <button
             type="button"
@@ -59,7 +59,7 @@ export default function CardapioSemanalCard({ itensCardapio = CARDAPIO_MOCK }) {
         </div>
 
         {/* Lista de Refeições Diárias */}
-        <div className="d-flex flex-column gap-3">
+        <div className="d-flex flex-column gap-2">
           {itensCardapio.map((item, index) => (
             <div key={`cardapio-${index}`} className="d-flex align-items-start gap-3">
               {/* Coluna Dia / Data */}
@@ -72,7 +72,7 @@ export default function CardapioSemanalCard({ itensCardapio = CARDAPIO_MOCK }) {
               <div className="mt-1 flex-shrink-0">
                 <span
                   className="rounded-circle d-inline-block"
-                  style={{ width: "8px", height: "8px", backgroundColor: "#10b981" }}
+                  style={{ width: "8px", height: "8px", backgroundColor: "var(--dashboard-navy)" }}
                 ></span>
               </div>
 
@@ -104,7 +104,7 @@ export default function CardapioSemanalCard({ itensCardapio = CARDAPIO_MOCK }) {
       {modalAberto && (
         <div
           className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 1060, padding: "1rem" }}
+          style={{ backgroundColor: "rgba(var(--dashboard-navy-rgb), 0.5)", zIndex: 1060, padding: "1rem" }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setModalAberto(false);
           }}

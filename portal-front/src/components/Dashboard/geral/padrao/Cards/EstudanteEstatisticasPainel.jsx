@@ -27,7 +27,7 @@ export default function StudentStatCards() {
         valor={`${stats?.frequenciaGeral?.porcentagem}%`}
         subtitulo={stats?.frequenciaGeral?.classificacao}
         porcentagemProgress={stats?.frequenciaGeral?.porcentagem}
-        bgColor="#d6006e" // Rosa/Magenta
+        bgColor="var(--dashboard-pink)" // Rosa/Magenta
       />
 
       {/* 2. Média de Notas (Este Ano) */}
@@ -35,7 +35,7 @@ export default function StudentStatCards() {
         titulo="Média de Notas (Este Ano)"
         valor={stats?.mediaNotas?.valor}
         subtitulo={stats?.mediaNotas?.comparacao}
-        bgColor="#007bff" // Azul
+        bgColor="var(--dashboard-navy)" // Azul
       />
 
       {/* 3. Leitura Atual (Editável pelo Aluno) */}
@@ -43,7 +43,7 @@ export default function StudentStatCards() {
         titulo="Leitura Atual"
         valor={stats?.leituraAtual?.livro}
         subtitulo={stats?.leituraAtual?.pagina}
-        bgColor="#ff9800" // Laranja
+        bgColor="var(--dashboard-amber)" // Laranja
         isEditable={true}
         onSave={handleUpdateReading}
       />
@@ -53,7 +53,7 @@ export default function StudentStatCards() {
         titulo="Próxima Notificação"
         valor={stats?.proximaNotificacao?.titulo}
         subtitulo={stats?.proximaNotificacao?.tempoRestante}
-        bgColor="#00bcd4" // Ciano/Verde Água
+        bgColor="var(--dashboard-gray)" // Ciano/Verde Água
         icone={<AlarmIcon />}
       />
     </div>

@@ -45,7 +45,7 @@ const ProximosEventos = ({
       {mutationError && <p role="alert" className="agenda-events-error-msg">{mutationError.message}</p>}
       {loading && listedEvents.length === 0 ? null : listedEvents.length > 0 ? listedEvents.map((event) => {
         const category = getCategory(event.category);
-        const eventColor = event.color || category.color;
+        const eventColor = category.color;
         const isSelected = selectedDate >= event.date && selectedDate <= (event.endDate || event.date);
         const dateFormatter = new Intl.DateTimeFormat('pt-BR');
         const dateLabel = event.endDate && event.endDate !== event.date

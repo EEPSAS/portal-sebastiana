@@ -128,14 +128,14 @@ const AcervoAba = ({
                 {/* Capa */}
                 <div
                   className="livro-card-cover"
-                  style={{ backgroundColor: livro.corCapa || '#f8f9fa' }}
+                  style={{ backgroundColor: "var(--dashboard-gray-soft)" }}
                 >
                   {livro.imagem ? (
                     <img src={livro.imagem} alt={livro.titulo} loading="lazy" />
                   ) : (
                     <div
                       className="livro-card-placeholder"
-                      style={{ color: livro.corIcone || '#3b82f6' }}
+                      style={{ color: "var(--dashboard-navy)" }}
                     >
                       📖
                     </div>

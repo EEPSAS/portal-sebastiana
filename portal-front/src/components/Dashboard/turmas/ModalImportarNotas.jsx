@@ -152,8 +152,8 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
         <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
           <div>
             <h5 id="modal-importar-titulo" className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-              <span style={{ color: "#e6007e" }}>📊</span>
-              {etapa === "confirmacao" ? "Confirmar Alunos Homônimos" : "Cadastrar Notas via CSV"}
+              <span style={{ color: "var(--dashboard-pink)" }}>📊</span>
+              Cadastrar Notas via CSV
             </h5>
             <small className="text-muted">
               Turma selecionada: <strong className="text-dark">{turma?.nome_identificador}</strong>

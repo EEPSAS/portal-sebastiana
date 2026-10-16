@@ -59,7 +59,7 @@ export default function AgendaList({ itens }) {
   return (
     <div
       className="card border-0 shadow-sm rounded-4 p-4 mt-4 w-100 h-100"
-      style={{ background: '#f7f7f7' }}
+      style={{ background: 'var(--dashboard-gray-soft)' }}
     >
       <h5 className="fw-bold mb-4" style={{ fontSize: '1.1rem' }}>
         Agenda e Notificações (Expandida)

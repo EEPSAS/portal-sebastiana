@@ -41,10 +41,9 @@ export default function LeituraAtualCard({
   return (
     <div className="col-12 col-sm-6 col-lg-3">
       <div
-        className="card h-100 border-0 shadow-sm rounded-4 text-white p-3 d-flex flex-column justify-content-between position-relative"
+        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-4 text-white p-3 d-flex flex-column justify-content-between position-relative"
         style={{
-          backgroundColor: "#f59e0b", // Laranja âmbar vibrante
-          minHeight: "158px",
+          backgroundColor: "var(--dashboard-amber)", // Laranja âmbar vibrante
         }}
       >
         <div>
@@ -83,7 +82,7 @@ export default function LeituraAtualCard({
       {isEditing && (
         <div
           className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 1060, padding: "1rem" }}
+          style={{ backgroundColor: "rgba(var(--dashboard-navy-rgb), 0.5)", zIndex: 1060, padding: "1rem" }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsEditing(false);
           }}
