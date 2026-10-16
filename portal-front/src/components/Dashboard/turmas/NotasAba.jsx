@@ -1,8 +1,13 @@
 import { useMemo } from "react";
 
 /**
- * Aba Notas: Apresenta cards clicáveis com a média geral de cada turma,
- * permitindo alternar a listagem de notas e disparar o cadastro via CSV pelo Especialista.
+ * NotasAba.jsx - Gestão e Consulta de Notas e Diário Escolar por Turma
+ *
+ * Papel Didático:
+ * 1. Apresenta cards das turmas com média geral para alternância rápida.
+ * 2. Disponibiliza botões de ação para o Especialista/Adm (Importação e Exclusão de dados CSV).
+ * 3. Implementa filtro individual por estudante para não sobrecarregar a listagem de uma só vez.
+ * 4. Fornece conexão direta com a visualização do Boletim Escolar individual do aluno selecionado.
  */
 const NotasAba = ({
   resumoGeral = [],
@@ -15,15 +20,27 @@ const NotasAba = ({
   onTermoBuscaChange,
   podeGerenciar = false,
   onAbrirImportarNotas,
+  onAbrirExcluirDadosCsv,
   loadingNotas = false,
+  trimestreAtual = "",
+  alunosTurma = [],
+  alunoFiltroId = "",
+  onAlunoFiltroChange,
+  onAbrirBoletimAluno,
 }) => {
-  // Turma atualmente selecionada
+  // Localiza o objeto da turma atualmente ativa nos cards
   const turmaSelecionada = useMemo(
     () => resumoGeral.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) || null,
     [resumoGeral, turmaSelecionadaId]
   );
 
-  // Filtra as notas pelo campo de busca
+  // Localiza os dados do aluno filtrado no dropdown
+  const alunoSelecionado = useMemo(
+    () => alunosTurma.find((a) => String(a.id) === String(alunoFiltroId)) || null,
+    [alunosTurma, alunoFiltroId]
+  );
+
+  // Filtra as notas pelo campo de busca textual (disciplina ou período)
   const notasFiltradas = useMemo(() => {
     const termo = (termoBusca || "").trim().toLowerCase();
     if (!termo) return notas;
@@ -38,32 +55,47 @@ const NotasAba = ({
 
   return (
     <div>
-      {/* 1. Cabeçalho com Ação de Importar CSV */}
+      {/* 1. Cabeçalho com Ações de Importar e Excluir CSV */}
       <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
         <div>
           <h4 className="fw-bold mb-1 text-dark fs-5">Aproveitamento e Notas</h4>
           <p className="text-muted mb-0 small">
-            Selecione uma turma para consultar o boletim consolidado ou cadastrar notas via planilha CSV.
+            Selecione uma turma para consultar o diário escolar consolidado ou gerenciar lançamentos via CSV.
           </p>
         </div>
 
         {podeGerenciar && (
-          <button
-            type="button"
-            className="btn btn-sm turmas-btn-primario px-3 py-2 rounded-pill d-flex align-items-center gap-2"
-            onClick={onAbrirImportarNotas}
-            disabled={!turmaSelecionada}
-          >
-            <i className="bi bi-file-earmark-arrow-up-fill"></i>
-            <span>Cadastrar Notas (CSV)</span>
-          </button>
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            {/* Botão para Excluir Dados Carregados pelo CSV */}
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-danger px-3 py-2 rounded-pill d-flex align-items-center gap-2 fw-semibold"
+              onClick={onAbrirExcluirDadosCsv}
+              disabled={!turmaSelecionada}
+              title="Excluir notas e faltas carregadas via CSV para esta turma"
+            >
+              <i className="bi bi-trash3-fill"></i>
+              <span>Excluir dados do CSV</span>
+            </button>
+
+            {/* Botão para Importar Novo Arquivo CSV */}
+            <button
+              type="button"
+              className="btn btn-sm turmas-btn-primario px-3 py-2 rounded-pill d-flex align-items-center gap-2"
+              onClick={onAbrirImportarNotas}
+              disabled={!turmaSelecionada}
+            >
+              <i className="bi bi-file-earmark-arrow-up-fill"></i>
+              <span>Cadastrar Notas (CSV)</span>
+            </button>
+          </div>
         )}
       </div>
 
       {/* 2. Cards com a Média Geral por Turma (Clicáveis) */}
       <div className="mb-4">
         <small className="text-muted fw-bold text-uppercase d-block mb-2" style={{ fontSize: "0.75rem" }}>
-          Médias Gerais por Turma (clique para selecionar)
+          Médias Gerais por Turma (clique para alternar a turma ativa)
         </small>
 
         <div className="row g-3">
@@ -99,20 +131,20 @@ const NotasAba = ({
                     <div
                       className="rounded-3 px-2 py-1 text-center"
                       style={{
-                        backgroundColor: isSelecionada ? "#fce7f3" : "#f8fafc",
-                        border: isSelecionada ? "1px solid #e6007e" : "1px solid #e2e8f0",
+                        backgroundColor: isSelecionada ? "var(--dashboard-pink-soft)" : "var(--dashboard-gray-soft)",
+                        border: isSelecionada ? "1px solid var(--dashboard-pink)" : "1px solid var(--dashboard-gray-border)",
                       }}
                     >
                       <span
                         className="fw-bold d-block"
                         style={{
                           fontSize: "1rem",
-                          color: isSelecionada ? "#e6007e" : temNota ? "#0f172a" : "#94a3b8",
+                          color: isSelecionada ? "var(--dashboard-pink)" : temNota ? "var(--dashboard-navy)" : "var(--dashboard-gray)",
                         }}
                       >
                         {temNota ? mediaNum.toFixed(1) : "—"}
                       </span>
-                      <small style={{ fontSize: "0.65rem", color: "#64748b" }}>Média</small>
+                      <small style={{ fontSize: "0.65rem", color: "var(--dashboard-ink-muted)" }}>Média</small>
                     </div>
                   </div>
 
@@ -121,7 +153,7 @@ const NotasAba = ({
                       {turma.total_avaliados || 0} avaliados
                     </small>
                     {isSelecionada && (
-                      <span className="badge rounded-pill" style={{ backgroundColor: "#e6007e", fontSize: "0.65rem" }}>
+                      <span className="badge rounded-pill" style={{ backgroundColor: "var(--dashboard-pink)", fontSize: "0.65rem" }}>
                         Ativa
                       </span>
                     )}
@@ -133,84 +165,157 @@ const NotasAba = ({
         </div>
       </div>
 
-      {/* 3. Tabela de Notas da Turma Selecionada */}
+      {/* 3. Painel de Consulta e Diário Escolar da Turma */}
       <div className="turma-stat-card p-4">
-        {/* Barra de Filtros e Busca */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        {/* Barra de Filtros: Filtro por Aluno (Evita sobrecarga) + Período + Busca */}
+        <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
           <div>
             <h4 className="fw-bold mb-0 text-dark fs-6">
               Notas da Turma:{" "}
-              <span style={{ color: "#e6007e" }}>
+              <span style={{ color: "var(--dashboard-pink)" }}>
                 {turmaSelecionada?.nome_identificador || "Selecione uma turma"}
               </span>
             </h4>
             <small className="text-muted">
-              Mostrando {notasFiltradas.length} de {notas.length} notas lançadas.
+              {alunoSelecionado
+                ? `Exibindo lançamentos de ${alunoSelecionado.name} (${notasFiltradas.length} notas no período).`
+                : "Selecione um estudante abaixo para carregar as notas correspondentes."}
             </small>
           </div>
 
           <div className="d-flex flex-wrap align-items-center gap-2">
-            {/* Filtro de Período */}
+            {/* Seletor Individual de Aluno */}
+            <div className="d-flex align-items-center gap-1">
+              <label htmlFor="filtro-aluno-select" className="visually-hidden">
+                Filtrar por Estudante
+              </label>
+              <select
+                id="filtro-aluno-select"
+                className="form-select form-select-sm fw-semibold"
+                style={{ minWidth: "220px", maxWidth: "260px" }}
+                value={alunoFiltroId}
+                onChange={(e) => onAlunoFiltroChange(e.target.value)}
+                aria-label="Filtrar por estudante"
+              >
+                <option value="">Selecione um aluno da turma...</option>
+                {alunosTurma.map((aluno) => (
+                  <option key={aluno.id} value={String(aluno.id)}>
+                    {aluno.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro de Período Letivo */}
             <select
               className="form-select form-select-sm"
               style={{ width: "auto" }}
               value={periodoFiltro}
               onChange={(e) => onPeriodoFiltroChange(e.target.value)}
+              aria-label="Filtrar por período letivo"
             >
               <option value="">Todos os Períodos</option>
-              <option value="1º Trimestre">1º Trimestre</option>
-              <option value="2º Trimestre">2º Trimestre</option>
-              <option value="3º Trimestre">3º Trimestre</option>
+              <option value="1º Trimestre">
+                1º Trimestre{trimestreAtual === "1º Trimestre" ? " (Atual)" : ""}
+              </option>
+              <option value="2º Trimestre">
+                2º Trimestre{trimestreAtual === "2º Trimestre" ? " (Atual)" : ""}
+              </option>
+              <option value="3º Trimestre">
+                3º Trimestre{trimestreAtual === "3º Trimestre" ? " (Atual)" : ""}
+              </option>
               <option value="1º Bimestre">1º Bimestre</option>
               <option value="2º Bimestre">2º Bimestre</option>
               <option value="3º Bimestre">3º Bimestre</option>
               <option value="4º Bimestre">4º Bimestre</option>
             </select>
 
-            {/* Campo de Pesquisa */}
+            {/* Campo de Pesquisa Textual */}
             <div className="position-relative">
               <input
                 type="text"
                 className="form-control form-control-sm ps-4"
-                placeholder="Buscar aluno ou matéria..."
+                placeholder="Buscar matéria..."
                 value={termoBusca}
                 onChange={(e) => onTermoBuscaChange(e.target.value)}
-                style={{ width: "220px" }}
+                style={{ width: "170px" }}
+                disabled={!alunoFiltroId}
               />
               <i
                 className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2 text-muted"
                 style={{ fontSize: "0.8rem" }}
               ></i>
             </div>
+
+            {/* Conexão com o Boletim do Aluno */}
+            {alunoFiltroId && onAbrirBoletimAluno && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary px-3 rounded-pill d-flex align-items-center gap-1 fw-semibold"
+                onClick={() => onAbrirBoletimAluno(alunoFiltroId)}
+                title="Consultar boletim escolar consolidado deste estudante"
+              >
+                <i className="bi bi-file-earmark-spreadsheet-fill"></i>
+                <span>Ver Boletim</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Listagem */}
-        {loadingNotas ? (
+        {/* 4. Conteúdo: Estado sem Seleção vs Carregando vs Tabela */}
+        {!alunoFiltroId ? (
+          /* Estado Inicial Didático: Solicita a seleção do aluno para não sobrecarregar */
+          <div className="text-center py-5 border rounded-3 bg-light">
+            <div className="fs-1 text-primary mb-2">
+              <i className="bi bi-person-lines-fill"></i>
+            </div>
+            <h6 className="fw-bold text-dark mb-1">Selecione um Aluno para Consultar as Notas</h6>
+            <p className="text-muted small mb-0" style={{ maxWidth: "480px", margin: "0 auto" }}>
+              Para garantir agilidade e evitar o carregamento simultâneo de todos os alunos de uma vez,
+              escolha um estudante no seletor acima para visualizar seus lançamentos e boletim escolar.
+            </p>
+          </div>
+        ) : loadingNotas ? (
+          /* Carregamento pontual das notas do aluno */
           <div className="text-center py-5">
             <div className="spinner-border spinner-border-sm text-primary me-2"></div>
-            <span className="text-muted small">Carregando notas da turma...</span>
+            <span className="text-muted small">Carregando notas do estudante...</span>
           </div>
         ) : notasFiltradas.length === 0 ? (
+          /* Nenhuma nota encontrada */
           <div className="text-center py-5 border rounded-3 bg-light">
             <i className="bi bi-journal-x fs-1 text-muted d-block mb-2"></i>
             <h6 className="fw-bold text-dark mb-1">Nenhuma nota encontrada</h6>
             <p className="text-muted small mb-3">
               {termoBusca || periodoFiltro
-                ? "Nenhum resultado corresponde aos filtros aplicados."
-                : "Esta turma ainda não possui notas lançadas no diário."}
+                ? `Nenhum resultado corresponde aos filtros aplicados${
+                    periodoFiltro ? ` (${periodoFiltro})` : ""
+                  }.`
+                : "Este aluno ainda não possui notas lançadas no diário para a turma selecionada."}
             </p>
-            {podeGerenciar && !termoBusca && (
-              <button
-                type="button"
-                className="btn btn-sm turmas-btn-primario px-3 py-1 rounded-pill"
-                onClick={onAbrirImportarNotas}
-              >
-                <i className="bi bi-file-earmark-plus me-1"></i> Cadastrar Notas via CSV
-              </button>
-            )}
+            <div className="d-flex justify-content-center gap-2">
+              {periodoFiltro && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary px-3 py-1 rounded-pill"
+                  onClick={() => onPeriodoFiltroChange("")}
+                >
+                  <i className="bi bi-calendar3 me-1"></i> Ver todos os períodos
+                </button>
+              )}
+              {podeGerenciar && (
+                <button
+                  type="button"
+                  className="btn btn-sm turmas-btn-primario px-3 py-1 rounded-pill"
+                  onClick={onAbrirImportarNotas}
+                >
+                  <i className="bi bi-file-earmark-plus me-1"></i> Cadastrar Notas via CSV
+                </button>
+              )}
+            </div>
           </div>
         ) : (
+          /* Tabela de Notas do Estudante Selecionado */
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">

@@ -11,6 +11,7 @@ use App\Http\Resources\TurmaResource;
 use App\Http\Resources\TurmaResumoResource;
 use App\Http\Resources\UsuarioResource;
 use App\Models\Disciplina;
+use App\Models\Frequencia;
 use App\Models\Turma;
 use App\Models\TurmaDisciplina;
 use App\Models\User;
@@ -245,6 +246,7 @@ class TurmaController extends Controller
 
     /**
      * Consulta as notas consolidadas registradas para a turma via CSV.
+     * Suporta filtros por período letivo, disciplina e estudante individual.
      */
     public function notas(Request $request, Turma $turma): JsonResponse
     {
@@ -255,14 +257,67 @@ class TurmaController extends Controller
             'disciplina:id_disciplina,nome',
         ]);
 
+        // Filtro temporal por período letivo (ex: '1º Trimestre')
         if ($request->filled('periodo_letivo')) {
             $query->where('periodo_letivo', $request->query('periodo_letivo'));
         }
 
+        // Filtro por componente curricular específico
         if ($request->filled('disciplina_id')) {
             $query->where('disciplina_id', $request->query('disciplina_id'));
         }
 
+        // Filtro por aluno individual para evitar carregar todas as notas da turma de uma vez
+        if ($request->filled('aluno_id')) {
+            $query->where('usuario_id', $request->query('aluno_id'));
+        } elseif ($request->filled('usuario_id')) {
+            $query->where('usuario_id', $request->query('usuario_id'));
+        }
+
         return response()->json(NotaResource::collection($query->orderByDesc('id_nota')->get()), 200);
+    }
+
+    /**
+     * Exclui os dados acadêmicos (notas e frequências) carregados via CSV para a turma.
+     * Permite filtrar opcionalmente por período letivo (ex: '1º Trimestre').
+     */
+    public function excluirDadosCsv(Request $request, Turma $turma): JsonResponse
+    {
+        // Autorização didática: restrito a usuários com privilégios de gestão acadêmica (Especialista ou Adm)
+        $user = $request->user();
+        if (! $user || ! $user->canManageAcademic()) {
+            abort(403, 'Acesso restrito ao perfil de Especialista Pedagógico ou Administrador.');
+        }
+
+        $periodoLetivo = $request->input('periodo_letivo') ?? $request->query('periodo_letivo');
+
+        // 1. Exclusão das notas da turma (filtrando pelo período caso informado)
+        $queryNotas = $turma->notas();
+        if (! empty($periodoLetivo)) {
+            $queryNotas->where('periodo_letivo', $periodoLetivo);
+        }
+        $notasRemovidas = $queryNotas->delete();
+
+        // 2. Exclusão das faltas/frequências registradas para a turma
+        $queryFreq = Frequencia::where('turma_id', $turma->id_turma);
+        if (! empty($periodoLetivo)) {
+            // Mapeia o trimestre escolar para os meses de realização das aulas
+            if (str_contains($periodoLetivo, '1º')) {
+                $queryFreq->whereMonth('data_aula', '<=', 4);
+            } elseif (str_contains($periodoLetivo, '2º')) {
+                $queryFreq->whereMonth('data_aula', '>=', 5)->whereMonth('data_aula', '<=', 8);
+            } elseif (str_contains($periodoLetivo, '3º')) {
+                $queryFreq->whereMonth('data_aula', '>=', 9);
+            }
+        }
+        $frequenciasRemovidas = $queryFreq->delete();
+
+        $mensagemPeriodo = ! empty($periodoLetivo) ? " do período '{$periodoLetivo}'" : '';
+
+        return response()->json([
+            'message' => "Dados do diário escolar{$mensagemPeriodo} excluídos com sucesso.",
+            'notas_removidas' => $notasRemovidas,
+            'frequencias_removidas' => $frequenciasRemovidas,
+        ], 200);
     }
 }

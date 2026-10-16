@@ -84,7 +84,7 @@ const Calendario = ({
                   <span
                     key={event.id}
                     className="agenda-day-dot"
-                    style={{ backgroundColor: event.color || getCategory(event.category).color }}
+                    style={{ backgroundColor: getCategory(event.category).color }}
                   />
                 ))}
                 {dayTasks.length > 0 && <span className="agenda-day-dot-task" />}

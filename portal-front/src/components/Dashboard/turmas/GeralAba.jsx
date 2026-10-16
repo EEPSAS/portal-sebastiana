@@ -100,7 +100,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
               </div>
               <div
                 className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ backgroundColor: "#fce7f3", color: "#e6007e", width: "42px", height: "42px" }}
+                style={{ backgroundColor: "var(--dashboard-pink-soft)", color: "var(--dashboard-pink)", width: "42px", height: "42px" }}
               >
                 <i className="bi bi-collection-fill fs-5"></i>
               </div>
@@ -121,7 +121,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
               </div>
               <div
                 className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ backgroundColor: "#e0f2fe", color: "#0284c7", width: "42px", height: "42px" }}
+                style={{ backgroundColor: "var(--dashboard-navy-soft)", color: "var(--dashboard-navy)", width: "42px", height: "42px" }}
               >
                 <i className="bi bi-people-fill fs-5"></i>
               </div>
@@ -142,7 +142,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
               </div>
               <div
                 className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ backgroundColor: "#fef9c3", color: "#ca8a04", width: "42px", height: "42px" }}
+                style={{ backgroundColor: "var(--dashboard-amber-soft)", color: "var(--dashboard-amber)", width: "42px", height: "42px" }}
               >
                 <i className="bi bi-award-fill fs-5"></i>
               </div>
@@ -167,7 +167,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
               </div>
               <div
                 className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ backgroundColor: "#dcfce7", color: "#16a34a", width: "42px", height: "42px" }}
+                style={{ backgroundColor: "var(--dashboard-navy-soft)", color: "var(--dashboard-navy)", width: "42px", height: "42px" }}
               >
                 <i className="bi bi-person-check-fill fs-5"></i>
               </div>
@@ -193,21 +193,21 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
             <div style={{ width: "100%", height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dadosGraficoMedia} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--dashboard-gray-soft)" />
                   <XAxis
                     dataKey="turma"
-                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    tick={{ fontSize: 11, fill: "var(--dashboard-ink-muted)" }}
                     angle={-20}
                     textAnchor="end"
                     interval={0}
                   />
-                  <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "#64748b" }} />
+                  <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "var(--dashboard-ink-muted)" }} />
                   <Tooltip
                     formatter={(valor) => [`${Number(valor).toFixed(1)} pts`, "Média Geral"]}
-                    labelStyle={{ color: "#0f172a", fontWeight: "bold" }}
-                    contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}
+                    labelStyle={{ color: "var(--dashboard-navy)", fontWeight: "bold" }}
+                    contentStyle={{ borderRadius: "8px", border: "1px solid var(--dashboard-gray-border)" }}
                   />
-                  <Bar dataKey="media" fill="#e6007e" radius={[6, 6, 0, 0]} maxBarSize={45} />
+                  <Bar dataKey="media" fill="var(--dashboard-pink)" radius={[6, 6, 0, 0]} maxBarSize={45} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -228,21 +228,21 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
             <div style={{ width: "100%", height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dadosGraficoPresenca} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--dashboard-gray-soft)" />
                   <XAxis
                     dataKey="turma"
-                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    tick={{ fontSize: 11, fill: "var(--dashboard-ink-muted)" }}
                     angle={-20}
                     textAnchor="end"
                     interval={0}
                   />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "#64748b" }} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--dashboard-ink-muted)" }} />
                   <Tooltip
                     formatter={(valor) => [`${valor}%`, "Taxa de Presença"]}
-                    labelStyle={{ color: "#0f172a", fontWeight: "bold" }}
-                    contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}
+                    labelStyle={{ color: "var(--dashboard-navy)", fontWeight: "bold" }}
+                    contentStyle={{ borderRadius: "8px", border: "1px solid var(--dashboard-gray-border)" }}
                   />
-                  <Bar dataKey="frequencia" fill="#172951" radius={[6, 6, 0, 0]} maxBarSize={45} />
+                  <Bar dataKey="frequencia" fill="var(--dashboard-navy)" radius={[6, 6, 0, 0]} maxBarSize={45} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

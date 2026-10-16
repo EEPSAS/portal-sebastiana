@@ -1,0 +1,39 @@
+/**
+ * Configuracoes.css - Estilos Visuais do Módulo de Configurações
+ *
+ * Aplica os tokens visuais do Portal Sebastiana, transições suaves
+ * e elevações responsivas nos cartões de configuração.
+ */
+
+.configuracoes-page {
+  animation: fadeIn 250ms ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.configuracoes-page .card {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  background-color: var(--dashboard-white);
+}
+
+.configuracoes-page .card:hover {
+  box-shadow: 0 0.5rem 1rem rgba(var(--dashboard-navy-rgb), 0.08) !important;
+}
+
+.configuracoes-page .form-control:focus {
+  border-color: var(--dashboard-navy);
+  box-shadow: 0 0 0 0.25rem rgba(var(--dashboard-navy-rgb), 0.15);
+}
+
+.configuracoes-page .input-group-text {
+  background-color: var(--dashboard-gray-soft);
+}

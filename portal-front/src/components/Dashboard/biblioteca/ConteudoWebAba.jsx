@@ -102,19 +102,112 @@ const ConteudoWebAba = ({ onAviso, onAdicionarAoPlano }) => {
   };
 
   return (
-    <section aria-label="Conteúdo Web e Google Books">
-      {/* Formulário de Busca */}
-      <div className="bg-light p-3 p-md-4 rounded-4 mb-4 border border-light-subtle">
-        <form onSubmit={handleSubmit} className="d-flex flex-column flex-sm-row gap-2 mb-3">
-          <div className="flex-grow-1 position-relative">
-            <input
-              type="search"
-              className="form-control rounded-pill ps-4 py-2"
-              placeholder="Pesquise por livros, disciplinas, tópicos ou autores no Google Books..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              aria-label="Pesquisar conteúdos didáticos no Google Books"
-            />
+    <section aria-label="Conteúdo Web e Apostilas">
+      <div className="d-flex justify-content-end mb-4">
+        <button
+          type="button"
+          onClick={abrirNovoMaterial}
+          className="btn rounded-pill px-4 py-2 biblioteca-btn-primario shadow-sm small"
+        >
+          + Cadastrar conteúdo web
+        </button>
+      </div>
+
+      {/* Grade de Cartões de Conteúdo Web */}
+      <div className="row g-3">
+        {apostilas.map((apostila) => {
+          const etiquetas = [
+            apostila.materia,
+            apostila.tipo,
+            apostila.nivel,
+          ].filter(Boolean);
+          const rodape = [apostila.topico, apostila.autor]
+            .filter(Boolean)
+            .join(' · ');
+
+          return (
+            <div key={apostila.id} className="col-12 col-lg-6">
+              <article className="h-100 p-3 rounded-4 border shadow-sm bg-white d-flex gap-3">
+                <div
+                  className="material-web-icon"
+                  style={{
+                    backgroundColor: "var(--dashboard-navy-soft)",
+                    color: "var(--dashboard-navy)",
+                  }}
+                  aria-hidden="true"
+                >
+                  📄
+                </div>
+
+                <div className="flex-grow-1 min-w-0">
+                  <h6 className="fw-bold mb-1 fs-6 text-dark">
+                    {apostila.titulo}
+                  </h6>
+
+                  <div className="d-flex flex-wrap gap-2 mb-2">
+                    {etiquetas.map((etiqueta) => (
+                      <span
+                        key={etiqueta}
+                        className="badge bg-light text-dark border-0 small"
+                        style={{ fontSize: '10px' }}
+                      >
+                        {etiqueta}
+                      </span>
+                    ))}
+                  </div>
+
+                  <p className="text-muted mb-1 small text-truncate-2">
+                    {apostila.descricao || 'Sem descrição cadastrada.'}
+                  </p>
+
+                  {rodape && (
+                    <small className="text-secondary d-block">{rodape}</small>
+                  )}
+
+                  {apostila.url && (
+                    <a
+                      href={apostila.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="d-inline-block mt-2 small text-primary fw-semibold"
+                    >
+                      Acessar conteúdo web ↗
+                    </a>
+                  )}
+                </div>
+
+                <div className="d-flex flex-column gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => abrirEdicaoMaterial(apostila)}
+                    className="btn btn-sm btn-outline-primary"
+                    aria-label={`Editar ${apostila.titulo}`}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onExcluirApostila({
+                        id: apostila.id,
+                        tipo: 'apostila',
+                        nome: apostila.titulo,
+                      })
+                    }
+                    className="btn btn-sm btn-outline-danger"
+                    aria-label={`Excluir ${apostila.titulo}`}
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </article>
+            </div>
+          );
+        })}
+
+        {apostilas.length === 0 && (
+          <div className="col-12 text-center text-muted py-5">
+            <p className="mb-0 fs-6">Nenhum conteúdo web encontrado.</p>
           </div>
           <button
             type="submit"

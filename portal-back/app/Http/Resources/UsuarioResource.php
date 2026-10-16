@@ -23,16 +23,23 @@ class UsuarioResource extends JsonResource
         $roleLabel = $this->role instanceof UserRole ? $this->role->label() : ucfirst($roleValue);
 
         return [
-            // Identificador do usuário
+            // Identificador e dados cadastrais
             'id' => $this->id,
             'name' => $this->name,
+            'nickname' => $this->nickname,
             'email' => $this->email,
-            'avatar' => $this->avatar,
+            'telefone' => $this->telefone,
+            // URL resolvida pública do avatar ou URL do Google OAuth
+            'avatar' => $this->avatar_url ?? $this->avatar,
             'data_nascimento' => $this->data_nascimento?->format('Y-m-d'),
             'google_vinculado' => ! empty($this->google_id),
-            // Controle de papel e permissões
+            'tem_senha' => ! empty($this->password),
+            // Controle de papel, turma vinculada e permissões
             'role' => $roleValue,
             'role_label' => $roleLabel,
+            // Nome e identificador numérico da turma ativa do aluno (ou null caso não seja aluno ou não possua turma ativa)
+            'turma' => $this->turma_ativa?->nome_identificador,
+            'turma_id' => $this->turma_ativa?->id_turma,
             'ativo' => (bool) $this->ativo,
             'permissoes' => method_exists($this->resource, 'getPermissionsSlugs')
                 ? $this->getPermissionsSlugs()

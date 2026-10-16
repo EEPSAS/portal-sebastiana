@@ -41,7 +41,7 @@ const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula, onAdicionarAoPla
       id: Date.now(),
       titulo: videoSelecionado.title,
       materia: (videoSelecionado.channelTitle || 'YouTube').slice(0, 100),
-      corBadge: '#2563eb',
+      corBadge: 'var(--dashboard-navy)',
       descricao: videoSelecionado.description.slice(0, 1000),
       url: urlVideoSelecionada,
     });

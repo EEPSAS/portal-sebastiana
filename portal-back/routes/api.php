@@ -16,6 +16,7 @@ use App\Http\Controllers\PlanoEstudoController;
 use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\TurmaController;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Resources\UsuarioResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -52,10 +53,9 @@ Route::prefix('auth')->name('auth.')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         $user = $request->user()->load('roleModel.permissions');
-        $userData = $user->toArray();
-        $userData['permissoes'] = $user->getPermissionsSlugs();
 
-        return response()->json($userData);
+        // Retorna os dados do usuário logado padronizados e blindados via UsuarioResource
+        return new UsuarioResource($user);
     });
 
     Route::apiResource('noticias', NoticiaController::class)->except(['index', 'show']);
@@ -73,6 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/turmas/{turma}/alunos-disponiveis', [TurmaController::class, 'alunosDisponiveis']);
     Route::get('/turmas/{turma}/disciplinas', [TurmaController::class, 'disciplinas']);
     Route::get('/turmas/{turma}/notas', [TurmaController::class, 'notas']);
+    Route::delete('/turmas/{turma}/dados-csv', [TurmaController::class, 'excluirDadosCsv']);
     Route::post('/turmas/{turma}/disciplinas', [TurmaController::class, 'vincularDisciplina']);
     Route::delete('/turmas/{turma}/disciplinas/{disciplina}', [TurmaController::class, 'desvincularDisciplina']);
     Route::apiResource('turmas', TurmaController::class);
@@ -138,7 +139,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/papeis', [UsuarioController::class, 'papeis']);
     Route::get('/permissoes', [UsuarioController::class, 'permissoes']);
 
-    // Gestão de Usuários (Administrador)
+    // Gestão de Usuários e Foto de Perfil
+    Route::post('/usuarios/{usuario}/avatar', [UsuarioController::class, 'uploadAvatar'])->name('usuarios.avatar.upload');
+    Route::delete('/usuarios/{usuario}/avatar', [UsuarioController::class, 'deleteAvatar'])->name('usuarios.avatar.delete');
     Route::patch('/usuarios/{usuario}/bloquear', [UsuarioController::class, 'bloquear']);
     Route::patch('/usuarios/{usuario}/papel', [UsuarioController::class, 'alterarPapel']);
     Route::post('/usuarios/{usuario}/permissoes', [UsuarioController::class, 'atribuirPermissoes']);

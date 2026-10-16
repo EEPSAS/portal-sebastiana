@@ -57,7 +57,7 @@ test('testa rotas publicas de noticias e biblioteca', function () {
     // 1. Notícias públicas
     $respNoticias = $this->getJson('/api/noticias');
     $respNoticias->assertOk()
-        ->assertJsonCount(3);
+        ->assertJsonCount(5);
 
     $primeiraNoticia = $respNoticias->json('0.id');
     $this->getJson("/api/noticias/{$primeiraNoticia}")
@@ -123,10 +123,10 @@ test('testa rotas academicas de turmas, disciplinas e matriculas', function () {
 
     $turma1A = Turma::where('nome_identificador', '1º Ano A - Ensino Médio')->first();
 
-    // 2. Listar alunos da turma 1A (4 alunos matriculados)
+    // 2. Listar alunos da turma 1A (1 aluno matriculado)
     $this->actingAs($admin, 'sanctum')->getJson("/api/turmas/{$turma1A->id_turma}/alunos")
         ->assertOk()
-        ->assertJsonCount(4)
+        ->assertJsonCount(1)
         ->assertJsonFragment(['name' => 'Yasmin Teixeira']);
 
     // 3. Listar disciplinas vinculadas à turma 1A

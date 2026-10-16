@@ -36,6 +36,7 @@ const ROLE_DISPLAY_NAMES = {
 const Header = ({
   userName = "Maria Silva",
   role = "Usuário",
+  turma,
   userPhoto,
   onLogout,
 }) => {
@@ -83,9 +84,19 @@ const Header = ({
   const realRoleLabel = ROLE_DISPLAY_NAMES[realRole] || "Usuário";
   const activeRoleLabel = ROLE_DISPLAY_NAMES[user?.role] || role;
 
+  // Identifica se a sessão ativa corresponde a um aluno (seja papel real ou simulado)
+  const isAluno = (user?.role === "aluno" || user?.role === "padrao" || realRole === "aluno");
+  const turmaNome = turma || user?.turma;
+
+  // Didática: Se o usuário for Aluno e possuir turma ativa vinculada, exibe "Aluno - {Nome da Turma}".
+  // Se não possuir turma ou for outro papel acadêmico, mantém a exibição padrão do papel.
+  const tipoLoginLabel = isAluno && turmaNome
+    ? `Aluno - ${turmaNome}`
+    : (isRealAdmin && user?.role && user.role !== realRole ? activeRoleLabel : realRoleLabel);
+
   return (
     <>
-      <header className="dashboard-header bg-white shadow-sm d-flex align-items-center justify-content-between px-4 py-2 mb-3">
+      <header className="dashboard-header bg-white shadow-sm d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center gap-3">
           <span className="fs-5 fw-bold text-dark">Painel de Controle</span>
 
@@ -138,8 +149,8 @@ const Header = ({
         <div className="d-flex align-items-center ms-auto gap-3">
           <div className="text-end">
             <span className="fw-bold d-block text-dark lh-sm">{userName}</span>
-            <small className="text-muted d-block text-capitalize">
-              {realRoleLabel}
+            <small className="text-muted d-block">
+              {tipoLoginLabel}
             </small>
           </div>
 
@@ -177,7 +188,7 @@ const Header = ({
         <div
           className="modal fade show d-block"
           tabIndex="-1"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.55)", zIndex: 1060 }}
+          style={{ backgroundColor: "rgba(var(--dashboard-navy-rgb), 0.55)", zIndex: 1060 }}
           role="dialog"
         >
           <div className="modal-dialog modal-dialog-centered">

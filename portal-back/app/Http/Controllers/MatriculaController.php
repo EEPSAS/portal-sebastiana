@@ -18,18 +18,19 @@ use Illuminate\Support\Facades\Gate;
 class MatriculaController extends Controller
 {
     /**
-     * Lista todas as matrículas ativas da escola com informações do estudante e da turma.
+     * Lista todas as matrículas ativas da escola.
+     * Alimenta a relação nominal de estudantes e os contadores de turmas no painel acadêmico.
+     *
+     * @return JsonResponse Coleção de matrículas formatadas via MatriculaResource
      */
-    public function index(Request $request): JsonResponse
+    public function index(): JsonResponse
     {
-        $user = $request->user();
-        if (! $user || (! $user->canManageAcademic() && ! $user->isProfessor())) {
-            abort(403, 'Acesso restrito ao corpo docente e pedagógico.');
-        }
+        Gate::authorize('viewAny', Turma::class);
 
-        $matriculas = Matricula::with(['turma', 'aluno:id,name,email'])
+        $matriculas = Matricula::query()
             ->where('status_matricula', 'Ativo')
-            ->orderByDesc('id_matricula')
+            ->with(['turma', 'aluno:id,name,email'])
+            ->orderBy('id_matricula', 'desc')
             ->get();
 
         return response()->json(MatriculaResource::collection($matriculas), 200);
@@ -54,7 +55,7 @@ class MatriculaController extends Controller
             ], 422);
         }
 
-        // Verifica se o aluno já possui registro anterior nesta turma
+        // Impede duplicação se o aluno já estiver com matrícula ativa, ou reativa se estiver inativo
         $matriculaExistente = Matricula::where('turma_id', $turma->id_turma)
             ->where('usuario_id', $request->integer('usuario_id'))
             ->first();
@@ -66,7 +67,7 @@ class MatriculaController extends Controller
                 ], 422);
             }
 
-            // Se o registro prévio estava inativo (desvinculado/evadido), reativa a matrícula
+            // Reativa o vínculo acadêmico existente
             $matriculaExistente->update([
                 'status_matricula' => 'Ativo',
                 'data_matricula' => $request->filled('data_matricula') ? $request->string('data_matricula')->toString() : now()->format('Y-m-d'),

@@ -1,6 +1,14 @@
 export default function MediumCard({ 
   itensVisiveis // Agora deve receber todas as matérias de uma vez
 }) {
+  // Limita as fatias às cores da identidade visual do painel.
+  const coresDashboard = [
+    "var(--dashboard-navy)",
+    "var(--dashboard-gray)",
+    "var(--dashboard-pink)",
+    "var(--dashboard-amber)",
+  ];
+
   // 1. Calcular o total de pontos
   const totalPontos = itensVisiveis.reduce((acc, item) => acc + item.pontos, 0);
 
@@ -49,10 +57,10 @@ export default function MediumCard({
     <div
       className="card border-0 shadow-sm rounded-4 p-4 pb-4 mt-4 position-relative w-100 h-100"
       style={{
-        background: '#f7f7f7',
+        background: 'var(--dashboard-gray-soft)',
         minHeight: '0',
-        border: '2px solid rgba(214, 0, 110, 0.35)',
-        boxShadow: '0 0 0 1px rgba(214, 0, 110, 0.05)',
+        border: '2px solid rgba(var(--dashboard-pink-rgb), 0.35)',
+        boxShadow: '0 0 0 1px rgba(var(--dashboard-pink-rgb), 0.05)',
       }}
     >
       <h5 className="fw-bold mb-4 text-dark text-center" style={{ fontSize: '1.1rem', lineHeight: 1.3 }}>
@@ -65,12 +73,12 @@ export default function MediumCard({
         {/* Gráfico SVG */}
         <div style={{ width: '280px', height: '280px' }}>
           <svg viewBox="0 0 200 200" width="100%" height="100%" style={{ overflow: 'visible' }}>
-            {fatias.map((fatia) => (
+            {fatias.map((fatia, index) => (
               <g key={fatia.id}>
                 <path 
                   d={fatia.pathData} 
-                  fill={fatia.cor} 
-                  stroke="#ffffff" // Borda branca entre as fatias
+                  fill={coresDashboard[index % coresDashboard.length]}
+                  stroke="var(--dashboard-white)" // Borda branca entre as fatias
                   strokeWidth="2"
                 />
                 {/* Renderiza o texto do número natural apenas se a fatia for grande o suficiente */}
@@ -78,7 +86,7 @@ export default function MediumCard({
                   <text 
                     x={fatia.labelX} 
                     y={fatia.labelY} 
-                    fill="#ffffff" 
+                    fill="var(--dashboard-white)"
                     fontSize="14" 
                     fontWeight="bold"
                     textAnchor="middle" 
@@ -94,13 +102,13 @@ export default function MediumCard({
 
         {/* Legenda (Matéria e Cor) */}
         <div className="d-flex flex-column gap-2">
-          {itensVisiveis.map((item) => (
+          {itensVisiveis.map((item, index) => (
             <div key={item.id} className="d-flex align-items-center gap-2">
               <div
                 style={{
                   width: '14px',
                   height: '14px',
-                  backgroundColor: item.cor,
+                  backgroundColor: coresDashboard[index % coresDashboard.length],
                   borderRadius: '50%' // Bolinha igual à referência
                 }}
               />

@@ -174,8 +174,8 @@ const ModalVincularAluno = ({
               style={{
                 width: "46px",
                 height: "46px",
-                backgroundColor: "#f8fafc",
-                border: "1px solid #e2e8f0",
+                backgroundColor: "var(--dashboard-gray-soft)",
+                border: "1px solid var(--dashboard-gray-border)",
               }}
             >
               <i className="bi bi-google text-primary fs-4"></i>
@@ -284,7 +284,7 @@ const ModalVincularAluno = ({
               {alunoAtual && (
                 <div
                   className="card border rounded-3 mb-3 shadow-none"
-                  style={{ backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}
+                  style={{ backgroundColor: "var(--dashboard-gray-soft)", borderColor: "var(--dashboard-gray-border)" }}
                 >
                   <div className="card-body p-3">
                     <div className="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom">

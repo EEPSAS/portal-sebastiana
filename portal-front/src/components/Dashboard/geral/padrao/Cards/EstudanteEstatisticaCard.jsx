@@ -15,7 +15,7 @@ function CircularProgress({ porcentagem }) {
           cy="22"
           r={radius}
           fill="none"
-          stroke="rgba(255, 255, 255, 0.25)"
+          stroke="rgba(var(--dashboard-white-rgb), 0.25)"
           strokeWidth="4"
         />
         {/* Círculo de Preenchimento da Porcentagem */}
@@ -24,7 +24,7 @@ function CircularProgress({ porcentagem }) {
           cy="22"
           r={radius}
           fill="none"
-          stroke="#ffffff"
+          stroke="var(--dashboard-white)"
           strokeWidth="4"
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
@@ -154,7 +154,7 @@ export default function StudentStatCard({
       {isEditing && (
         <div
           className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)', zIndex: 1050, padding: '1rem' }}
+          style={{ backgroundColor: 'rgba(var(--dashboard-navy-rgb), 0.48)', zIndex: 1050, padding: '1rem' }}
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setIsEditing(false);
           }}

@@ -191,8 +191,8 @@ const AcervoAba = ({
               <div className="card h-100 border-0 shadow-sm livro-card">
                 {/* Capa */}
                 <div
-                  className="livro-card-cover position-relative"
-                  style={{ backgroundColor: '#f1f5f9', minHeight: '140px' }}
+                  className="livro-card-cover"
+                  style={{ backgroundColor: "var(--dashboard-gray-soft)" }}
                 >
                   {capaUrl ? (
                     <img
@@ -202,7 +202,10 @@ const AcervoAba = ({
                       className="w-100 h-100 object-fit-cover"
                     />
                   ) : (
-                    <div className="livro-card-placeholder text-primary fs-1">
+                    <div
+                      className="livro-card-placeholder"
+                      style={{ color: "var(--dashboard-navy)" }}
+                    >
                       📖
                     </div>
                   )}
