@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\AlunoResumoGlobalResource;
 use App\Http\Resources\BoletimResource;
+use App\Http\Resources\ComparativoTurmaResource;
 use App\Models\Disciplina;
 use App\Models\Matricula;
 use App\Models\Turma;
@@ -43,7 +45,7 @@ class AlunoDashboardController extends Controller
             $trimestre
         );
 
-        return response()->json($resumo, 200);
+        return response()->json(new AlunoResumoGlobalResource($resumo), 200);
     }
 
     /**
@@ -87,7 +89,7 @@ class AlunoDashboardController extends Controller
             $trimestre
         );
 
-        return response()->json($comparativo, 200);
+        return response()->json(new ComparativoTurmaResource($comparativo), 200);
     }
 
     /**
@@ -123,7 +125,7 @@ class AlunoDashboardController extends Controller
 
     /**
      * Autoriza o acesso garantindo que o usuário logado é o próprio estudante
-     * ou possui privilégios de gestão pedagógica/administrativa.
+     * ou possui privilégios de consulta docente/gestão pedagógica.
      */
     protected function autorizarAcessoAluno(Request $request, int $alunoId): void
     {
@@ -139,7 +141,7 @@ class AlunoDashboardController extends Controller
         }
 
         // Professores, Especialistas e Administradores podem consultar o dashboard de qualquer aluno
-        if ($user->canManageAcademic() || $user->isAdm() || $user->isEspecialista()) {
+        if ($user->canManageAcademic() || $user->isAdm() || $user->isEspecialista() || $user->isProfessor()) {
             return;
         }
 

@@ -39,64 +39,55 @@ const leaders = [
 ];
 
 // ==============================================================================
-// DADOS DA EQUIPE — DIVISÃO EM EXATAMENTE 2 PÁGINAS POR ÁREA
-// Página 1: exclusivamente Front-end (3 integrantes)
-// Página 2: exclusivamente Back-end (2 integrantes)
+// DADOS DA EQUIPE — LISTA PLANA PARA CARROSSEL FLUIDO DE 1 EM 1
+// Permite que os cards deslizem individualmente sem a quebra brusca de blocos de páginas.
 // Dalton e Prentys foram removidos permanentemente conforme especificação.
 // ==============================================================================
-const teamPages = [
+const teamMembers = [
   {
-    id: "frontend",
-    title: "Front-end",
-    members: [
-      {
-        name: "Davi",
-        role: "Desenvolvedor Front-end",
-        photo: "/img/davi-perfil.png",
-        // Enquadramento no terço superior para evitar corte da cabeça
-        objectPosition: "center 20%",
-        portfolioUrl: "https://github.com/",
-      },
-      {
-        name: "Natã",
-        role: "Desenvolvedor Front-end",
-        photo: "/img/nata-perfil.png",
-        objectPosition: "center 20%",
-        portfolioUrl: "https://github.com/",
-      },
-      {
-        name: "Rhaynner",
-        role: "Desenvolvedor Front-end",
-        photo: "/img/perfil-rhaynner.png",
-        objectPosition: "center 20%",
-        portfolioUrl: "https://github.com/",
-      },
-    ],
+    name: "Davi",
+    role: "Desenvolvedor Front-end",
+    photo: "/img/davi-perfil.png",
+    // Enquadramento no terço superior para evitar corte da cabeça
+    objectPosition: "center 20%",
+    portfolioUrl: "https://github.com/",
   },
   {
-    id: "backend",
-    title: "Back-end",
-    members: [
-      {
-        name: "Yasmim Gomes",
-        role: "Desenvolvedora Back-end",
-        photo: "/img/gomes-perfil.jpeg",
-        // Classe CSS específica para ajuste fino do enquadramento facial
-        photoClassName: "foto-yasmim-gomes",
-        // Centraliza com precisão o rosto e o sorriso, preservando o volume dos cachos
-        objectPosition: "50% 45%",
-        portfolioUrl: "https://github.com/",
-      },
-      {
-        name: "Cadu",
-        role: "Desenvolvedor Back-end",
-        photo: "/img/cadu-perfil.png",
-        objectPosition: "center 25%",
-        portfolioUrl: "https://github.com/",
-      },
-    ],
+    name: "Natã",
+    role: "Desenvolvedor Front-end",
+    photo: "/img/nata-perfil.png",
+    objectPosition: "center 20%",
+    portfolioUrl: "https://github.com/",
+  },
+  {
+    name: "Rhaynner",
+    role: "Desenvolvedor Front-end",
+    photo: "/img/perfil-rhaynner.png",
+    objectPosition: "center 20%",
+    portfolioUrl: "https://github.com/",
+  },
+  {
+    name: "Yasmim Gomes",
+    role: "Desenvolvedora Back-end",
+    photo: "/img/gomes-perfil.jpeg",
+    // Classe CSS específica para ajuste fino do enquadramento facial
+    photoClassName: "foto-yasmim-gomes",
+    // Centraliza com precisão o rosto e o sorriso, preservando o volume dos cachos
+    objectPosition: "50% 45%",
+    portfolioUrl: "https://github.com/",
+  },
+  {
+    name: "Cadu",
+    role: "Desenvolvedor Back-end",
+    photo: "/img/cadu-perfil.png",
+    objectPosition: "center 25%",
+    portfolioUrl: "https://github.com/",
   },
 ];
+
+// Clona os primeiros 2 integrantes no final da fila para manter a grade cheia (3 cards visíveis)
+// nos últimos passos (índices 3 e 4), criando rotação circular suave de 1 em 1
+const displayMembers = [...teamMembers, ...teamMembers.slice(0, 2)];
 
 const AUTOPLAY_INTERVAL_MS = 5000; // Tempo de rotação automática do carrossel (5 segundos)
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -216,8 +207,8 @@ const TeamMemberCard = ({ member }) => (
  * Componente Principal da Seção de Desenvolvedores
  */
 const SobreDesenvolvedores = () => {
-  // Estado que armazena a página ativa do carrossel (0 = Front-end, 1 = Back-end)
-  const [currentPage, setCurrentPage] = useState(0);
+  // Estado que armazena o índice do integrante atual na liderança do carrossel (0 a 4)
+  const [currentIndex, setCurrentIndex] = useState(0);
   // Estado de controle para pausar rotação durante interação do usuário
   const [isPaused, setIsPaused] = useState(false);
   // Preferência do usuário por redução de animações e movimentos
@@ -227,7 +218,7 @@ const SobreDesenvolvedores = () => {
   // Posição X inicial do gesto de arrasto (touch/mouse)
   const touchStartX = useRef(null);
 
-  const totalPages = teamPages.length; // Exatamente 2 páginas
+  const totalMembers = teamMembers.length; // 5 integrantes
 
   // Monitora mudanças na preferência de movimento reduzido no sistema operacional
   useEffect(() => {
@@ -238,7 +229,7 @@ const SobreDesenvolvedores = () => {
     return () => motionQuery.removeEventListener("change", handleMotionChange);
   }, []);
 
-  // Temporizador de 5 segundos para avanço automático de páginas
+  // Temporizador para avanço automático de 1 em 1 card
   useEffect(() => {
     // Se o usuário estiver interagindo ou tiver movimento reduzido ativo, não agenda o temporizador
     if (isPaused || reducedMotion) {
@@ -246,17 +237,17 @@ const SobreDesenvolvedores = () => {
     }
 
     const timer = window.setTimeout(() => {
-      // Avanço circular suave: 0 -> 1 -> 0
-      setCurrentPage((prev) => (prev + 1) % totalPages);
+      // Avanço contínuo de 1 em 1 card: 0 -> 1 -> 2 -> 3 -> 4 -> 0
+      setCurrentIndex((prev) => (prev + 1) % totalMembers);
     }, AUTOPLAY_INTERVAL_MS);
 
     // Limpeza obrigatória do temporizador para prevenir memory leaks
     return () => window.clearTimeout(timer);
-  }, [currentPage, isPaused, reducedMotion, totalPages]);
+  }, [currentIndex, isPaused, reducedMotion, totalMembers]);
 
-  // Função para navegar entre as páginas (+1 ou -1)
+  // Função para navegar entre os integrantes de 1 em 1 (+1 ou -1)
   const navigate = (direction) => {
-    setCurrentPage((prev) => (prev + direction + totalPages) % totalPages);
+    setCurrentIndex((prev) => (prev + direction + totalMembers) % totalMembers);
   };
 
   // Suporte a navegação por teclado acessível
@@ -269,10 +260,10 @@ const SobreDesenvolvedores = () => {
       navigate(-1);
     } else if (event.key === "Home") {
       event.preventDefault();
-      setCurrentPage(0);
+      setCurrentIndex(0);
     } else if (event.key === "End") {
       event.preventDefault();
-      setCurrentPage(totalPages - 1);
+      setCurrentIndex(totalMembers - 1);
     }
   };
 
@@ -343,7 +334,7 @@ const SobreDesenvolvedores = () => {
             className="sobre-dev-arrow sobre-dev-arrow--prev"
             type="button"
             onClick={() => navigate(-1)}
-            aria-label="Mostrar página anterior da equipe"
+            aria-label="Mostrar integrante anterior"
           >
             <span aria-hidden="true">&#8592;</span>
           </button>
@@ -356,26 +347,15 @@ const SobreDesenvolvedores = () => {
             onPointerCancel={handlePointerCancel}
             aria-live={isPaused || reducedMotion ? "polite" : "off"}
           >
-            {/* Trilho Deslizante com translateX */}
+            {/* Trilho Deslizante com translateX que se desloca de 1 em 1 card */}
             <div
               className="sobre-dev-track"
-              style={{ transform: `translateX(-${currentPage * 100}%)` }}
+              style={{
+                transform: `translateX(calc(-${currentIndex} * (100% + var(--dev-carousel-gap, 1rem)) / 3))`,
+              }}
             >
-              {teamPages.map((page, pageIndex) => (
-                <div
-                  key={page.id}
-                  className={`sobre-dev-page sobre-dev-page--${page.id}`}
-                  role="group"
-                  aria-roledescription="página"
-                  aria-label={`Página ${pageIndex + 1} de ${totalPages}: ${page.title}`}
-                  inert={pageIndex !== currentPage}
-                >
-                  <div className="sobre-dev-members-row">
-                    {page.members.map((member) => (
-                      <TeamMemberCard key={member.name} member={member} />
-                    ))}
-                  </div>
-                </div>
+              {displayMembers.map((member, idx) => (
+                <TeamMemberCard key={`${member.name}-${idx}`} member={member} />
               ))}
             </div>
           </div>
@@ -385,27 +365,27 @@ const SobreDesenvolvedores = () => {
             className="sobre-dev-arrow sobre-dev-arrow--next"
             type="button"
             onClick={() => navigate(1)}
-            aria-label="Mostrar próxima página da equipe"
+            aria-label="Mostrar próximo integrante"
           >
             <span aria-hidden="true">&#8594;</span>
           </button>
         </div>
 
-        {/* Indicadores de Página: exatamente 2 pontos */}
+        {/* Indicadores de Posição: 1 ponto por integrante da equipe */}
         <div
           className="sobre-dev-indicators"
           role="tablist"
-          aria-label="Indicadores de página da equipe"
+          aria-label="Indicadores dos integrantes da equipe"
         >
-          {teamPages.map((page, index) => (
+          {teamMembers.map((member, index) => (
             <button
-              key={page.id}
+              key={member.name}
               type="button"
               role="tab"
-              className={`sobre-dev-indicator-dot${currentPage === index ? " is-active" : ""}`}
-              aria-selected={currentPage === index}
-              aria-label={`Página ${index + 1}: ${page.title}`}
-              onClick={() => setCurrentPage(index)}
+              className={`sobre-dev-indicator-dot${currentIndex === index ? " is-active" : ""}`}
+              aria-selected={currentIndex === index}
+              aria-label={`Integrante ${index + 1} de ${totalMembers}: ${member.name}`}
+              onClick={() => setCurrentIndex(index)}
             />
           ))}
         </div>

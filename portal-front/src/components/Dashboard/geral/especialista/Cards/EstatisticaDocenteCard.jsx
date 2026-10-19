@@ -1,4 +1,12 @@
-// Ícones dinâmicos com base na prop tipoIcone
+/**
+ * EstatisticaDocenteCard.jsx - Card Unitário de Indicador Rápido (KPI)
+ *
+ * Papel Didático:
+ * Renderiza um indicador numérico resumido (Total de Alunos, Média Geral, Frequência Média
+ * ou Notícias Publicadas) no topo do painel do Especialista e do Professor.
+ */
+
+// Renderiza o ícone vetorial correspondente à categoria do KPI
 function RenderIcon({ tipo }) {
   switch (tipo) {
     case "alunos":
@@ -41,6 +49,7 @@ export default function GeralSmallCards({
     <div className="col-12 col-sm-6 col-lg-3">
       <div className="card h-100 border-0 shadow-sm rounded-3 p-3">
         <div className="d-flex align-items-center gap-3">
+          {/* Círculo colorido de destaque do ícone */}
           <div
             className={`rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ${bgIcone} ${textIcone}`}
             style={{ width: "48px", height: "48px" }}
@@ -48,6 +57,7 @@ export default function GeralSmallCards({
             <RenderIcon tipo={tipoIcone} />
           </div>
 
+          {/* Rótulo descritivo e valor principal do KPI */}
           <div className="d-flex flex-column">
             <span
               className="text-muted fw-medium"

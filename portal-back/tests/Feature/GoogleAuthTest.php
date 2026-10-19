@@ -173,3 +173,65 @@ test('mantem login tradicional por email e senha funcionando normalmente (fallba
     $response->assertOk()
         ->assertJsonStructure(['user', 'token', 'token_type']);
 });
+
+test('rejeita token do Google quando o aud (Client ID) diverge do configurado na aplicacao', function () {
+    config(['services.google.client_id' => 'client-id-oficial.apps.googleusercontent.com']);
+
+    Http::fake([
+        'https://oauth2.googleapis.com/tokeninfo*' => Http::response([
+            'sub' => 'google-user-aud-999',
+            'aud' => 'outro-client-id-invalido.apps.googleusercontent.com',
+            'email' => 'ada.lovelace@aluno.mg.gov.br',
+            'name' => 'Ada Lovelace',
+        ], 200),
+    ]);
+
+    $response = $this->postJson('/api/auth/google', [
+        'credential' => 'jwt-de-outro-app',
+    ]);
+
+    $response->assertUnauthorized()
+        ->assertJsonPath('message', 'Token do Google emitido para outro aplicativo (Client ID divergente).');
+});
+
+test('preserva matricula Ativo do aluno ao autenticar novamente com Google informando turma_id', function () {
+    $turma = Turma::create([
+        'nome_identificador' => '2º Ano B - Ensino Médio',
+        'ano_letivo' => 2026,
+        'turno' => 'Matutino',
+    ]);
+
+    $aluno = User::factory()->create([
+        'email' => 'grace.hopper@aluno.mg.gov.br',
+        'role' => UserRole::ALUNO,
+        'ativo' => true,
+    ]);
+
+    Matricula::create([
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $aluno->id,
+        'data_matricula' => now()->toDateString(),
+        'status_matricula' => 'Ativo',
+    ]);
+
+    Http::fake([
+        'https://oauth2.googleapis.com/tokeninfo*' => Http::response([
+            'sub' => 'google-grace-123',
+            'email' => 'grace.hopper@aluno.mg.gov.br',
+            'name' => 'Grace Hopper',
+        ], 200),
+    ]);
+
+    $response = $this->postJson('/api/auth/google', [
+        'credential' => 'valid-jwt-token',
+        'turma_id' => $turma->id_turma,
+    ]);
+
+    $response->assertOk();
+
+    $matricula = Matricula::where('usuario_id', $aluno->id)
+        ->where('turma_id', $turma->id_turma)
+        ->first();
+
+    expect($matricula->status_matricula)->toBe('Ativo');
+});

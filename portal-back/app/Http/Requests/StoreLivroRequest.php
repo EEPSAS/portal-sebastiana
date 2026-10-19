@@ -5,24 +5,28 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-// Validação para cadastro de um novo livro no acervo.
+/**
+ * StoreLivroRequest - Validação de Entrada para Cadastro de Livro Físico
+ *
+ * Papel Didático:
+ * Blindagem de entrada da rota POST /api/livros. Garante que apenas gestores
+ * da biblioteca cadastrem obras e valida a integridade das quantidades do acervo.
+ */
 class StoreLivroRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Autoriza apenas usuários com permissão de gestão da biblioteca escolar.
      */
-    // Autoriza apenas usuários com permissão de gestão de biblioteca
     public function authorize(): bool
     {
         return $this->user() !== null && $this->user()->canManageLibrary();
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Regras de validação para os dados cadastrais do livro físico.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
-    // Regras de validação para os dados cadastrais definitivos do livro
     public function rules(): array
     {
         return [
@@ -41,11 +45,10 @@ class StoreLivroRequest extends FormRequest
     }
 
     /**
-     * Custom messages for validation errors.
+     * Mensagens amigáveis em português para feedback de validação.
      *
      * @return array<string, string>
      */
-    // Mensagens de erro customizadas de validação
     public function messages(): array
     {
         return [

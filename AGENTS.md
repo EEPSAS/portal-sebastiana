@@ -32,7 +32,25 @@ Monorepo composto por backend Laravel API RESTful (`portal-back`) e frontend Rea
 
 ## Stack Tecnológica
 - **Backend**: PHP 8.5+, Laravel 12/13 API RESTful, Sanctum, Eloquent, MySQL/SQLite, Pest (testes) e Pint (formatação).
-- **Frontend**: React 19, Vite, React Router, Bootstrap 5 e Icons, Fetch nativo (sem Axios, sem Tailwind, sem Redux).
+- **Frontend**: React 19, Vite, React Router, Bootstrap 5 e Icons, **Recharts** (padrão oficial obrigatório para construção de gráficos e elementos analíticos similares), Fetch nativo (sem Axios, sem Tailwind, sem Redux).
+
+---
+
+## Configuração Local Obrigatória: "Login With Google", APIs Google e CORS
+Para que a autenticação OAuth (`Login With Google`) e as integrações da Biblioteca (YouTube Data API v3 e Google Books API) funcionem sem falhas no ambiente local Windows:
+1. **Certificados SSL Raiz da Mozilla (`cacert.pem`) e Extensões PHP**:
+   - Baixar o pacote oficial de certificados raiz da Mozilla (`https://curl.se/ca/cacert.pem`) e salvar em `C:\php\extras\ssl\cacert.pem`.
+   - No `php.ini` ativo, garantir que as extensões `curl`, `openssl`, `mbstring`, `pdo_sqlite`/`pdo_mysql` e `fileinfo` estejam habilitadas e configurar:
+     ```ini
+     curl.cainfo = "C:\php\extras\ssl\cacert.pem"
+     openssl.cafile = "C:\php\extras\ssl\cacert.pem"
+     ```
+2. **Chaves de API e Credenciais OAuth (`.env`)**:
+   - `portal-back/.env`: `GOOGLE_CLIENT_ID` (idêntico ao front) e `FRONTEND_URL=http://localhost:5173`.
+   - `portal-front/.env`: `VITE_API_URL=http://localhost:8000/api`, `VITE_GOOGLE_CLIENT_ID`, `VITE_YOUTUBE_API_KEY` e `VITE_GOOGLE_BOOKS_API_KEY`.
+3. **CORS e COOP no Ambiente Local**:
+   - O frontend Vite deve rodar com porta fixa `http://localhost:5173` (`strictPort: true`) e header `Cross-Origin-Opener-Policy: same-origin-allow-popups` para permitir a comunicação `postMessage` do popup Google.
+   - O backend (`config/cors.php`) deve autorizar `http://localhost:5173` e `http://127.0.0.1:5173`.
 
 ---
 

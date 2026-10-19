@@ -26,9 +26,10 @@ import { useAlunoDesempenho } from "../../../../hooks/geral/padrao/useAlunoDesem
 
 const GeralPadrao = () => {
   const { stats, loading: loadingStats, error: errorStats, handleUpdateReading } = useStudentStats();
-  const { desempenho, loading: loadingDesempenho } = useAlunoDesempenho();
+  const { desempenho, loading: loadingDesempenho, error: errorDesempenho } = useAlunoDesempenho();
 
-  if (loadingStats && loadingDesempenho) {
+  // 1. Estado Assíncrono: Carregando
+  if (loadingStats || loadingDesempenho) {
     return (
       <div className="text-center py-5">
         <div className="spinner-border text-primary" role="status">
@@ -39,18 +40,28 @@ const GeralPadrao = () => {
     );
   }
 
-  if (errorStats) {
+  // 2. Estado Assíncrono: Erro Amigável
+  const erroGeral = errorStats || errorDesempenho;
+  if (erroGeral) {
     return (
       <div className="alert alert-danger rounded-4 p-3 shadow-sm" role="alert">
         <i className="bi bi-exclamation-triangle-fill me-2"></i>
-        Não foi possível carregar os indicadores do estudante: {errorStats}
+        Não foi possível carregar os indicadores do estudante: {erroGeral}
+      </div>
+    );
+  }
+
+  // 3. Estado Assíncrono: Vazio
+  if (!stats && !desempenho) {
+    return (
+      <div className="card border-0 shadow-sm rounded-4 p-4 text-center text-muted">
+        Nenhuma informação acadêmica disponível para exibição no momento.
       </div>
     );
   }
 
   return (
     <div className="student-overview">
-      {/* As classes de visão geral ajustam a densidade sem alterar conteúdo ou cores. */}
       {/* 1. Banner de Boas-Vindas */}
       <AlunoBoasVindasCard />
 

@@ -7,7 +7,7 @@
  * serialização de campos e tratamento de erros amigáveis em português.
  */
 
-import { getApiTypeFromCategory, getCategoryFromApiType } from '../components/Dashboard/agenda/agendaConfig';
+import { getApiTypeFromCategory, getCategoryFromApiType } from '../utils/agendaConfig';
 import { api } from './api';
 
 /**
@@ -94,11 +94,23 @@ const serializeEvento = (evento) => {
 };
 
 /**
- * Lista todos os eventos cadastrados na API.
+ * Lista os eventos cadastrados na API.
+ * Quando `publico: true`, consulta apenas os eventos institucionais (Portal Público).
  */
-export const listEventos = async ({ signal, token } = {}) => {
-  const eventos = await request('/eventos', { signal, token });
+export const listEventos = async ({ signal, token, publico = false } = {}) => {
+  const path = publico ? '/eventos?publico=1' : '/eventos';
+  const eventos = await request(path, { signal, token });
   if (!Array.isArray(eventos)) throw new Error('A resposta da API de eventos está em formato inválido.');
+  return eventos.map(mapEvento);
+};
+
+/**
+ * GET /api/eventos/datas-importantes — Lista os eventos marcados como datas importantes.
+ */
+export const datasImportantes = async ({ signal, token, publico = false } = {}) => {
+  const path = publico ? '/eventos/datas-importantes?publico=1' : '/eventos/datas-importantes';
+  const eventos = await request(path, { signal, token });
+  if (!Array.isArray(eventos)) throw new Error('A resposta de datas importantes está em formato inválido.');
   return eventos.map(mapEvento);
 };
 
@@ -119,7 +131,7 @@ export const createEvento = async (evento, { token } = {}) => {
  */
 export const updateEvento = async (evento, { token } = {}) => {
   const updatedEvento = await request(`/eventos/${encodeURIComponent(evento.id)}`, {
-    method: 'PATCH',
+    method: 'PUT',
     body: serializeEvento(evento),
     token,
   });
@@ -133,3 +145,18 @@ export const deleteEvento = async (id, { token } = {}) => {
   await request(`/eventos/${encodeURIComponent(id)}`, { method: 'DELETE', token });
   return true;
 };
+
+// Aliases semânticos em português para paridade 1:1 com apiContract.md
+export const listar = listEventos;
+export const criar = createEvento;
+export const atualizar = updateEvento;
+export const excluir = deleteEvento;
+
+export const eventosService = {
+  listar,
+  datasImportantes,
+  criar,
+  atualizar,
+  excluir,
+};
+

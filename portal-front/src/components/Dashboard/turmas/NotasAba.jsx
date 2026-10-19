@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 /**
  * NotasAba.jsx - Gestão e Consulta de Notas e Diário Escolar por Turma
  *
@@ -29,29 +27,27 @@ const NotasAba = ({
   onAbrirBoletimAluno,
 }) => {
   // Localiza o objeto da turma atualmente ativa nos cards
-  const turmaSelecionada = useMemo(
-    () => resumoGeral.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) || null,
-    [resumoGeral, turmaSelecionadaId]
-  );
+  const turmaSelecionada =
+    resumoGeral.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) || null;
 
   // Localiza os dados do aluno filtrado no dropdown
-  const alunoSelecionado = useMemo(
-    () => alunosTurma.find((a) => String(a.id) === String(alunoFiltroId)) || null,
-    [alunosTurma, alunoFiltroId]
-  );
+  const alunoSelecionado =
+    alunosTurma.find((a) => String(a.id) === String(alunoFiltroId)) || null;
 
   // Filtra as notas pelo campo de busca textual (disciplina ou período)
-  const notasFiltradas = useMemo(() => {
-    const termo = (termoBusca || "").trim().toLowerCase();
-    if (!termo) return notas;
-
-    return notas.filter((n) => {
-      const alunoNome = (n.aluno?.name || "").toLowerCase();
-      const discNome = (n.disciplina?.nome || "").toLowerCase();
-      const periodo = (n.periodo_letivo || "").toLowerCase();
-      return alunoNome.includes(termo) || discNome.includes(termo) || periodo.includes(termo);
-    });
-  }, [notas, termoBusca]);
+  const termoNormalizado = (termoBusca || "").trim().toLowerCase();
+  const notasFiltradas = !termoNormalizado
+    ? notas
+    : notas.filter((n) => {
+        const alunoNome = (n.aluno?.name || "").toLowerCase();
+        const discNome = (n.disciplina?.nome || "").toLowerCase();
+        const periodo = (n.periodo_letivo || "").toLowerCase();
+        return (
+          alunoNome.includes(termoNormalizado) ||
+          discNome.includes(termoNormalizado) ||
+          periodo.includes(termoNormalizado)
+        );
+      });
 
   return (
     <div>

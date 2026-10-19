@@ -1,6 +1,14 @@
 import { api } from './api';
 
 /**
+ * authService.js - Serviço de Autenticação e Sessão (Módulo 1)
+ *
+ * Papel Didático:
+ * Centraliza todas as operações de autenticação via Laravel Sanctum (/api/auth/* e /api/user),
+ * mantendo paridade 1:1 com a tabela do Módulo 1 em apiContract.md.
+ */
+
+/**
  * POST /auth/google — Autentica via credencial do Google e retorna { user, token, token_type }.
  * Salva o token Sanctum e os dados do usuário no localStorage em caso de sucesso.
  */
@@ -48,6 +56,31 @@ export const login = async ({ email, password }) => {
 };
 
 /**
+ * POST /auth/register — Auto-cadastro público de novo estudante (recebe role 'aluno').
+ */
+export const register = async (dadosCadastro) => {
+  const response = await api('/auth/register', {
+    method: 'POST',
+    body: dadosCadastro,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(data.message || 'Erro ao realizar cadastro.');
+    error.errors = data.errors || null;
+    throw error;
+  }
+
+  if (data.token && data.user) {
+    localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('auth_user', JSON.stringify(data.user));
+  }
+
+  return data;
+};
+
+/**
  * POST /auth/logout — Invalida o token no servidor e limpa localStorage.
  */
 export const logout = async () => {
@@ -60,7 +93,7 @@ export const logout = async () => {
 };
 
 /**
- * GET /user — Valida o token atual e retorna o usuário atualizado.
+ * GET /user — Valida o token atual e retorna o usuário atualizado (UsuarioResource).
  */
 export const fetchCurrentUser = async ({ signal } = {}) => {
   const response = await api('/user', { signal });
@@ -76,6 +109,9 @@ export const fetchCurrentUser = async ({ signal } = {}) => {
   return user;
 };
 
+// Alias semântico para paridade 1:1 com apiContract.md
+export const getUser = fetchCurrentUser;
+
 /**
  * Retorna o token salvo (ou null se não houver).
  */
@@ -90,4 +126,15 @@ export const getStoredUser = () => {
   } catch {
     return null;
   }
+};
+
+export const authService = {
+  googleLogin,
+  login,
+  register,
+  logout,
+  getUser,
+  fetchCurrentUser,
+  getStoredToken,
+  getStoredUser,
 };

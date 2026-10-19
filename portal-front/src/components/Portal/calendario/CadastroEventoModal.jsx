@@ -1,0 +1,337 @@
+/**
+ * CadastroEventoModal.jsx - Diálogo Modal de Detalhes, Criação e Edição de Eventos
+ *
+ * Papel Didático:
+ * Atua como componente híbrido de visualização e mutação da Agenda Escolar:
+ * - Modo 'view': Exibe os detalhes completos de um evento (leitura/consulta com ícone de olho);
+ * - Modos 'create' e 'edit': Formulário controlado que sanitiza e envia os dados para a API Laravel.
+ */
+
+import { useState } from 'react';
+import { categoryOptions } from '../../../utils/agendaConfig';
+
+const CadastroEventoModal = ({
+  isOpen,
+  mode = 'create', // 'create' | 'edit' | 'view'
+  event = null,
+  initialDate = '',
+  saving = false,
+  error = null,
+  canEdit = false,
+  onClose,
+  onSave,
+  onSwitchToEdit,
+}) => {
+  const [title, setTitle] = useState(() => event?.title || '');
+  const [date, setDate] = useState(() => event?.date || initialDate || new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(() => event?.endDate || '');
+  const [category, setCategory] = useState(() => event?.category || categoryOptions[0].key);
+  const [description, setDescription] = useState(() => event?.description || '');
+  const [location, setLocation] = useState(() => event?.location || '');
+  const [startTime, setStartTime] = useState(() => event?.startTime || '');
+  const [endTime, setEndTime] = useState(() => event?.endTime || '');
+  const [allDay, setAllDay] = useState(() => Boolean(event?.allDay));
+  const [important, setImportant] = useState(() => Boolean(event?.important));
+  const [color, setColor] = useState(() => event?.color || '');
+
+  if (!isOpen) return null;
+
+  const isViewMode = mode === 'view';
+  const selectedCategoryObj = categoryOptions.find((c) => c.key === category) || categoryOptions[0];
+
+  const handleSubmit = (submitEvent) => {
+    submitEvent.preventDefault();
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle || !date || !category) return;
+
+    onSave({
+      id: event?.id,
+      title: trimmedTitle,
+      description: description.trim() || null,
+      date,
+      endDate: endDate || null,
+      startTime: allDay ? null : startTime || null,
+      endTime: allDay ? null : endTime || null,
+      allDay,
+      category,
+      important,
+      location: location.trim() || null,
+      color: color.trim() || null,
+    });
+  };
+
+  return (
+    <div
+      role="presentation"
+      onMouseDown={(mouseEvent) => {
+        if (!saving && mouseEvent.target === mouseEvent.currentTarget) onClose();
+      }}
+      className="agenda-modal-overlay"
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="event-modal-title"
+        className="agenda-modal-dialog"
+      >
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h2 id="event-modal-title" className="agenda-modal-title mb-0">
+            {isViewMode
+              ? 'Detalhes do Evento'
+              : mode === 'edit'
+                ? 'Editar Evento'
+                : 'Novo Evento'}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-close"
+            aria-label="Fechar modal"
+            disabled={saving}
+          />
+        </div>
+
+        {error && (
+          <div className="alert alert-danger py-2 px-3 small" role="alert">
+            {error.message || 'Erro ao processar o evento.'}
+          </div>
+        )}
+
+        {isViewMode ? (
+          /* Modo Visualização (Consulta Completa com o Olho) */
+          <div className="agenda-view-details">
+            <div className="mb-3 d-flex align-items-center gap-2">
+              <span
+                className="badge px-3 py-2"
+                style={{ backgroundColor: selectedCategoryObj.color, color: '#fff', fontSize: '0.85rem' }}
+              >
+                {selectedCategoryObj.icon} {selectedCategoryObj.label}
+              </span>
+              {important && <span className="badge bg-danger">Importante</span>}
+              {allDay && <span className="badge bg-secondary">Dia Inteiro</span>}
+            </div>
+
+            <h3 className="fs-5 fw-bold text-dark mb-2">{title}</h3>
+
+            <div className="text-secondary small mb-3">
+              <div>
+                <strong>📅 Data:</strong>{' '}
+                {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(
+                  new Date(`${date}T00:00:00`)
+                )}
+                {endDate && endDate !== date && (
+                  <span>
+                    {' '}até{' '}
+                    {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(
+                      new Date(`${endDate}T00:00:00`)
+                    )}
+                  </span>
+                )}
+              </div>
+
+              {!allDay && (startTime || endTime) && (
+                <div className="mt-1">
+                  <strong>⏰ Horário:</strong> {startTime || '--:--'} às {endTime || '--:--'}
+                </div>
+              )}
+
+              {location && (
+                <div className="mt-1">
+                  <strong>📍 Local:</strong> {location}
+                </div>
+              )}
+            </div>
+
+            {description ? (
+              <div className="p-3 bg-light rounded-3 text-muted small mb-4">
+                <strong>Descrição:</strong>
+                <p className="mb-0 mt-1" style={{ whiteSpace: 'pre-wrap' }}>{description}</p>
+              </div>
+            ) : (
+              <p className="text-muted fst-italic small mb-4">Nenhuma descrição informada para este evento.</p>
+            )}
+
+            <div className="d-flex justify-content-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn btn-sm btn-outline-secondary rounded-pill px-4"
+              >
+                Fechar
+              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => onSwitchToEdit(event)}
+                  className="btn btn-sm btn-primary rounded-pill px-4"
+                >
+                  ✏️ Editar Evento
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Modo Criação / Edição */
+          <form onSubmit={handleSubmit} className="agenda-modal-form">
+            <div className="mb-3">
+              <label className="form-label small fw-bold">Nome do Evento *</label>
+              <input
+                autoFocus
+                required
+                maxLength={255}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Ex.: Reunião Pedagógica"
+                className="form-control form-control-sm"
+              />
+            </div>
+
+            <div className="row g-2 mb-3">
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold">Data Inicial *</label>
+                <input
+                  required
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="form-control form-control-sm"
+                />
+              </div>
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold">Data de Término</label>
+                <input
+                  type="date"
+                  min={date}
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="form-control form-control-sm"
+                />
+              </div>
+            </div>
+
+            <div className="row g-2 mb-3">
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold">Categoria *</label>
+                <select
+                  required
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="form-select form-select-sm"
+                >
+                  {categoryOptions.map((opt) => (
+                    <option key={opt.key} value={opt.key}>
+                      {opt.icon} {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold">Local</label>
+                <input
+                  maxLength={255}
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Ex.: Auditório / Pátio"
+                  className="form-control form-control-sm"
+                />
+              </div>
+            </div>
+
+            <div className="row g-2 mb-3">
+              <div className="col-6">
+                <label className="form-label small fw-bold">Horário de Início</label>
+                <input
+                  type="time"
+                  disabled={allDay}
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="form-control form-control-sm"
+                />
+              </div>
+              <div className="col-6">
+                <label className="form-label small fw-bold">Horário de Término</label>
+                <input
+                  type="time"
+                  disabled={allDay}
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="form-control form-control-sm"
+                />
+              </div>
+            </div>
+
+            <div className="d-flex gap-3 mb-3">
+              <div className="form-check">
+                <input
+                  type="checkbox"
+                  id="allDayCheck"
+                  checked={allDay}
+                  onChange={(e) => setAllDay(e.target.checked)}
+                  className="form-check-input"
+                />
+                <label htmlFor="allDayCheck" className="form-check-label small">
+                  Dia inteiro
+                </label>
+              </div>
+              <div className="form-check">
+                <input
+                  type="checkbox"
+                  id="importantCheck"
+                  checked={important}
+                  onChange={(e) => setImportant(e.target.checked)}
+                  className="form-check-input"
+                />
+                <label htmlFor="importantCheck" className="form-check-label small">
+                  Data importante
+                </label>
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label small fw-bold">Descrição</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="Detalhes adicionais sobre o evento..."
+                className="form-control form-control-sm"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="form-label small fw-bold">Cor customizada (opcional)</label>
+              <input
+                type="text"
+                maxLength={30}
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                placeholder="Ex.: #08047D ou var(--color-primary)"
+                className="form-control form-control-sm"
+              />
+            </div>
+
+            <div className="d-flex justify-content-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={saving}
+                className="btn btn-sm btn-outline-secondary rounded-pill px-4"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="btn btn-sm btn-primary rounded-pill px-4"
+              >
+                {saving ? 'Salvando...' : mode === 'edit' ? 'Salvar Alterações' : 'Criar Evento'}
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
+    </div>
+  );
+};
+
+export default CadastroEventoModal;

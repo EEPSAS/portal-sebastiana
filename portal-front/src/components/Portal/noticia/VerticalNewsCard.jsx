@@ -1,3 +1,10 @@
+/**
+ * VerticalNewsCard.jsx - Card Lateral Vertical de Notícia
+ *
+ * Papel Didático:
+ * Ocupa a coluna lateral direita da seção de notícias na Home, mantendo
+ * altura total alinhada à coluna principal por meio de classes Flexbox (`flex-grow-1`).
+ */
 const VerticalNewsCard = ({ noticia, loading }) => {
 	// Se terminou de carregar e não há notícia cadastrada para a coluna vertical,
 	// renderiza o card vazio preenchendo 100% da coluna vertical (flex-grow-1) com conteúdo centralizado
@@ -29,8 +36,8 @@ const VerticalNewsCard = ({ noticia, loading }) => {
 					</div>
 				)}
 				<div className="vertical-card-content mt-auto">
-					<h3 className="h4 text-secondary mb-2">{noticia?.titulo || "Notícia"}</h3>
-					<p className="mb-0 text-muted">{noticia?.descricao || "Carregando descrição..."}</p>
+					<h3 className="h4 text-secondary mb-2">{loading ? 'Carregando...' : noticia?.titulo}</h3>
+					<p className="mb-0 text-muted">{loading ? 'Aguarde...' : noticia?.descricao}</p>
 				</div>
 			</article>
 		</a>
@@ -38,3 +45,4 @@ const VerticalNewsCard = ({ noticia, loading }) => {
 };
 
 export default VerticalNewsCard;
+

@@ -1,3 +1,9 @@
+/**
+ * NoticiaHeader.jsx - Cabeçalho Editorial da Página de Leitura de Notícia
+ *
+ * Papel Didático:
+ * Apresenta categoria, título principal, linha-fina (descrição) e metadados de autoria/data.
+ */
 const NoticiaHeader = ({ noticia }) => (
   <header className="noticia-detail__header">
     <span className="noticia-detail__category">{noticia.categoria}</span>
@@ -11,3 +17,4 @@ const NoticiaHeader = ({ noticia }) => (
 );
 
 export default NoticiaHeader;
+

@@ -5,6 +5,13 @@ import { api } from "./api";
  * Comunica com os endpoints oficiais do Laravel em /api/turmas.
  */
 
+// Utilitário enxuto para extrair listas independente de estarem envelopadas em { data: [...] }
+export const extrairLista = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
+
 // Busca a listagem de todas as turmas cadastradas na escola
 export const fetchTurmas = async ({ signal } = {}) => {
   const response = await api("/turmas", { signal });
@@ -204,4 +211,32 @@ export const cancelarMatriculaAluno = async (matriculaId, { status = "Evadido", 
 
   return data;
 };
+
+// Aliases semânticos em português para paridade 1:1 com apiContract.md
+export const obterResumoGeral = fetchResumoGeral;
+export const listarTurmas = fetchTurmas;
+export const listarAlunosTurma = fetchTurmaAlunos;
+export const listarAlunosDisponiveis = fetchAlunosDisponiveis;
+export const listarMatriculas = fetchMatriculas;
+export const vincularAluno = vincularAlunoTurma;
+export const cancelarMatricula = cancelarMatriculaAluno;
+export const importarRelatorioCSV = importarNotasCSV;
+export const listarNotasTurma = fetchTurmaNotas;
+
+export const turmasService = {
+  obterResumoGeral,
+  listarTurmas,
+  criarTurma,
+  atualizarTurma,
+  excluirTurma,
+  listarAlunosTurma,
+  listarAlunosDisponiveis,
+  listarMatriculas,
+  vincularAluno,
+  cancelarMatricula,
+  importarRelatorioCSV,
+  excluirDadosCsv,
+  listarNotasTurma,
+};
+
 

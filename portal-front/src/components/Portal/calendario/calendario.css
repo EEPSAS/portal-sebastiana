@@ -466,21 +466,37 @@
 .portal-scope .portal-calendar__event-card {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: space-between;
+  gap: 0.5rem;
   width: 100%;
-  text-align: left;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--portal-radius-sm);
   background: #f8f9fb;
-  padding: 0.7rem 0.85rem;
-  cursor: pointer;
+  padding: 0.6rem 0.75rem;
   transition: all var(--portal-transition);
 }
 
 .portal-scope .portal-calendar__event-card:hover {
   background: var(--color-teal-soft);
   border-color: rgba(7, 102, 96, 0.22);
-  transform: translateX(2px);
+}
+
+.portal-scope .portal-calendar__event-content-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.portal-scope .portal-calendar__event-text {
+  min-width: 0;
+  flex: 1;
 }
 
 .portal-scope .portal-calendar__event-icon {
@@ -546,4 +562,73 @@
     height: 28px;
     font-size: 0.8rem;
   }
+}
+
+/* ==========================================================================
+   AÇÕES DOS CARDS DE EVENTOS (OLHO, EDIÇÃO, EXCLUSÃO)
+   ========================================================================== */
+.portal-scope .portal-calendar__event-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.portal-scope .portal-calendar__action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.portal-scope .portal-calendar__action-btn:hover {
+  background: var(--color-bg-alt);
+  transform: translateY(-1px);
+}
+
+.portal-scope .portal-calendar__action-btn--danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+/* ==========================================================================
+   MODAL DE EVENTOS DA AGENDA (CRIAÇÃO, EDIÇÃO E DETALHES)
+   ========================================================================== */
+.agenda-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(23, 38, 66, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.agenda-modal-dialog {
+  width: 100%;
+  max-width: 580px;
+  max-height: calc(100vh - 40px);
+  padding: 24px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  overflow-y: auto;
+}
+
+.agenda-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #172642;
 }

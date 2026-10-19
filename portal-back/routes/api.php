@@ -41,6 +41,10 @@ Route::get('/livros', [LivroController::class, 'index']);
 Route::get('/livros/{livro}', [LivroController::class, 'show']);
 Route::get('/livros/{livro}/disponibilidade', [LivroController::class, 'verificarDisponibilidade']);
 
+// Calendário público (leitura dos eventos institucionais da escola; quando autenticado via Sanctum, inclui os eventos pessoais do usuário)
+Route::get('/eventos/datas-importantes', [EventoController::class, 'datasImportantes']);
+Route::get('/eventos', [EventoController::class, 'index']);
+
 // Endpoints sob o prefixo /auth
 Route::prefix('auth')->name('auth.')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('register');
@@ -64,9 +68,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/biblioteca', [BibliotecaController::class, 'show'])->name('biblioteca.show');
     Route::put('/biblioteca', [BibliotecaController::class, 'update'])->middleware('throttle:60,1')->name('biblioteca.update');
 
-    // Calendário e Eventos
-    Route::get('/eventos/datas-importantes', [EventoController::class, 'datasImportantes']);
-    Route::apiResource('eventos', EventoController::class);
+    // Operações autenticadas de Eventos (detalhe individual, criação, edição e exclusão)
+    Route::apiResource('eventos', EventoController::class)->except(['index']);
 
     // Módulo Acadêmico: Turmas
     Route::get('/turmas/resumo-geral', [TurmaController::class, 'resumoGeral']);

@@ -23,6 +23,7 @@ class TurmaResource extends JsonResource
             'nome_identificador' => $this->nome_identificador,
             'ano_letivo' => (int) $this->ano_letivo,
             'turno' => $this->turno,
+            'capacidade_maxima' => (int) ($this->capacidade_maxima ?? 40),
             'status' => $this->status,
             // Métricas agregadas (quando carregadas com withCount)
             'total_alunos' => $this->whenCounted('alunos'),

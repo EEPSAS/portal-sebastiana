@@ -122,11 +122,15 @@ export const solicitarEmprestimo = (dados) =>
 export const atualizarEmprestimo = (id, dados) =>
   requestJson(`/emprestimos/${id}/status`, { method: 'PATCH', body: dados });
 
-// ============================================================================
-// 3. Compatibilidade Legada (Preferências de Coleção Pessoal)
-// ============================================================================
-export const loadBiblioteca = ({ signal } = {}) =>
-  requestJson('/biblioteca', { signal });
-
-export const saveBiblioteca = (dados) =>
-  requestJson('/biblioteca', { method: 'PUT', body: { dados } });
+export const bibliotecaService = {
+  listarLivros,
+  detalharLivro,
+  cadastrarLivro,
+  importarLivrosCSV,
+  editarLivro,
+  excluirLivro,
+  meusEmprestimos,
+  solicitarEmprestimo,
+  atualizarEmprestimo,
+};
+

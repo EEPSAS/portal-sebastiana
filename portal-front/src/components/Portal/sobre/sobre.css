@@ -25,7 +25,7 @@
 }
 
 .portal-scope .sobre-slider {
-  --content-width: 1170px;
+  --content-width: min(100%, 78rem);
   position: relative;
   overflow: hidden;
   background: transparent;
@@ -79,10 +79,10 @@
   box-shadow: none;
 }
 
-/* Abas de navegação (Jaguaraçu, Desenvolvedores, EEPSAS) — Alinhadas na mesma largura (58rem) dos painéis */
+/* Abas de navegação (Jaguaraçu, Desenvolvedores, EEPSAS) — Alinhadas na largura ampliada dos painéis */
 .portal-scope .sobre-tabs {
   width: 100%;
-  max-width: 58rem;
+  max-width: min(100%, 78rem);
   margin: 0 auto clamp(1.2rem, 2.5vw, 1.8rem);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -192,22 +192,22 @@
   animation: sobre-panel-enter 450ms ease-in-out both;
 }
 
-/* Painel de conteúdo (Jaguaraçu e EEPSAS) — Padronizado com max-width 58rem centralizado */
+/* Painel de conteúdo (Jaguaraçu e EEPSAS) — Padronizado com max-width min(100%, 78rem) centralizado */
 .portal-scope .sobre-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
   align-items: center;
   gap: clamp(1.5rem, 3.5vw, 2.75rem);
   width: 100%;
-  max-width: 58rem;
+  max-width: min(100%, 78rem);
   margin: 0 auto;
 }
 
 
 /* ==========================================================================
    PAINEL DE DESENVOLVEDORES — Fidelidade à Referência Visual
-   Container centralizado (max-width: 58rem), 2 líderes lado a lado,
-   carrossel com exatamente 2 páginas (Front-end e Back-end), 2 pontos e rodapé sutil.
+   Container centralizado (max-width: min(100%, 78rem)), 2 líderes lado a lado,
+   carrossel fluido card a card de 1 em 1 e rodapé sutil.
    ========================================================================== */
 
 .portal-scope .sobre-content--compact {
@@ -220,7 +220,7 @@
   align-items: stretch;
   gap: 1.25rem;
   width: 100%;
-  max-width: 58rem;
+  max-width: min(100%, 78rem);
   margin: 0 auto;
 }
 
@@ -498,7 +498,9 @@
 
 .portal-scope .sobre-dev-track {
   display: flex;
-  transition: transform 450ms cubic-bezier(0.16, 1, 0.3, 1);
+  gap: var(--dev-carousel-gap, 1rem);
+  width: 100%;
+  transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -507,25 +509,11 @@
   }
 }
 
-.portal-scope .sobre-dev-page {
-  flex: 0 0 100%;
-  min-width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.portal-scope .sobre-dev-members-row {
-  display: flex;
-  gap: 1rem;
-  width: 100%;
-  justify-content: center;
-}
-
-/* Cards da Equipe: Mesma largura e altura em ambas as páginas */
+/* Cards da Equipe: Deslocamento contínuo de 1 em 1 com proporção fluida */
 .portal-scope .sobre-dev-member-card {
-  --team-card-width: calc((100% - 2 * 1rem) / 3);
+  --team-card-width: calc((100% - 2 * var(--dev-carousel-gap, 1rem)) / 3);
   flex: 0 0 var(--team-card-width);
-  max-width: 16rem;
+  width: var(--team-card-width);
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -895,12 +883,11 @@
     font-size: 1.05rem;
   }
 
-  .portal-scope .sobre-dev-members-row {
-    gap: 0.65rem;
+  .portal-scope .sobre-dev-track {
+    --dev-carousel-gap: 0.65rem;
   }
 
   .portal-scope .sobre-dev-member-card {
-    --team-card-width: calc((100% - 2 * 0.65rem) / 3);
     padding: 0.85rem 0.65rem;
   }
 
@@ -953,12 +940,11 @@
     font-size: 0.95rem;
   }
 
-  .portal-scope .sobre-dev-members-row {
-    gap: 0.45rem;
+  .portal-scope .sobre-dev-track {
+    --dev-carousel-gap: 0.45rem;
   }
 
   .portal-scope .sobre-dev-member-card {
-    --team-card-width: calc((100% - 2 * 0.45rem) / 3);
     padding: 0.65rem 0.45rem;
     border-radius: 10px;
   }

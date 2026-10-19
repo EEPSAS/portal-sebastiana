@@ -3,19 +3,70 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TipoEvento;
+use App\Enums\UserRole;
 use App\Http\Requests\StoreEventoRequest;
 use App\Http\Requests\UpdateEventoRequest;
 use App\Http\Resources\EventoResource;
 use App\Models\Evento;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Controller responsável pelo calendário letivo, datas importantes e eventos escolares.
+ * EventoController - Gestão do Calendário Escolar e Agenda Pessoal (Módulo 4)
+ *
+ * Papel Didático:
+ * Unifica os 2 calendários do portal sob uma única fonte de dados:
+ * 1. Visitante no Portal Público: visualiza apenas eventos institucionais (criados por Especialista ou Adm);
+ * 2. Usuário autenticado no Dashboard: visualiza os eventos institucionais da escola somados
+ *    aos seus próprios eventos pessoais (`criador_id === $user->id`), que são estritamente privados.
  */
 class EventoController extends Controller
 {
+    /**
+     * Aplica a regra de visibilidade institucional + pessoal na consulta de eventos.
+     */
+    private function aplicarFiltroVisibilidade(Builder $query, ?object $user, Request $request): void
+    {
+        $papeisInstitucionais = [
+            UserRole::ESPECIALISTA->value,
+            UserRole::ADM->value,
+        ];
+
+        // Se não estiver logado (Portal Público) ou se a consulta for explicitamente pública (?publico=1):
+        // exibe estritamente eventos institucionais da escola (criados por Especialista ou Adm)
+        if (! $user || $request->boolean('publico')) {
+            $query->where(function (Builder $q) use ($papeisInstitucionais) {
+                $q->whereNull('criador_id')
+                    ->orWhereHas('criador', function (Builder $creatorQuery) use ($papeisInstitucionais) {
+                        $creatorQuery->whereIn('role', $papeisInstitucionais)
+                            ->orWhereHas('roleModel', fn (Builder $r) => $r->whereIn('slug', ['especialista', 'admin', 'adm']));
+                    });
+            });
+
+            return;
+        }
+
+        // Se for Administrador/Especialista filtrando explicitamente por um usuário específico
+        if ($user->canManageEvents() && $request->filled('usuario_id')) {
+            $query->where('criador_id', $request->integer('usuario_id'));
+
+            return;
+        }
+
+        // Usuário logado: vê os eventos institucionais (Especialista/Adm) + apenas os seus próprios eventos pessoais
+        $userId = $user->id;
+        $query->where(function (Builder $q) use ($userId, $papeisInstitucionais) {
+            $q->where('criador_id', $userId)
+                ->orWhereNull('criador_id')
+                ->orWhereHas('criador', function (Builder $creatorQuery) use ($papeisInstitucionais) {
+                    $creatorQuery->whereIn('role', $papeisInstitucionais)
+                        ->orWhereHas('roleModel', fn (Builder $r) => $r->whereIn('slug', ['especialista', 'admin', 'adm']));
+                });
+        });
+    }
+
     /**
      * Lista eventos escolares com suporte a filtros de período, categoria e importância.
      *
@@ -23,25 +74,14 @@ class EventoController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
+        // Resolve o usuário autenticado via token Bearer Sanctum mesmo em rota pública
+        $user = $request->user('sanctum');
 
         // Carrega dados básicos do criador para evitar consultas N+1
         $query = Evento::query()->with('criador:id,name');
 
-        // Filtro de visibilidade: usuário comum visualiza seus próprios eventos e os eventos institucionais
-        if ($user && ! $user->canManageEvents()) {
-            $userId = $user->id;
-            $query->where(function ($q) use ($userId) {
-                $q->where('criador_id', $userId)
-                    ->orWhereHas('criador', function ($creatorQuery) {
-                        $creatorQuery->where('role', 'especialista')
-                            ->orWhere('role', 'adm')
-                            ->orWhereHas('roleModel', fn ($r) => $r->whereIn('slug', ['especialista', 'admin']));
-                    });
-            });
-        } elseif ($request->filled('usuario_id')) {
-            $query->where('criador_id', $request->integer('usuario_id'));
-        }
+        // Aplica filtro de visibilidade (público institucional vs privado do autor)
+        $this->aplicarFiltroVisibilidade($query, $user, $request);
 
         // Filtro por mês e ano
         if ($request->filled('mes') && $request->filled('ano')) {
@@ -77,23 +117,13 @@ class EventoController extends Controller
      */
     public function datasImportantes(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $request->user('sanctum');
 
         $query = Evento::query()
             ->importantes()
             ->with('criador:id,name');
 
-        if ($user && ! $user->canManageEvents()) {
-            $userId = $user->id;
-            $query->where(function ($q) use ($userId) {
-                $q->where('criador_id', $userId)
-                    ->orWhereHas('criador', function ($creatorQuery) {
-                        $creatorQuery->where('role', 'especialista')
-                            ->orWhere('role', 'adm')
-                            ->orWhereHas('roleModel', fn ($r) => $r->whereIn('slug', ['especialista', 'admin']));
-                    });
-            });
-        }
+        $this->aplicarFiltroVisibilidade($query, $user, $request);
 
         $eventos = $query->orderBy('data_inicio')->get();
 

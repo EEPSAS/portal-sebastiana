@@ -5,24 +5,28 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-// Validação para atualização dos dados de um livro do acervo.
+/**
+ * UpdateLivroRequest - Validação de Entrada para Edição de Livro Físico
+ *
+ * Papel Didático:
+ * Protege a rota PUT/PATCH /api/livros/{id}, permitindo atualização parcial
+ * ('sometimes') dos dados bibliográficos por gestores da biblioteca.
+ */
 class UpdateLivroRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Autoriza apenas usuários com permissão de gestão da biblioteca escolar.
      */
-    // Autoriza apenas usuários com permissão de gestão de biblioteca
     public function authorize(): bool
     {
         return $this->user() !== null && $this->user()->canManageLibrary();
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Regras de validação parcial ou total para os dados do livro.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
-    // Regras de validação parcial ou total para os dados definitivos do livro
     public function rules(): array
     {
         return [
@@ -41,11 +45,10 @@ class UpdateLivroRequest extends FormRequest
     }
 
     /**
-     * Custom messages for validation errors.
+     * Mensagens amigáveis em português para feedback de validação.
      *
      * @return array<string, string>
      */
-    // Mensagens de erro customizadas de validação
     public function messages(): array
     {
         return [

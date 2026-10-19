@@ -1,3 +1,10 @@
+/**
+ * Noticia.jsx - Página Pública de Leitura Completa de uma Notícia (/noticias/:id)
+ *
+ * Papel Didático:
+ * Captura o identificador `:id` da URL via `useParams()`, busca os detalhes no
+ * backend através de `useNoticia(id)` e trata os estados Carregando, Erro/Não encontrada e Sucesso.
+ */
 import { Link, useParams } from "react-router";
 import NoticiaHeader from "../../components/Portal/noticia/NoticiaHeader";
 import NoticiaContent from "../../components/Portal/noticia/NoticiaContent";
@@ -15,6 +22,7 @@ const Noticia = () => {
           <i className="bi bi-arrow-left" aria-hidden="true" /> Voltar para o portal
         </Link>
 
+        {/* Estado 1: Carregando */}
         {loading && (
           <div className="noticia-detail__state" role="status">
             <div className="spinner-border text-primary" />
@@ -22,6 +30,7 @@ const Noticia = () => {
           </div>
         )}
 
+        {/* Estado 2: Erro Amigável ou Registro Vazio/Inexistente */}
         {!loading && (error || !noticia) && (
           <div className="noticia-detail__state">
             <h2>Notícia não encontrada</h2>
@@ -29,6 +38,7 @@ const Noticia = () => {
           </div>
         )}
 
+        {/* Estado 3: Exibição da Matéria */}
         {!loading && !error && noticia && (
           <>
             <NoticiaHeader noticia={noticia} />
@@ -41,3 +51,4 @@ const Noticia = () => {
 };
 
 export default Noticia;
+

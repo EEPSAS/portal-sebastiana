@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchAlunosDisponiveis, vincularAlunoTurma } from "../../../services/turmasService";
 
 /**
@@ -92,30 +92,31 @@ const ModalVincularAluno = ({
   }, [isOpen, turma?.id_turma, termoBusca]);
 
   // Aluno atualmente em foco para conferência
-  const alunoAtual = useMemo(() => {
-    return alunos.find((a) => String(a.id) === String(usuarioIdSelecionado)) || null;
-  }, [alunos, usuarioIdSelecionado]);
+  const alunoAtual =
+    alunos.find((a) => String(a.id) === String(usuarioIdSelecionado)) || null;
 
   // Texto formatado da turma detectada pela API do Google
-  const turmaDetectadaGoogle = useMemo(() => {
-    if (!alunoAtual) return "";
-    if (alunoAtual.turma) return alunoAtual.turma;
-    if (alunoAtual.turma_origem) return alunoAtual.turma_origem;
-    if (alunoAtual.google_turma) return alunoAtual.google_turma;
-    // Padrão institucional da integração: "Turma: [Nome da Turma]"
-    return `Turma: ${turma?.nome_identificador || "3º Ano A - Ensino Médio"}`;
-  }, [alunoAtual, turma]);
+  const turmaDetectadaGoogle = !alunoAtual
+    ? ""
+    : alunoAtual.turma ||
+      alunoAtual.turma_origem ||
+      alunoAtual.google_turma ||
+      `Turma: ${turma?.nome_identificador || "3º Ano A - Ensino Médio"}`;
 
   // Sugestão automática de turma baseada na extração da API do Google
-  const turmaSugeridaId = useMemo(() => {
-    if (!alunoAtual) return turma?.id_turma ? String(turma.id_turma) : "";
-    const idSugerido = encontrarTurmaCorrespondente(
-      turmaDetectadaGoogle,
-      turmasDisponiveis.length > 0 ? turmasDisponiveis : [turma],
-      turma?.id_turma
-    );
-    return String(idSugerido || turma?.id_turma || "");
-  }, [alunoAtual, turmaDetectadaGoogle, turmasDisponiveis, turma]);
+  const turmaSugeridaId = !alunoAtual
+    ? turma?.id_turma
+      ? String(turma.id_turma)
+      : ""
+    : String(
+        encontrarTurmaCorrespondente(
+          turmaDetectadaGoogle,
+          turmasDisponiveis.length > 0 ? turmasDisponiveis : [turma],
+          turma?.id_turma
+        ) ||
+          turma?.id_turma ||
+          ""
+      );
 
   // Turma final a ser confirmada (prioriza ajuste manual do especialista se houver)
   const turmaDestinoId = turmaManualId !== null ? turmaManualId : turmaSugeridaId;

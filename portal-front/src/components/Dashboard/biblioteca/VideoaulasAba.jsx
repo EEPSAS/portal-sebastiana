@@ -82,9 +82,24 @@ const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula, onAdicionarAoPla
       {/* Estados de Status */}
       <div id="videoaulas-status" aria-live="polite">
         {videoBuscaErro && (
-          <p className="alert alert-warning py-2 small" role="alert">
-            {videoBuscaErro}
-          </p>
+          <div
+            className="alert alert-warning d-flex justify-content-between align-items-center mb-4 rounded-3 shadow-sm"
+            role="alert"
+          >
+            <div className="d-flex align-items-center gap-2">
+              <span className="fs-5">⚠️</span>
+              <span className="small fw-semibold text-warning-emphasis">
+                {videoBuscaErro}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-dark rounded-pill fw-semibold"
+              onClick={() => pesquisarVideoaulas()}
+            >
+              Tentar novamente
+            </button>
+          </div>
         )}
         {videoBuscaCarregando && (
           <p className="text-muted small" role="status">

@@ -21,6 +21,7 @@ const SegurancaCard = ({ user }) => {
   const [mensagemSucesso, setMensagemSucesso] = useState('');
   const [erros, setErros] = useState({});
 
+  // Atualiza o campo digitado e limpa mensagens de erro associadas àquele input
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -33,18 +34,21 @@ const SegurancaCard = ({ user }) => {
     }
   };
 
+  // Valida o tamanho mínimo e a confirmação da nova senha antes de enviar o PUT para a API
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSalvando(true);
     setMensagemSucesso('');
     setErros({});
 
+    // Validação rápida no cliente para evitar requisição desnecessária com senha curta
     if (formData.password.length < 8) {
       setErros({ password: ['A nova senha deve ter pelo menos 8 caracteres.'] });
       setSalvando(false);
       return;
     }
 
+    // Garante que os dois campos de nova senha sejam idênticos antes do envio
     if (formData.password !== formData.password_confirmation) {
       setErros({ password_confirmation: ['A confirmação da nova senha não confere.'] });
       setSalvando(false);
@@ -58,6 +62,7 @@ const SegurancaCard = ({ user }) => {
         password: formData.password,
       };
 
+      // Se o usuário já possui senha local, envia current_password para validação no UpdateUsuarioRequest
       if (user.tem_senha && formData.current_password) {
         payload.current_password = formData.current_password;
       }

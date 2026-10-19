@@ -28,7 +28,7 @@ export const searchGoogleBooks = async (termo, { signal } = {}) => {
   const consulta = termo?.trim();
   if (!consulta) return [];
 
-  // Monta a query string com parâmetros de pesquisa pedagógica
+  // Monta a query string com parâmetros de pesquisa pedagógica em língua portuguesa
   const params = new URLSearchParams({
     q: consulta,
     maxResults: '10',
@@ -36,22 +36,50 @@ export const searchGoogleBooks = async (termo, { signal } = {}) => {
     langRestrict: 'pt',
   });
 
-  if (API_KEY) {
+  // Anexa a chave da API (VITE_GOOGLE_BOOKS_API_KEY) quando configurada no .env local
+  // Sem chave, a Google Books API opera em cota pública compartilhada sujeita a limite (HTTP 429)
+  if (API_KEY && API_KEY !== 'SUA_CHAVE_GOOGLE_BOOKS_AQUI') {
     params.append('key', API_KEY);
   }
 
-  const response = await fetch(`${API_BASE_URL}?${params.toString()}`, { signal });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}?${params.toString()}`, { signal });
+  } catch (error) {
+    // Repassa o cancelamento intencional (AbortController) para que o componente ignore silenciosamente
+    if (error?.name === 'AbortError') {
+      throw error;
+    }
+    throw new Error(
+      'Falha de conexão com a Google Books API. Verifique sua internet e tente novamente.',
+      { cause: error }
+    );
+  }
 
   if (!response.ok) {
     if (response.status === 403) {
-      throw new Error('Acesso à Google Books API não autorizado. Verifique se a API está ativada no Google Cloud Console.');
+      throw new Error(
+        'Acesso à Google Books API não autorizado (HTTP 403). Verifique a chave VITE_GOOGLE_BOOKS_API_KEY e se a Books API está ativada no Google Cloud Console.'
+      );
     }
-    throw new Error('Não foi possível consultar os conteúdos no Google Books. Verifique sua conexão e tente novamente.');
+    if (response.status === 429) {
+      throw new Error(
+        'Limite de consultas gratuitas ao Google Books atingido (HTTP 429). Configure uma chave VITE_GOOGLE_BOOKS_API_KEY no arquivo .env para ampliar a cota.'
+      );
+    }
+    throw new Error(
+      'Não foi possível consultar os conteúdos no Google Books. Tente novamente em instantes.'
+    );
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error('Resposta inválida recebida da Google Books API.');
+  }
 
-  if (!data.items || !Array.isArray(data.items)) {
+  if (!data?.items || !Array.isArray(data.items)) {
     return [];
   }
 
@@ -66,6 +94,7 @@ export const searchGoogleBooks = async (termo, { signal } = {}) => {
       link: info.previewLink || info.infoLink || '',
       snippet: descricao.length > 250 ? `${descricao.slice(0, 247)}...` : descricao,
       fonte: info.authors ? info.authors.join(', ') : 'Google Books',
+      // Converte links HTTP de miniaturas para HTTPS evitando bloqueio de Mixed Content no navegador
       thumbnail: info.imageLinks?.thumbnail?.replace('http:', 'https:') || '',
       dataPublicacao: info.publishedDate || '',
       paginas: info.pageCount || null,

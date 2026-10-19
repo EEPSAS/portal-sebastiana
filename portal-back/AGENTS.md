@@ -70,6 +70,24 @@ O arquivo [`apiContract.md`](file:///c:/Users/prent/OneDrive/Documentos/reposito
 * **Enum de Roles**: Uso estrito de `App\Enums\UserRole` (`ALUNO = 'aluno'`, `PROFESSOR = 'professor'`, `BIBLIOTECARIA = 'bibliotecaria'`, `ESPECIALISTA = 'especialista'`, `ADM = 'adm'`).
 * **Checagem de Permissões**: Use métodos semânticos do model User (`$user->isAdm()`, `$user->isEspecialista()`, `$user->isProfessor()`, `$user->isBibliotecaria()`, `$user->isAluno()`). Proíba o uso de strings brutas como `'administrador'` em regras de negócio.
 
+### 5.1. Checagem de "Login With Google", Certificados SSL (`cacert.pem`), Extensões e CORS Local
+O endpoint `POST /api/auth/google` valida o token JWT junto ao servidor do Google (`https://oauth2.googleapis.com/tokeninfo`). No ambiente local Windows, verifique obrigatoriamente:
+1. **Pacote Oficial de Certificados Raiz da Mozilla (`cacert.pem`)**:
+   * Baixar `https://curl.se/ca/cacert.pem` e salvar em `C:\php\extras\ssl\cacert.pem`.
+   * No arquivo `php.ini` em uso (consulte o caminho com `php --ini`), configurar as duas diretivas:
+     ```ini
+     curl.cainfo = "C:\php\extras\ssl\cacert.pem"
+     openssl.cafile = "C:\php\extras\ssl\cacert.pem"
+     ```
+   * Sem essa configuração, o Guzzle/cURL falha no Windows com `cURL error 60: SSL certificate OpenSSL verify result: unable to get local issuer certificate`.
+2. **Extensões PHP Obrigatórias (`php -m`)**:
+   * Confirmar que `curl`, `openssl`, `mbstring`, `fileinfo` e `pdo_sqlite` (ou `pdo_mysql`) estão ativas no `php.ini`.
+3. **Variáveis de Ambiente (`portal-back/.env`)**:
+   * `GOOGLE_CLIENT_ID`: Deve conter exatamente o mesmo Client ID configurado em `VITE_GOOGLE_CLIENT_ID` no frontend.
+   * `FRONTEND_URL=http://localhost:5173`: URL da aplicação React para liberação no CORS.
+4. **Configuração de CORS (`config/cors.php`)**:
+   * Garantir que `allowed_origins` inclua `env('FRONTEND_URL', 'http://localhost:5173')`, `http://localhost:5173` e `http://127.0.0.1:5173`, com `supports_credentials => true`.
+
 ---
 
 ## 6. Ferramentas, Formatação e Testes do Ecossistema Laravel

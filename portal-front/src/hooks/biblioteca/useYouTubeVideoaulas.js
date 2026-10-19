@@ -14,9 +14,10 @@ import {
 } from '../../services/biblioteca/youtubeService';
 
 const MENSAGENS_ERRO_YOUTUBE = {
-  MISSING_API_KEY: 'A chave da API do YouTube não foi configurada.',
+  MISSING_API_KEY:
+    'Limite de consultas gratuitas ao YouTube atingido (HTTP 429). Configure uma chave VITE_YOUTUBE_API_KEY no arquivo .env para ampliar a cota.',
   API_ACCESS_FAILURE:
-    'Não foi possível acessar o YouTube. Verifique a chave e a cota da API.',
+    'Limite de consultas gratuitas ao YouTube atingido (HTTP 429). Configure uma chave VITE_YOUTUBE_API_KEY no arquivo .env para ampliar a cota.',
   API_FAILURE: 'O YouTube não conseguiu concluir a solicitação. Tente novamente.',
   CONNECTION_FAILURE:
     'Problema de conexão. Verifique sua internet e tente novamente.',
@@ -29,9 +30,9 @@ const traduzirErroYouTube = (error) =>
   'Não foi possível carregar o vídeo. Tente novamente.';
 
 export const useYouTubeVideoaulas = () => {
-  const [videoBusca, setVideoBusca] = useState('');
+  const [videoBusca, setVideoBusca] = useState('Literatura Brasileira');
   const [videosEncontrados, setVideosEncontrados] = useState([]);
-  const [videoBuscaCarregando, setVideoBuscaCarregando] = useState(false);
+  const [videoBuscaCarregando, setVideoBuscaCarregando] = useState(true);
   const [videoBuscaTentada, setVideoBuscaTentada] = useState(false);
   const [videoBuscaErro, setVideoBuscaErro] = useState('');
 
@@ -124,8 +125,33 @@ export const useYouTubeVideoaulas = () => {
     setVideoPlayerErro('');
   };
 
-  // Cancela requisições em trânsito ao desmontar o componente
-  useEffect(() => () => buscaControllerRef.current?.abort(), []);
+  // Carrega automaticamente sugestões iniciais na montagem e cancela requisições ao desmontar
+  useEffect(() => {
+    const controller = new AbortController();
+    buscaControllerRef.current = controller;
+
+    searchYouTubeVideos('Literatura Brasileira', { signal: controller.signal })
+      .then((videos) => {
+        if (buscaControllerRef.current === controller) {
+          setVideosEncontrados(videos);
+          setVideoBuscaTentada(true);
+        }
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError' && buscaControllerRef.current === controller) {
+          setVideosEncontrados([]);
+          setVideoBuscaErro(traduzirErroYouTube(error));
+          setVideoBuscaTentada(true);
+        }
+      })
+      .finally(() => {
+        if (buscaControllerRef.current === controller) {
+          setVideoBuscaCarregando(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, []);
 
   return {
     videoBusca,

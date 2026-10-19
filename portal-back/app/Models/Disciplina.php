@@ -61,18 +61,9 @@ class Disciplina extends Model
     }
 
     /**
-     * @return HasMany<RemessaDocente, $this>
-     */
-    // Remessas enviadas por professores para esta disciplina
-    public function remessas(): HasMany
-    {
-        return $this->hasMany(RemessaDocente::class, 'disciplina_id', 'id_disciplina');
-    }
-
-    /**
      * @return HasMany<Frequencia, $this>
      */
-    // Registros de frequência vinculados à disciplina
+    // Registros de frequência vinculados à disciplina (importados via CSV)
     public function frequencias(): HasMany
     {
         return $this->hasMany(Frequencia::class, 'disciplina_id', 'id_disciplina');
@@ -81,17 +72,9 @@ class Disciplina extends Model
     /**
      * @return HasMany<Nota, $this>
      */
-    // Notas e avaliações lançadas nesta disciplina
+    // Notas e avaliações lançadas nesta disciplina (importadas via CSV)
     public function notas(): HasMany
     {
         return $this->hasMany(Nota::class, 'disciplina_id', 'id_disciplina');
-    }
-
-    /**
-     * @return HasMany<Atividade, $this>
-     */
-    public function atividades(): HasMany
-    {
-        return $this->hasMany(Atividade::class, 'disciplina_id', 'id_disciplina');
     }
 }

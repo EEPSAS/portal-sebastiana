@@ -87,10 +87,18 @@ class AuthController extends Controller
         $credential = $validated['credential'];
         $turmaId = $validated['turma_id'] ?? null;
 
-        // 1. Valida criptograficamente o ID token do Google
-        $googleResponse = Http::get('https://oauth2.googleapis.com/tokeninfo', [
-            'id_token' => $credential,
-        ]);
+        // 1. Valida criptograficamente o ID token junto à API oficial do Google.
+        // O bloco try/catch garante que falhas de rede ou ausência de certificado SSL local (cacert.pem)
+        // retornem um JSON amigável em vez de quebrar com erro HTTP 500.
+        try {
+            $googleResponse = Http::timeout(10)->get('https://oauth2.googleapis.com/tokeninfo', [
+                'id_token' => $credential,
+            ]);
+        } catch (\Throwable) {
+            return response()->json([
+                'message' => 'Não foi possível validar a credencial com os servidores do Google. Verifique sua conexão ou a configuração SSL local (cacert.pem).',
+            ], 503);
+        }
 
         if ($googleResponse->failed()) {
             return response()->json([
@@ -99,6 +107,15 @@ class AuthController extends Controller
         }
 
         $payload = $googleResponse->json();
+
+        // Confirma que o token foi emitido especificamente para o Client ID deste portal (quando presente no payload)
+        $configuredClientId = config('services.google.client_id');
+        if (! empty($payload['aud']) && ! empty($configuredClientId) && $payload['aud'] !== $configuredClientId) {
+            return response()->json([
+                'message' => 'Token do Google emitido para outro aplicativo (Client ID divergente).',
+            ], 401);
+        }
+
         $googleId = $payload['sub'] ?? null;
         $rawEmail = $payload['email'] ?? null;
         $name = $payload['name'] ?? null;
@@ -156,18 +173,22 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // 7. Vínculo de Turma em Stand by para o aluno (status 'Pendente' para validação do Especialista)
+        // 7. Vínculo de Turma para o aluno:
+        // Cria em stand-by ('Pendente') apenas se o aluno ainda não possuir matrícula nesta turma,
+        // evitando rebaixar uma matrícula que já tenha sido aprovada ('Ativo') pelo Especialista.
         if ($isAluno && ! empty($turmaId)) {
-            Matricula::updateOrCreate(
-                [
+            $matriculaExistente = Matricula::where('turma_id', $turmaId)
+                ->where('usuario_id', $user->id)
+                ->first();
+
+            if (! $matriculaExistente) {
+                Matricula::create([
                     'turma_id' => $turmaId,
                     'usuario_id' => $user->id,
-                ],
-                [
                     'data_matricula' => now()->toDateString(),
                     'status_matricula' => 'Pendente',
-                ]
-            );
+                ]);
+            }
         }
 
         return $this->tokenResponse($user, 200, 'Login institucional com Google realizado com sucesso.');

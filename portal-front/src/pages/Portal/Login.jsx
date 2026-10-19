@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import "./Login.css";
+import { useEffect, useRef, useState } from "react";
+// Import em minúsculo para compatibilidade com sistemas de arquivos case-sensitive
+import "./login.css";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -7,18 +8,24 @@ const LoginSection = () => {
   const navigate = useNavigate();
   const { login, loginWithGoogle } = useAuth();
 
+  // Mantém referência atualizada da função de login Google sem disparar re-execução do useEffect
+  const loginWithGoogleRef = useRef(loginWithGoogle);
+  const navigateRef = useRef(navigate);
+  useEffect(() => {
+    loginWithGoogleRef.current = loginWithGoogle;
+    navigateRef.current = navigate;
+  }, [loginWithGoogle, navigate]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
-  // Inicializa o Google Identity Services (GIS) quando disponível e renderiza o botão oficial
+  // Inicializa o Google Identity Services (GIS) uma única vez na montagem e renderiza o botão oficial
   useEffect(() => {
-    // Client ID do Google OAuth institucional (lido do .env com fallback seguro)
-    const googleClientId =
-      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-      "165413597858-7eavnsmrf0am8gukjeo8itrbe6gcvbtn.apps.googleusercontent.com";
+    // Client ID do Google OAuth institucional (lido exclusivamente de VITE_GOOGLE_CLIENT_ID no .env)
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || "";
 
     // Função para inicializar e renderizar o botão oficial do Google
     const initGoogle = () => {
@@ -33,9 +40,9 @@ const LoginSection = () => {
           setGoogleSubmitting(true);
           setError(null);
           try {
-            // Envia o id_token do Google para autenticação no backend Laravel
-            await loginWithGoogle({ credential: response.credential });
-            navigate("/dashboard");
+            // Envia o id_token (JWT) do Google para validação e emissão do token Sanctum no Laravel
+            await loginWithGoogleRef.current({ credential: response.credential });
+            navigateRef.current("/dashboard");
           } catch (err) {
             setError(err.message);
           } finally {
@@ -60,10 +67,10 @@ const LoginSection = () => {
       return true;
     };
 
-    // Tenta inicializar de imediato
+    // Tenta inicializar de imediato caso o script já esteja carregado
     if (initGoogle()) return;
 
-    // Caso o script do Google ainda esteja baixando (async/defer), tenta a cada 250ms
+    // Caso o script do Google ainda esteja baixando (async/defer), verifica a cada 250ms
     const interval = setInterval(() => {
       if (initGoogle()) {
         clearInterval(interval);
@@ -71,7 +78,7 @@ const LoginSection = () => {
     }, 250);
 
     return () => clearInterval(interval);
-  }, [loginWithGoogle, navigate]);
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

@@ -85,18 +85,9 @@ class Turma extends Model
     }
 
     /**
-     * @return HasMany<RemessaDocente, $this>
-     */
-    // Remessas enviadas por professores para esta turma
-    public function remessas(): HasMany
-    {
-        return $this->hasMany(RemessaDocente::class, 'turma_id', 'id_turma');
-    }
-
-    /**
      * @return HasMany<Frequencia, $this>
      */
-    // Chamadas e frequências registradas na turma
+    // Chamadas e frequências consolidadas via CSV registradas na turma
     public function frequencias(): HasMany
     {
         return $this->hasMany(Frequencia::class, 'turma_id', 'id_turma');
@@ -105,17 +96,9 @@ class Turma extends Model
     /**
      * @return HasMany<Nota, $this>
      */
-    // Notas e avaliações dos alunos da turma
+    // Notas e avaliações dos alunos da turma consolidadas via CSV
     public function notas(): HasMany
     {
         return $this->hasMany(Nota::class, 'turma_id', 'id_turma');
-    }
-
-    /**
-     * @return HasMany<Atividade, $this>
-     */
-    public function atividades(): HasMany
-    {
-        return $this->hasMany(Atividade::class, 'turma_id', 'id_turma');
     }
 }

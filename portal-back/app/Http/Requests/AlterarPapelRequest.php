@@ -13,11 +13,11 @@ use Illuminate\Validation\Rules\Enum;
 class AlterarPapelRequest extends FormRequest
 {
     /**
-     * Determina se o usuário pode alterar papéis.
+     * Determina se o usuário autenticado tem permissão administrativa para alterar papéis.
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user() !== null && $this->user()->hasPermissionTo('gerenciar_papeis_permissoes');
     }
 
     /**

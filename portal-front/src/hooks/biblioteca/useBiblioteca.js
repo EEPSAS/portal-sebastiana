@@ -7,7 +7,7 @@
  * e gerenciando estados assíncronos (carregando, erro e notificações).
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   hasPortalSession,
   listarLivros,
@@ -31,14 +31,22 @@ export const useBiblioteca = (termoBusca = '') => {
   const [notificacao, setNotificacao] = useState(null);
   const [triggerRecarregar, setTriggerRecarregar] = useState(0);
 
+  // Referência para limpar o temporizador anterior caso vários avisos sejam disparados em sequência
+  const timeoutAvisoRef = useRef(null);
+
   /**
-   * Dispara aviso flutuante temporário (toast) para feedback ao usuário.
+   * Dispara aviso flutuante temporário (toast) para feedback imediato ao usuário.
+   * Sem uso de useCallback para manter o código direto e alinhado às diretrizes pedagógicas.
    */
-  const dispararAviso = useCallback((mensagem) => {
+  const dispararAviso = (mensagem) => {
+    if (timeoutAvisoRef.current) {
+      clearTimeout(timeoutAvisoRef.current);
+    }
     setNotificacao(mensagem);
-    const timeout = setTimeout(() => setNotificacao(null), 3500);
-    return () => clearTimeout(timeout);
-  }, []);
+    timeoutAvisoRef.current = setTimeout(() => {
+      setNotificacao(null);
+    }, 3500);
+  };
 
   // Efeito de inicialização, pré-carregamento (5 últimos livros) e busca dinâmica no acervo
   useEffect(() => {

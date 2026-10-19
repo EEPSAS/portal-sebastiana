@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CancelarMatriculaRequest;
 use App\Http\Requests\StoreMatriculaRequest;
 use App\Http\Resources\MatriculaResource;
 use App\Http\Resources\TurmaResource;
@@ -129,13 +130,11 @@ class MatriculaController extends Controller
     /**
      * Cancela a matrícula ativa de um aluno.
      */
-    public function cancelarMatricula(Request $request, Matricula $matricula): JsonResponse
+    public function cancelarMatricula(CancelarMatriculaRequest $request, Matricula $matricula): JsonResponse
     {
         Gate::authorize('update', $matricula->turma);
 
-        $validated = $request->validate([
-            'status_matricula' => ['nullable', 'string', 'in:Transferido,Evadido'],
-        ]);
+        $validated = $request->validated();
 
         $matricula->update([
             'status_matricula' => $validated['status_matricula'] ?? 'Evadido',

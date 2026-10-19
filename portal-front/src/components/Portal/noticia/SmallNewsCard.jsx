@@ -1,3 +1,9 @@
+/**
+ * SmallNewsCard.jsx - Card Compacto de Notícia da Grade Secundária
+ *
+ * Papel Didático:
+ * Exibe miniatura e título das notícias secundárias na grade de 3 colunas da Home.
+ */
 const SmallNewsCard = ({ noticia, loading }) => {
 	// Se terminou de carregar e não há notícia cadastrada para este slot,
 	// exibe card vazio centralizado preenchendo a altura completa da grade
@@ -26,10 +32,11 @@ const SmallNewsCard = ({ noticia, loading }) => {
 				) : (
 					<img className="img-fluid w-100 rounded-3" src={noticia?.miniatura} alt={noticia?.titulo || ''} />
 				)}
-				<h3 className="h5 text-secondary mt-3 mb-0">{noticia?.titulo || "Notícia"}</h3>
+				<h3 className="h5 text-secondary mt-3 mb-0">{loading ? 'Carregando...' : noticia?.titulo}</h3>
 			</article>
 		</a>
 	);
 };
 
 export default SmallNewsCard;
+

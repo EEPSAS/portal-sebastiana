@@ -4,9 +4,35 @@ use App\Enums\TipoEvento;
 use App\Models\Evento;
 use App\Models\User;
 
-test('unauthenticated users cannot access calendar routes', function () {
-    $this->getJson('/api/eventos')->assertUnauthorized();
-    $this->getJson('/api/eventos/datas-importantes')->assertUnauthorized();
+test('unauthenticated users can read institutional calendar events but cannot see private events or mutate', function () {
+    $especialista = User::factory()->especialista()->create();
+    $aluno = User::factory()->padrao()->create();
+
+    Evento::factory()->importante()->create([
+        'titulo' => 'Feira Pedagógica Institucional',
+        'criador_id' => $especialista->id,
+        'tipo' => TipoEvento::EVENTOS,
+    ]);
+
+    Evento::factory()->importante()->create([
+        'titulo' => 'Lembrete Privado do Aluno',
+        'criador_id' => $aluno->id,
+        'tipo' => TipoEvento::PROVAS_E_TRABALHOS,
+    ]);
+
+    // Visitante público acessa GET /api/eventos e vê apenas o evento do Especialista
+    $this->getJson('/api/eventos')
+        ->assertOk()
+        ->assertJsonFragment(['titulo' => 'Feira Pedagógica Institucional'])
+        ->assertJsonMissing(['titulo' => 'Lembrete Privado do Aluno']);
+
+    // Visitante público acessa GET /api/eventos/datas-importantes e vê apenas o evento do Especialista
+    $this->getJson('/api/eventos/datas-importantes')
+        ->assertOk()
+        ->assertJsonFragment(['titulo' => 'Feira Pedagógica Institucional'])
+        ->assertJsonMissing(['titulo' => 'Lembrete Privado do Aluno']);
+
+    // Visitante não autenticado não pode criar eventos
     $this->postJson('/api/eventos', [])->assertUnauthorized();
 });
 

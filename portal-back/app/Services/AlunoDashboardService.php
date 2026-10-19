@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\EmprestimoStatus;
 use App\Models\Disciplina;
 use App\Models\Emprestimo;
 use App\Models\Evento;
@@ -508,9 +509,14 @@ class AlunoDashboardService
             ? "+{$diffMedia} acima da média"
             : "{$diffMedia} abaixo da média";
 
-        // 3. Leitura atual do aluno (módulo de biblioteca)
+        // 3. Leitura atual do aluno (módulo de biblioteca — filtra apenas empréstimos ativos/solicitados via Enum)
         $ultimoEmprestimo = Emprestimo::where('usuario_id', $aluno->id)
-            ->whereIn('status', ['Ativo', 'Pendente', 'Emprestado'])
+            ->whereIn('status', [
+                EmprestimoStatus::APROVADO->value,
+                EmprestimoStatus::RENOVADO->value,
+                EmprestimoStatus::ATRASADO->value,
+                EmprestimoStatus::SOLICITADO->value,
+            ])
             ->with('livro')
             ->latest('data_emprestimo')
             ->first();

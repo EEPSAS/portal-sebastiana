@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -15,53 +14,47 @@ import {
  * para acompanhamento da média geral e da frequência escolar por turma.
  */
 const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) => {
-  // Cálculo dos indicadores globais para os cards
-  const metricasGlobais = useMemo(() => {
-    const totalTurmas = resumoGeral.length;
+  // Cálculo direto dos indicadores globais para os cards (sem memoização prematura)
+  const totalTurmas = resumoGeral.length;
 
-    // Turmas que possuem notas lançadas
-    const turmasComNotas = resumoGeral.filter((t) => Number(t.media_geral) > 0);
-    const mediaGeralGlobal =
-      turmasComNotas.length > 0
-        ? (
-            turmasComNotas.reduce((acc, t) => acc + Number(t.media_geral), 0) /
-            turmasComNotas.length
-          ).toFixed(1)
-        : "—";
+  // Filtra turmas que possuem notas lançadas para calcular a média aritmética global
+  const turmasComNotas = resumoGeral.filter((t) => Number(t.media_geral) > 0);
+  const mediaGeralGlobal =
+    turmasComNotas.length > 0
+      ? (
+          turmasComNotas.reduce((acc, t) => acc + Number(t.media_geral), 0) /
+          turmasComNotas.length
+        ).toFixed(1)
+      : "—";
 
-    // Turmas que possuem registros de frequência
-    const turmasComFrequencia = resumoGeral.filter((t) => Number(t.taxa_presenca) > 0);
-    const taxaPresencaGlobal =
-      turmasComFrequencia.length > 0
-        ? Math.round(
-            turmasComFrequencia.reduce((acc, t) => acc + Number(t.taxa_presenca), 0) /
-              turmasComFrequencia.length
-          )
-        : "—";
+  // Filtra turmas que possuem registros de frequência para calcular a presença média global
+  const turmasComFrequencia = resumoGeral.filter((t) => Number(t.taxa_presenca) > 0);
+  const taxaPresencaGlobal =
+    turmasComFrequencia.length > 0
+      ? Math.round(
+          turmasComFrequencia.reduce((acc, t) => acc + Number(t.taxa_presenca), 0) /
+            turmasComFrequencia.length
+        )
+      : "—";
 
-    return {
-      totalTurmas,
-      totalMatriculados,
-      mediaGeralGlobal,
-      taxaPresencaGlobal,
-    };
-  }, [resumoGeral, totalMatriculados]);
+  const metricasGlobais = {
+    totalTurmas,
+    totalMatriculados,
+    mediaGeralGlobal,
+    taxaPresencaGlobal,
+  };
 
-  // Dados formatados para o gráfico de Média Geral por Turma
-  const dadosGraficoMedia = useMemo(() => {
-    return resumoGeral.map((t) => ({
-      turma: t.nome_identificador,
-      media: Number(t.media_geral || 0),
-    }));
-  }, [resumoGeral]);
+  // Dados formatados para o gráfico de Média Geral por Turma (Recharts)
+  const dadosGraficoMedia = resumoGeral.map((t) => ({
+    turma: t.nome_identificador,
+    media: Number(t.media_geral || 0),
+  }));
 
-  // Dados formatados para o gráfico de Frequência por Turma
-  const dadosGraficoPresenca = useMemo(() => {
-    return resumoGeral.map((t) => ({
-      turma: t.nome_identificador,
-      frequencia: Number(t.taxa_presenca || 0),
-    }));
-  }, [resumoGeral]);
+  // Dados formatados para o gráfico de Frequência por Turma (Recharts)
+  const dadosGraficoPresenca = resumoGeral.map((t) => ({
+    turma: t.nome_identificador,
+    frequencia: Number(t.taxa_presenca || 0),
+  }));
 
   if (loading) {
     return (

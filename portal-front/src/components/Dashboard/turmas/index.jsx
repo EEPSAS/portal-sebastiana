@@ -5,6 +5,7 @@ import {
   cancelarMatriculaAluno,
   excluirDadosCsv,
   excluirTurma,
+  extrairLista,
   fetchMatriculas,
   fetchResumoGeral,
   fetchTurmaAlunos,
@@ -119,22 +120,10 @@ const Turmas = () => {
     ])
       .then(([dadosTurmas, dadosResumo, dadosMatriculas]) => {
         if (!cancelado) {
-          // Extração segura de dados independente de envelope API Resource
-          const listaTurmas = Array.isArray(dadosTurmas)
-            ? dadosTurmas
-            : Array.isArray(dadosTurmas?.data)
-            ? dadosTurmas.data
-            : [];
-          const listaResumo = Array.isArray(dadosResumo)
-            ? dadosResumo
-            : Array.isArray(dadosResumo?.data)
-            ? dadosResumo.data
-            : [];
-          const listaMatriculas = Array.isArray(dadosMatriculas)
-            ? dadosMatriculas
-            : Array.isArray(dadosMatriculas?.data)
-            ? dadosMatriculas.data
-            : [];
+          // Extração padronizada e enxuta das listas via extrairLista()
+          const listaTurmas = extrairLista(dadosTurmas);
+          const listaResumo = extrairLista(dadosResumo);
+          const listaMatriculas = extrairLista(dadosMatriculas);
 
           setTurmas(listaTurmas);
           setResumoGeral(listaResumo);
@@ -172,12 +161,7 @@ const Turmas = () => {
     fetchTurmaAlunos(turmaSelecionadaId)
       .then((dadosAlunos) => {
         if (!cancelado) {
-          const lista = Array.isArray(dadosAlunos)
-            ? dadosAlunos
-            : Array.isArray(dadosAlunos?.data)
-            ? dadosAlunos.data
-            : [];
-          setAlunosTurmaSelecionada(lista);
+          setAlunosTurmaSelecionada(extrairLista(dadosAlunos));
         }
       })
       .catch((err) => {

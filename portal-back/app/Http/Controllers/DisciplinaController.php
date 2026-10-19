@@ -26,11 +26,13 @@ class DisciplinaController extends Controller
 
         $query = Disciplina::query();
 
+        // Filtra pelo nome da disciplina quando o parâmetro de busca 'q' é informado
         if ($request->filled('q')) {
-            $query->where('nome_disciplina', 'like', '%'.$request->string('q')->toString().'%');
+            $query->where('nome', 'like', '%'.$request->string('q')->toString().'%');
         }
 
-        $disciplinas = $query->orderBy('nome_disciplina')->get();
+        // Ordena alfabeticamente pela coluna 'nome' da tabela 'disciplinas'
+        $disciplinas = $query->orderBy('nome')->get();
 
         return response()->json(DisciplinaResource::collection($disciplinas), 200);
     }
@@ -67,12 +69,21 @@ class DisciplinaController extends Controller
         Gate::authorize('update', $disciplina);
 
         $validated = $request->validate([
+            'nome' => ['sometimes', 'required', 'string', 'max:255'],
             'nome_disciplina' => ['sometimes', 'required', 'string', 'max:255'],
-            'codigo' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'carga_horaria_anual' => ['sometimes', 'required', 'integer', 'min:1'],
             'carga_horaria' => ['sometimes', 'required', 'integer', 'min:1'],
+            'descricao' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $disciplina->update($validated);
+        // Normaliza aliases opcionais para as colunas oficiais do banco de dados
+        $dadosAtualizacao = [
+            'nome' => $validated['nome'] ?? $validated['nome_disciplina'] ?? $disciplina->nome,
+            'carga_horaria_anual' => $validated['carga_horaria_anual'] ?? $validated['carga_horaria'] ?? $disciplina->carga_horaria_anual,
+            'descricao' => array_key_exists('descricao', $validated) ? $validated['descricao'] : $disciplina->descricao,
+        ];
+
+        $disciplina->update($dadosAtualizacao);
 
         return response()->json(new DisciplinaResource($disciplina), 200);
     }

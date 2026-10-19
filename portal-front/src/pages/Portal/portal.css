@@ -60,10 +60,10 @@
   --color-bg-light-alt: var(--color-bg);
   --color-bg-light-card: #f7f8fa;
 
-  /* Espaçamentos e Dimensões */
+  /* Espaçamentos e Dimensões: container fluido adaptável a telas médias, grandes e ultrawide */
   --portal-section-spacing: clamp(4rem, 7vw, 6.5rem);
   --portal-sobre-spacing: clamp(1.8rem, 3.5vw, 2.8rem);
-  --portal-container-max: 1220px;
+  --portal-container-max: min(92vw, 1560px);
 
   /* Raios de Borda */
   --portal-radius-xs: 8px;
@@ -127,6 +127,7 @@
 }
 
 .portal-scope .container {
+  width: 100%;
   max-width: var(--portal-container-max);
 }
 
@@ -268,7 +269,7 @@
   position: relative;
   z-index: 3;
   width: 100%;
-  max-width: 1200px;
+  max-width: var(--portal-container-max);
   padding: 0 clamp(1.2rem, 3.5vw, 2.5rem);
   margin: 0 auto;
 }

@@ -1,3 +1,11 @@
+/**
+ * useNoticias.js - Custom Hooks Didáticos para Consumo do Serviço de Notícias
+ *
+ * Papel Didático:
+ * Encapsula a busca assíncrona de listagem (`useNoticias`) e de detalhe (`useNoticia`),
+ * gerenciando os estados `loading` e `error` e cancelando requisições pendentes via
+ * `AbortController` caso o usuário saia da página antes da resposta chegar.
+ */
 import { useEffect, useState } from 'react';
 import { getNoticia, listNoticias } from '../services/noticiasService';
 

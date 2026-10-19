@@ -178,3 +178,11 @@ export const deleteNoticia = async (id) => {
 };
 
 export const excluirNoticia = deleteNoticia;
+
+export const noticiasService = {
+  listarNoticias,
+  obterNoticia,
+  criarNoticia,
+  atualizarNoticia,
+  excluirNoticia,
+};

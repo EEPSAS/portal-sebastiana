@@ -31,6 +31,9 @@ enum UserRole: string
         };
     }
 
+    /**
+     * Retorna o nível hierárquico de autoridade do perfil (1 = Operacional/Consulta, 2 = Gestão Pedagógica, 3 = Administração Total).
+     */
     public function nivel(): int
     {
         return match ($this) {

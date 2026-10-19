@@ -1,25 +1,22 @@
-import { useDashboardStats } from "../../../../hooks/geral/especialista/useSmallCardsEspecialista.js";
+import { useDashboardEspecialista } from "../../../../hooks/geral/especialista/useDashboardEspecialista.js";
 import GeralSmallCards from "./Cards/EstatisticaDocenteCard.jsx";
-import { useResumoTurmas } from "../../../../hooks/geral/especialista/useMediumCardsEspecialista.js";
 import GeralMediumCards from "./Cards/ResumoTurmasCard.jsx";
 import LatestUpdates from "./LatestUpdates/UltimasAtualizacoes.jsx";
 import { useAuth } from "../../../../hooks/useAuth.js";
 
-export function ResumoTurmas() {
-  const { medias, frequencias, loading } = useResumoTurmas();
-
-  return (
-    <GeralMediumCards
-      medias={medias}
-      frequencias={frequencias}
-      loading={loading}
-    />
-  );
-}
-
+/**
+ * GeralEspecialista (index.jsx) - Painel Analítico do Especialista, Professor e Administrador
+ *
+ * Papel Didático:
+ * Consome o hook unificado useDashboardEspecialista() para buscar os dados reais do endpoint
+ * GET /api/dashboard/geral em uma única requisição HTTP e distribuí-los como props para:
+ * 1. GeralSmallCards (4 KPIs principais da escola/docência);
+ * 2. GeralMediumCards (Gráficos Recharts de Média de Notas e Taxa de Presença por Turma);
+ * 3. LatestUpdates (Feed de últimas atualizações de notícias e notas).
+ */
 const GeralEspecialista = () => {
   const { user } = useAuth();
-  const { cards, loading, error } = useDashboardStats();
+  const { cards, medias, frequencias, updates, loading, error } = useDashboardEspecialista();
 
   // Define o cabeçalho dinamicamente conforme o papel (Professor vs Especialista/Adm)
   const tituloPainel =
@@ -27,6 +24,7 @@ const GeralEspecialista = () => {
       ? "Painel Geral do Professor"
       : "Painel Geral do Especialista";
 
+  // 1. Estado Assíncrono: Carregando
   if (loading) {
     return (
       <div className="text-center py-5">
@@ -38,10 +36,23 @@ const GeralEspecialista = () => {
     );
   }
 
+  // 2. Estado Assíncrono: Erro Amigável
   if (error) {
     return (
-      <div className="alert alert-danger rounded-3 shadow-sm">
+      <div className="alert alert-danger rounded-3 shadow-sm" role="alert">
         Não foi possível carregar os dados no momento: {error}
+      </div>
+    );
+  }
+
+  // 3. Estado Assíncrono: Vazio (sem indicadores nem turmas cadastradas)
+  const semDadosGlobais =
+    cards.length === 0 && medias.length === 0 && frequencias.length === 0 && updates.length === 0;
+
+  if (semDadosGlobais) {
+    return (
+      <div className="card border-0 shadow-sm rounded-3 p-4 text-center text-muted">
+        Nenhum indicador acadêmico disponível no momento.
       </div>
     );
   }
@@ -49,6 +60,8 @@ const GeralEspecialista = () => {
   return (
     <div>
       <h1 className="h3 fw-bold mb-4">{tituloPainel}</h1>
+
+      {/* Linha superior: 4 Small Cards de KPIs institucionais/docentes */}
       <div className="row g-3">
         {cards.map((card) => (
           <GeralSmallCards
@@ -61,11 +74,23 @@ const GeralEspecialista = () => {
           />
         ))}
       </div>
-      <ResumoTurmas />
-      <LatestUpdates />
+
+      {/* Linha intermediária: Gráficos Recharts de Médias e Frequências por Turma */}
+      <GeralMediumCards
+        medias={medias}
+        frequencias={frequencias}
+        loading={loading}
+        error={error}
+      />
+
+      {/* Linha inferior: Feed de últimas atualizações escolares */}
+      <LatestUpdates
+        updates={updates}
+        loading={loading}
+        error={error}
+      />
     </div>
   );
 };
 
 export default GeralEspecialista;
-

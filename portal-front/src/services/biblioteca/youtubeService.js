@@ -20,7 +20,12 @@ const createApiError = (code) => Object.assign(new Error(code), { code });
  * Executa chamadas à API do YouTube com chave e suporte a cancelamento (`AbortSignal`).
  */
 const requestYouTubeApi = async (resource, params, signal) => {
-  if (!API_KEY || API_KEY === 'SUA_CHAVE_DA_API') {
+  // Verifica se a chave VITE_YOUTUBE_API_KEY foi preenchida no arquivo .env local
+  if (
+    !API_KEY ||
+    API_KEY === 'SUA_CHAVE_DA_API' ||
+    API_KEY === 'SUA_CHAVE_YOUTUBE_AQUI'
+  ) {
     throw createApiError('MISSING_API_KEY');
   }
 
@@ -30,6 +35,7 @@ const requestYouTubeApi = async (resource, params, signal) => {
   try {
     response = await fetch(`${API_BASE_URL}/${resource}?${query}`, { signal });
   } catch (error) {
+    // Se a requisição foi cancelada pelo AbortController, propaga o erro sem convertê-lo
     if (error.name === 'AbortError') {
       throw error;
     }
@@ -44,7 +50,12 @@ const requestYouTubeApi = async (resource, params, signal) => {
   }
 
   if (!response.ok || payload.error) {
-    throw createApiError(response.status === 403 ? 'API_ACCESS_FAILURE' : 'API_FAILURE');
+    // Status 403 ou 429 indicam chave restrita ou cota diária excedida no Google Cloud
+    throw createApiError(
+      response.status === 403 || response.status === 429
+        ? 'API_ACCESS_FAILURE'
+        : 'API_FAILURE'
+    );
   }
 
   return payload;
@@ -80,12 +91,20 @@ export const formatarDuracaoISO8601 = (isoDuration) => {
  * @returns {Promise<Array>} Lista de vídeos formatados com duration e url.
  */
 export const searchYouTubeVideos = async (searchTerm, { signal } = {}) => {
-  const payload = await requestYouTubeApi('search', {
-    part: 'snippet',
-    type: 'video',
-    maxResults: '12',
-    q: searchTerm
-  }, signal);
+  // Inclui safeSearch=strict e videoEmbeddable=true para garantir conteúdo adequado ao ambiente escolar
+  const payload = await requestYouTubeApi(
+    'search',
+    {
+      part: 'snippet',
+      type: 'video',
+      maxResults: '12',
+      safeSearch: 'strict',
+      videoEmbeddable: 'true',
+      relevanceLanguage: 'pt',
+      q: searchTerm,
+    },
+    signal
+  );
 
   const videosBasicos = (payload.items ?? [])
     .map((item) => {

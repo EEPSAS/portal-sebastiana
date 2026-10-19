@@ -5,49 +5,51 @@ namespace App\Policies;
 use App\Models\Livro;
 use App\Models\User;
 
-// Política de autorização para o acervo de livros da biblioteca.
+/**
+ * LivroPolicy - Política de Autorização do Catálogo de Livros
+ *
+ * Papel Didático:
+ * Define quem pode consultar e quem pode alterar o acervo físico escolar.
+ * A consulta é pública (`?User $user`), enquanto operações de escrita (CRUD e CSV)
+ * exigem permissão de gestão da biblioteca (`canManageLibrary()`).
+ */
 class LivroPolicy
 {
     /**
-     * Determine whether the user can view any models.
+     * Determina se qualquer visitante ou usuário logado pode listar os livros do acervo.
      */
-    // Permite visualização pública da listagem de livros
     public function viewAny(?User $user): bool
     {
         return true;
     }
 
     /**
-     * Determine whether the user can view the model.
+     * Determina se qualquer visitante ou usuário logado pode ver os detalhes de um livro.
      */
-    // Permite visualização pública dos detalhes de um livro
     public function view(?User $user, Livro $livro): bool
     {
         return true;
     }
 
     /**
-     * Determine whether the user can create models.
+     * Autoriza o cadastro individual e a importação CSV apenas para Bibliotecária, Especialista e Adm.
      */
-    // Autoriza cadastro e importação CSV de livros apenas para Bibliotecária, Especialista e Adm
     public function create(User $user): bool
     {
         return $user->canManageLibrary();
     }
 
     /**
-     * Determine whether the user can update the model.
+     * Autoriza a edição dos dados cadastrais do livro apenas para gestores da biblioteca.
      */
-    // Autoriza edição dos dados do livro apenas para Bibliotecária, Especialista e Adm
     public function update(User $user, Livro $livro): bool
     {
         return $user->canManageLibrary();
     }
 
     /**
-     * Determine whether the user can delete the model.
+     * Autoriza a remoção de exemplares do acervo apenas para gestores da biblioteca.
      */
-    // Autoriza exclusão de livros do acervo apenas para Bibliotecária, Especialista e Adm
     public function delete(User $user, Livro $livro): bool
     {
         return $user->canManageLibrary();

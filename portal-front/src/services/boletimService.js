@@ -55,3 +55,9 @@ export const obterComparativoTurma = async (
   const caminho = `/alunos/${encodeURIComponent(alunoId)}/turmas/${encodeURIComponent(turmaId)}/comparativo-turma`;
   return solicitarJson(caminho, { signal });
 };
+
+export const boletimService = {
+  obterBoletim,
+  obterComparativoTurma,
+};
+

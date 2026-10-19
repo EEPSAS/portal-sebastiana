@@ -95,7 +95,7 @@ trait HasRolesAndPermissions
             return true;
         }
 
-        if ($this->hasRole('professor')) {
+        if ($this->hasRole(UserRole::PROFESSOR)) {
             return TurmaDisciplina::where('turma_id', $turmaId)
                 ->where('disciplina_id', $disciplinaId)
                 ->where('professor_id', $this->id)
@@ -106,63 +106,72 @@ trait HasRolesAndPermissions
     }
 
     /**
-     * Checagens semânticas de nível e perfil
+     * Checagens semânticas de nível e perfil baseadas no Enum oficial UserRole.
      */
+    // Verifica se o usuário possui perfil de Administrador Geral
     public function isAdm(): bool
     {
-        return $this->hasRole(['adm', 'admin']);
+        return $this->hasRole([UserRole::ADM, 'admin']);
     }
 
+    // Verifica se o usuário possui perfil de Especialista Pedagógico
     public function isEspecialista(): bool
     {
-        return $this->hasRole('especialista');
+        return $this->hasRole(UserRole::ESPECIALISTA);
     }
 
+    // Verifica se o usuário possui perfil de Professor
     public function isProfessor(): bool
     {
-        return $this->hasRole('professor');
+        return $this->hasRole(UserRole::PROFESSOR);
     }
 
+    // Verifica se o usuário possui perfil de Bibliotecária
     public function isBibliotecaria(): bool
     {
-        return $this->hasRole(['bibliotecaria', 'bibliotecario']);
+        return $this->hasRole([UserRole::BIBLIOTECARIA, 'bibliotecario']);
     }
 
+    // Verifica se o usuário possui perfil de Aluno
     public function isAluno(): bool
     {
-        return $this->hasRole(['aluno', 'padrao']);
+        return $this->hasRole([UserRole::ALUNO, UserRole::PADRAO]);
     }
 
+    // Verifica se o usuário pertence a um dos perfis operacionais padrão (não-gestores)
     public function isPadrao(): bool
     {
         return $this->isAluno() || $this->isProfessor() || $this->isBibliotecaria();
     }
 
+    /**
+     * Resolve as permissões padrão a partir do Enum UserRole caso o relacionamento role_id ainda não esteja populado.
+     */
     private function fallbackPermissionFromEnum(string $permission): bool
     {
         $roleValue = $this->role instanceof UserRole ? $this->role->value : (string) $this->role;
 
         return match ($roleValue) {
-            'especialista' => in_array($permission, [
+            UserRole::ESPECIALISTA->value => in_array($permission, [
                 'gerenciar_noticias', 'gerenciar_biblioteca', 'gerenciar_turmas',
                 'gerenciar_frequencia', 'gerenciar_notas', 'visualizar_relatorios_basicos',
                 'gerenciar_livros', 'gerenciar_emprestimos', 'criar_noticia', 'editar_noticia_propria',
                 'visualizar_livros', 'solicitar_emprestimo', 'visualizar_emprestimos_proprios',
                 'visualizar_eventos', 'criar_evento', 'gerenciar_eventos_proprios', 'gerenciar_eventos',
             ], true),
-            'professor' => in_array($permission, [
+            UserRole::PROFESSOR->value => in_array($permission, [
                 'visualizar_livros', 'solicitar_emprestimo', 'visualizar_emprestimos_proprios',
                 'criar_noticia', 'editar_noticia_propria', 'criar_videoaula', 'criar_pdf',
                 'visualizar_videoaulas', 'visualizar_pdfs', 'baixar_pdfs', 'assistir_videoaulas',
                 'enviar_remessa_docente', 'visualizar_eventos', 'criar_evento', 'gerenciar_eventos_proprios',
             ], true),
-            'bibliotecaria' => in_array($permission, [
+            UserRole::BIBLIOTECARIA->value => in_array($permission, [
                 'visualizar_livros', 'solicitar_emprestimo', 'visualizar_emprestimos_proprios',
                 'gerenciar_livros', 'gerenciar_emprestimos', 'visualizar_agenda_devolucoes',
                 'visualizar_historico_global_emprestimos', 'visualizar_perfil_basico_usuarios',
                 'criar_noticia', 'editar_noticia_propria', 'visualizar_eventos', 'criar_evento', 'gerenciar_eventos_proprios',
             ], true),
-            'aluno', 'padrao' => in_array($permission, [
+            UserRole::ALUNO->value, UserRole::PADRAO->value => in_array($permission, [
                 'visualizar_livros', 'solicitar_emprestimo', 'visualizar_emprestimos_proprios',
                 'visualizar_videoaulas', 'visualizar_pdfs', 'baixar_pdfs', 'assistir_videoaulas',
                 'criar_noticia', 'editar_noticia_propria', 'visualizar_eventos', 'criar_evento', 'gerenciar_eventos_proprios',

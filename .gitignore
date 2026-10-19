@@ -17,6 +17,13 @@ public_html/hot
 
 storage/*.key
 .env
+.env.*
+!.env.example
+**/database/*.sqlite
+**/database/*.sqlite-*
+*.pem
+*.key
+*.p12
 Homestead.yaml
 Homestead.json
 /.vagrant
@@ -24,7 +31,5 @@ Homestead.json
 
 /public/build
 /storage/pail
-.env.backup
-.env.production
 .phpactor.json
 auth.json

@@ -11,15 +11,16 @@ use Illuminate\Foundation\Http\FormRequest;
 class UpdateTurmaRequest extends FormRequest
 {
     /**
-     * Determina se o usuário está autorizado a realizar esta requisição.
+     * Determina se o usuário está autorizado a atualizar os dados da turma.
+     * Apenas Especialistas Pedagógicos e Administradores possuem permissão de escrita.
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user() !== null && $this->user()->canManageAcademic();
     }
 
     /**
-     * Regras de validação dos campos da turma.
+     * Regras de validação dos campos cadastrais da turma.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
@@ -30,6 +31,8 @@ class UpdateTurmaRequest extends FormRequest
             'nome_identificador' => ['sometimes', 'required', 'string', 'max:100'],
             'ano_letivo' => ['sometimes', 'required', 'integer', 'min:2020', 'max:2100'],
             'turno' => ['sometimes', 'required', 'string', 'in:Matutino,Vespertino,Noturno,Integral'],
+            // Limite de vagas da sala para controle de matrículas ativas
+            'capacidade_maxima' => ['sometimes', 'required', 'integer', 'min:1'],
             'status' => ['sometimes', 'required', 'string', 'in:Ativa,Inativa,Concluída'],
         ];
     }
@@ -45,6 +48,8 @@ class UpdateTurmaRequest extends FormRequest
             'nome_identificador.required' => 'O nome identificador da turma é obrigatório.',
             'ano_letivo.integer' => 'O ano letivo deve ser um número inteiro válido.',
             'turno.in' => 'O turno selecionado é inválido.',
+            'capacidade_maxima.integer' => 'A capacidade máxima deve ser um número inteiro válido.',
+            'capacidade_maxima.min' => 'A capacidade máxima deve ser de pelo menos 1 estudante.',
             'status.in' => 'O status informado é inválido.',
         ];
     }

@@ -7,24 +7,28 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Enum;
 
-// Validação para atualização manual do status de um empréstimo.
+/**
+ * AtualizarStatusEmprestimoRequest - Validação de Transição Manual de Status de Empréstimo
+ *
+ * Papel Didático:
+ * Utiliza a regra nativa `new Enum(EmprestimoStatus::class)` do Laravel para garantir
+ * que apenas valores válidos do Enum sejam aceitos na alteração de status.
+ */
 class AtualizarStatusEmprestimoRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Autoriza apenas usuários com permissão de gestão da biblioteca escolar.
      */
-    // Autoriza apenas usuários com permissão de gestão de biblioteca
     public function authorize(): bool
     {
         return $this->user() !== null && $this->user()->canManageLibrary();
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Regras de validação do novo status, prazo previsto e observações.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
-    // Regras de validação do novo status e campos opcionais
     public function rules(): array
     {
         return [
@@ -35,11 +39,10 @@ class AtualizarStatusEmprestimoRequest extends FormRequest
     }
 
     /**
-     * Custom messages for validation errors.
+     * Mensagens amigáveis em português para feedback de validação.
      *
      * @return array<string, string>
      */
-    // Mensagens customizadas de validação
     public function messages(): array
     {
         return [

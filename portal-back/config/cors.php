@@ -19,13 +19,23 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        env('FRONTEND_URL', 'http://localhost:5173'),
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-    ],
+    // Normaliza origens do FRONTEND_URL (remove barra final e adiciona https:// se vier apenas o domínio do Railway)
+    'allowed_origins' => array_values(array_unique(array_filter(array_merge(
+        array_map(static function (string $origin): string {
+            $trimmed = rtrim(trim($origin), '/');
+            if ($trimmed === '') {
+                return '';
+            }
+
+            return preg_match('#^https?://#i', $trimmed) ? $trimmed : 'https://'.$trimmed;
+        }, explode(',', (string) env('FRONTEND_URL', 'http://localhost:5173'))),
+        [
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+            'http://localhost:3000',
+            'http://127.0.0.1:3000',
+        ]
+    )))),
 
     'allowed_origins_patterns' => [],
 

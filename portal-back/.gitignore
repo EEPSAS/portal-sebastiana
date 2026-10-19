@@ -17,8 +17,8 @@ storage/framework/sessions/
 storage/framework/views/
 storage/*.key
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
 Homestead.yaml
 Homestead.json
 /.vagrant
@@ -27,4 +27,7 @@ Homestead.json
 auth.json
 /public/build
 /storage/pail
-database/database.sqlite
+database/*.sqlite
+database/*.sqlite-*
+*.pem
+*.key

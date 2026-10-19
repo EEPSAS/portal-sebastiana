@@ -66,10 +66,10 @@ test('testa rotas publicas de noticias e biblioteca', function () {
     $this->getJson("/api/noticias/{$primeiraNoticia}")
         ->assertOk();
 
-    // 2. Livros públicos
+    // 2. Livros públicos (pré-carrega os 5 últimos cadastrados conforme apiContract.md)
     $respLivros = $this->getJson('/api/livros');
     $respLivros->assertOk()
-        ->assertJsonCount(6);
+        ->assertJsonCount(5);
 
     $livro = Livro::first();
     $this->getJson("/api/livros/{$livro->id_livro}")

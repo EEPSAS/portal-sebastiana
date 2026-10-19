@@ -5,13 +5,19 @@ namespace App\Policies;
 use App\Models\Emprestimo;
 use App\Models\User;
 
-// Política de autorização para o fluxo de empréstimos da biblioteca.
+/**
+ * EmprestimoPolicy - Política de Autorização para Empréstimos de Livros
+ *
+ * Papel Didático:
+ * Garante o isolamento de dados entre leitores (que só visualizam e renovam
+ * seus próprios empréstimos) e gestores da biblioteca (Bibliotecária, Especialista e Adm),
+ * que aprovam retiradas e registram devoluções no balcão.
+ */
 class EmprestimoPolicy
 {
     /**
-     * Determine whether the user can view any models.
+     * Autoriza a listagem global de empréstimos para gestores da biblioteca.
      */
-    // Autoriza listagem geral de empréstimos para quem gerencia a biblioteca
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('gerenciar_emprestimos')
@@ -20,9 +26,8 @@ class EmprestimoPolicy
     }
 
     /**
-     * Determine whether the user can view the model.
+     * Autoriza a visualização de um empréstimo se o usuário for gestor ou o próprio leitor solicitante.
      */
-    // Autoriza visualização se o usuário gerencia a biblioteca ou é o solicitante
     public function view(User $user, Emprestimo $emprestimo): bool
     {
         return $user->hasPermissionTo('gerenciar_emprestimos')
@@ -31,18 +36,16 @@ class EmprestimoPolicy
     }
 
     /**
-     * Determine whether the user can request a loan.
+     * Autoriza a abertura de solicitação de empréstimo para usuários com a permissão correspondente.
      */
-    // Autoriza solicitação se possuir a habilidade solicitar_emprestimo
     public function solicitar(User $user): bool
     {
         return $user->hasPermissionTo('solicitar_emprestimo');
     }
 
     /**
-     * Determine whether the user can approve a loan.
+     * Autoriza a aprovação de retirada física apenas para gestores da biblioteca.
      */
-    // Autoriza aprovação para gestores da biblioteca
     public function aprovar(User $user, Emprestimo $emprestimo): bool
     {
         return $user->hasPermissionTo('gerenciar_emprestimos')
@@ -50,9 +53,8 @@ class EmprestimoPolicy
     }
 
     /**
-     * Determine whether the user can renew a loan.
+     * Autoriza a renovação de prazo para gestores ou para o próprio leitor titular do empréstimo.
      */
-    // Autoriza renovação para gestores ou para o próprio usuário solicitante
     public function renovar(User $user, Emprestimo $emprestimo): bool
     {
         return $user->hasPermissionTo('gerenciar_emprestimos')
@@ -61,9 +63,8 @@ class EmprestimoPolicy
     }
 
     /**
-     * Determine whether the user can register a return.
+     * Autoriza a baixa de devolução do exemplar apenas para gestores da biblioteca.
      */
-    // Autoriza registro de devolução para gestores da biblioteca
     public function devolver(User $user, Emprestimo $emprestimo): bool
     {
         return $user->hasPermissionTo('gerenciar_emprestimos')
@@ -71,9 +72,8 @@ class EmprestimoPolicy
     }
 
     /**
-     * Determine whether the user can update the status of the loan.
+     * Autoriza a alteração administrativa de status apenas para gestores da biblioteca.
      */
-    // Autoriza alteração manual de status para gestores da biblioteca
     public function atualizarStatus(User $user, Emprestimo $emprestimo): bool
     {
         return $user->hasPermissionTo('gerenciar_emprestimos')
@@ -81,9 +81,8 @@ class EmprestimoPolicy
     }
 
     /**
-     * Determine whether the user can delete the model.
+     * Autoriza a exclusão de registros de empréstimo apenas para gestores da biblioteca.
      */
-    // Autoriza cancelamento/exclusão para gestores da biblioteca
     public function delete(User $user, Emprestimo $emprestimo): bool
     {
         return $user->hasPermissionTo('gerenciar_emprestimos')

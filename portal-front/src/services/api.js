@@ -1,4 +1,14 @@
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
+/**
+ * Normaliza a URL base da API para suportar tanto o ambiente local quanto variáveis
+ * de domínio público do Railway (com ou sem protocolo `https://` e sufixo `/api`).
+ */
+const normalizeApiUrl = (rawUrl) => {
+  const trimmed = (rawUrl || 'http://localhost:8000/api').trim().replace(/\/+$/, '');
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return withProtocol.endsWith('/api') ? withProtocol : `${withProtocol}/api`;
+};
+
+const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL);
 
 /**
  * Faz uma requisição fetch com JSON e, se houver token em localStorage,

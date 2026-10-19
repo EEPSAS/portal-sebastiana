@@ -1,4 +1,10 @@
-import './Podcast.css';
+/**
+ * Podcast.jsx - Seção Institucional do Projeto "Radioatividade" (Podcast Escolar)
+ *
+ * Papel Didático:
+ * Apresenta na página inicial do Portal o projeto de protagonismo estudantil do Terceirão.
+ */
+import './podcast.css';
 
 const PodcastSection = () => {
   return (

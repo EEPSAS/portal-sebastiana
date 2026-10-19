@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ImportarRelatorioTurmaRequest;
+use App\Http\Resources\AlunoCriticoResource;
+use App\Http\Resources\DesempenhoComponenteResource;
+use App\Http\Resources\EspecialistaResumoGerencialResource;
 use App\Http\Resources\RelatorioImportadoResource;
 use App\Models\Disciplina;
 use App\Models\Turma;
@@ -77,32 +80,32 @@ class EspecialistaDashboardController extends Controller
 
         $resumo = $this->dashboardService->obterResumoGerencial($turma, $periodo);
 
-        return response()->json($resumo, 200);
+        return response()->json(new EspecialistaResumoGerencialResource($resumo), 200);
     }
 
     /**
      * GET /api/turmas/{turma_id}/desempenho-componentes
      *
      * Retorna o ranking das disciplinas ordenadas da pior para a melhor média,
-     * identificando os gargalos de aprendizado da turma.
+     * identificando os gargalos de aprendizado da turma (acessível a Professor, Especialista e Adm).
      */
     public function desempenhoComponentes(Request $request, int|string $turma_id): JsonResponse
     {
-        $this->autorizarAcessoEspecialista($request);
+        $this->autorizarAcessoDocenteOuEspecialista($request);
 
         $turma = Turma::findOrFail($turma_id);
         $periodo = $this->obterPeriodoFiltro($request);
 
         $ranking = $this->dashboardService->calcularDesempenhoPorComponente($turma, $periodo);
 
-        return response()->json([
+        return response()->json(new DesempenhoComponenteResource([
             'turma' => [
                 'id_turma' => $turma->id_turma,
                 'nome_identificador' => $turma->nome_identificador,
             ],
             'periodo_selecionado' => $periodo ?: 'Geral',
             'ranking_componentes' => $ranking,
-        ], 200);
+        ]), 200);
     }
 
     /**
@@ -120,7 +123,7 @@ class EspecialistaDashboardController extends Controller
 
         $alunosCriticos = $this->dashboardService->listarAlunosCriticos($turma, $periodo);
 
-        return response()->json([
+        return response()->json(new AlunoCriticoResource([
             'turma' => [
                 'id_turma' => $turma->id_turma,
                 'nome_identificador' => $turma->nome_identificador,
@@ -128,7 +131,7 @@ class EspecialistaDashboardController extends Controller
             'periodo_selecionado' => $periodo ?: 'Geral',
             'total_criticos' => count($alunosCriticos),
             'alunos_criticos' => $alunosCriticos,
-        ], 200);
+        ]), 200);
     }
 
     /**
@@ -205,6 +208,19 @@ class EspecialistaDashboardController extends Controller
 
         if (! $user || ! $user->canManageAcademic()) {
             abort(403, 'Acesso restrito ao perfil de Especialista Pedagógico ou Administrador.');
+        }
+    }
+
+    /**
+     * Valida se o usuário autenticado pertence ao corpo docente ou à gestão pedagógica
+     * (Professor, Especialista ou Administrador), conforme apiContract.md.
+     */
+    protected function autorizarAcessoDocenteOuEspecialista(Request $request): void
+    {
+        $user = $request->user();
+
+        if (! $user || (! $user->canManageAcademic() && ! $user->isProfessor())) {
+            abort(403, 'Acesso restrito a Professores, Especialistas ou Administradores.');
         }
     }
 

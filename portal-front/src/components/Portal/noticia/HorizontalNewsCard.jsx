@@ -1,3 +1,10 @@
+/**
+ * HorizontalNewsCard.jsx - Card Principal da Notícia em Destaque
+ *
+ * Papel Didático:
+ * Renderiza a matéria principal em formato horizontal amplo. Trata os estados
+ * de carregamento (skeleton com spinner) e vazio (quando não há destaque cadastrado).
+ */
 const HorizontalNewsCard = ({ noticia, loading }) => {
 	// Se terminou de carregar e não há notícia de destaque cadastrada
 	if (!loading && !noticia) {
@@ -28,8 +35,8 @@ const HorizontalNewsCard = ({ noticia, loading }) => {
 						)}
 					</div>
 					<div className="col-12 col-md-5">
-						<h3 className="h2 text-secondary">{noticia?.titulo || "Notícia Destaque"}</h3>
-						<p className="mb-0">{noticia?.descricao || "Carregando descrição..."}</p>
+						<h3 className="h2 text-secondary">{loading ? 'Carregando destaque...' : noticia?.titulo}</h3>
+						<p className="mb-0">{loading ? 'Buscando informações atualizadas do portal...' : noticia?.descricao}</p>
 					</div>
 				</div>
 			</article>
@@ -38,3 +45,4 @@ const HorizontalNewsCard = ({ noticia, loading }) => {
 };
 
 export default HorizontalNewsCard;
+

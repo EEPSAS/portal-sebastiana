@@ -188,15 +188,17 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 ---
 
 ### Módulo 4: Eventos / Agenda
-*Calendário escolar, datas importantes e feriados letivos.*
+*Calendário escolar unificado (Portal Público read-only e Agenda do Dashboard), datas importantes e feriados letivos.*
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
 |---|---|---|---|---|---|---|
-| `GET` | `/api/eventos` | Público / Logado | N/A | `EventoResource` (Coleção) | `eventosService.listar()` | Lista eventos e datas do calendário |
-| `GET` | `/api/eventos/datas-importantes`| Público / Logado | N/A | `EventoResource` (Coleção) | `eventosService.datasImportantes()` | Destaques no topo do painel/portal |
-| `POST` | `/api/eventos` | Especialista / Adm | `StoreEventoRequest` | `EventoResource` | `eventosService.criar()` | Registra evento escolar |
-| `PUT` | `/api/eventos/{id}` | Especialista / Adm | `UpdateEventoRequest` | `EventoResource` | `eventosService.atualizar()` | Atualiza evento |
-| `DELETE`| `/api/eventos/{id}` | Especialista / Adm | N/A | Mensagem 200/204 | `eventosService.excluir()` | Remove evento |
+| `GET` | `/api/eventos` | Público / Logado (`sanctum` opcional) | N/A | `EventoResource` (Coleção) | `eventosService.listar()` | No Portal Público: retorna todos os eventos institucionais (Especialista/Adm). Logado: retorna eventos institucionais + eventos pessoais do próprio usuário logado |
+| `GET` | `/api/eventos/datas-importantes`| Público / Logado (`sanctum` opcional) | N/A | `EventoResource` (Coleção) | `eventosService.datasImportantes()` | Destaques importantes no topo do painel/portal |
+| `POST` | `/api/eventos` | Logado (Qualquer perfil) | `StoreEventoRequest` | `EventoResource` | `eventosService.criar()` | Registra evento: se criado por Especialista/Adm é público/institucional; se criado por outros perfis é privado (visível apenas pelo próprio criador) |
+| `PUT` | `/api/eventos/{id}` | Logado (Dono / Especialista / Adm) | `UpdateEventoRequest` | `EventoResource` | `eventosService.atualizar()` | Atualiza evento (próprio ou institucional) |
+| `DELETE`| `/api/eventos/{id}` | Logado (Dono / Especialista / Adm) | N/A | Mensagem 200/204 | `eventosService.excluir()` | Remove evento (próprio ou institucional) |
+
+> **Regra de Visibilidade dos Calendários:** O calendário do Portal Público é uma visão *read-only* alimentada pelos eventos que o **Especialista / Adm** cadastra. No Dashboard, qualquer usuário logado pode cadastrar compromissos no seu calendário, porém eventos criados por alunos/professores/bibliotecárias ficam visíveis **somente para o próprio usuário que os criou**, enquanto os eventos do Especialista/Adm são visíveis para toda a comunidade escolar.
 
 ---
 
@@ -214,11 +216,12 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 | `GET` | `/api/turmas/{turma_id}/alunos-disponiveis` | Especialista / Adm | N/A | `UsuarioResource` (Coleção) | `turmasService.listarAlunosDisponiveis()` | Alunos elegíveis para matrícula na turma |
 | `GET` | `/api/matriculas` | Especialista / Prof / Adm | N/A | `MatriculaResource` (Coleção) | `turmasService.listarMatriculas()` | Relação nominal de todos os matriculados ativos |
 | `POST` | `/api/matriculas` | Especialista / Adm | `StoreMatriculaRequest` | `MatriculaResource` | `turmasService.vincularAluno()` | Matricula/vincula aluno na turma |
-| `PATCH`| `/api/matriculas/{matricula_id}/cancelar` | Especialista / Adm | N/A | `MatriculaResource` | `turmasService.cancelarMatricula()` | Cancela/desvincula matrícula de aluno |
-| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista | `ImportarRelatorioTurmaRequest` | `RelatorioImportadoResource` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com notas/faltas consolidadas, heurística de primeiro/último nome e desambiguação de homônimos (suporta `mapeamentos_alunos`) |
+| `PATCH`| `/api/matriculas/{matricula_id}/cancelar` | Especialista / Adm | `CancelarMatriculaRequest` | `MatriculaResource` | `turmasService.cancelarMatricula()` | Cancela/desvincula matrícula de aluno |
+| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista / Adm | `ImportarRelatorioTurmaRequest` | `RelatorioImportadoResource` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com notas/faltas consolidadas, heurística de primeiro/último nome e desambiguação de homônimos (suporta `mapeamentos_alunos`) |
 | `DELETE`| `/api/turmas/{turma_id}/dados-csv` | Especialista / Adm | N/A | Mensagem 200 | `turmasService.excluirDadosCsv()` | Exclui notas e faltas carregadas via CSV da turma (suporta ?periodo_letivo=) |
 | `GET` | `/api/turmas/{turma_id}/notas` | Especialista / Prof / Adm | N/A | `NotaResource` (Coleção) | `turmasService.listarNotasTurma()` | Consulta notas lançadas na turma com filtros de período, disciplina e aluno (`aluno_id`) |
-| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/boletim` | Aluno / Prof / Esp / Adm | N/A | `BoletimResource` | `boletimService.obterBoletim()` | Boletim consolidado de notas e faltas |
+| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/boletim` | Aluno / Prof / Esp / Adm | N/A | `BoletimResource` | `boletimService.obterBoletim()` | Boletim consolidado de notas e faltas por trimestre |
+| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/comparativo-turma` | Aluno / Prof / Esp / Adm | N/A | `ComparativoTurmaResource` | `boletimService.obterComparativoTurma()` | Dados comparativos do aluno vs média da turma por disciplina |
 
 > **Regra de Escopo:** O Professor possui acesso **estritamente consultivo** aos dados da turma e dos alunos. Não há telas nem rotas para cadastro diário de tarefas ou chamada manual. A criação de turmas e a vinculação de alunos são privativas do Especialista e Administrador.
 
@@ -244,10 +247,10 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 | Método | Endpoint | Acesso | API Resource (Back) | Serviço Front | Dados Retornados por Perfil |
 |---|---|---|---|---|---|
 | `GET` | `/api/dashboard/geral` | Especialista / Prof / Adm | `DashboardGeralResource` | `geralService()` / `fetchDashboardGeral()` | Indicadores agregados (KPIs), médias por turma (0-10) e últimas atualizações reais |
-| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/resumo-global` | Aluno | `AlunoResumoGlobalResource` | `dashboardService.obterResumoAluno()` | Média geral, percentual de frequência e avisos |
+| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/resumo-global` | Aluno / Prof / Esp / Adm | `AlunoResumoGlobalResource` | `dashboardService.obterResumoAluno()` | Média geral, percentual de frequência e avisos |
 | `GET` | `/api/turmas/{turma_id}/resumo-gerencial` | Especialista / Adm | `EspecialistaResumoGerencialResource` | `dashboardService.obterResumoEspecialista()` | Médias por componente, evasão e índice de frequência |
-| `GET` | `/api/turmas/{turma_id}/alunos-criticos` | Especialista / Adm | `AlunoCriticoResource` (Coleção) | `dashboardService.obterAlunosCriticos()` | Alunos com risco de retenção por falta ou nota |
-| `GET` | `/api/turmas/{turma_id}/desempenho-componentes` | Professor / Especialista | `DesempenhoComponenteResource` | `dashboardService.obterDesempenhoTurma()` | Médias consolidadas por disciplina da turma |
+| `GET` | `/api/turmas/{turma_id}/alunos-criticos` | Especialista / Adm | `AlunoCriticoResource` | `dashboardService.obterAlunosCriticos()` | Alunos com risco de retenção por falta ou nota |
+| `GET` | `/api/turmas/{turma_id}/desempenho-componentes` | Professor / Especialista / Adm | `DesempenhoComponenteResource` | `dashboardService.obterDesempenhoTurma()` | Médias consolidadas por disciplina da turma |
 
 #### Especificação de Payload: `DashboardGeralResource`
 Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Administradores:

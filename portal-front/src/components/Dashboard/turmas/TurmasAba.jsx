@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import ModalDetalhesAluno from "./ModalDetalhesAluno";
 
 /**
@@ -33,68 +33,56 @@ const TurmasAba = ({
   const [matriculaModal, setMatriculaModal] = useState(null);
 
   // Garante que matriculas seja sempre um array iterável mesmo em caso de envelope
-  const matriculasArray = useMemo(() => {
-    if (Array.isArray(matriculas)) return matriculas;
-    if (Array.isArray(matriculas?.data)) return matriculas.data;
-    return [];
-  }, [matriculas]);
+  const matriculasArray = Array.isArray(matriculas)
+    ? matriculas
+    : Array.isArray(matriculas?.data)
+    ? matriculas.data
+    : [];
 
   // Mapa didático com a contagem de matrículas ativas por turma_id
-  const contagemPorTurma = useMemo(() => {
-    const mapa = {};
-    // Inicializa todas as turmas cadastradas com zero para que turmas sem alunos ativos não usem fallback desatualizado
-    turmas.forEach((t) => {
-      const tid = t.id_turma ?? t.id;
-      if (tid) {
-        mapa[tid] = 0;
-      }
-    });
-
-    matriculasArray.forEach((m) => {
-      const turmaId = m.turma_id ?? m.turma?.id_turma;
-      if (turmaId) {
-        mapa[turmaId] = (mapa[turmaId] || 0) + 1;
-      }
-    });
-    return mapa;
-  }, [turmas, matriculasArray]);
+  const contagemPorTurma = {};
+  // Inicializa todas as turmas cadastradas com zero para não exibir contador desatualizado
+  turmas.forEach((t) => {
+    const tid = t.id_turma ?? t.id;
+    if (tid) {
+      contagemPorTurma[tid] = 0;
+    }
+  });
+  matriculasArray.forEach((m) => {
+    const turmaId = m.turma_id ?? m.turma?.id_turma;
+    if (turmaId) {
+      contagemPorTurma[turmaId] = (contagemPorTurma[turmaId] || 0) + 1;
+    }
+  });
 
   // Lista ordenada de anos letivos únicos presentes nas turmas cadastradas
-  const anosDisponiveis = useMemo(() => {
-    const anos = turmas
-      .map((t) => t.ano_letivo)
-      .filter((ano) => Boolean(ano));
-    return [...new Set(anos)].sort((a, b) => b - a);
-  }, [turmas]);
+  const anosDisponiveis = [
+    ...new Set(turmas.map((t) => t.ano_letivo).filter((ano) => Boolean(ano))),
+  ].sort((a, b) => b - a);
 
   // Lista de turnos disponíveis no sistema escolar
-  const turnosDisponiveis = useMemo(() => {
-    const turnosEncontrados = turmas
-      .map((t) => t.turno)
-      .filter((turno) => Boolean(turno));
-    const conjunto = new Set(["Matutino", "Vespertino", "Noturno", ...turnosEncontrados]);
-    return Array.from(conjunto);
-  }, [turmas]);
+  const turnosEncontrados = turmas.map((t) => t.turno).filter((turno) => Boolean(turno));
+  const turnosDisponiveis = Array.from(
+    new Set(["Matutino", "Vespertino", "Noturno", ...turnosEncontrados])
+  );
 
-  // Filtragem reativa das turmas pelos seletores superiores
-  const turmasFiltradas = useMemo(() => {
-    return turmas.filter((t) => {
-      const atendeAno = filtroAno ? String(t.ano_letivo) === String(filtroAno) : true;
-      const atendeTurno = filtroTurno ? String(t.turno).toLowerCase() === String(filtroTurno).toLowerCase() : true;
-      return atendeAno && atendeTurno;
-    });
-  }, [turmas, filtroAno, filtroTurno]);
+  // Filtragem direta das turmas pelos seletores superiores
+  const turmasFiltradas = turmas.filter((t) => {
+    const atendeAno = filtroAno ? String(t.ano_letivo) === String(filtroAno) : true;
+    const atendeTurno = filtroTurno
+      ? String(t.turno).toLowerCase() === String(filtroTurno).toLowerCase()
+      : true;
+    return atendeAno && atendeTurno;
+  });
 
-  // Filtragem reativa dos alunos matriculados:
-  // Se uma turma estiver selecionada no card, exibe apenas os alunos dela.
-  const matriculasExibidas = useMemo(() => {
-    if (!turmaSelecionada) return matriculasArray;
-    const alvoId = String(turmaSelecionada.id_turma ?? turmaSelecionada.id);
-    return matriculasArray.filter((m) => {
-      const turmaId = String(m.turma_id ?? m.turma?.id_turma ?? "");
-      return turmaId === alvoId;
-    });
-  }, [matriculasArray, turmaSelecionada]);
+  // Filtragem direta dos alunos matriculados: se uma turma estiver selecionada no card, exibe apenas os alunos dela
+  const matriculasExibidas = !turmaSelecionada
+    ? matriculasArray
+    : matriculasArray.filter((m) => {
+        const alvoId = String(turmaSelecionada.id_turma ?? turmaSelecionada.id);
+        const turmaId = String(m.turma_id ?? m.turma?.id_turma ?? "");
+        return turmaId === alvoId;
+      });
 
   // Alterna a seleção da turma clicada no card (toggle simples)
   const handleSelecionarTurma = (turma) => {
@@ -117,10 +105,9 @@ const TurmasAba = ({
   };
 
   // Encontra os metadados da turma vinculada ao aluno exibido no modal
-  const turmaDoAlunoModal = useMemo(() => {
-    if (!matriculaModal) return null;
-    return turmas.find((t) => t.id_turma === matriculaModal.turma_id) || null;
-  }, [matriculaModal, turmas]);
+  const turmaDoAlunoModal = matriculaModal
+    ? turmas.find((t) => t.id_turma === matriculaModal.turma_id) || null
+    : null;
 
   if (loading) {
     return (
