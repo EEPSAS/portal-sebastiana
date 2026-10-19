@@ -5,7 +5,8 @@ yarn-error.log
 
 # Laravel specific
 bootstrap/compiled.php
-bootstrap/cache/
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
 app/storage/
 public/storage
 public/hot
