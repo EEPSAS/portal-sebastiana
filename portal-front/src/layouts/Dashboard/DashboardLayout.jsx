@@ -9,7 +9,7 @@
 
 import { Outlet } from "react-router";
 import Aside from "../../components/Dashboard/Aside";
-import Panel from "../../components/Dashboard/Panel";
+import Panel from "../../components/dashboard/panel";
 import Header from "../../components/Dashboard/Header";
 import { useAuth } from "../../hooks/useAuth";
 
