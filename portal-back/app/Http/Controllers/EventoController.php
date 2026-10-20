@@ -19,13 +19,13 @@ use Illuminate\Support\Facades\Gate;
  * Papel Didático:
  * Unifica os 2 calendários do portal sob uma única fonte de dados:
  * 1. Visitante no Portal Público: visualiza apenas eventos institucionais (criados por Especialista ou Adm);
- * 2. Usuário autenticado no Dashboard: visualiza os eventos institucionais da escola somados
- *    aos seus próprios eventos pessoais (`criador_id === $user->id`), que são estritamente privados.
+ * 2. Usuário autenticado no Dashboard: visualiza eventos institucionais, eventos criados por Professores
+ *    e os próprios eventos pessoais (`criador_id === $user->id`).
  */
 class EventoController extends Controller
 {
     /**
-     * Aplica a regra de visibilidade institucional + pessoal na consulta de eventos.
+     * Aplica as regras de visibilidade pública, compartilhada e pessoal dos eventos.
      */
     private function aplicarFiltroVisibilidade(Builder $query, ?object $user, Request $request): void
     {
@@ -55,14 +55,15 @@ class EventoController extends Controller
             return;
         }
 
-        // Usuário logado: vê os eventos institucionais (Especialista/Adm) + apenas os seus próprios eventos pessoais
+        // No Dashboard, eventos de Professor são compartilhados; os demais eventos pessoais seguem privados.
         $userId = $user->id;
-        $query->where(function (Builder $q) use ($userId, $papeisInstitucionais) {
+        $papeisVisiveisNoDashboard = [...$papeisInstitucionais, UserRole::PROFESSOR->value];
+        $query->where(function (Builder $q) use ($userId, $papeisVisiveisNoDashboard) {
             $q->where('criador_id', $userId)
                 ->orWhereNull('criador_id')
-                ->orWhereHas('criador', function (Builder $creatorQuery) use ($papeisInstitucionais) {
-                    $creatorQuery->whereIn('role', $papeisInstitucionais)
-                        ->orWhereHas('roleModel', fn (Builder $r) => $r->whereIn('slug', ['especialista', 'admin', 'adm']));
+                ->orWhereHas('criador', function (Builder $creatorQuery) use ($papeisVisiveisNoDashboard) {
+                    $creatorQuery->whereIn('role', $papeisVisiveisNoDashboard)
+                        ->orWhereHas('roleModel', fn (Builder $r) => $r->whereIn('slug', ['especialista', 'admin', 'adm', 'professor']));
                 });
         });
     }

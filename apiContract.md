@@ -192,13 +192,13 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
 |---|---|---|---|---|---|---|
-| `GET` | `/api/eventos` | Público / Logado (`sanctum` opcional) | N/A | `EventoResource` (Coleção) | `eventosService.listar()` | No Portal Público: retorna todos os eventos institucionais (Especialista/Adm). Logado: retorna eventos institucionais + eventos pessoais do próprio usuário logado |
+| `GET` | `/api/eventos` | Público / Logado (`sanctum` opcional) | N/A | `EventoResource` (Coleção) | `eventosService.listar()` | No Portal Público: retorna eventos institucionais (Especialista/Adm). Logado: retorna eventos institucionais + eventos de Professores + eventos pessoais do próprio usuário |
 | `GET` | `/api/eventos/datas-importantes`| Público / Logado (`sanctum` opcional) | N/A | `EventoResource` (Coleção) | `eventosService.datasImportantes()` | Destaques importantes no topo do painel/portal |
-| `POST` | `/api/eventos` | Logado (Qualquer perfil) | `StoreEventoRequest` | `EventoResource` | `eventosService.criar()` | Registra evento: se criado por Especialista/Adm é público/institucional; se criado por outros perfis é privado (visível apenas pelo próprio criador) |
+| `POST` | `/api/eventos` | Logado (Qualquer perfil) | `StoreEventoRequest` | `EventoResource` | `eventosService.criar()` | Especialista/Adm cria evento público/institucional; Professor cria evento compartilhado entre usuários logados; Aluno e Bibliotecária criam eventos privados ao autor |
 | `PUT` | `/api/eventos/{id}` | Logado (Dono / Especialista / Adm) | `UpdateEventoRequest` | `EventoResource` | `eventosService.atualizar()` | Atualiza evento (próprio ou institucional) |
 | `DELETE`| `/api/eventos/{id}` | Logado (Dono / Especialista / Adm) | N/A | Mensagem 200/204 | `eventosService.excluir()` | Remove evento (próprio ou institucional) |
 
-> **Regra de Visibilidade dos Calendários:** O calendário do Portal Público é uma visão *read-only* alimentada pelos eventos que o **Especialista / Adm** cadastra. No Dashboard, qualquer usuário logado pode cadastrar compromissos no seu calendário, porém eventos criados por alunos/professores/bibliotecárias ficam visíveis **somente para o próprio usuário que os criou**, enquanto os eventos do Especialista/Adm são visíveis para toda a comunidade escolar.
+> **Regra de Visibilidade dos Calendários:** O calendário do Portal Público é uma visão *read-only* alimentada pelos eventos que o **Especialista / Adm** cadastra. No Dashboard, qualquer usuário logado pode criar eventos. Eventos criados por **Professores** são visíveis a todos os usuários autenticados; eventos de **Alunos** e **Bibliotecárias** ficam visíveis somente ao autor. Eventos do Especialista/Adm continuam institucionais e visíveis para toda a comunidade escolar. A visibilidade compartilhada não concede permissão para editar ou excluir eventos de terceiros.
 
 ---
 

@@ -133,6 +133,60 @@ test('standard user can create personal events and manage only their own', funct
     expect(Evento::find($eventoEspecialista->id))->not->toBeNull();
 });
 
+test('professor events are shared with authenticated users but remain private to public visitors', function () {
+    $professor = User::factory()->professor()->create();
+    $aluno = User::factory()->aluno()->create();
+    $bibliotecaria = User::factory()->bibliotecaria()->create();
+
+    $eventoProfessor = Evento::factory()->create([
+        'titulo' => 'Reunião organizada pelo Professor',
+        'criador_id' => $professor->id,
+    ]);
+    $eventoAluno = Evento::factory()->create([
+        'titulo' => 'Lembrete particular do Aluno',
+        'criador_id' => $aluno->id,
+    ]);
+    $eventoBibliotecaria = Evento::factory()->create([
+        'titulo' => 'Organização particular da Biblioteca',
+        'criador_id' => $bibliotecaria->id,
+    ]);
+
+    $this->getJson('/api/eventos')
+        ->assertJsonMissing(['titulo' => 'Reunião organizada pelo Professor']);
+
+    $this->getJson("/api/eventos/{$eventoProfessor->id}")
+        ->assertUnauthorized();
+
+    foreach ([$professor, $aluno, $bibliotecaria] as $usuario) {
+        $this->actingAs($usuario, 'sanctum')
+            ->getJson('/api/eventos')
+            ->assertOk()
+            ->assertJsonFragment(['titulo' => 'Reunião organizada pelo Professor']);
+    }
+
+    $this->actingAs($aluno, 'sanctum')
+        ->getJson('/api/eventos')
+        ->assertJsonFragment(['titulo' => 'Lembrete particular do Aluno'])
+        ->assertJsonMissing(['titulo' => 'Organização particular da Biblioteca']);
+
+    $this->actingAs($bibliotecaria, 'sanctum')
+        ->getJson('/api/eventos')
+        ->assertJsonFragment(['titulo' => 'Organização particular da Biblioteca'])
+        ->assertJsonMissing(['titulo' => 'Lembrete particular do Aluno']);
+
+    $this->actingAs($aluno, 'sanctum')
+        ->getJson("/api/eventos/{$eventoProfessor->id}")
+        ->assertOk()
+        ->assertJsonPath('titulo', 'Reunião organizada pelo Professor');
+
+    $this->actingAs($aluno, 'sanctum')
+        ->putJson("/api/eventos/{$eventoProfessor->id}", ['titulo' => 'Alteração indevida'])
+        ->assertForbidden();
+
+    expect(Evento::find($eventoAluno->id))->not->toBeNull()
+        ->and(Evento::find($eventoBibliotecaria->id))->not->toBeNull();
+});
+
 test('especialista can create, update, delete and view events', function () {
     $especialista = User::factory()->especialista()->create();
 
