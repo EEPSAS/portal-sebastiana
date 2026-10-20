@@ -19,7 +19,7 @@ import { useAuth } from "../../hooks/useAuth";
 /**
  * Matriz declarativa de navegação do Dashboard.
  * Permissões:
- * - Geral: aluno, professor, especialista, adm
+ * - Geral: aluno, professor, bibliotecaria, bibliotecario, especialista, adm
  * - Boletim: aluno, adm
  * - Biblioteca: aluno, professor, bibliotecaria, bibliotecario, especialista, adm
  * - Turmas: professor, especialista, adm
@@ -31,7 +31,15 @@ const NAV_ITEMS = [
     label: "Geral",
     path: "/dashboard/geral",
     icon: "bi-house-door-fill",
-    roles: ["aluno", "professor", "especialista", "adm", "padrao"],
+    roles: [
+      "aluno",
+      "professor",
+      "bibliotecaria",
+      "bibliotecario",
+      "especialista",
+      "adm",
+      "padrao",
+    ],
   },
   {
     label: "Boletim",

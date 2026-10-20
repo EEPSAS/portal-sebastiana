@@ -3,8 +3,7 @@
  *
  * Papel Didático:
  * Monta o ecossistema analítico completo do Estudante com:
- * 1. Banner de Recepção com Avatar (AlunoBoasVindasCard - usa nickname prioritariamente).
- * 2. Linha de KPIs Superiores:
+ * 1. Linha de KPIs Superiores:
  *    - Frequência Geral (FrequenciaGeralCard com Donut Recharts).
  *    - Melhor Nota (MelhorNotaCard).
  *    - Nota de Atenção (NotaAtencaoCard).
@@ -14,7 +13,6 @@
  *    - Cardápio Mensal da Merenda Escolar (CardapioSemanalCard com seletor de mês e modal completo).
  */
 
-import AlunoBoasVindasCard from "./Cards/AlunoBoasVindasCard";
 import FrequenciaGeralCard from "./Cards/FrequenciaGeralCard";
 import { MelhorNotaCard, NotaAtencaoCard } from "./Cards/NotasDestaqueCard";
 import LeituraAtualCard from "./Cards/LeituraAtualCard";
@@ -62,10 +60,7 @@ const GeralPadrao = () => {
 
   return (
     <div className="student-overview">
-      {/* 1. Banner de Boas-Vindas */}
-      <AlunoBoasVindasCard />
-
-      {/* 2. Grid de 4 Cards Superiores */}
+      {/* 1. Grid de 4 Cards Superiores */}
       <div className="student-overview__metrics row g-3 mb-3">
         {/* Card 1: Frequência Geral (Magenta com Recharts) */}
         <FrequenciaGeralCard
@@ -94,7 +89,7 @@ const GeralPadrao = () => {
         />
       </div>
 
-      {/* 3. Seção Principal: Desempenho (8 colunas) e Cardápio (4 colunas) */}
+      {/* 2. Seção Principal: Desempenho (8 colunas) e Cardápio (4 colunas) */}
       <div className="student-overview__details row g-3 align-items-stretch">
         <div className="col-12 col-lg-8 d-flex">
           <DesempenhoDisciplinasCard

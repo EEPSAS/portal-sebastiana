@@ -9,6 +9,7 @@
 
 import GeralPadrao from "../../components/Dashboard/geral/padrao";
 import GeralEspecialista from "../../components/Dashboard/geral/especialista";
+import BoasVindasCard from "../../components/Dashboard/geral/common/BoasVindasCard";
 import { useAuth } from "../../hooks/useAuth";
 
 const GeralPage = () => {
@@ -19,7 +20,12 @@ const GeralPage = () => {
   const isVisaoEspecialista =
     role === "professor" || role === "especialista" || role === "adm";
 
-  return isVisaoEspecialista ? <GeralEspecialista /> : <GeralPadrao />;
+  return (
+    <>
+      <BoasVindasCard />
+      {isVisaoEspecialista ? <GeralEspecialista /> : <GeralPadrao />}
+    </>
+  );
 };
 
 export default GeralPage;
