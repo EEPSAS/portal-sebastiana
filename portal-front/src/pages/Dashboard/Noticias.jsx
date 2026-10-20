@@ -19,7 +19,7 @@ import {
   listarNoticias,
 } from '../../services/noticiasService';
 
-// Categorias padrão sugeridas para o ambiente escolar
+// Categorias oficiais padronizadas do ambiente escolar
 const CATEGORIAS_SUGERIDAS = [
   'Geral',
   'Avisos',
@@ -35,6 +35,11 @@ const FORMULARIO_INICIAL = {
   descricao: '',
   conteudo: '',
   url_foto: '',
+  url_miniatura: '',
+  arquivo_foto: null,
+  arquivo_miniatura: null,
+  preview_foto: '',
+  preview_miniatura: '',
   destaque: false,
 };
 
@@ -129,6 +134,11 @@ const DashboardNoticias = () => {
       descricao: item.descricao || '',
       conteudo: item.conteudo || '',
       url_foto: item.url_foto || item.imagem || '',
+      url_miniatura: item.url_miniatura || item.miniatura || '',
+      arquivo_foto: null,
+      arquivo_miniatura: null,
+      preview_foto: item.url_foto || item.imagem || '',
+      preview_miniatura: item.url_miniatura || item.miniatura || '',
       destaque: Boolean(item.destaque),
     });
     setErrosValidacao({});
@@ -152,6 +162,30 @@ const DashboardNoticias = () => {
         delete novos[name];
         return novos;
       });
+    }
+  };
+
+  /**
+   * Trata a seleção de arquivo de imagem (Capa ou Miniatura) gerando pré-visualização instantânea.
+   */
+  const handleArquivoChange = (e, tipo) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+
+    if (tipo === 'foto') {
+      setFormulario((prev) => ({
+        ...prev,
+        arquivo_foto: file,
+        preview_foto: previewUrl,
+      }));
+    } else if (tipo === 'miniatura') {
+      setFormulario((prev) => ({
+        ...prev,
+        arquivo_miniatura: file,
+        preview_miniatura: previewUrl,
+      }));
     }
   };
 
@@ -473,8 +507,8 @@ const DashboardNoticias = () => {
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.55)', zIndex: 1050 }}
         >
           <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
-            <div className="modal-content border-0 shadow-lg rounded-4">
-              <div className="modal-header border-bottom px-4 pt-4 pb-3">
+            <div className="modal-content border-0 shadow-lg rounded-4 d-flex flex-column" style={{ maxHeight: '90vh' }}>
+              <div className="modal-header border-bottom px-4 pt-4 pb-3 flex-shrink-0 bg-white">
                 <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
                   <i className={`bi ${modoEdicao ? 'bi-pencil-square text-warning' : 'bi-plus-circle text-primary'}`}></i>
                   {modoEdicao ? 'Editar Notícia Escolar' : 'Cadastrar Nova Notícia'}
@@ -488,8 +522,8 @@ const DashboardNoticias = () => {
                 ></button>
               </div>
 
-              <form onSubmit={handleSalvarNoticia}>
-                <div className="modal-body px-4 py-3">
+              <form onSubmit={handleSalvarNoticia} className="d-flex flex-column flex-grow-1 overflow-hidden m-0">
+                <div className="modal-body px-4 py-3 overflow-y-auto" style={{ flex: '1 1 auto' }}>
                   {/* Erro geral de salvamento (não associado a um campo específico) */}
                   {errosValidacao.geral && (
                     <div className="alert alert-danger small py-2" role="alert">
@@ -568,7 +602,7 @@ const DashboardNoticias = () => {
                       <textarea
                         id="conteudo"
                         name="conteudo"
-                        rows={6}
+                        rows={5}
                         className={`form-control ${errosValidacao.conteudo ? 'is-invalid' : ''}`}
                         placeholder="Escreva detalhadamente o comunicado ou matéria escolar..."
                         value={formulario.conteudo}
@@ -583,75 +617,107 @@ const DashboardNoticias = () => {
                       )}
                     </div>
 
-                    {/* URL da Imagem de Capa */}
-                    <div className="col-12 col-md-8">
-                      <label htmlFor="url_foto" className="form-label fw-semibold small text-dark">
-                        URL da Imagem de Capa
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text bg-light text-muted">
-                          <i className="bi bi-link-45deg"></i>
-                        </span>
-                        <input
-                          type="url"
-                          id="url_foto"
-                          name="url_foto"
-                          className="form-control"
-                          placeholder="https://exemplo.com/foto-noticia.jpg"
-                          value={formulario.url_foto}
-                          onChange={handleCampoChange}
-                          disabled={salvando}
-                        />
-                      </div>
-                      <div className="form-text small">
-                        Insira o link de uma imagem pública ou foto no servidor.
-                      </div>
-                    </div>
-
                     {/* Switch de Notícia em Destaque */}
-                    <div className="col-12 col-md-4 d-flex align-items-center pt-md-3">
-                      <div className="form-check form-switch mt-2">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          role="switch"
-                          id="destaque"
-                          name="destaque"
-                          checked={formulario.destaque}
-                          onChange={handleCampoChange}
-                          disabled={salvando}
-                        />
-                        <label className="form-check-label fw-semibold small text-dark" htmlFor="destaque">
-                          <i className="bi bi-star-fill text-warning me-1"></i>
-                          Destaque Principal
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Preview da Imagem em Tempo Real */}
-                    {formulario.url_foto && (
-                      <div className="col-12">
-                        <p className="form-label fw-semibold small text-muted mb-1">
-                          Pré-visualização da Imagem:
-                        </p>
-                        <div className="p-2 border rounded-3 bg-light text-center">
-                          <img
-                            src={formulario.url_foto}
-                            alt="Pré-visualização da capa"
-                            className="img-fluid rounded-3 shadow-sm"
-                            style={{ maxHeight: '180px', objectFit: 'cover' }}
-                            onError={(e) => {
-                              e.currentTarget.alt = 'URL de imagem inválida ou inacessível.';
-                              e.currentTarget.className = 'text-danger small py-3';
-                            }}
+                    <div className="col-12">
+                      <div className="p-3 bg-light rounded-3 border d-flex align-items-center justify-content-between">
+                        <div>
+                          <span className="fw-semibold text-dark d-block">
+                            <i className="bi bi-star-fill text-warning me-2"></i>
+                            Notícia em Destaque Principal
+                          </span>
+                          <small className="text-muted">
+                            Se ativado, esta notícia ocupará a posição principal e desmarcará qualquer destaque anterior.
+                          </small>
+                        </div>
+                        <div className="form-check form-switch fs-4 mb-0">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            role="switch"
+                            id="destaque"
+                            name="destaque"
+                            checked={formulario.destaque}
+                            onChange={handleCampoChange}
+                            disabled={salvando}
                           />
                         </div>
                       </div>
-                    )}
+                    </div>
+
+                    {/* Upload da Imagem de Capa (Principal) */}
+                    <div className="col-12 col-md-6">
+                      <label htmlFor="arquivo_foto" className="form-label fw-semibold small text-dark d-flex align-items-center gap-1">
+                        <i className="bi bi-image text-primary"></i>
+                        <span>Imagem de Capa (Principal)</span>
+                      </label>
+                      <input
+                        type="file"
+                        id="arquivo_foto"
+                        className="form-control form-control-sm"
+                        accept="image/png, image/jpeg, image/jpg, image/webp"
+                        onChange={(e) => handleArquivoChange(e, 'foto')}
+                        disabled={salvando}
+                      />
+                      <div className="form-text small" style={{ fontSize: '0.75rem' }}>
+                        Exibida no topo da matéria e no destaque horizontal da Home.
+                      </div>
+
+                      {/* Pré-visualização da Capa */}
+                      {formulario.preview_foto && (
+                        <div className="mt-2 p-1 border rounded-3 bg-light text-center position-relative">
+                          <img
+                            src={formulario.preview_foto}
+                            alt="Pré-visualização da Capa"
+                            className="img-fluid rounded-2 shadow-sm"
+                            style={{ maxHeight: '90px', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <span className="badge bg-primary position-absolute top-0 start-0 m-1" style={{ fontSize: '0.65rem' }}>Capa</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Upload da Imagem de Miniatura */}
+                    <div className="col-12 col-md-6">
+                      <label htmlFor="arquivo_miniatura" className="form-label fw-semibold small text-dark d-flex align-items-center gap-1">
+                        <i className="bi bi-file-earmark-image text-success"></i>
+                        <span>Imagem de Miniatura</span>
+                      </label>
+                      <input
+                        type="file"
+                        id="arquivo_miniatura"
+                        className="form-control form-control-sm"
+                        accept="image/png, image/jpeg, image/jpg, image/webp"
+                        onChange={(e) => handleArquivoChange(e, 'miniatura')}
+                        disabled={salvando}
+                      />
+                      <div className="form-text small" style={{ fontSize: '0.75rem' }}>
+                        Exibida nos cards secundários da Home e listagens compactas.
+                      </div>
+
+                      {/* Pré-visualização da Miniatura */}
+                      {formulario.preview_miniatura && (
+                        <div className="mt-2 p-1 border rounded-3 bg-light text-center position-relative">
+                          <img
+                            src={formulario.preview_miniatura}
+                            alt="Pré-visualização da Miniatura"
+                            className="img-fluid rounded-2 shadow-sm"
+                            style={{ maxHeight: '90px', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <span className="badge bg-success position-absolute top-0 start-0 m-1" style={{ fontSize: '0.65rem' }}>Miniatura</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="modal-footer border-top px-4 py-3">
+                {/* Rodapé Fixo (Sticky Footer) sempre visível */}
+                <div className="modal-footer border-top px-4 py-3 flex-shrink-0 bg-white" style={{ position: 'sticky', bottom: 0, zIndex: 10 }}>
                   <button
                     type="button"
                     className="btn btn-outline-secondary"

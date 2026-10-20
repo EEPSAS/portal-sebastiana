@@ -41,37 +41,32 @@ function RenderIcon({ tipo }) {
 export default function GeralSmallCards({
   titulo,
   valor,
-  bgIcone,
-  textIcone,
   tipoIcone,
 }) {
+  // Mapeia a classe de cor pastel do ícone com base no tipo
+  const classeCorIcone = `geral-kpi-icon--${tipoIcone || "alunos"}`;
+
   return (
     <div className="col-12 col-sm-6 col-lg-3">
-      <div className="card h-100 border-0 shadow-sm rounded-3 p-3">
+      <div className="geral-kpi-card h-100 d-flex flex-column justify-content-between">
         <div className="d-flex align-items-center gap-3">
-          {/* Círculo colorido de destaque do ícone */}
-          <div
-            className={`rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ${bgIcone} ${textIcone}`}
-            style={{ width: "48px", height: "48px" }}
-          >
+          {/* Círculo com cor pastel e ícone estilizado */}
+          <div className={`geral-kpi-icon ${classeCorIcone}`}>
             <RenderIcon tipo={tipoIcone} />
           </div>
 
           {/* Rótulo descritivo e valor principal do KPI */}
           <div className="d-flex flex-column">
-            <span
-              className="text-muted fw-medium"
-              style={{ fontSize: "0.85rem" }}
-            >
-              {titulo}
-            </span>
-            <span
-              className="fw-bold fs-4 text-dark"
-              style={{ minHeight: "32px" }}
-            >
+            <span className="geral-kpi-label">{titulo}</span>
+            <span className="geral-kpi-value">
               {valor !== undefined && valor !== null ? valor : "—"}
             </span>
           </div>
+        </div>
+
+        {/* Seta indicadora sutil no canto inferior direito conforme layout */}
+        <div className="geral-kpi-arrow">
+          <i className="bi bi-arrow-right fs-5"></i>
         </div>
       </div>
     </div>

@@ -23,39 +23,30 @@ function RenderUpdateIcon({ tipo }) {
   );
 }
 
-// Define as cores dinamicamente via Bootstrap com base no tipo
-function getEstiloIcone(tipo) {
-  switch (tipo) {
-    case 'noticia': return 'bg-primary-subtle text-primary';
-    case 'notas': return 'bg-success-subtle text-success';
-    default: return 'bg-secondary-subtle text-secondary';
-  }
-}
 
 export default function UpdateItem({ tipo, texto, tempoAtras }) {
-  const estiloIcone = getEstiloIcone(tipo);
-
   return (
-    <div className="d-flex align-items-center justify-content-between py-3 border-bottom border-light">
+    <div className="geral-update-item">
       <div className="d-flex align-items-center gap-3">
-        {/* Ícone Redondo */}
-        <div 
-          className={`rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 ${estiloIcone}`} 
-          style={{ width: '32px', height: '32px' }}
-        >
+        {/* Ícone Redondo com fundo azul claro e ícone azul royal */}
+        <div className="geral-update-icon-wrapper">
           <RenderUpdateIcon tipo={tipo} />
         </div>
-        
+
         {/* Texto da Atualização */}
-        <span className="text-dark fs-6" style={{ fontSize: '0.9rem' }}>
+        <span className="geral-update-text">
           {texto}
         </span>
       </div>
 
-      {/* Tempo Atrás */}
-      <span className="text-muted" style={{ fontSize: '0.8rem' }}>
-        {tempoAtras}
-      </span>
+      <div className="d-flex align-items-center">
+        {/* Tempo Atrás */}
+        <span className="geral-update-time">
+          {tempoAtras}
+        </span>
+        {/* Seta discreta indicando linha clicável/detalhes */}
+        <i className="bi bi-chevron-right geral-update-chevron"></i>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,200 @@
+/**
+ * GeralEspecialista.css - Estilos Visuais do Painel Geral do Administrador / Especialista
+ *
+ * Papel Didático:
+ * Centraliza os estilos visuais da visão analítica de gestão escolar (GeralEspecialista),
+ * garantindo fidelidade ao protótipo de design:
+ * - Cartões de KPI limpos com cantos arredondados (16px), elevações suaves e ícones em cores pasteis;
+ * - Cartões para os gráficos Recharts com badges arredondados;
+ * - Feed de atividades recentes com separadores leves e navegação intuitiva.
+ */
+
+/* Container da página com animação suave de entrada */
+.geral-especialista-page {
+  animation: fadeInGeral 250ms ease-in-out;
+}
+
+@keyframes fadeInGeral {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   1. Cards de Indicadores Rápidos (KPIs)
+   ========================================================================== */
+.geral-kpi-card {
+  background-color: var(--dashboard-white);
+  border: 1px solid rgba(var(--dashboard-gray-rgb), 0.2);
+  border-radius: 16px;
+  padding: 1.25rem 1.25rem 1rem 1.25rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  min-height: 110px;
+}
+
+.geral-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(var(--dashboard-navy-rgb), 0.08) !important;
+}
+
+/* Container do ícone circular do KPI */
+.geral-kpi-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.geral-kpi-card:hover .geral-kpi-icon {
+  transform: scale(1.05);
+}
+
+/* Paleta de cores suaves (pastéis) dos ícones de KPI inspiradas na imagem */
+.geral-kpi-icon--alunos {
+  background-color: #fce8ef;
+  color: #d81b60;
+}
+
+.geral-kpi-icon--notas {
+  background-color: #e8f0fe;
+  color: #1a73e8;
+}
+
+.geral-kpi-icon--frequencia {
+  background-color: #e6f4ea;
+  color: #137333;
+}
+
+.geral-kpi-icon--noticias {
+  background-color: #f3e8fd;
+  color: #7b1fa2;
+}
+
+/* Rótulos e valores de KPI */
+.geral-kpi-label {
+  font-size: 0.85rem;
+  color: var(--dashboard-ink-muted);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.geral-kpi-value {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--dashboard-navy);
+  line-height: 1.1;
+  margin-top: 0.25rem;
+}
+
+/* Seta discreta no canto inferior direito do card */
+.geral-kpi-arrow {
+  color: var(--dashboard-gray);
+  opacity: 0.5;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  margin-top: auto;
+  align-self: flex-end;
+}
+
+.geral-kpi-card:hover .geral-kpi-arrow {
+  opacity: 1;
+  transform: translateX(3px);
+  color: var(--dashboard-navy);
+}
+
+/* ==========================================================================
+   2. Cartões de Gráficos (Médias e Frequências por Turma)
+   ========================================================================== */
+.geral-chart-card {
+  background-color: var(--dashboard-white);
+  border: 1px solid rgba(var(--dashboard-gray-rgb), 0.2);
+  border-radius: 16px;
+  padding: 1.5rem;
+  height: 100%;
+  box-shadow: 0 2px 6px rgba(var(--dashboard-navy-rgb), 0.04);
+}
+
+.geral-chart-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: var(--dashboard-gray-soft);
+  color: var(--dashboard-ink-muted);
+  border: 1px solid rgba(var(--dashboard-gray-rgb), 0.3);
+  padding: 0.35rem 0.75rem;
+  border-radius: 50rem;
+}
+
+/* ==========================================================================
+   3. Card de Últimas Atualizações
+   ========================================================================== */
+.geral-updates-card {
+  background-color: var(--dashboard-white);
+  border: 1px solid rgba(var(--dashboard-gray-rgb), 0.2);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 6px rgba(var(--dashboard-navy-rgb), 0.04);
+}
+
+.geral-update-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 0.5rem;
+  border-bottom: 1px solid rgba(var(--dashboard-gray-rgb), 0.15);
+  transition: background-color 0.15s ease;
+  border-radius: 8px;
+}
+
+.geral-update-item:last-child {
+  border-bottom: none;
+}
+
+.geral-update-item:hover {
+  background-color: var(--dashboard-gray-soft);
+}
+
+/* Ícone circular da linha de atualização */
+.geral-update-icon-wrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: #e8f0fe;
+  color: #1a73e8;
+}
+
+.geral-update-text {
+  font-size: 0.9rem;
+  color: var(--dashboard-navy);
+  font-weight: 500;
+}
+
+.geral-update-time {
+  font-size: 0.8rem;
+  color: var(--dashboard-gray);
+  white-space: nowrap;
+}
+
+.geral-update-chevron {
+  color: var(--dashboard-gray);
+  opacity: 0.6;
+  font-size: 0.85rem;
+  margin-left: 0.75rem;
+}
+
+.geral-update-item:hover .geral-update-chevron {
+  opacity: 1;
+  color: var(--dashboard-navy);
+}

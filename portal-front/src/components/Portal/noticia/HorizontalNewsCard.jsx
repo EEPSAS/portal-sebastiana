@@ -19,6 +19,9 @@ const HorizontalNewsCard = ({ noticia, loading }) => {
 		);
 	}
 
+	const imagemDestaque =
+		noticia?.url_foto || noticia?.imagem || noticia?.url_miniatura || noticia?.miniatura;
+
 	return (
 		<a className="noticias-card-link" href={noticia?.id ? `/noticia/${noticia.id}` : '#!'} target={noticia?.id ? '_blank' : '_self'} rel="noreferrer">
 			<article className="noticias-card rounded-4 bg-white p-3 shadow-sm">
@@ -30,8 +33,20 @@ const HorizontalNewsCard = ({ noticia, loading }) => {
 									<span className="visually-hidden">Carregando...</span>
 								</div>
 							</div>
+						) : imagemDestaque ? (
+							<img
+								className="img-fluid w-100 rounded-3 shadow-sm"
+								style={{ maxHeight: '280px', objectFit: 'cover' }}
+								src={imagemDestaque}
+								alt={noticia?.titulo || ''}
+								onError={(e) => {
+									e.currentTarget.style.display = 'none';
+								}}
+							/>
 						) : (
-							<img className="img-fluid w-100 rounded-3" src={noticia?.miniatura} alt={noticia?.titulo || ''} />
+							<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100 py-5 text-muted">
+								<i className="bi bi-image fs-1 opacity-50"></i>
+							</div>
 						)}
 					</div>
 					<div className="col-12 col-md-5">
