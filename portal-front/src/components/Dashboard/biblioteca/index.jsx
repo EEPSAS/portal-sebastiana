@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { useAuth } from '../../../hooks/useAuth';
 import { useBiblioteca } from '../../../hooks/biblioteca/useBiblioteca';
 import AcervoAba from './AcervoAba';
 import VideoaulasAba from './VideoaulasAba';
@@ -33,6 +34,9 @@ const normalizarTexto = (valor) =>
     .toLowerCase();
 
 export default function Biblioteca() {
+  const { user } = useAuth();
+  const podeGerenciar = user?.role === 'especialista' || user?.role === 'adm';
+
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const [abaAtiva, setAbaAtiva] = useState(
@@ -86,7 +90,7 @@ export default function Biblioteca() {
   };
 
   return (
-    <div className="position-relative">
+    <div className={`position-relative ${podeGerenciar ? 'dashboard-tema-gestao' : ''}`.trim()}>
       {/* Alerta de Falha de Conexão com o Back-end */}
       {erroCarregamento && (
         <div
@@ -131,10 +135,12 @@ export default function Biblioteca() {
         <header className="mb-4">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
-              <h2 className="fw-bold mb-1 text-primary fs-4">Biblioteca Escolar</h2>
+              <h2 className="fw-bold mb-1 text-primary fs-4 dashboard-header-titulo">Biblioteca Escolar</h2>
               <p className="text-muted small mb-0">
                 Consulte o acervo físico, assista a videoaulas e pesquise conteúdos pedagógicos.
               </p>
+              {/* Linha divisória de 48px navy */}
+              {podeGerenciar && <span className="dashboard-header-divisor" aria-hidden="true" />}
             </div>
 
             {abaAtiva === 'acervo' && (

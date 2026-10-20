@@ -12,12 +12,14 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import {
   atualizarNoticia,
   criarNoticia,
   excluirNoticia,
   listarNoticias,
 } from '../../services/noticiasService';
+import './Noticias.css';
 
 // Categorias oficiais padronizadas do ambiente escolar
 const CATEGORIAS_SUGERIDAS = [
@@ -44,6 +46,10 @@ const FORMULARIO_INICIAL = {
 };
 
 const DashboardNoticias = () => {
+  const { user } = useAuth();
+  // Ativa o tema institucional exclusivamente para Especialista e Administrador
+  const podeGerenciar = user?.role === 'especialista' || user?.role === 'adm';
+
   // Estado da listagem e paginação
   const [noticias, setNoticias] = useState([]);
   const [paginacao, setPaginacao] = useState({
@@ -266,17 +272,19 @@ const DashboardNoticias = () => {
   };
 
   return (
-    <div className="container-fluid py-3">
+    <div className={`container-fluid py-3 position-relative ${podeGerenciar ? 'dashboard-tema-gestao' : ''}`.trim()}>
       {/* Cabeçalho da Página */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
-          <h2 className="h4 fw-bold text-dark mb-1">
+          <h2 className="h4 fw-bold text-dark mb-1 dashboard-header-titulo">
             <i className="bi bi-newspaper text-primary me-2"></i>
             Gestão de Notícias
           </h2>
           <p className="text-muted small mb-0">
             Publique, edite e gerencie informativos e comunicados da comunidade escolar.
           </p>
+          {/* Linha divisória clássica de 48px: visível apenas no tema de gestão */}
+          {podeGerenciar && <span className="dashboard-header-divisor" aria-hidden="true" />}
         </div>
         <button
           type="button"

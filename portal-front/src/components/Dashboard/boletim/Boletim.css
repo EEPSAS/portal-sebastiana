@@ -381,3 +381,83 @@
     font-size: 24px;
   }
 }
+
+/* ==========================================================================
+   Tema Gestão (Especialista e Adm) — Escopado em .dashboard-tema-gestao
+   ========================================================================== */
+
+/* Cabeçalho institucional com Cormorant Garamond */
+.dashboard-tema-gestao .dashboard-header-titulo,
+.dashboard-tema-gestao .boletim-page__header h1 {
+  font-family: 'Cormorant Garamond', Georgia, "Times New Roman", serif !important;
+  font-size: clamp(1.9rem, 3.4vw, 2.4rem) !important;
+  font-weight: 700 !important;
+  color: var(--dashboard-navy) !important;
+  letter-spacing: -0.01em;
+}
+
+/* Linha divisória de 48px navy */
+.dashboard-tema-gestao .dashboard-header-divisor {
+  display: block;
+  width: 48px;
+  height: 2px;
+  margin-top: 0.75rem;
+  background-color: var(--dashboard-navy);
+  border-radius: 2px;
+}
+
+/* Shell central do boletim: gradiente azul-claro suave e cantos 16px */
+.dashboard-tema-gestao .boletim__shell {
+  background: linear-gradient(180deg, #eaf2fd 0%, #f4f8fe 100%) !important;
+  border: 1px solid rgba(30, 61, 112, 0.12) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 28px rgba(var(--dashboard-navy-rgb), 0.06) !important;
+}
+
+/* Barra de abas */
+.dashboard-tema-gestao .boletim__tabs {
+  border-bottom: 1px solid rgba(30, 61, 112, 0.15) !important;
+  background: transparent !important;
+}
+
+.dashboard-tema-gestao .boletim__tab {
+  background: transparent !important;
+  color: var(--dashboard-ink-muted);
+}
+
+.dashboard-tema-gestao .boletim__tab:hover {
+  color: var(--dashboard-navy);
+  background-color: rgba(30, 61, 112, 0.05) !important;
+}
+
+.dashboard-tema-gestao .boletim__tab.is-active {
+  border-bottom-color: var(--dashboard-navy) !important;
+  color: var(--dashboard-navy) !important;
+  font-weight: 700;
+  background-color: rgba(30, 61, 112, 0.08) !important;
+}
+
+/* Cards internos com fundo translúcido e bordas sutis */
+.dashboard-tema-gestao .boletim__card,
+.dashboard-tema-gestao .boletim__frequencia-card,
+.dashboard-tema-gestao .boletim__compare-card {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(30, 61, 112, 0.12) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 16px rgba(var(--dashboard-navy-rgb), 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-tema-gestao .boletim__card:hover,
+.dashboard-tema-gestao .boletim__frequencia-card:hover,
+.dashboard-tema-gestao .boletim__compare-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(var(--dashboard-navy-rgb), 0.09);
+}
+
+/* Números de destaque e médias com tipografia de autoridade */
+.dashboard-tema-gestao .boletim__global-percentual,
+.dashboard-tema-gestao .boletim__disciplina-media-valor {
+  font-family: 'Cormorant Garamond', Georgia, "Times New Roman", serif !important;
+  font-weight: 700;
+}

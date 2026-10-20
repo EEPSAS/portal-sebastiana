@@ -77,8 +77,10 @@ button {
 
 /* Tokens locais mantêm a nova paleta restrita às páginas do Dashboard. */
 .dashboard-shell {
-  --dashboard-navy: #08047d;
-  --dashboard-navy-rgb: 8, 4, 125;
+  --dashboard-navy: #0d2346;
+  --dashboard-navy-rgb: 13, 35, 70;
+  --dashboard-blue-accent: #1e3d70;
+  --dashboard-bg-surface: #e9f2fd;
   --dashboard-gray: #909698;
   --dashboard-gray-rgb: 144, 150, 152;
   --dashboard-ink-muted: rgba(var(--dashboard-navy-rgb), 0.7);
@@ -140,12 +142,12 @@ button {
   --bs-link-hover-color: var(--dashboard-pink);
   --bs-focus-ring-color: rgba(var(--dashboard-navy-rgb), 0.25);
   min-height: 100vh;
-  background-color: var(--dashboard-white);
+  background-color: var(--dashboard-bg-surface);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 .dashboard-shell.bg-light {
-  background-color: var(--dashboard-white) !important;
+  background-color: var(--dashboard-bg-surface) !important;
 }
 
 .dashboard-shell .btn-primary,
@@ -288,25 +290,38 @@ button {
 }
 
 .dashboard-aside {
-  background-color: var(--dashboard-navy) !important;
+  background: linear-gradient(180deg, #0d2346 0%, #081730 100%) !important;
   color: var(--dashboard-white);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .dashboard-aside .text-primary,
 .dashboard-aside .text-muted,
 .dashboard-aside .nav-link:not(.active) {
-  color: var(--dashboard-white) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.dashboard-aside .nav-link:not(.active):hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .dashboard-aside hr {
   color: var(--dashboard-white);
-  border-color: var(--dashboard-white);
+  border-color: rgba(255, 255, 255, 0.15);
   opacity: 0.35;
 }
 
+.dashboard-aside .nav-link {
+  border-radius: 12px;
+  padding: 0.65rem 1rem;
+}
+
 .dashboard-aside .nav-link.active {
-  background-color: rgba(var(--dashboard-white-rgb), 0.18);
-  color: var(--dashboard-white);
+  background: #1e3d70 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .dashboard-shell .form-control:focus,

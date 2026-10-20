@@ -1,0 +1,99 @@
+/**
+ * Noticias.css - Estilização do Módulo de Notícias do Painel
+ *
+ * Papel Didático:
+ * Aplica a identidade visual institucional (Cormorant Garamond, paleta azul-claro suave
+ * e botões de ação em rosa) exclusivamente quando ativada a classe .dashboard-tema-gestao
+ * (papéis de Especialista e Administrador).
+ */
+
+/* ==========================================================================
+   Tema Gestão (Especialista e Adm) — Escopado em .dashboard-tema-gestao
+   ========================================================================== */
+
+/* Cabeçalho institucional: tipografia clássica Cormorant Garamond */
+.dashboard-tema-gestao .dashboard-header-titulo {
+  font-family: 'Cormorant Garamond', Georgia, "Times New Roman", serif !important;
+  font-size: clamp(1.9rem, 3.4vw, 2.4rem) !important;
+  font-weight: 700 !important;
+  color: var(--dashboard-navy) !important;
+  letter-spacing: -0.01em;
+}
+
+.dashboard-tema-gestao .dashboard-header-titulo i {
+  color: var(--dashboard-blue-accent) !important;
+}
+
+/* Linha divisória curta azul-marinho abaixo do cabeçalho */
+.dashboard-tema-gestao .dashboard-header-divisor {
+  display: block;
+  width: 48px;
+  height: 2px;
+  margin-top: 0.75rem;
+  background-color: var(--dashboard-navy);
+  border-radius: 2px;
+}
+
+/* Painel da listagem e cards: gradiente suave e bordas sutis */
+.dashboard-tema-gestao .card {
+  background: linear-gradient(180deg, #eaf2fd 0%, #f4f8fe 100%) !important;
+  border: 1px solid rgba(30, 61, 112, 0.12) !important;
+  box-shadow: 0 8px 28px rgba(var(--dashboard-navy-rgb), 0.06) !important;
+  border-radius: 16px !important;
+}
+
+/* Cabeçalho da tabela de notícias */
+.dashboard-tema-gestao .table-light {
+  background-color: rgba(30, 61, 112, 0.06) !important;
+  color: var(--dashboard-navy) !important;
+  font-weight: 700;
+  border-bottom: 2px solid rgba(30, 61, 112, 0.15) !important;
+}
+
+.dashboard-tema-gestao .table-light th {
+  background: transparent !important;
+  color: var(--dashboard-navy) !important;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Linhas e células da tabela com transparência harmoniosa */
+.dashboard-tema-gestao .table {
+  --bs-table-bg: transparent;
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.6);
+}
+
+.dashboard-tema-gestao .table tbody tr {
+  border-bottom: 1px solid rgba(30, 61, 112, 0.08);
+}
+
+/* Botão principal 'Nova Notícia': preserva o rosa institucional para alto contraste */
+.dashboard-tema-gestao .btn-primary {
+  background-color: var(--dashboard-pink) !important;
+  border-color: var(--dashboard-pink) !important;
+  color: var(--dashboard-white) !important;
+  border-radius: 9999px;
+  padding: 0.5rem 1.25rem;
+  font-weight: 700;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.dashboard-tema-gestao .btn-primary:hover {
+  background-color: var(--dashboard-pink) !important;
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(var(--dashboard-pink-rgb), 0.3) !important;
+}
+
+/* Paginação com cantos suaves e destaque navy/rosa */
+.dashboard-tema-gestao .pagination .page-link {
+  border-color: rgba(30, 61, 112, 0.15);
+  color: var(--dashboard-navy);
+}
+
+.dashboard-tema-gestao .pagination .page-item.active .page-link {
+  background-color: var(--dashboard-navy) !important;
+  border-color: var(--dashboard-navy) !important;
+  color: var(--dashboard-white) !important;
+}

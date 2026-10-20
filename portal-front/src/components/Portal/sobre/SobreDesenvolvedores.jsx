@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 
 // ==============================================================================
 // DADOS DA LIDERANÇA
@@ -24,6 +24,12 @@ const leaders = [
     objectPosition: "50% 36%",
     // Link configurável para o portfólio pessoal do desenvolvedor
     portfolioUrl: "https://github.com/",
+    // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
+    social: {
+      instagram: "https://instagram.com/",
+      linkedin: "https://linkedin.com/",
+      github: "https://github.com/",
+    },
   },
   {
     name: "Yasmin Teixeira",
@@ -35,6 +41,12 @@ const leaders = [
     objectPosition: "center 22%",
     // Link configurável para o portfólio pessoal do desenvolvedor
     portfolioUrl: "https://github.com/",
+    // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
+    social: {
+      instagram: "https://www.instagram.com/yasminxst0/",
+      linkedin: "https://linkedin.com/",
+      github: "https://github.com/yasminxst",
+    },
   },
 ];
 
@@ -51,6 +63,12 @@ const teamMembers = [
     // Enquadramento no terço superior para evitar corte da cabeça
     objectPosition: "center 20%",
     portfolioUrl: "https://github.com/",
+    // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
+    social: {
+      instagram: "https://instagram.com/",
+      linkedin: "https://linkedin.com/",
+      github: "https://github.com/",
+    },
   },
   {
     name: "Natã",
@@ -58,6 +76,12 @@ const teamMembers = [
     photo: "/img/nata-perfil.png",
     objectPosition: "center 20%",
     portfolioUrl: "https://github.com/",
+    // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
+    social: {
+      instagram: "https://instagram.com/",
+      linkedin: "https://linkedin.com/",
+      github: "https://github.com/",
+    },
   },
   {
     name: "Rhaynner",
@@ -65,6 +89,12 @@ const teamMembers = [
     photo: "/img/perfil-rhaynner.png",
     objectPosition: "center 20%",
     portfolioUrl: "https://github.com/",
+    // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
+    social: {
+      instagram: "https://instagram.com/",
+      linkedin: "https://linkedin.com/",
+      github: "https://github.com/",
+    },
   },
   {
     name: "Yasmim Gomes",
@@ -75,6 +105,12 @@ const teamMembers = [
     // Centraliza com precisão o rosto e o sorriso, preservando o volume dos cachos
     objectPosition: "50% 45%",
     portfolioUrl: "https://github.com/",
+    // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
+    social: {
+      instagram: "https://www.instagram.com/yasmimg36/",
+      linkedin: "https://linkedin.com/",
+      github: "https://github.com/",
+    },
   },
   {
     name: "Cadu",
@@ -82,6 +118,12 @@ const teamMembers = [
     photo: "/img/cadu-perfil.png",
     objectPosition: "center 25%",
     portfolioUrl: "https://github.com/",
+    // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
+    social: {
+      instagram: "https://instagram.com/",
+      linkedin: "https://linkedin.com/",
+      github: "https://github.com/",
+    },
   },
 ];
 
@@ -136,6 +178,44 @@ const DevPhoto = ({ name, src, size = "md", objectPosition, photoClassName }) =>
   );
 };
 
+// Lista fixa das redes: define a ordem, o ícone (Bootstrap Icons) e o rótulo de cada botão
+const SOCIAL_NETWORKS = [
+  { key: "instagram", icon: "bi-instagram", label: "Instagram" },
+  { key: "linkedin", icon: "bi-linkedin", label: "LinkedIn" },
+  { key: "github", icon: "bi-github", label: "GitHub" },
+];
+
+/**
+ * Botões de ícone das redes sociais do desenvolvedor.
+ * Só renderiza as redes que possuem URL preenchida em `social`.
+ */
+const SocialLinks = ({ name, social }) => {
+  // Sem objeto social, não há nada para mostrar
+  if (!social) return null;
+
+  // Filtra apenas as redes com URL informada (rede ausente = ícone omitido)
+  const networks = SOCIAL_NETWORKS.filter(({ key }) => social[key]);
+  if (networks.length === 0) return null;
+
+  return (
+    <div className="sobre-dev-social">
+      {networks.map(({ key, icon, label }) => (
+        <a
+          key={key}
+          href={social[key]}
+          target="_blank"
+          rel="noopener noreferrer" // evita que a nova aba acesse window.opener
+          className="sobre-dev-social-btn"
+          aria-label={`${label} de ${name}`}
+          title={label}
+        >
+          <i className={`bi ${icon}`} aria-hidden="true" />
+        </a>
+      ))}
+    </div>
+  );
+};
+
 /**
  * Card individual de Liderança:
  * Foto à esquerda, badge em pílula, nome, cargo com traço rosa característico, descrição e botão de portfólio.
@@ -155,18 +235,22 @@ const LeaderCard = ({ leader }) => (
       <p className="sobre-dev-leader-role">{leader.role}</p>
       <span className="sobre-dev-leader-divider" aria-hidden="true" />
       <p className="sobre-dev-leader-description">{leader.description}</p>
-      {leader.portfolioUrl && (
-        <a
-          href={leader.portfolioUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="sobre-dev-portfolio-btn sobre-dev-portfolio-btn--leader"
-          aria-label={`Acessar portfólio de ${leader.name}`}
-        >
-          <span>Portfólio</span>
-          <span className="sobre-dev-portfolio-arrow" aria-hidden="true">↗</span>
-        </a>
-      )}
+      {/* Linha de ações: botão de portfólio + ícones das redes sociais */}
+      <div className="sobre-dev-actions sobre-dev-actions--leader">
+        {leader.portfolioUrl && (
+          <a
+            href={leader.portfolioUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="sobre-dev-portfolio-btn sobre-dev-portfolio-btn--leader"
+            aria-label={`Acessar portfólio de ${leader.name}`}
+          >
+            <span>Portfólio</span>
+            <span className="sobre-dev-portfolio-arrow" aria-hidden="true">↗</span>
+          </a>
+        )}
+        <SocialLinks name={leader.name} social={leader.social} />
+      </div>
     </div>
   </article>
 );
@@ -188,18 +272,22 @@ const TeamMemberCard = ({ member }) => (
       <h4 className="sobre-dev-member-name" title={member.name}>{member.name}</h4>
       <p className="sobre-dev-member-role" title={member.role}>{member.role}</p>
     </div>
-    {member.portfolioUrl && (
-      <a
-        href={member.portfolioUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="sobre-dev-portfolio-btn"
-        aria-label={`Acessar portfólio de ${member.name}`}
-      >
-        <span>Portfólio</span>
-        <span className="sobre-dev-portfolio-arrow" aria-hidden="true">↗</span>
-      </a>
-    )}
+    {/* Linha de ações: botão de portfólio + ícones das redes sociais */}
+    <div className="sobre-dev-actions">
+      {member.portfolioUrl && (
+        <a
+          href={member.portfolioUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="sobre-dev-portfolio-btn"
+          aria-label={`Acessar portfólio de ${member.name}`}
+        >
+          <span>Portfólio</span>
+          <span className="sobre-dev-portfolio-arrow" aria-hidden="true">↗</span>
+        </a>
+      )}
+      <SocialLinks name={member.name} social={member.social} />
+    </div>
   </article>
 );
 
