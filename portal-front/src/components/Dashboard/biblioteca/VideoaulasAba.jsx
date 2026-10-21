@@ -11,7 +11,7 @@
 import { useYouTubeVideoaulas } from '../../../hooks/biblioteca/useYouTubeVideoaulas';
 import './Biblioteca.css';
 
-const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula, onAdicionarAoPlano }) => {
+const VideoaulasAba = ({ onAdicionarAoPlano }) => {
   const {
     videoBusca,
     setVideoBusca,
@@ -26,30 +26,6 @@ const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula, onAdicionarAoPla
     pesquisarVideoaulas,
     selecionarVideoParaAssistir,
   } = useYouTubeVideoaulas();
-
-  const handleAdicionar = () => {
-    if (
-      !videoSelecionado ||
-      !urlVideoSelecionada ||
-      videoPlayerErro ||
-      videoVerificandoId
-    ) {
-      return;
-    }
-
-    onAdicionarVideoaula({
-      id: Date.now(),
-      titulo: videoSelecionado.title,
-      materia: (videoSelecionado.channelTitle || 'YouTube').slice(0, 100),
-      corBadge: 'var(--dashboard-navy)',
-      descricao: videoSelecionado.description.slice(0, 1000),
-      url: urlVideoSelecionada,
-    });
-  };
-
-  const jaAdicionado = videoaulas.some(
-    (video) => video.url === urlVideoSelecionada
-  );
 
   return (
     <div className="videoaulas">
@@ -200,24 +176,6 @@ const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula, onAdicionarAoPla
           </div>
         </section>
       )}
-
-      {/* Barra de Ação de Adicionar */}
-      <div className="videoaulas-add">
-        <button
-          type="button"
-          className="btn btn-primary videoaulas-add__button"
-          onClick={handleAdicionar}
-          disabled={
-            !videoSelecionado ||
-            !urlVideoSelecionada ||
-            Boolean(videoPlayerErro) ||
-            Boolean(videoVerificandoId) ||
-            jaAdicionado
-          }
-        >
-          {jaAdicionado && urlVideoSelecionada ? 'Adicionado' : 'Adicionar'}
-        </button>
-      </div>
 
       {videoSelecionado && (
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mt-2 gap-2">
