@@ -73,10 +73,13 @@ export default function GeralMediumCards({
     <div className="row g-3 my-2">
       {/* Card 1: Média de Notas por Turma com Recharts */}
       <div className="col-12 col-lg-7">
-        <div className="card border-0 shadow-sm rounded-3 p-4 h-100">
+        <div className="geral-chart-card">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="fw-bold text-dark mb-0">Média de Notas por Turma</h5>
-            <span className="badge bg-light text-secondary border">Escala 0 a 10</span>
+            <h5 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+              <i className="bi bi-bell text-primary"></i>
+              <span>Média de Notas por Turma</span>
+            </h5>
+            <span className="geral-chart-badge">Escala 0 a 10</span>
           </div>
 
           {/* 3. Estado Assíncrono: Vazio */}
@@ -108,7 +111,7 @@ export default function GeralMediumCards({
                     x={6}
                     stroke="#dc3545"
                     strokeDasharray="3 3"
-                    label={{ value: "Média 6,0", position: "top", fontSize: 11, fill: "#dc3545" }}
+                    label={{ value: "Média geral", position: "top", fontSize: 11, fill: "#dc3545" }}
                   />
                   <Bar dataKey="nota" name="Média da Turma" radius={[0, 6, 6, 0]} barSize={22}>
                     {dadosMedias.map((entry) => (
@@ -127,10 +130,13 @@ export default function GeralMediumCards({
 
       {/* Card 2: Taxa de Presença (Frequência) por Turma com Recharts */}
       <div className="col-12 col-lg-5">
-        <div className="card border-0 shadow-sm rounded-3 p-4 h-100">
+        <div className="geral-chart-card">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="fw-bold text-dark mb-0">Frequência por Turma</h5>
-            <span className="badge bg-light text-secondary border">Meta mín. 75%</span>
+            <h5 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+              <i className="bi bi-calendar3 text-primary"></i>
+              <span>Frequência por Turma</span>
+            </h5>
+            <span className="geral-chart-badge">Meta mín. 75%</span>
           </div>
 
           {/* 3. Estado Assíncrono: Vazio */}

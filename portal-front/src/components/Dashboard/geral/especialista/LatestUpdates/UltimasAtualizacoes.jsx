@@ -8,9 +8,18 @@ import UpdateItem from "./UltimasAtualizacoesLista.jsx";
  * evitando chamadas HTTP redundantes e exibindo os 3 estados assíncronos (Carregando, Erro e Vazio).
  */
 export default function LatestUpdates({ updates = [], loading = false, error = null }) {
+  // Obtém o horário mais recente para exibição no cabeçalho ou fallback
+  const horarioRecente = updates[0]?.tempoAtras || "tempo real";
+
   return (
-    <div className="card border-0 shadow-sm rounded-3 p-4 mt-4 w-100">
-      <h5 className="fw-bold mb-3 fs-6">Últimas Atualizações</h5>
+    <div className="geral-updates-card mt-4 w-100">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h5 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+          <i className="bi bi-bell text-primary"></i>
+          <span>Últimas Atualizações</span>
+        </h5>
+        <span className="small text-muted">{horarioRecente}</span>
+      </div>
 
       {/* 1. Estado Assíncrono: Carregando */}
       {loading && <div className="text-muted py-2">Carregando atualizações...</div>}

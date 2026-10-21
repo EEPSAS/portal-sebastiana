@@ -54,10 +54,19 @@ class Noticia extends Model
         $this->attributes['imagem'] = $value;
     }
 
-    // Accessor: Disponibiliza a imagem sob a chave padronizada 'url_foto'
+    // Accessor: Disponibiliza a imagem sob a chave padronizada 'url_foto', resolvendo storage local se necessário
     public function getUrlFotoAttribute(): ?string
     {
-        return $this->attributes['imagem'] ?? null;
+        $valor = $this->attributes['imagem'] ?? null;
+        if (empty($valor)) {
+            return null;
+        }
+
+        if (str_starts_with($valor, 'http://') || str_starts_with($valor, 'https://')) {
+            return $valor;
+        }
+
+        return asset('storage/'.$valor);
     }
 
     // Mutator: Mapeia o atributo da API 'url_miniatura' para a coluna 'miniatura' no banco
@@ -66,10 +75,19 @@ class Noticia extends Model
         $this->attributes['miniatura'] = $value;
     }
 
-    // Accessor: Disponibiliza a miniatura sob a chave padronizada 'url_miniatura'
+    // Accessor: Disponibiliza a miniatura sob a chave padronizada 'url_miniatura', resolvendo storage local
     public function getUrlMiniaturaAttribute(): ?string
     {
-        return $this->attributes['miniatura'] ?? null;
+        $valor = $this->attributes['miniatura'] ?? $this->attributes['imagem'] ?? null;
+        if (empty($valor)) {
+            return null;
+        }
+
+        if (str_starts_with($valor, 'http://') || str_starts_with($valor, 'https://')) {
+            return $valor;
+        }
+
+        return asset('storage/'.$valor);
     }
 
     // Mutator: Mapeia 'data_publicacao' para a coluna 'dataPublicacao' no banco

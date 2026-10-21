@@ -9,6 +9,7 @@ use App\Models\Noticia;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * NoticiaController - Gerenciamento de Notícias Escolares
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * Controlador RESTful responsável pelas operações do Módulo 2 (Notícias).
  * Utiliza Form Requests para blindagem de entrada, Eloquent API Resources
  * para blindagem de saída, e transações de banco para garantir consistência
- * ao definir notícias em destaque.
+ * ao definir notícias em destaque e persistir uploads de capas e miniaturas.
  */
 class NoticiaController extends Controller
 {
@@ -74,6 +75,28 @@ class NoticiaController extends Controller
                 ? $data['descricao']
                 : substr(strip_tags($data['conteudo'] ?? ''), 0, 160);
 
+            // Processamento do upload da Imagem de Capa (Principal)
+            if ($request->hasFile('foto')) {
+                $caminhoCapa = $request->file('foto')->store('noticias/capas', 'public');
+                $data['imagem'] = $caminhoCapa;
+            } elseif (! empty($data['url_foto'])) {
+                $data['imagem'] = $data['url_foto'];
+            }
+
+            // Processamento do upload da Imagem Miniatura
+            if ($request->hasFile('miniatura_arquivo')) {
+                $caminhoMiniatura = $request->file('miniatura_arquivo')->store('noticias/miniaturas', 'public');
+                $data['miniatura'] = $caminhoMiniatura;
+            } elseif (! empty($data['url_miniatura'])) {
+                $data['miniatura'] = $data['url_miniatura'];
+            } elseif (! empty($data['imagem'])) {
+                // Fallback pedagógico: Se a miniatura não for enviada, herda a própria capa
+                $data['miniatura'] = $data['imagem'];
+            }
+
+            // Limpa chaves auxiliares de arquivos do payload antes do create
+            unset($data['foto'], $data['miniatura_arquivo'], $data['url_foto'], $data['url_miniatura']);
+
             // Regra pedagógica: Se a nova notícia é destaque, desmarca o destaque anterior
             if (! empty($data['destaque'])) {
                 Noticia::where('destaque', true)->update(['destaque' => false]);
@@ -107,6 +130,30 @@ class NoticiaController extends Controller
     {
         DB::transaction(function () use ($request, $noticia): void {
             $data = $request->validated();
+
+            // Processamento do upload da nova Capa (se enviada)
+            if ($request->hasFile('foto')) {
+                // Remove imagem física anterior se armazenada localmente
+                if (! empty($noticia->getRawOriginal('imagem')) && ! str_starts_with($noticia->getRawOriginal('imagem'), 'http') && Storage::disk('public')->exists($noticia->getRawOriginal('imagem'))) {
+                    Storage::disk('public')->delete($noticia->getRawOriginal('imagem'));
+                }
+                $data['imagem'] = $request->file('foto')->store('noticias/capas', 'public');
+            } elseif (array_key_exists('url_foto', $data)) {
+                $data['imagem'] = $data['url_foto'];
+            }
+
+            // Processamento do upload da nova Miniatura (se enviada)
+            if ($request->hasFile('miniatura_arquivo')) {
+                if (! empty($noticia->getRawOriginal('miniatura')) && ! str_starts_with($noticia->getRawOriginal('miniatura'), 'http') && Storage::disk('public')->exists($noticia->getRawOriginal('miniatura'))) {
+                    Storage::disk('public')->delete($noticia->getRawOriginal('miniatura'));
+                }
+                $data['miniatura'] = $request->file('miniatura_arquivo')->store('noticias/miniaturas', 'public');
+            } elseif (array_key_exists('url_miniatura', $data)) {
+                $data['miniatura'] = $data['url_miniatura'];
+            }
+
+            // Limpa chaves auxiliares de arquivos do payload antes do update
+            unset($data['foto'], $data['miniatura_arquivo'], $data['url_foto'], $data['url_miniatura']);
 
             // Se alterou para destaque, desmarca destaque das demais notícias
             if (isset($data['destaque']) && (bool) $data['destaque'] === true) {
