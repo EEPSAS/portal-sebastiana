@@ -203,22 +203,6 @@ const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula, onAdicionarAoPla
 
       {/* Barra de Ação de Adicionar */}
       <div className="videoaulas-add">
-        <div className="videoaulas-add__field">
-          <label
-            htmlFor="videoaulas-url-selecionada"
-            className="form-label small fw-semibold"
-          >
-            URL da videoaula selecionada
-          </label>
-          <input
-            id="videoaulas-url-selecionada"
-            type="url"
-            className="form-control"
-            value={urlVideoSelecionada}
-            placeholder="Clique em Assistir para preencher a URL"
-            readOnly
-          />
-        </div>
         <button
           type="button"
           className="btn btn-primary videoaulas-add__button"
