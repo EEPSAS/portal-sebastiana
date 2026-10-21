@@ -3,6 +3,8 @@
 use App\Models\Noticia;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
@@ -169,4 +171,34 @@ test('marcar nova notícia como destaque desmarca a notícia anterior', function
         ->assertJsonPath('destaque', true);
 
     expect($noticiaAntiga->fresh()->destaque)->toBeFalse();
+});
+
+test('especialista pode cadastrar notícia enviando arquivos de capa e miniatura', function () {
+    Storage::fake('public');
+
+    $especialista = User::factory()->especialista()->create();
+    $capa = UploadedFile::fake()->create('capa.jpg', 500, 'image/jpeg');
+    $miniatura = UploadedFile::fake()->create('mini.jpg', 200, 'image/jpeg');
+
+    $response = $this->actingAs($especialista, 'sanctum')
+        ->post('/api/noticias', [
+            'titulo' => 'Oficina de Robótica 2026',
+            'categoria' => 'Projetos',
+            'descricao' => 'Estudantes desenvolvem projetos com Arduino.',
+            'conteudo' => 'Conteúdo detalhado sobre a oficina de tecnologia.',
+            'foto' => $capa,
+            'miniatura_arquivo' => $miniatura,
+            'destaque' => true,
+        ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('titulo', 'Oficina de Robótica 2026')
+        ->assertJsonPath('categoria', 'Projetos');
+
+    $noticia = Noticia::where('titulo', 'Oficina de Robótica 2026')->first();
+    expect($noticia)->not->toBeNull();
+    expect($noticia->imagem)->toContain('noticias/capas/');
+    expect($noticia->miniatura)->toContain('noticias/miniaturas/');
+    Storage::disk('public')->assertExists($noticia->imagem);
+    Storage::disk('public')->assertExists($noticia->miniatura);
 });

@@ -19,6 +19,9 @@ const SmallNewsCard = ({ noticia, loading }) => {
 		);
 	}
 
+	const imagemMiniatura =
+		noticia?.url_miniatura || noticia?.miniatura || noticia?.url_foto || noticia?.imagem;
+
 	// Renderiza o card menor garantindo altura uniforme (flex-grow-1) com os demais cards
 	return (
 		<a className="noticias-card-link d-flex flex-column flex-grow-1 h-100 w-100" href={noticia?.id ? `/noticia/${noticia.id}` : '#!'} target={noticia?.id ? '_blank' : '_self'} rel="noreferrer">
@@ -29,8 +32,20 @@ const SmallNewsCard = ({ noticia, loading }) => {
 							<span className="visually-hidden">Carregando...</span>
 						</div>
 					</div>
+				) : imagemMiniatura ? (
+					<img
+						className="img-fluid w-100 rounded-3 shadow-sm"
+						style={{ height: '140px', objectFit: 'cover' }}
+						src={imagemMiniatura}
+						alt={noticia?.titulo || ''}
+						onError={(e) => {
+							e.currentTarget.style.display = 'none';
+						}}
+					/>
 				) : (
-					<img className="img-fluid w-100 rounded-3" src={noticia?.miniatura} alt={noticia?.titulo || ''} />
+					<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100 py-4 text-muted">
+						<i className="bi bi-image fs-3 opacity-50"></i>
+					</div>
 				)}
 				<h3 className="h5 text-secondary mt-3 mb-0">{loading ? 'Carregando...' : noticia?.titulo}</h3>
 			</article>

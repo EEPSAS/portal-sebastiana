@@ -93,14 +93,17 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 * **Regra de destaque**: ao criar/atualizar com `destaque: true`, qualquer outra notícia em destaque é desmarcada (apenas uma notícia principal por vez).
 
 #### Especificação de Payload: Entrada (`StoreNoticiaRequest` / `UpdateNoticiaRequest`)
+Suporta envio tanto em `application/json` quanto em `multipart/form-data` (quando houver upload binário de imagens):
 ```json
 {
   "titulo": "string (obrigatório no POST, máx. 255)",
   "conteudo": "string (obrigatório no POST)",
-  "categoria": "string | null (máx. 100, padrão 'Geral')",
+  "categoria": "string | null ('Geral', 'Avisos', 'Pedagógico', 'Eventos', 'Biblioteca', 'Projetos')",
   "descricao": "string | null (máx. 500; se vazio, gerado dos 160 primeiros caracteres do conteúdo)",
-  "url_foto": "string | null (máx. 2048)",
-  "url_miniatura": "string | null (máx. 2048)",
+  "foto": "file | null (imagem de capa, máx. 5MB, mimes: jpeg, png, jpg, webp, gif)",
+  "miniatura_arquivo": "file | null (imagem de miniatura, máx. 5MB, mimes: jpeg, png, jpg, webp, gif)",
+  "url_foto": "string | null (máx. 2048, fallback para imagem de capa externa)",
+  "url_miniatura": "string | null (máx. 2048, fallback para miniatura externa)",
   "data_publicacao": "date | null",
   "destaque": "boolean | null"
 }

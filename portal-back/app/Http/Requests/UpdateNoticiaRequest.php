@@ -49,9 +49,11 @@ class UpdateNoticiaRequest extends FormRequest
             'titulo' => ['sometimes', 'required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string', 'max:500'],
             'conteudo' => ['sometimes', 'required', 'string'],
-            'categoria' => ['nullable', 'string', 'max:100'],
+            'categoria' => ['nullable', 'string', 'in:Geral,Avisos,Pedagógico,Eventos,Biblioteca,Projetos'],
             'url_foto' => ['nullable', 'string', 'max:2048'],
             'url_miniatura' => ['nullable', 'string', 'max:2048'],
+            'foto' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp,gif', 'max:5120'],
+            'miniatura_arquivo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp,gif', 'max:5120'],
             'data_publicacao' => ['nullable', 'date'],
             'destaque' => ['nullable', 'boolean'],
         ];

@@ -20,6 +20,9 @@ const VerticalNewsCard = ({ noticia, loading }) => {
 		);
 	}
 
+	const imagemMiniatura =
+		noticia?.url_miniatura || noticia?.miniatura || noticia?.url_foto || noticia?.imagem;
+
 	// Renderiza o card com notícia ou esqueleto, ocupando toda a extensão da coluna
 	return (
 		<a className="noticias-card-link d-flex flex-column flex-grow-1 h-100 w-100" href={noticia?.id ? `/noticia/${noticia.id}` : '#!'} target={noticia?.id ? '_blank' : '_self'} rel="noreferrer">
@@ -30,9 +33,20 @@ const VerticalNewsCard = ({ noticia, loading }) => {
 							<span className="visually-hidden">Carregando...</span>
 						</div>
 					</div>
-				) : (
+				) : imagemMiniatura ? (
 					<div className="vertical-card-img-wrapper rounded-3 overflow-hidden flex-grow-1 mb-3" style={{ minHeight: '220px' }}>
-						<img className="img-fluid w-100 h-100 rounded-3 object-fit-cover" src={noticia?.miniatura} alt={noticia?.titulo || ''} />
+						<img
+							className="img-fluid w-100 h-100 rounded-3 object-fit-cover shadow-sm"
+							src={imagemMiniatura}
+							alt={noticia?.titulo || ''}
+							onError={(e) => {
+								e.currentTarget.style.display = 'none';
+							}}
+						/>
+					</div>
+				) : (
+					<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100 flex-grow-1 mb-3 py-5 text-muted" style={{ minHeight: '220px' }}>
+						<i className="bi bi-image fs-1 opacity-50"></i>
 					</div>
 				)}
 				<div className="vertical-card-content mt-auto">
