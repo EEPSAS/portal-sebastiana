@@ -23,6 +23,9 @@ const VideoaulasAba = ({ onAdicionarAoPlano }) => {
     urlVideoSelecionada,
     videoVerificandoId,
     videoPlayerErro,
+    proximaPaginaToken,
+    carregandoMais,
+    carregarMaisVideoaulas,
     pesquisarVideoaulas,
     selecionarVideoParaAssistir,
   } = useYouTubeVideoaulas();
@@ -174,6 +177,20 @@ const VideoaulasAba = ({ onAdicionarAoPlano }) => {
               </article>
             ))}
           </div>
+
+          {/* Botão de paginação oficial consumindo o nextPageToken da YouTube Data API */}
+          {proximaPaginaToken && (
+            <div className="text-center mt-4">
+              <button
+                type="button"
+                className="btn btn-outline-primary btn-sm px-4 rounded-pill fw-semibold"
+                onClick={carregarMaisVideoaulas}
+                disabled={carregandoMais}
+              >
+                {carregandoMais ? "Carregando mais videoaulas..." : "Carregar mais vídeos"}
+              </button>
+            </div>
+          )}
         </section>
       )}
 

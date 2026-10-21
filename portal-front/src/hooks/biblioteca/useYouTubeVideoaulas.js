@@ -35,6 +35,8 @@ export const useYouTubeVideoaulas = () => {
   const [videoBuscaCarregando, setVideoBuscaCarregando] = useState(true);
   const [videoBuscaTentada, setVideoBuscaTentada] = useState(false);
   const [videoBuscaErro, setVideoBuscaErro] = useState('');
+  const [proximaPaginaToken, setProximaPaginaToken] = useState(null);
+  const [carregandoMais, setCarregandoMais] = useState(false);
 
   const [videoSelecionado, setVideoSelecionado] = useState(null);
   const [urlVideoSelecionada, setUrlVideoSelecionada] = useState('');
@@ -68,13 +70,15 @@ export const useYouTubeVideoaulas = () => {
     setVideoSelecionado(null);
     setUrlVideoSelecionada('');
     setVideoPlayerErro('');
+    setProximaPaginaToken(null);
 
     try {
-      const videos = await searchYouTubeVideos(consulta, {
+      const resultado = await searchYouTubeVideos(consulta, {
         signal: controller.signal,
       });
       if (buscaControllerRef.current === controller) {
-        setVideosEncontrados(videos);
+        setVideosEncontrados(resultado.videos);
+        setProximaPaginaToken(resultado.nextPageToken);
       }
     } catch (error) {
       if (
@@ -82,12 +86,32 @@ export const useYouTubeVideoaulas = () => {
         buscaControllerRef.current === controller
       ) {
         setVideosEncontrados([]);
+        setProximaPaginaToken(null);
         setVideoBuscaErro(traduzirErroYouTube(error));
       }
     } finally {
       if (buscaControllerRef.current === controller) {
         setVideoBuscaCarregando(false);
       }
+    }
+  };
+
+  const carregarMaisVideoaulas = async () => {
+    if (!proximaPaginaToken || carregandoMais || videoBuscaCarregando) return;
+    const consulta = videoBusca.trim();
+    if (!consulta) return;
+
+    setCarregandoMais(true);
+    try {
+      const resultado = await searchYouTubeVideos(consulta, {
+        pageToken: proximaPaginaToken,
+      });
+      setVideosEncontrados((prev) => [...prev, ...resultado.videos]);
+      setProximaPaginaToken(resultado.nextPageToken);
+    } catch (error) {
+      setVideoBuscaErro(traduzirErroYouTube(error));
+    } finally {
+      setCarregandoMais(false);
     }
   };
 
@@ -131,9 +155,10 @@ export const useYouTubeVideoaulas = () => {
     buscaControllerRef.current = controller;
 
     searchYouTubeVideos('Literatura Brasileira', { signal: controller.signal })
-      .then((videos) => {
+      .then((resultado) => {
         if (buscaControllerRef.current === controller) {
-          setVideosEncontrados(videos);
+          setVideosEncontrados(resultado.videos);
+          setProximaPaginaToken(resultado.nextPageToken);
           setVideoBuscaTentada(true);
         }
       })
@@ -164,6 +189,9 @@ export const useYouTubeVideoaulas = () => {
     urlVideoSelecionada,
     videoVerificandoId,
     videoPlayerErro,
+    proximaPaginaToken,
+    carregandoMais,
+    carregarMaisVideoaulas,
     pesquisarVideoaulas,
     selecionarVideoParaAssistir,
     limparSelecaoVideo,
