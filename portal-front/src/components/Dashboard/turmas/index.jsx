@@ -81,11 +81,13 @@ const Turmas = () => {
   const [modalVincularAberto, setModalVincularAberto] = useState(false);
   const [turmaParaVincular, setTurmaParaVincular] = useState(null);
   const [modalImportarAberto, setModalImportarAberto] = useState(false);
+  const [turmaParaImportarCsv, setTurmaParaImportarCsv] = useState(null);
 
   // Modais de confirmação de exclusão / desvinculação
   const [turmaParaExcluir, setTurmaParaExcluir] = useState(null);
   const [matriculaParaDesvincular, setMatriculaParaDesvincular] = useState(null);
   const [modalExcluirCsvAberto, setModalExcluirCsvAberto] = useState(false);
+  const [turmaParaExcluirCsv, setTurmaParaExcluirCsv] = useState(null);
   const [processandoExclusao, setProcessandoExclusao] = useState(false);
   const [processandoExclusaoCsv, setProcessandoExclusaoCsv] = useState(false);
 
@@ -248,17 +250,41 @@ const Turmas = () => {
     });
   };
 
+  // Abre o modal de importação associando-o opcionalmente a uma turma contextual específica
+  const handleAbrirImportarNotas = (turmaContextual = null) => {
+    if (turmaContextual?.id_turma) {
+      setTurmaSelecionadaId(String(turmaContextual.id_turma));
+      setTurmaParaImportarCsv(turmaContextual);
+    } else {
+      setTurmaParaImportarCsv(turmaAtivaParaCSV);
+    }
+    setModalImportarAberto(true);
+  };
+
+  // Abre o modal de exclusão associando-o opcionalmente a uma turma contextual específica
+  const handleAbrirExcluirDadosCsv = (turmaContextual = null) => {
+    if (turmaContextual?.id_turma) {
+      setTurmaSelecionadaId(String(turmaContextual.id_turma));
+      setTurmaParaExcluirCsv(turmaContextual);
+    } else {
+      setTurmaParaExcluirCsv(turmaAtivaParaCSV);
+    }
+    setModalExcluirCsvAberto(true);
+  };
+
   // Executa a exclusão segura dos dados carregados pelo CSV na turma selecionada
   const handleConfirmarExclusaoCsv = async () => {
-    if (!turmaSelecionadaId) return;
+    const idTurmaAlvo = turmaParaExcluirCsv?.id_turma || turmaSelecionadaId;
+    if (!idTurmaAlvo) return;
 
     setProcessandoExclusaoCsv(true);
     try {
-      const resp = await excluirDadosCsv(turmaSelecionadaId, {
+      const resp = await excluirDadosCsv(idTurmaAlvo, {
         periodo: periodoFiltro,
       });
       dispararNotificacao(resp?.message || "Dados do diário escolar excluídos com sucesso!");
       setModalExcluirCsvAberto(false);
+      setTurmaParaExcluirCsv(null);
       setNotas([]);
       setRecargaKey((prev) => prev + 1);
     } catch (err) {
@@ -437,6 +463,7 @@ const Turmas = () => {
             onCriarTurma={handleAbrirCriarTurma}
             onEditarTurma={handleAbrirEditarTurma}
             onVincularAluno={handleAbrirVincularAluno}
+            onImportarNotas={handleAbrirImportarNotas}
             onExcluirTurma={setTurmaParaExcluir}
             onDesvincularAluno={setMatriculaParaDesvincular}
             loading={loadingGeral}
@@ -457,8 +484,8 @@ const Turmas = () => {
             termoBusca={termoBuscaNota}
             onTermoBuscaChange={setTermoBuscaNota}
             podeGerenciar={podeGerenciar}
-            onAbrirImportarNotas={() => setModalImportarAberto(true)}
-            onAbrirExcluirDadosCsv={() => setModalExcluirCsvAberto(true)}
+            onAbrirImportarNotas={handleAbrirImportarNotas}
+            onAbrirExcluirDadosCsv={handleAbrirExcluirDadosCsv}
             loadingNotas={loadingNotas}
             trimestreAtual={obterTrimestreAtual()}
             alunosTurma={alunosTurmaSelecionada}
@@ -491,9 +518,12 @@ const Turmas = () => {
 
       {/* Modal 3: Importar CSV de Notas */}
       <ModalImportarNotas
-        turma={turmaAtivaParaCSV}
+        turma={turmaParaImportarCsv || turmaAtivaParaCSV}
         isOpen={modalImportarAberto}
-        onClose={() => setModalImportarAberto(false)}
+        onClose={() => {
+          setModalImportarAberto(false);
+          setTurmaParaImportarCsv(null);
+        }}
         onSuccess={handleSucessoImportacaoCSV}
       />
 
@@ -590,7 +620,10 @@ const Turmas = () => {
       {modalExcluirCsvAberto && (
         <div
           className="turmas-modal-overlay"
-          onClick={() => setModalExcluirCsvAberto(false)}
+          onClick={() => {
+            setModalExcluirCsvAberto(false);
+            setTurmaParaExcluirCsv(null);
+          }}
           role="presentation"
         >
           <div
@@ -606,7 +639,7 @@ const Turmas = () => {
             </h5>
             <p className="text-muted mb-4 small">
               Deseja realmente excluir as notas e faltas carregadas via CSV da turma{" "}
-              <strong>"{turmaAtivaParaCSV?.nome_identificador}"</strong>
+              <strong>"{(turmaParaExcluirCsv || turmaAtivaParaCSV)?.nome_identificador}"</strong>
               {periodoFiltro ? (
                 <>
                   {" "}para o período <strong>"{periodoFiltro}"</strong>
@@ -618,7 +651,10 @@ const Turmas = () => {
             <div className="d-flex gap-2 justify-content-center">
               <button
                 type="button"
-                onClick={() => setModalExcluirCsvAberto(false)}
+                onClick={() => {
+                  setModalExcluirCsvAberto(false);
+                  setTurmaParaExcluirCsv(null);
+                }}
                 className="btn btn-sm btn-light border px-3 rounded-pill"
                 disabled={processandoExclusaoCsv}
               >

@@ -154,26 +154,34 @@ test('matricula de aluno respeita capacidade maxima e permite transferir e cance
         ->assertJsonFragment(['id_turma' => $turmaB->id_turma]);
 });
 
-test('especialista pode consultar alunos disponiveis para matricula na turma', function () {
+test('especialista pode consultar alunos disponiveis para matricula e alunos matriculados em qualquer turma sao excluidos', function () {
     $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
-    $alunoMatriculado = User::factory()->create(['name' => 'Aluno Ja Matriculado', 'role' => UserRole::ALUNO]);
+    $alunoMatriculadoTurmaA = User::factory()->create(['name' => 'Aluno Matriculado Turma A', 'role' => UserRole::ALUNO]);
+    $alunoMatriculadoTurmaB = User::factory()->create(['name' => 'Aluno Matriculado Turma B', 'role' => UserRole::ALUNO]);
     $alunoDisponivel = User::factory()->create(['name' => 'Aluno Disponivel', 'role' => UserRole::ALUNO]);
 
-    $turma = Turma::factory()->create(['status' => 'Ativa']);
+    $turmaA = Turma::factory()->create(['status' => 'Ativa']);
+    $turmaB = Turma::factory()->create(['status' => 'Ativa']);
 
-    // Matricula o primeiro aluno
+    // Matricula os alunos em turmas diferentes
     $this->actingAs($especialista, 'sanctum')->postJson('/api/matriculas', [
-        'turma_id' => $turma->id_turma,
-        'usuario_id' => $alunoMatriculado->id,
+        'turma_id' => $turmaA->id_turma,
+        'usuario_id' => $alunoMatriculadoTurmaA->id,
     ])->assertCreated();
 
-    // Consulta alunos disponíveis
+    $this->actingAs($especialista, 'sanctum')->postJson('/api/matriculas', [
+        'turma_id' => $turmaB->id_turma,
+        'usuario_id' => $alunoMatriculadoTurmaB->id,
+    ])->assertCreated();
+
+    // Consulta alunos disponíveis na Turma A
     $response = $this->actingAs($especialista, 'sanctum')
-        ->getJson("/api/turmas/{$turma->id_turma}/alunos-disponiveis");
+        ->getJson("/api/turmas/{$turmaA->id_turma}/alunos-disponiveis");
 
     $response->assertOk()
         ->assertJsonFragment(['id' => $alunoDisponivel->id])
-        ->assertJsonMissing(['id' => $alunoMatriculado->id]);
+        ->assertJsonMissing(['id' => $alunoMatriculadoTurmaA->id])
+        ->assertJsonMissing(['id' => $alunoMatriculadoTurmaB->id]);
 });
 
 test('especialista e professor podem consultar resumo geral das turmas, mas aluno e bloqueado', function () {

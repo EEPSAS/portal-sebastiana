@@ -50,7 +50,8 @@ class NoticiaResource extends JsonResource
                 return [
                     'id' => $this->autor->id,
                     'name' => $this->autor->name,
-                    'nickname' => $this->autor->nickname ?? $this->autor->name,
+                    // Apelido é privado do dono: o público vê sempre o nome institucional
+                    'nickname' => $this->autor->name,
                 ];
             }),
             'created_at' => $this->created_at instanceof \DateTimeInterface ? $this->created_at->toISOString() : (string) $this->created_at,

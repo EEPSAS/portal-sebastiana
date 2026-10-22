@@ -7,10 +7,10 @@ const formatarNota = (nota) =>
         maximumFractionDigits: 1,
       });
 
-const obterClasseMedia = (media) => {
-  if (media === null) return "boletim__nota--indisponivel";
-  if (media >= 8) return "boletim__nota--alta";
-  if (media >= 6) return "boletim__nota--media";
+const obterClasseTotal = (pontos) => {
+  if (pontos === null) return "boletim__nota--indisponivel";
+  if (pontos >= 80) return "boletim__nota--alta";
+  if (pontos >= 60) return "boletim__nota--media";
   return "boletim__nota--baixa";
 };
 
@@ -31,23 +31,23 @@ export default function NotasDetalhadasAba({ disciplinas }) {
           Notas por Disciplina
         </h2>
         <span className="badge rounded-pill boletim__badge">
-          Média final: 30% / 30% / 40%
+          Distribuição: 30 pts / 30 pts / 40 pts
         </span>
       </div>
 
       <div className="table-responsive boletim__table-wrap">
         <table className="table align-middle mb-0 boletim__table">
           <caption className="visually-hidden">
-            Notas do aluno em cada trimestre e média final ponderada.
+            Notas do aluno em cada trimestre isolado e totalização anual acumulada.
           </caption>
           <thead>
             <tr>
               <th scope="col">Disciplina</th>
-              <th scope="col">1º Trimestre</th>
-              <th scope="col">2º Trimestre</th>
-              <th scope="col">3º Trimestre</th>
+              <th scope="col">1º Trimestre (30 pts)</th>
+              <th scope="col">2º Trimestre (30 pts)</th>
+              <th scope="col">3º Trimestre (40 pts)</th>
               <th scope="col" className="text-center">
-                Média Final
+                Total Anual (100 pts)
               </th>
             </tr>
           </thead>
@@ -64,11 +64,11 @@ export default function NotasDetalhadasAba({ disciplinas }) {
                 ))}
                 <td className="text-center">
                   <span
-                    className={`boletim__nota ${obterClasseMedia(disciplina.mediaFinal)}`}
+                    className={`boletim__nota ${obterClasseTotal(disciplina.mediaFinal)}`}
                     aria-label={
                       disciplina.mediaFinal === null
-                        ? "Média final indisponível"
-                        : `Média final ${formatarNota(disciplina.mediaFinal)}`
+                        ? "Total anual indisponível"
+                        : `Total anual ${formatarNota(disciplina.mediaFinal)} pontos`
                     }
                   >
                     {formatarNota(disciplina.mediaFinal)}
@@ -80,23 +80,22 @@ export default function NotasDetalhadasAba({ disciplinas }) {
         </table>
       </div>
 
-      <div className="boletim__legenda mt-3" aria-label="Legenda das médias">
+      <div className="boletim__legenda mt-3" aria-label="Legenda de aproveitamento">
         <span>
           <i className="boletim__legenda-ponto boletim__legenda-ponto--alta" />
-          Média ≥ 8,0
+          Aproveitamento ≥ 80,0 pts
         </span>
         <span>
           <i className="boletim__legenda-ponto boletim__legenda-ponto--media" />
-          Média 6,0–7,9
+          Aprovado 60,0–79,9 pts
         </span>
         <span>
           <i className="boletim__legenda-ponto boletim__legenda-ponto--baixa" />
-          Média &lt; 6,0
+          Abaixo da Média &lt; 60,0 pts
         </span>
       </div>
       <p className="boletim__caption mt-3 mb-0">
-        Valores “—” indicam dados ainda não lançados ou uma média que aguarda
-        notas dos três trimestres.
+        Valores “—” indicam dados ainda não lançados. A coluna Total Anual consolida a soma das pontuações dos períodos cursados.
       </p>
     </section>
   );

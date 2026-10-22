@@ -158,10 +158,12 @@ class AuthController extends Controller
                 'ativo' => true,
             ]);
         } else {
-            // Atualiza os dados sincronizados do Google, preservando o papel já cadastrado
+            // Atualiza os dados sincronizados do Google, preservando o papel já cadastrado.
+            // A foto do Google só entra se o usuário ainda não tem avatar; assim, uma foto
+            // enviada por ele nunca é sobrescrita a cada novo login.
             $user->update([
                 'google_id' => $googleId,
-                'avatar' => $picture ?: $user->avatar,
+                'avatar' => $user->avatar ?: $picture,
                 'name' => $name ?: $user->name,
             ]);
         }

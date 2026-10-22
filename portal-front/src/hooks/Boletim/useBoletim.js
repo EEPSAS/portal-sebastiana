@@ -6,7 +6,7 @@ import {
 } from "../../services/boletimService";
 
 const TRIMESTRES = [1, 2, 3];
-const PESOS_TRIMESTRAIS = [0.3, 0.3, 0.4];
+// Na rede estadual de Minas Gerais (padrão EEPSAS), a pontuação é distribuída em 30 + 30 + 40 = 100 pontos.
 
 const lerNumero = (valor, rotulo) => {
   if (valor === null || valor === undefined || valor === "") return null;
@@ -63,19 +63,18 @@ const normalizarBoletins = (respostas) => {
 
   return Array.from(materias.values())
     .map((materia) => {
-      const notaFinal = materia.notas.every((nota) => nota !== null)
-        ? materia.notas.reduce(
-            (total, nota, indice) =>
-              total + nota * PESOS_TRIMESTRAIS[indice],
-            0
-          )
-        : null;
+      // Soma direta das notas dos trimestres cursados (escala 30 + 30 + 40 = 100 pontos da rede estadual de MG)
+      const trimestresComNota = materia.notas.filter((nota) => nota !== null);
+      const pontuacaoAnual =
+        trimestresComNota.length > 0
+          ? trimestresComNota.reduce((total, nota) => total + nota, 0)
+          : null;
       const totalAulas = materia.aulas.reduce((total, aulas) => total + aulas, 0);
       const totalFaltas = materia.faltas.reduce((total, faltas) => total + faltas, 0);
 
       return {
         ...materia,
-        mediaFinal: notaFinal === null ? null : Number(notaFinal.toFixed(2)),
+        mediaFinal: pontuacaoAnual === null ? null : Number(pontuacaoAnual.toFixed(1)),
         totalAulas,
         totalFaltas,
         frequenciaAnual:
@@ -109,12 +108,14 @@ const normalizarComparativo = (resposta) => {
 
     const notaAluno = lerNumero(registro.nota_aluno, "nota do aluno");
     const mediaTurma = lerNumero(registro.media_turma, "média da turma");
+    const valorMaximo = lerNumero(registro.valor_maximo, "valor máximo") || 30;
 
     return {
       id: registro.disciplina_id ?? registro.nome_disciplina,
       nome: registro.nome_disciplina,
       notaAluno: notaAluno === 0 ? null : notaAluno,
       mediaTurma: mediaTurma === 0 ? null : mediaTurma,
+      valorMaximo,
     };
   });
 };

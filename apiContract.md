@@ -76,6 +76,8 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 }
 ```
 * **Nota sobre `turma` e `turma_id`**: Retorna a string com o `nome_identificador` e o ID numérico da turma ativa do aluno (matrícula com status `Ativo`). Caso o usuário não seja aluno ou não possua matrícula ativa vinculada, os valores retornados são `null`.
+* **Nota sobre `nickname` (privado)**: o apelido só é retornado quando quem consulta é o próprio dono (`/api/user`, login, cadastro e atualização do próprio perfil). Para qualquer outro usuário (inclusive Adm em `/api/usuarios`) o valor vem `null`. Em `NoticiaResource`, `autor.nickname` passa a repetir o `name` institucional.
+* **Nota sobre `avatar`**: em `/api/auth/google`, a foto do Google só é gravada se o usuário ainda não tiver avatar; uma foto enviada via `POST /api/usuarios/{id}/avatar` nunca é sobrescrita por novo login. Requer `php artisan storage:link` para servir `/storage/avatars/*`.
 
 ---
 
@@ -219,14 +221,13 @@ Suporta envio tanto em `application/json` quanto em `multipart/form-data` (quand
 | `GET` | `/api/turmas/{turma_id}/alunos-disponiveis` | Especialista / Adm | N/A | `UsuarioResource` (Coleção) | `turmasService.listarAlunosDisponiveis()` | Alunos elegíveis para matrícula na turma |
 | `GET` | `/api/matriculas` | Especialista / Prof / Adm | N/A | `MatriculaResource` (Coleção) | `turmasService.listarMatriculas()` | Relação nominal de todos os matriculados ativos |
 | `POST` | `/api/matriculas` | Especialista / Adm | `StoreMatriculaRequest` | `MatriculaResource` | `turmasService.vincularAluno()` | Matricula/vincula aluno na turma |
-| `PATCH`| `/api/matriculas/{matricula_id}/cancelar` | Especialista / Adm | `CancelarMatriculaRequest` | `MatriculaResource` | `turmasService.cancelarMatricula()` | Cancela/desvincula matrícula de aluno |
-| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista / Adm | `ImportarRelatorioTurmaRequest` | `RelatorioImportadoResource` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com notas/faltas consolidadas, heurística de primeiro/último nome e desambiguação de homônimos (suporta `mapeamentos_alunos`) |
+| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista / Adm | `ImportarRelatorioTurmaRequest` | `RelatorioImportadoResource` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com notas/faltas consolidadas; exige estritamente arquivo no formato `.csv` (outros formatos retornam 422 de incompatibilidade); importa exclusivamente alunos previamente cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`) e matrícula ativa na turma (alunos não cadastrados são ignorados sem auto-cadastro). Suporta desambiguação de homônimos (`mapeamentos_alunos`) e reconhecimento automático de múltiplos períodos letivos por coluna (1º, 2º e 3º Trimestres, EIR e descarte da coluna TOTAL). Detecta divergências de notas com períodos já cadastrados e suporta decisão do usuário via `decisao_divergencias` (`'atualizar'` ou `'manter'`), retornando `status: 'pendente_confirmacao'`, `tipo_pendencia: 'divergencias_notas'` e a lista `divergencias` caso haja conflitos não confirmados. |
 | `DELETE`| `/api/turmas/{turma_id}/dados-csv` | Especialista / Adm | N/A | Mensagem 200 | `turmasService.excluirDadosCsv()` | Exclui notas e faltas carregadas via CSV da turma (suporta ?periodo_letivo=) |
-| `GET` | `/api/turmas/{turma_id}/notas` | Especialista / Prof / Adm | N/A | `NotaResource` (Coleção) | `turmasService.listarNotasTurma()` | Consulta notas lançadas na turma com filtros de período, disciplina e aluno (`aluno_id`) |
+| `GET` | `/api/turmas/{turma_id}/notas` | Especialista / Prof / Adm | N/A | `NotaResource` (Coleção) | `turmasService.listarNotasTurma()` | Consulta notas lançadas na turma; blindado para exibir exclusivamente notas de alunos cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`), com filtros de período, disciplina e aluno (`aluno_id`). |
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/boletim` | Aluno / Prof / Esp / Adm | N/A | `BoletimResource` | `boletimService.obterBoletim()` | Boletim consolidado de notas e faltas por trimestre |
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/comparativo-turma` | Aluno / Prof / Esp / Adm | N/A | `ComparativoTurmaResource` | `boletimService.obterComparativoTurma()` | Dados comparativos do aluno vs média da turma por disciplina |
 
-> **Regra de Escopo:** O Professor possui acesso **estritamente consultivo** aos dados da turma e dos alunos. Não há telas nem rotas para cadastro diário de tarefas ou chamada manual. A criação de turmas e a vinculação de alunos são privativas do Especialista e Administrador.
+> **Regra de Escopo:** O Professor possui acesso **estritamente consultivo** aos dados da turma e dos alunos. Não há telas nem rotas para cadastro diário de tarefas ou chamada manual. A criação de turmas e a vinculação de alunos são privativas do Especialista e Administrador. A importação de CSV não realiza auto-cadastro de novos alunos nem cria matrículas avulsas.
 
 ---
 
@@ -235,7 +236,7 @@ Suporta envio tanto em `application/json` quanto em `multipart/form-data` (quand
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
 |---|---|---|---|---|---|---|
-| `PUT` | `/api/usuarios/{id}` | Logado (próprio perfil) | `UpdateUsuarioRequest` | `UsuarioResource` | `usuarioService.atualizarPerfil()` | Atualiza nickname, nome, telefone, data de nascimento e senha (e-mail é fixo/bloqueado) |
+| `PUT` | `/api/usuarios/{id}` | Logado (próprio perfil) | `UpdateUsuarioRequest` | `UsuarioResource` | `usuarioService.atualizarPerfil()` | Usuário comum atualiza apenas nickname, telefone, data de nascimento e senha. **Nome institucional e e-mail são bloqueados** (ignorados no envio); somente Adm (`gerenciar_usuarios`) altera `name`, `email`, papel e status |
 | `POST` | `/api/usuarios/{id}/avatar` | Logado (próprio perfil) | `UploadAvatarRequest` | `UsuarioResource` | `usuarioService.uploadAvatar()` | Envia e atualiza a foto de perfil (avatar) |
 | `DELETE` | `/api/usuarios/{id}/avatar` | Logado (próprio perfil) | N/A | `UsuarioResource` | `usuarioService.removerAvatar()` | Remove a foto de perfil atual do usuário |
 | `GET` | `/api/usuarios` | Adm | N/A | `UsuarioResource` (Coleção) | `usuarioService.listarTodos()` | Gestão administrativa de usuários |

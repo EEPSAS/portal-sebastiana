@@ -235,3 +235,48 @@ test('preserva matricula Ativo do aluno ao autenticar novamente com Google infor
 
     expect($matricula->status_matricula)->toBe('Ativo');
 });
+
+test('preserva a foto de perfil enviada pelo usuario ao autenticar novamente com Google', function () {
+    $aluno = User::factory()->create([
+        'email' => 'foto.propria@aluno.mg.gov.br',
+        'role' => UserRole::ALUNO,
+        'avatar' => 'avatars/foto-propria.jpg',
+        'ativo' => true,
+    ]);
+
+    Http::fake([
+        'https://oauth2.googleapis.com/tokeninfo*' => Http::response([
+            'sub' => 'google-foto-propria',
+            'email' => 'foto.propria@aluno.mg.gov.br',
+            'name' => 'Foto Propria',
+            'picture' => 'https://example.com/foto-google.jpg',
+        ], 200),
+    ]);
+
+    $this->postJson('/api/auth/google', ['credential' => 'valid-jwt-token'])->assertOk();
+
+    // A foto enviada pelo usuário não pode ser trocada pela foto do Google
+    expect($aluno->fresh()->avatar)->toBe('avatars/foto-propria.jpg');
+});
+
+test('usa a foto do Google quando o usuario existente ainda nao tem avatar', function () {
+    $aluno = User::factory()->create([
+        'email' => 'sem.foto@aluno.mg.gov.br',
+        'role' => UserRole::ALUNO,
+        'avatar' => null,
+        'ativo' => true,
+    ]);
+
+    Http::fake([
+        'https://oauth2.googleapis.com/tokeninfo*' => Http::response([
+            'sub' => 'google-sem-foto',
+            'email' => 'sem.foto@aluno.mg.gov.br',
+            'name' => 'Sem Foto',
+            'picture' => 'https://example.com/foto-google.jpg',
+        ], 200),
+    ]);
+
+    $this->postJson('/api/auth/google', ['credential' => 'valid-jwt-token'])->assertOk();
+
+    expect($aluno->fresh()->avatar)->toBe('https://example.com/foto-google.jpg');
+});

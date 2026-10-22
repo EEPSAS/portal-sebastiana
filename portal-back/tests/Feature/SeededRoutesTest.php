@@ -49,7 +49,7 @@ test('testa autenticacao com usuarios povoados', function () {
 
     // 5. Login como Aluna Yasmin
     $respAluna = $this->postJson('/api/auth/login', [
-        'email' => 'yasmin.teixeira@sebastiana.edu.br',
+        'email' => 'yasmin.teixeira@aluno.mg.gov.br',
         'password' => 'password',
     ]);
     $respAluna->assertOk()
@@ -101,7 +101,7 @@ test('testa rotas de calendario, eventos e radioatividades', function () {
 });
 
 test('testa rotas de emprestimos de livros', function () {
-    $yasmin = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
+    $yasmin = User::where('email', 'yasmin.teixeira@aluno.mg.gov.br')->first();
     $admin = User::where('email', 'admin@sebastiana.edu.br')->first();
 
     // 1. Meus empréstimos (Yasmin tem 2: 1 ativo e 1 devolvido)
@@ -117,7 +117,7 @@ test('testa rotas de emprestimos de livros', function () {
 
 test('testa rotas academicas de turmas, disciplinas e matriculas', function () {
     $admin = User::where('email', 'admin@sebastiana.edu.br')->first();
-    $yasmin = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
+    $yasmin = User::where('email', 'yasmin.teixeira@aluno.mg.gov.br')->first();
 
     // 1. Listar turmas
     $this->actingAs($admin, 'sanctum')->getJson('/api/turmas')
@@ -154,7 +154,7 @@ test('testa rotas academicas de turmas, disciplinas e matriculas', function () {
 
 test('testa rotas de frequencia e relatorio de faltas', function () {
     $admin = User::where('email', 'admin@sebastiana.edu.br')->first();
-    $yasmin = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
+    $yasmin = User::where('email', 'yasmin.teixeira@aluno.mg.gov.br')->first();
     $turma1A = Turma::where('nome_identificador', '1º Ano A - Ensino Médio')->first();
     $discMat = Disciplina::where('nome', 'Matemática')->first();
 
@@ -180,7 +180,7 @@ test('testa rotas de frequencia e relatorio de faltas', function () {
 
 test('testa rotas de notas, medias e boletim escolar', function () {
     $admin = User::where('email', 'admin@sebastiana.edu.br')->first();
-    $yasmin = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
+    $yasmin = User::where('email', 'yasmin.teixeira@aluno.mg.gov.br')->first();
     $turma1A = Turma::where('nome_identificador', '1º Ano A - Ensino Médio')->first();
     $discMat = Disciplina::where('nome', 'Matemática')->first();
 
@@ -194,7 +194,7 @@ test('testa rotas de notas, medias e boletim escolar', function () {
     // 2. Admin gera boletim de Yasmin
     $respBoletimAdmin = $this->actingAs($admin, 'sanctum')->getJson("/api/notas/boletim/{$yasmin->id}");
     $respBoletimAdmin->assertOk()
-        ->assertJsonPath('aluno.email', 'yasmin.teixeira@sebastiana.edu.br')
+        ->assertJsonPath('aluno.email', 'yasmin.teixeira@aluno.mg.gov.br')
         ->assertJsonFragment(['disciplina' => 'Matemática', 'status' => 'Aprovado']);
 
     // 3. Aluna Yasmin consulta seu próprio boletim

@@ -31,13 +31,17 @@ class RelatorioImportadoResource extends JsonResource
         return [
             // Status do processamento: 'sucesso' ou 'pendente_confirmacao'
             'status' => $this->resource['status'] ?? 'sucesso',
+            // Tipo de pendência: null, 'homonimos' ou 'divergencias_notas'
+            'tipo_pendencia' => $this->resource['tipo_pendencia'] ?? ($this->resource['dados']['tipo_pendencia'] ?? null),
             'message' => $this->resource['message'] ?? $this->message,
             'turma' => [
                 'id_turma' => $this->resource['turma']['id_turma'] ?? null,
                 'nome_identificador' => $this->resource['turma']['nome_identificador'] ?? null,
             ],
             // Lista de estudantes com nomes homônimos ou similares que necessitam de confirmação manual
-            'ambiguidades' => $this->resource['ambiguidades'] ?? [],
+            'ambiguidades' => $this->resource['ambiguidades'] ?? ($this->resource['dados']['ambiguidades'] ?? []),
+            // Lista de notas divergentes detectadas em períodos anteriores
+            'divergencias' => $this->resource['divergencias'] ?? ($this->resource['dados']['divergencias'] ?? []),
             'dados' => $this->resource['dados'] ?? [],
         ];
     }

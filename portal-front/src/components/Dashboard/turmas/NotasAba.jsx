@@ -51,41 +51,14 @@ const NotasAba = ({
 
   return (
     <div>
-      {/* 1. Cabeçalho com Ações de Importar e Excluir CSV */}
+      {/* 1. Cabeçalho com Apresentação da Seção */}
       <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
         <div>
           <h4 className="fw-bold mb-1 text-dark fs-5">Aproveitamento e Notas</h4>
           <p className="text-muted mb-0 small">
-            Selecione uma turma para consultar o diário escolar consolidado ou gerenciar lançamentos via CSV.
+            Selecione uma turma para consultar o diário escolar consolidado ou gerenciar lançamentos via CSV da turma.
           </p>
         </div>
-
-        {podeGerenciar && (
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            {/* Botão para Excluir Dados Carregados pelo CSV */}
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-danger px-3 py-2 rounded-pill d-flex align-items-center gap-2 fw-semibold"
-              onClick={onAbrirExcluirDadosCsv}
-              disabled={!turmaSelecionada}
-              title="Excluir notas e faltas carregadas via CSV para esta turma"
-            >
-              <i className="bi bi-trash3-fill"></i>
-              <span>Excluir dados do CSV</span>
-            </button>
-
-            {/* Botão para Importar Novo Arquivo CSV */}
-            <button
-              type="button"
-              className="btn btn-sm turmas-btn-primario px-3 py-2 rounded-pill d-flex align-items-center gap-2"
-              onClick={onAbrirImportarNotas}
-              disabled={!turmaSelecionada}
-            >
-              <i className="bi bi-file-earmark-arrow-up-fill"></i>
-              <span>Cadastrar Notas (CSV)</span>
-            </button>
-          </div>
-        )}
       </div>
 
       {/* 2. Cards com a Média Geral por Turma (Clicáveis) */}
@@ -166,12 +139,36 @@ const NotasAba = ({
         {/* Barra de Filtros: Filtro por Aluno (Evita sobrecarga) + Período + Busca */}
         <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
           <div>
-            <h4 className="fw-bold mb-0 text-dark fs-6">
-              Notas da Turma:{" "}
-              <span style={{ color: "var(--dashboard-pink)" }}>
-                {turmaSelecionada?.nome_identificador || "Selecione uma turma"}
-              </span>
-            </h4>
+            <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+              <h4 className="fw-bold mb-0 text-dark fs-6">
+                Notas da Turma:{" "}
+                <span style={{ color: "var(--dashboard-pink)" }}>
+                  {turmaSelecionada?.nome_identificador || "Selecione uma turma"}
+                </span>
+              </h4>
+              {podeGerenciar && turmaSelecionada && (
+                <div className="d-flex align-items-center gap-2 ms-sm-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm turmas-btn-primario px-3 py-1 rounded-pill d-flex align-items-center gap-1"
+                    onClick={() => onAbrirImportarNotas(turmaSelecionada)}
+                    title={`Cadastrar notas via CSV para a turma ${turmaSelecionada.nome_identificador}`}
+                  >
+                    <i className="bi bi-file-earmark-arrow-up-fill"></i>
+                    <span>Cadastrar Notas (CSV)</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-danger px-3 py-1 rounded-pill d-flex align-items-center gap-1 fw-semibold"
+                    onClick={() => onAbrirExcluirDadosCsv(turmaSelecionada)}
+                    title={`Excluir notas e faltas do CSV da turma ${turmaSelecionada.nome_identificador}`}
+                  >
+                    <i className="bi bi-trash3-fill"></i>
+                    <span>Excluir dados do CSV</span>
+                  </button>
+                </div>
+              )}
+            </div>
             <small className="text-muted">
               {alunoSelecionado
                 ? `Exibindo lançamentos de ${alunoSelecionado.name} (${notasFiltradas.length} notas no período).`
@@ -327,7 +324,10 @@ const NotasAba = ({
               <tbody>
                 {notasFiltradas.map((nota) => {
                   const valor = Number(nota.valor_nota || 0);
-                  const valorMax = Number(nota.valor_maximo || 10);
+                  const valorMax = Number(
+                    nota.valor_maximo ||
+                      (nota.periodo_letivo?.includes("3º") ? 40 : 30)
+                  );
                   const isAprovado = valor >= valorMax * 0.6;
 
                   return (
