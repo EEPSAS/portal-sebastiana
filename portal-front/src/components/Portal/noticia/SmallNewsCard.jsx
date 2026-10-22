@@ -1,3 +1,5 @@
+import { Link } from 'react-router';
+
 /**
  * SmallNewsCard.jsx - Card Compacto de Notícia da Grade Secundária
  *
@@ -24,7 +26,11 @@ const SmallNewsCard = ({ noticia, loading }) => {
 
 	// Renderiza o card menor garantindo altura uniforme (flex-grow-1) com os demais cards
 	return (
-		<a className="noticias-card-link d-flex flex-column flex-grow-1 h-100 w-100" href={noticia?.id ? `/noticia/${noticia.id}` : '#!'} target={noticia?.id ? '_blank' : '_self'} rel="noreferrer">
+		<Link
+			className="noticias-card-link d-flex flex-column flex-grow-1 h-100 w-100"
+			to={noticia?.id ? `/noticia/${noticia.id}` : '#!'}
+			target="_self"
+		>
 			<article className="noticias-card h-100 flex-grow-1 rounded-4 bg-white p-3 shadow-sm d-flex flex-column">
 				{loading ? (
 					<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100 noticias-card__skeleton--small">
@@ -49,7 +55,7 @@ const SmallNewsCard = ({ noticia, loading }) => {
 				)}
 				<h3 className="h5 text-secondary mt-3 mb-0">{loading ? 'Carregando...' : noticia?.titulo}</h3>
 			</article>
-		</a>
+		</Link>
 	);
 };
 

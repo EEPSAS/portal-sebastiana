@@ -14,6 +14,7 @@ import { BrowserRouter, Route, Routes } from "react-router";
 import PortalLayout from "./layouts/Portal/PortalLayout";
 import DashboardLayout from "./layouts/Dashboard/DashboardLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Páginas Públicas do Portal
 import PublicHome from "./pages/Portal/Home";
@@ -35,6 +36,8 @@ import ConfiguracoesPage from "./pages/Dashboard/Configuracoes";
 const App = () => {
   return (
     <BrowserRouter>
+      {/* Garante que qualquer navegação entre rotas sempre inicie no topo da página */}
+      <ScrollToTop />
       <Routes>
         {/* ======================================================== */}
         {/* 1. Área Pública do Portal Escolar                        */}
