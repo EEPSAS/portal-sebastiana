@@ -65,10 +65,9 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
     setErros({});
 
     try {
+      // Envia apenas os campos editáveis; nome e e-mail institucionais são bloqueados
       const payload = {
-        name: formData.name.trim(),
         nickname: formData.nickname.trim() || null,
-        email: formData.email.trim(),
         telefone: formData.telefone.trim() || null,
         data_nascimento: formData.data_nascimento || null,
       };
@@ -124,36 +123,16 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
 
       <form onSubmit={handleSubmit}>
         <div className="row g-3">
-          {/* Nickname / Nome de Exibição */}
+          {/* Nome Institucional Completo (Bloqueado para edição: vem do e-mail institucional) */}
           <div className="col-12 col-md-6">
-            <label className="form-label small fw-semibold text-dark">
-              Apelido / Como prefere ser chamado (Nickname)
-            </label>
-            <div className="input-group">
-              <span className="input-group-text bg-light text-muted border-end-0">
-                <i className="bi bi-tag-fill"></i>
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <label className="form-label small fw-semibold text-dark mb-0">
+                Nome Completo Institucional
+              </label>
+              <span className="badge bg-secondary-subtle text-secondary border px-2 py-0" style={{ fontSize: '0.72rem' }}>
+                <i className="bi bi-lock-fill me-1"></i>Bloqueado
               </span>
-              <input
-                type="text"
-                name="nickname"
-                value={formData.nickname}
-                onChange={handleChange}
-                placeholder="Ex: Bia, Prof. Carlos, Leo"
-                className={`form-control border-start-0 ${erros.nickname ? 'is-invalid' : ''}`}
-                maxLength={50}
-              />
             </div>
-            {erros.nickname && <div className="text-danger small mt-1">{erros.nickname[0]}</div>}
-            <small className="text-muted" style={{ fontSize: '0.75rem' }}>
-              Substitui o nome longo nas mensagens e saudações do painel.
-            </small>
-          </div>
-
-          {/* Nome Institucional Completo */}
-          <div className="col-12 col-md-6">
-            <label className="form-label small fw-semibold text-dark">
-              Nome Completo Institucional <span className="text-danger">*</span>
-            </label>
             <div className="input-group">
               <span className="input-group-text bg-light text-muted border-end-0">
                 <i className="bi bi-person-fill"></i>
@@ -162,12 +141,16 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
                 type="text"
                 name="name"
                 value={formData.name}
-                onChange={handleChange}
-                required
-                className={`form-control border-start-0 ${erros.name ? 'is-invalid' : ''}`}
+                disabled
+                readOnly
+                className="form-control border-start-0 bg-light text-muted"
+                style={{ cursor: 'not-allowed' }}
+                title="O nome institucional não pode ser alterado pelo usuário."
               />
             </div>
-            {erros.name && <div className="text-danger small mt-1">{erros.name[0]}</div>}
+            <small className="text-muted" style={{ fontSize: '0.75rem' }}>
+              Nome vinculado à sua conta institucional.
+            </small>
           </div>
 
           {/* E-mail Institucional (Bloqueado para edição) */}
@@ -197,6 +180,31 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
             </div>
             <small className="text-muted" style={{ fontSize: '0.75rem' }}>
               Identificador único vinculado à matrícula/conta institucional.
+            </small>
+          </div>
+
+          {/* Nickname / Nome de Exibição */}
+          <div className="col-12 col-md-6">
+            <label className="form-label small fw-semibold text-dark">
+              Apelido / Como prefere ser chamado (Nickname)
+            </label>
+            <div className="input-group">
+              <span className="input-group-text bg-light text-muted border-end-0">
+                <i className="bi bi-tag-fill"></i>
+              </span>
+              <input
+                type="text"
+                name="nickname"
+                value={formData.nickname}
+                onChange={handleChange}
+                placeholder="Ex: Bia, Prof. Carlos, Leo"
+                className={`form-control border-start-0 ${erros.nickname ? 'is-invalid' : ''}`}
+                maxLength={50}
+              />
+            </div>
+            {erros.nickname && <div className="text-danger small mt-1">{erros.nickname[0]}</div>}
+            <small className="text-muted" style={{ fontSize: '0.75rem' }}>
+              Substitui o nome longo nas mensagens e saudações do painel.
             </small>
           </div>
 

@@ -1,3 +1,5 @@
+import { Link } from 'react-router';
+
 /**
  * HorizontalNewsCard.jsx - Card Principal da Notícia em Destaque
  *
@@ -19,8 +21,16 @@ const HorizontalNewsCard = ({ noticia, loading }) => {
 		);
 	}
 
+	// Nos cards do Portal, a Miniatura é a imagem principal de exibição (com fallback para a capa se miniatura não foi enviada)
+	const imagemCard =
+		noticia?.url_miniatura || noticia?.miniatura || noticia?.url_foto || noticia?.imagem;
+
 	return (
-		<a className="noticias-card-link" href={noticia?.id ? `/noticia/${noticia.id}` : '#!'} target={noticia?.id ? '_blank' : '_self'} rel="noreferrer">
+		<Link
+			className="noticias-card-link"
+			to={noticia?.id ? `/noticia/${noticia.id}` : '#!'}
+			target="_self"
+		>
 			<article className="noticias-card rounded-4 bg-white p-3 shadow-sm">
 				<div className="row h-100 align-items-center g-3">
 					<div className="col-12 col-md-7">
@@ -30,8 +40,20 @@ const HorizontalNewsCard = ({ noticia, loading }) => {
 									<span className="visually-hidden">Carregando...</span>
 								</div>
 							</div>
+						) : imagemCard ? (
+							<img
+								className="img-fluid w-100 rounded-3 shadow-sm"
+								style={{ maxHeight: '280px', objectFit: 'cover' }}
+								src={imagemCard}
+								alt={noticia?.titulo || ''}
+								onError={(e) => {
+									e.currentTarget.style.display = 'none';
+								}}
+							/>
 						) : (
-							<img className="img-fluid w-100 rounded-3" src={noticia?.miniatura} alt={noticia?.titulo || ''} />
+							<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100 py-5 text-muted">
+								<i className="bi bi-image fs-1 opacity-50"></i>
+							</div>
 						)}
 					</div>
 					<div className="col-12 col-md-5">
@@ -40,7 +62,7 @@ const HorizontalNewsCard = ({ noticia, loading }) => {
 					</div>
 				</div>
 			</article>
-		</a>
+		</Link>
 	);
 };
 

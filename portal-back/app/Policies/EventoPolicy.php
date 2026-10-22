@@ -10,10 +10,10 @@ use App\Models\User;
  *
  * Papel Didático:
  * Garante que:
- * - A listagem de eventos institucionais seja acessível tanto no Portal Público quanto no Dashboard;
+ * - Eventos institucionais sejam acessíveis no Portal Público e eventos de Professor no Dashboard;
  * - Qualquer usuário autenticado possa criar seus próprios eventos pessoais;
- * - Eventos pessoais só possam ser visualizados, editados ou excluídos pelo seu próprio autor
- *   (ou por gestores com permissão global sobre o calendário).
+ * - Eventos de Aluno/Bibliotecária sejam privados e eventos compartilhados de Professor só sejam lidos por usuários logados;
+ * - Edição e exclusão continuem restritas ao autor ou a gestores com permissão global sobre o calendário.
  */
 class EventoPolicy
 {
@@ -26,7 +26,7 @@ class EventoPolicy
     }
 
     /**
-     * Permite visualização se o evento for institucional (Especialista/Adm) ou de autoria do próprio usuário.
+     * Permite visualização de eventos institucionais, de Professor entre usuários logados ou do próprio autor.
      */
     public function view(?User $user, Evento $evento): bool
     {
@@ -36,7 +36,9 @@ class EventoPolicy
 
         $criador = $evento->criador;
         if ($criador) {
-            return $criador->isEspecialista() || $criador->isAdm();
+            return $criador->isEspecialista()
+                || $criador->isAdm()
+                || ($user !== null && $criador->isProfessor());
         }
 
         return $evento->criador_id === null;

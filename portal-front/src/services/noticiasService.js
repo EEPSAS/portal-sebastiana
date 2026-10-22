@@ -119,21 +119,48 @@ export const obterNoticia = getNoticia;
 /**
  * Cadastra uma nova notícia no portal escolar.
  * Rota protegida: POST /api/noticias
+ * Suporta tanto envio de dados via JSON quanto via FormData (quando há arquivos de Capa ou Miniatura).
  */
 export const createNoticia = async (dados) => {
-  const payload = {
-    titulo: dados.titulo,
-    categoria: dados.categoria || 'Geral',
-    descricao: dados.descricao || '',
-    conteudo: dados.conteudo,
-    url_foto: dados.url_foto || null,
-    url_miniatura: dados.url_miniatura || dados.url_foto || null,
-    destaque: Boolean(dados.destaque),
-  };
+  const temArquivos = dados.arquivo_foto instanceof File || dados.arquivo_miniatura instanceof File;
+
+  let body;
+  if (temArquivos) {
+    const formData = new FormData();
+    formData.append('titulo', dados.titulo || '');
+    formData.append('categoria', dados.categoria || 'Geral');
+    formData.append('descricao', dados.descricao || '');
+    formData.append('conteudo', dados.conteudo || '');
+    formData.append('destaque', dados.destaque ? '1' : '0');
+
+    if (dados.arquivo_foto instanceof File) {
+      formData.append('foto', dados.arquivo_foto);
+    } else if (dados.url_foto) {
+      formData.append('url_foto', dados.url_foto);
+    }
+
+    if (dados.arquivo_miniatura instanceof File) {
+      formData.append('miniatura_arquivo', dados.arquivo_miniatura);
+    } else if (dados.url_miniatura) {
+      formData.append('url_miniatura', dados.url_miniatura);
+    }
+
+    body = formData;
+  } else {
+    body = {
+      titulo: dados.titulo,
+      categoria: dados.categoria || 'Geral',
+      descricao: dados.descricao || '',
+      conteudo: dados.conteudo,
+      url_foto: dados.url_foto || null,
+      url_miniatura: dados.url_miniatura || dados.url_foto || null,
+      destaque: Boolean(dados.destaque),
+    };
+  }
 
   const response = await request('/noticias', {
     method: 'POST',
-    body: payload,
+    body,
   });
 
   return mapNoticia(response);
@@ -143,22 +170,54 @@ export const criarNoticia = createNoticia;
 
 /**
  * Atualiza os dados de uma notícia existente.
- * Rota protegida: PUT /api/noticias/{id}
+ * Rota protegida: PUT /api/noticias/{id} (ou POST com _method=PUT em FormData)
  */
 export const updateNoticia = async (id, dados) => {
-  const payload = {
-    titulo: dados.titulo,
-    categoria: dados.categoria,
-    descricao: dados.descricao,
-    conteudo: dados.conteudo,
-    url_foto: dados.url_foto || null,
-    url_miniatura: dados.url_miniatura || dados.url_foto || null,
-    destaque: Boolean(dados.destaque),
-  };
+  const temArquivos = dados.arquivo_foto instanceof File || dados.arquivo_miniatura instanceof File;
+
+  let body;
+  let method = 'PUT';
+
+  if (temArquivos) {
+    const formData = new FormData();
+    // O PHP nativo requer _method=PUT para capturar multipart/form-data em updates
+    formData.append('_method', 'PUT');
+    method = 'POST';
+
+    if (dados.titulo !== undefined) formData.append('titulo', dados.titulo);
+    if (dados.categoria !== undefined) formData.append('categoria', dados.categoria);
+    if (dados.descricao !== undefined) formData.append('descricao', dados.descricao);
+    if (dados.conteudo !== undefined) formData.append('conteudo', dados.conteudo);
+    if (dados.destaque !== undefined) formData.append('destaque', dados.destaque ? '1' : '0');
+
+    if (dados.arquivo_foto instanceof File) {
+      formData.append('foto', dados.arquivo_foto);
+    } else if (dados.url_foto) {
+      formData.append('url_foto', dados.url_foto);
+    }
+
+    if (dados.arquivo_miniatura instanceof File) {
+      formData.append('miniatura_arquivo', dados.arquivo_miniatura);
+    } else if (dados.url_miniatura) {
+      formData.append('url_miniatura', dados.url_miniatura);
+    }
+
+    body = formData;
+  } else {
+    body = {
+      titulo: dados.titulo,
+      categoria: dados.categoria,
+      descricao: dados.descricao,
+      conteudo: dados.conteudo,
+      url_foto: dados.url_foto || null,
+      url_miniatura: dados.url_miniatura || dados.url_foto || null,
+      destaque: Boolean(dados.destaque),
+    };
+  }
 
   const response = await request(`/noticias/${encodeURIComponent(id)}`, {
-    method: 'PUT',
-    body: payload,
+    method,
+    body,
   });
 
   return mapNoticia(response);

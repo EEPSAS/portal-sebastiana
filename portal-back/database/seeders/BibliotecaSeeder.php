@@ -105,9 +105,9 @@ class BibliotecaSeeder extends Seeder
         }
 
         // Criar empréstimos para alunos
-        $yasmin = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
-        $pedro = User::where('email', 'pedro.santos@sebastiana.edu.br')->first();
-        $beatriz = User::where('email', 'beatriz.lima@sebastiana.edu.br')->first();
+        $yasmin = User::where('email', 'yasmin.teixeira@aluno.mg.gov.br')->first();
+        $pedro = User::where('email', 'pedro.santos@aluno.mg.gov.br')->first();
+        $beatriz = User::where('email', 'beatriz.lima@aluno.mg.gov.br')->first();
 
         if ($yasmin && count($livrosCriados) > 0) {
             // Empréstimo ativo (Dom Casmurro)

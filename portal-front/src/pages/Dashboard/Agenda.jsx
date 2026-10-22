@@ -3,7 +3,7 @@
  *
  * Papel Didático:
  * Atua como o Container Inteligente (Smart Component) da rota `/dashboard/agenda`:
- * 1. Conecta o estado de autenticação (`useAuth`) para gerenciar permissões (Especialista e Adm);
+ * 1. Conecta o estado de autenticação (`useAuth`) para separar criação pessoal de gestão institucional;
  * 2. Orquestra o ciclo completo de CRUD através do hook oficial `useEventos`;
  * 3. Renderiza a subbarra superior harmonizada com os módulos de Turmas e Biblioteca;
  * 4. Monta o componente unificado `<Calendario />` com `showHero={false}`;
@@ -22,6 +22,8 @@ const AgendaPage = () => {
   const { user } = useAuth();
   const role = String(user?.role || '').toLowerCase();
   const podeGerenciar = ['especialista', 'adm', 'admin'].includes(role);
+  // Qualquer usuário autenticado pode criar eventos na própria agenda.
+  const podeCriarEvento = Boolean(user?.id);
 
   // Hook central de leitura e mutação na API /api/eventos
   const {
@@ -126,7 +128,7 @@ const AgendaPage = () => {
                 Atualizar
               </button>
 
-              {podeGerenciar && (
+              {podeCriarEvento && (
                 <button
                   type="button"
                   className="btn btn-sm btn-primary rounded-pill px-3 fw-bold"

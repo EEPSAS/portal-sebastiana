@@ -67,7 +67,7 @@ test('professor pode acessar /api/dashboard/geral com dados de suas turmas lecio
 });
 
 test('aluno comum nao pode acessar /api/dashboard/geral recebendo erro 403', function () {
-    $aluno = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
+    $aluno = User::where('email', 'yasmin.teixeira@aluno.mg.gov.br')->first();
 
     $response = $this->actingAs($aluno, 'sanctum')
         ->getJson('/api/dashboard/geral');

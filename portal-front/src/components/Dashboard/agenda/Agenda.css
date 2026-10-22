@@ -1,0 +1,787 @@
+/**
+ * Agenda.css - Estilização Modular da Agenda do Painel (Dashboard)
+ *
+ * Conceito Didático:
+ * Centraliza as regras visuais dos componentes da Agenda (Calendário, Categorias,
+ * Próximos Eventos, Modal de Cadastro e Tarefas Pessoais).
+ * Segue as boas práticas de separação de responsabilidades: o JSX cuida da lógica e da estrutura,
+ * enquanto o CSS externo cuida do leiaute e da aparência, eliminando estilos inline.
+ */
+
+/* ==========================================================================
+   1. Leiaute Geral da Agenda (Container, Colunas e Responsividade)
+   ========================================================================== */
+
+.agenda-especialista-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  container-name: agenda-page;
+  container-type: inline-size;
+}
+
+.agenda-especialista-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(360px, 1fr) 280px;
+  align-items: stretch;
+  gap: 24px;
+  padding: 24px;
+  border: 1px solid #f1f5f9;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+/* ==========================================================================
+   2. Calendário Mensal e Navegação de Datas
+   ========================================================================== */
+
+.agenda-especialista-calendar {
+  min-width: 0;
+  padding: 0 24px;
+  border-right: 1px solid #f1f5f9;
+  border-left: 1px solid #f1f5f9;
+  container-name: agenda-calendar;
+  container-type: inline-size;
+}
+
+.agenda-calendar-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 58px;
+  margin-bottom: 20px;
+}
+
+.agenda-calendar-month {
+  display: contents;
+}
+
+.agenda-calendar-month-title {
+  display: flex;
+  grid-column: 1;
+  align-items: center;
+  min-width: 0;
+  width: auto;
+  min-height: 58px;
+  margin: 0;
+  color: #1e3a8a;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.agenda-calendar-month-controls {
+  display: flex;
+  grid-column: 2;
+  justify-content: center;
+  gap: 4px;
+}
+
+.agenda-calendar-month-controls button {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #fdf2f8;
+  color: #e6007e;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  transition: opacity 0.2s ease;
+}
+
+.agenda-calendar-month-controls button:hover {
+  opacity: 0.85;
+}
+
+.agenda-calendar-today {
+  grid-column: 3;
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border: 1px solid #e6007e;
+  border-radius: 20px;
+  background: transparent;
+  color: #e6007e;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.agenda-calendar-today:hover {
+  background: #e6007e;
+  color: #ffffff;
+}
+
+/* Cabeçalho dos Dias da Semana */
+.agenda-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.agenda-calendar-weekday-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+/* Grade de Células de Dias */
+.agenda-calendar-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 12px;
+  text-align: center;
+}
+
+.agenda-day-button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.agenda-day-number {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  background: transparent;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 400;
+  transition: all 0.2s ease;
+}
+
+.agenda-day-number.is-current-month {
+  font-weight: 600;
+}
+
+.agenda-day-number.is-other-month {
+  color: #cbd5e1;
+}
+
+.agenda-day-number.is-selected {
+  border-radius: 8px;
+  background: #e6007e;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Indicadores de Eventos e Lembretes (Bolinhas Coloridas) */
+.agenda-day-dots {
+  display: flex;
+  gap: 2px;
+  position: absolute;
+  bottom: 0;
+}
+
+.agenda-day-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.agenda-day-dot-task {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #16a34a;
+}
+
+/* Informações do Dia Selecionado */
+.agenda-selected-date-info {
+  color: #64748b;
+  font-size: 12px;
+  text-align: center;
+  margin: 14px 0 0;
+}
+
+.agenda-selected-date-label {
+  color: #1e3a8a;
+}
+
+.agenda-selected-date-relative {
+  display: block;
+  margin-top: 3px;
+  color: #e6007e;
+  font-weight: 700;
+}
+
+/* Formulário de Lembretes Pessoais */
+.agenda-task-form {
+  margin-top: 12px;
+  display: flex;
+  gap: 6px;
+}
+
+.agenda-task-input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 7px 8px;
+  font-size: 11px;
+}
+
+.agenda-task-btn {
+  border: 0;
+  border-radius: 8px;
+  background: #16a34a;
+  color: #ffffff;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.agenda-task-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agenda-task-list-box {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 11px;
+}
+
+.agenda-task-item {
+  margin-top: 4px;
+}
+
+.agenda-empty-events-msg {
+  color: #64748b;
+  font-size: 12px;
+  text-align: center;
+  margin: 18px 0 0;
+}
+
+/* ==========================================================================
+   3. Coluna de Categorias
+   ========================================================================== */
+
+.agenda-categories-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.agenda-categories-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.agenda-categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.agenda-category-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.agenda-category-item.is-inactive {
+  opacity: 0.55;
+}
+
+.agenda-category-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agenda-category-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.agenda-category-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.agenda-category-name {
+  display: block;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.agenda-category-desc {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.agenda-category-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.agenda-clear-filters-btn {
+  margin-top: 10px;
+  background: none;
+  border: none;
+  color: #e6007e;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+}
+
+.agenda-clear-filters-btn:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   4. Coluna de Próximos Eventos
+   ========================================================================== */
+
+.agenda-especialista-events {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  contain: size;
+}
+
+.agenda-especialista-events-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.agenda-events-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin: 0;
+}
+
+.agenda-events-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agenda-events-toggle-btn {
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  color: #e6007e;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0;
+}
+
+.agenda-events-toggle-btn:hover {
+  text-decoration: underline;
+}
+
+.agenda-btn-novo-evento {
+  border: 0;
+  border-radius: 20px;
+  background: #e6007e;
+  color: #ffffff;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
+}
+
+.agenda-btn-novo-evento:hover {
+  opacity: 0.9;
+}
+
+.agenda-especialista-event-list {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.agenda-events-status-msg {
+  color: #64748b;
+  font-size: 12px;
+  margin: 0;
+}
+
+.agenda-events-error-msg {
+  color: #b91c1c;
+  font-size: 12px;
+  margin: 0;
+}
+
+.agenda-events-empty-msg {
+  color: #64748b;
+  font-size: 12px;
+  margin: 0;
+}
+
+/* Card do Evento */
+.agenda-event-card {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 6px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.agenda-event-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.agenda-event-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.agenda-event-details {
+  min-width: 0;
+}
+
+.agenda-event-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.agenda-event-badge {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.agenda-event-desc {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.agenda-event-meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.agenda-event-btn-group {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.agenda-event-btn-edit {
+  border: 0;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: background-color 0.2s ease;
+}
+
+.agenda-event-btn-edit:hover {
+  background: #e2e8f0;
+}
+
+.agenda-event-btn-delete {
+  border: 0;
+  border-radius: 6px;
+  background: #fff1f2;
+  color: #be123c;
+  padding: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: background-color 0.2s ease;
+}
+
+.agenda-event-btn-delete:hover {
+  background: #ffe4e6;
+}
+
+/* ==========================================================================
+   5. Modal de Cadastro/Edição de Evento
+   ========================================================================== */
+
+.agenda-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.agenda-modal-dialog {
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 32px);
+  padding: 24px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.2);
+  overflow-y: auto;
+}
+
+.agenda-modal-title {
+  margin: 0 0 20px;
+  color: #1e3a8a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.agenda-modal-error {
+  margin: 0 0 14px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.agenda-modal-form {
+  display: grid;
+  gap: 14px;
+}
+
+.agenda-form-field {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.agenda-form-input,
+.agenda-form-select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 14px;
+}
+
+.agenda-form-input:focus,
+.agenda-form-select:focus,
+.agenda-form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.agenda-form-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.agenda-form-row-2col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.agenda-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.agenda-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.agenda-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.agenda-modal-btn-cancel {
+  padding: 9px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.agenda-modal-btn-cancel:hover {
+  background: #f8fafc;
+}
+
+.agenda-modal-btn-submit {
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #e6007e;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.agenda-modal-btn-submit:hover {
+  opacity: 0.9;
+}
+
+.agenda-modal-btn-cancel:disabled,
+.agenda-modal-btn-submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+/* ==========================================================================
+   6. Responsividade (Container Queries)
+   ========================================================================== */
+
+@container agenda-page (max-width: 1100px) {
+  .agenda-especialista-layout {
+    grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.2fr) minmax(210px, 0.9fr);
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .agenda-especialista-calendar {
+    padding: 0 16px;
+  }
+}
+
+@container agenda-calendar (max-width: 420px) {
+  .agenda-calendar-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(58px, auto) auto;
+  }
+
+  .agenda-calendar-month-title {
+    grid-row: 1;
+  }
+
+  .agenda-calendar-month-controls {
+    grid-row: 1;
+  }
+
+  .agenda-calendar-today {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: end;
+  }
+}
+
+@container agenda-page (max-width: 760px) {
+  .agenda-especialista-page {
+    padding: 12px;
+  }
+
+  .agenda-especialista-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 16px;
+  }
+
+  .agenda-especialista-calendar {
+    padding: 20px 0;
+    border: 0;
+    border-top: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .agenda-especialista-events {
+    height: auto;
+    contain: none;
+  }
+
+  .agenda-especialista-event-list {
+    flex: 0 1 auto;
+    overflow: visible;
+  }
+}

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\Evento;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -161,4 +162,32 @@ test('alterar ou excluir o evento de aniversario no calendario sincroniza o perf
 
     // A data de nascimento no perfil deve ficar null
     expect($user->fresh()->data_nascimento)->toBeNull();
+});
+
+test('usuario comum nao pode alterar o proprio nome institucional', function () {
+    $user = User::factory()->create(['name' => 'Ana Souza']);
+
+    Sanctum::actingAs($user);
+
+    $this->putJson("/api/usuarios/{$user->id}", [
+        'name' => 'Nome Trocado',
+        'nickname' => 'Aninha',
+    ])->assertOk();
+
+    // O nome permanece o original; o apelido (campo editável) é atualizado
+    expect($user->fresh()->name)->toBe('Ana Souza')
+        ->and($user->fresh()->nickname)->toBe('Aninha');
+});
+
+test('apelido so aparece para o proprio dono e nao para outros usuarios', function () {
+    $dono = User::factory()->create(['nickname' => 'Apelido Secreto']);
+    $admin = User::factory()->create(['role' => UserRole::ADM]);
+
+    // O dono enxerga o próprio apelido
+    Sanctum::actingAs($dono);
+    $this->getJson('/api/user')->assertOk()->assertJsonPath('nickname', 'Apelido Secreto');
+
+    // Outro usuário (mesmo Adm) recebe o apelido nulo
+    Sanctum::actingAs($admin);
+    $this->getJson("/api/usuarios/{$dono->id}")->assertOk()->assertJsonPath('nickname', null);
 });

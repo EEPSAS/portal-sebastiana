@@ -11,7 +11,7 @@
 import { useYouTubeVideoaulas } from '../../../hooks/biblioteca/useYouTubeVideoaulas';
 import './Biblioteca.css';
 
-const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula, onAdicionarAoPlano }) => {
+const VideoaulasAba = ({ onAdicionarAoPlano }) => {
   const {
     videoBusca,
     setVideoBusca,
@@ -23,33 +23,12 @@ const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula, onAdicionarAoPla
     urlVideoSelecionada,
     videoVerificandoId,
     videoPlayerErro,
+    proximaPaginaToken,
+    carregandoMais,
+    carregarMaisVideoaulas,
     pesquisarVideoaulas,
     selecionarVideoParaAssistir,
   } = useYouTubeVideoaulas();
-
-  const handleAdicionar = () => {
-    if (
-      !videoSelecionado ||
-      !urlVideoSelecionada ||
-      videoPlayerErro ||
-      videoVerificandoId
-    ) {
-      return;
-    }
-
-    onAdicionarVideoaula({
-      id: Date.now(),
-      titulo: videoSelecionado.title,
-      materia: (videoSelecionado.channelTitle || 'YouTube').slice(0, 100),
-      corBadge: 'var(--dashboard-navy)',
-      descricao: videoSelecionado.description.slice(0, 1000),
-      url: urlVideoSelecionada,
-    });
-  };
-
-  const jaAdicionado = videoaulas.some(
-    (video) => video.url === urlVideoSelecionada
-  );
 
   return (
     <div className="videoaulas">
@@ -198,42 +177,22 @@ const VideoaulasAba = ({ videoaulas = [], onAdicionarVideoaula, onAdicionarAoPla
               </article>
             ))}
           </div>
+
+          {/* Botão de paginação oficial consumindo o nextPageToken da YouTube Data API */}
+          {proximaPaginaToken && (
+            <div className="text-center mt-4">
+              <button
+                type="button"
+                className="btn btn-outline-primary btn-sm px-4 rounded-pill fw-semibold"
+                onClick={carregarMaisVideoaulas}
+                disabled={carregandoMais}
+              >
+                {carregandoMais ? "Carregando mais videoaulas..." : "Carregar mais vídeos"}
+              </button>
+            </div>
+          )}
         </section>
       )}
-
-      {/* Barra de Ação de Adicionar */}
-      <div className="videoaulas-add">
-        <div className="videoaulas-add__field">
-          <label
-            htmlFor="videoaulas-url-selecionada"
-            className="form-label small fw-semibold"
-          >
-            URL da videoaula selecionada
-          </label>
-          <input
-            id="videoaulas-url-selecionada"
-            type="url"
-            className="form-control"
-            value={urlVideoSelecionada}
-            placeholder="Clique em Assistir para preencher a URL"
-            readOnly
-          />
-        </div>
-        <button
-          type="button"
-          className="btn btn-primary videoaulas-add__button"
-          onClick={handleAdicionar}
-          disabled={
-            !videoSelecionado ||
-            !urlVideoSelecionada ||
-            Boolean(videoPlayerErro) ||
-            Boolean(videoVerificandoId) ||
-            jaAdicionado
-          }
-        >
-          {jaAdicionado && urlVideoSelecionada ? 'Adicionado' : 'Adicionar'}
-        </button>
-      </div>
 
       {videoSelecionado && (
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mt-2 gap-2">

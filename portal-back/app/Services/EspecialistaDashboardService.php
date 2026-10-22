@@ -33,6 +33,7 @@ class EspecialistaDashboardService
      * @param  string|null  $periodoLetivo  Período dos lançamentos (ex: '1º Trimestre' ou '1º Bimestre')
      * @param  string|null  $dataAula  Data de referência para as faltas (formato Y-m-d)
      * @param  array  $mapeamentosManuais  Mapeamento de homônimos confirmados pelo Especialista [nome_csv => id_usuario|'novo']
+     * @param  string|null  $decisaoDivergencias  Decisão do usuário para notas divergentes ('atualizar' ou 'manter')
      * @return array Resumo com quantidade de registros processados e alertas
      */
     public function processarPlanilhaConsolidada(
@@ -40,7 +41,8 @@ class EspecialistaDashboardService
         UploadedFile|string $arquivo,
         ?string $periodoLetivo = null,
         ?string $dataAula = null,
-        array $mapeamentosManuais = []
+        array $mapeamentosManuais = [],
+        ?string $decisaoDivergencias = null
     ): array {
         // Lê o conteúdo bruto do arquivo
         $conteudo = $arquivo instanceof UploadedFile
@@ -84,18 +86,43 @@ class EspecialistaDashboardService
 
         $data = $dataAula ?: ($dataExtracaoDetectada ?: $dataPadraoPeriodo);
 
-        // Extrai os dados estruturados de notas e faltas por aluno com suporte a desambiguação
-        $dadosExtraidos = $this->extrairNotasEFaltasPorAluno($linhas, $turma, $mapeamentosManuais);
+        // Extrai os dados estruturados de notas e faltas por aluno com suporte a múltiplos períodos e desambiguação
+        $dadosExtraidos = $this->extrairNotasEFaltasPorAluno($linhas, $turma, $mapeamentosManuais, $periodo);
 
         // Se houver estudantes com homônimos que ainda não foram confirmados pelo especialista,
         // interrompemos a persistência para solicitar a confirmação manual sem corromper o banco.
         if (! empty($dadosExtraidos['ambiguidades'])) {
             return [
                 'status' => 'pendente_confirmacao',
-                'message' => 'Identificamos alunos com o mesmo nome na planilha ou escola. Por favor, confirme a correspondência de cada um.',
+                'tipo_pendencia' => 'homonimos',
+                'message' => 'Identificamos alunos com o mesmo nome na turma. Por favor, confirme a correspondência de cada um.',
                 'ambiguidades' => array_values($dadosExtraidos['ambiguidades']),
+                'divergencias' => [],
                 'linhas_lidas' => count($linhas),
                 'alunos_identificados' => count($dadosExtraidos['alunos_dados']),
+                'alunos_ignorados' => $dadosExtraidos['alunos_ignorados'] ?? [],
+                'total_ignorados' => count($dadosExtraidos['alunos_ignorados'] ?? []),
+                'notas_sincronizadas' => 0,
+                'frequencias_sincronizadas' => 0,
+                'alertas' => $dadosExtraidos['alertas'],
+            ];
+        }
+
+        // Detecta possíveis divergências entre notas já cadastradas e novas notas do arquivo
+        $divergencias = $this->detectarDivergenciasNotas($turma, $dadosExtraidos['alunos_dados']);
+
+        // Caso haja divergências e o Especialista ainda não tenha tomado a decisão ('atualizar' ou 'manter'):
+        if (! empty($divergencias) && empty($decisaoDivergencias)) {
+            return [
+                'status' => 'pendente_confirmacao',
+                'tipo_pendencia' => 'divergencias_notas',
+                'message' => 'Identificamos divergências entre as notas do arquivo e as notas já cadastradas para períodos anteriores. Por favor, confirme se deseja atualizar ou manter as notas anteriores.',
+                'ambiguidades' => [],
+                'divergencias' => $divergencias,
+                'linhas_lidas' => count($linhas),
+                'alunos_identificados' => count($dadosExtraidos['alunos_dados']),
+                'alunos_ignorados' => $dadosExtraidos['alunos_ignorados'] ?? [],
+                'total_ignorados' => count($dadosExtraidos['alunos_ignorados'] ?? []),
                 'notas_sincronizadas' => 0,
                 'frequencias_sincronizadas' => 0,
                 'alertas' => $dadosExtraidos['alertas'],
@@ -107,15 +134,32 @@ class EspecialistaDashboardService
             $turma,
             $dadosExtraidos['alunos_dados'],
             $periodo,
-            $data
+            $data,
+            $decisaoDivergencias,
+            $divergencias
         );
+
+        $totalIgnorados = count($dadosExtraidos['alunos_ignorados'] ?? []);
+        $totalIdentificados = count($dadosExtraidos['alunos_dados']);
+
+        // Mensagem didática informando o sucesso da importação e o tratamento aplicado
+        $mensagemSucesso = match ($decisaoDivergencias) {
+            'atualizar' => "Relatório processado: {$totalIdentificados} aluno(s) sincronizado(s). As notas divergentes de períodos anteriores foram atualizadas com sucesso.",
+            'manter' => "Relatório processado: {$totalIdentificados} aluno(s) sincronizado(s). As notas anteriores foram mantidas e apenas os novos períodos foram importados.",
+            default => $totalIgnorados > 0
+                ? "Relatório processado: {$totalIdentificados} aluno(s) sincronizado(s). {$totalIgnorados} aluno(s) ignorado(s) por falta de cadastro institucional (@aluno.mg.gov.br) ou matrícula ativa."
+                : 'Relatório da turma importado e sincronizado com sucesso.',
+        };
 
         return [
             'status' => 'sucesso',
+            'message' => $mensagemSucesso,
             'linhas_lidas' => count($linhas),
             'periodo_aplicado' => $periodo,
             'data_referencia' => $data,
-            'alunos_identificados' => count($dadosExtraidos['alunos_dados']),
+            'alunos_identificados' => $totalIdentificados,
+            'alunos_ignorados' => $dadosExtraidos['alunos_ignorados'] ?? [],
+            'total_ignorados' => $totalIgnorados,
             'notas_sincronizadas' => $resultadoSincronizacao['notas_sincronizadas'],
             'frequencias_sincronizadas' => $resultadoSincronizacao['frequencias_sincronizadas'],
             'alertas' => array_merge($dadosExtraidos['alertas'], $resultadoSincronizacao['alertas']),
@@ -224,20 +268,92 @@ class EspecialistaDashboardService
     }
 
     /**
+     * Normaliza a identificação do período letivo a partir do cabeçalho ou sub-cabeçalho da planilha.
+     * Suporta trimestres (1º, 2º, 3º), bimestres (1º a 4º) e avaliações de recuperação (EIR).
+     */
+    public function normalizarPeriodoLetivo(string $texto, ?string $periodoFallback = null): ?string
+    {
+        $t = Str::upper(trim($texto));
+
+        if (str_contains($t, '1º TRIM') || str_contains($t, '1 TRIM') || str_contains($t, '1ºTRIM')) {
+            return '1º Trimestre';
+        }
+        if (str_contains($t, '2º TRIM') || str_contains($t, '2 TRIM') || str_contains($t, '2ºTRIM')) {
+            return '2º Trimestre';
+        }
+        if (str_contains($t, '3º TRIM') || str_contains($t, '3 TRIM') || str_contains($t, '3ºTRIM')) {
+            return '3º Trimestre';
+        }
+        if (str_contains($t, '1º BIM') || str_contains($t, '1 BIM') || str_contains($t, '1ºBIM')) {
+            return '1º Bimestre';
+        }
+        if (str_contains($t, '2º BIM') || str_contains($t, '2 BIM') || str_contains($t, '2ºBIM')) {
+            return '2º Bimestre';
+        }
+        if (str_contains($t, '3º BIM') || str_contains($t, '3 BIM') || str_contains($t, '3ºBIM')) {
+            return '3º Bimestre';
+        }
+        if (str_contains($t, '4º BIM') || str_contains($t, '4 BIM') || str_contains($t, '4ºBIM')) {
+            return '4º Bimestre';
+        }
+        if ($t === 'EIR' || str_contains($t, 'RECUPERA')) {
+            return 'Recuperação (EIR)';
+        }
+
+        return $periodoFallback;
+    }
+
+    /**
+     * Retorna o valor máximo oficial da avaliação de acordo com o período letivo (padrão SEE-MG / EEPSAS).
+     * 1º Trimestre: 30 pts, 2º Trimestre: 30 pts, 3º Trimestre: 40 pts (Totalizando 100 pontos).
+     */
+    public function obterValorMaximoPeriodo(?string $periodo): float
+    {
+        if (! $periodo) {
+            return 30.00;
+        }
+
+        $periodoNorm = Str::ascii(Str::lower(trim($periodo)));
+
+        if (str_contains($periodoNorm, '1') && str_contains($periodoNorm, 'tri')) {
+            return 30.00;
+        }
+        if (str_contains($periodoNorm, '2') && str_contains($periodoNorm, 'tri')) {
+            return 30.00;
+        }
+        if (str_contains($periodoNorm, '3') && str_contains($periodoNorm, 'tri')) {
+            return 40.00;
+        }
+        if (str_contains($periodoNorm, 'bim')) {
+            return 25.00;
+        }
+        if (str_contains($periodoNorm, 'recupera') || str_contains($periodoNorm, 'eir') || str_contains($periodoNorm, 'final')) {
+            return 100.00;
+        }
+
+        return 30.00;
+    }
+
+    /**
      * Faz a leitura das linhas do diário escolar da EEPSAS, suportando cabeçalhos de disciplinas
-     * em múltiplas linhas (ex: "CONCEITOS AVANÇADOS EM ARQUITETURA DE" + "SISTEMAS") e sub-cabeçalhos
-     * alternados de "1º TRIMESTRE" e "FALTAS".
+     * em múltiplas linhas e sub-cabeçalhos com trimestres alternados (1º, 2º, 3º TRIMESTRE, EIR, FALTAS).
      *
      * @param  array  $linhas  Linhas de texto do CSV
      * @param  Turma  $turma  Turma que está sendo processada
      * @param  array  $mapeamentosManuais  Mapeamentos de homônimos resolvidos pelo especialista [nome_csv => id_usuario|'novo']
+     * @param  string|null  $periodoPadrao  Período padrão caso o arquivo não contenha sub-cabeçalhos de trimestres
      * @return array Dados estruturados contendo 'alunos_dados', 'ambiguidades' e 'alertas'
      */
-    public function extrairNotasEFaltasPorAluno(array $linhas, Turma $turma, array $mapeamentosManuais = []): array
-    {
+    public function extrairNotasEFaltasPorAluno(
+        array $linhas,
+        Turma $turma,
+        array $mapeamentosManuais = [],
+        ?string $periodoPadrao = null
+    ): array {
         $alertas = [];
         $alunosDados = [];
         $ambiguidades = [];
+        $alunosIgnorados = [];
 
         // 1. Detectar o delimitador predominante do arquivo (; ou , ou tab)
         $delimitador = ',';
@@ -301,6 +417,8 @@ class EspecialistaDashboardService
                 // Se possui poucas colunas preenchidas (ex: quebra de título como "SISTEMAS"), agrupa
                 if (count($naoVazias) > 0 && count($naoVazias) <= 8) {
                     $linhasContinuacaoTitulos[] = $colunasTeste;
+                } elseif (count($naoVazias) === 0) {
+                    continue;
                 } else {
                     break;
                 }
@@ -317,13 +435,16 @@ class EspecialistaDashboardService
             }
         }
 
-        $mapaColunas = []; // [indice_coluna => ['tipo' => 'nota'|'falta', 'disciplina_id' => int, 'nome_disciplina' => string]]
+        $mapaColunas = []; // [indice_coluna => ['tipo' => 'nota'|'falta'|'ignorar', 'disciplina_id' => int, ...]]
 
         if ($subCabecalhoIdx !== null) {
             // Formato com sub-cabeçalho oficial DED MG (ex: Linha de Disciplinas e Linha de 1º TRIMESTRE / FALTAS)
             $subCabecalhos = str_getcsv($linhas[$subCabecalhoIdx], $delimitador);
             $disciplinaAtualNome = null;
             $maxCols = max(count($cabecalhos), count($subCabecalhos));
+
+            // Carrega disciplinas existentes para busca resiliente insensível a maiúsculas e acentos
+            $todasDisciplinas = Disciplina::all();
 
             for ($c = 0; $c < $maxCols; $c++) {
                 if ($c === $indiceAluno) {
@@ -340,22 +461,42 @@ class EspecialistaDashboardService
                 }
 
                 $subTexto = Str::upper(trim($subCabecalhos[$c] ?? ''));
+
+                // Desconsidera a coluna TOTAL, pois é um somatório de pontos calculado pela escola
+                if ($subTexto === 'TOTAL' || str_contains($subTexto, 'TOTAL')) {
+                    $mapaColunas[$c] = ['tipo' => 'ignorar'];
+
+                    continue;
+                }
+
                 $isFalta = str_contains($subTexto, 'FALTA') || str_contains($subTexto, 'AUSENCIA');
 
-                // Garante que a disciplina existe no banco e está vinculada à turma
-                $disciplinaModel = Disciplina::firstOrCreate(
-                    ['nome' => $disciplinaAtualNome],
-                    ['carga_horaria_anual' => 80]
-                );
+                // Garante que a disciplina existe no banco (busca insensível a acentos/caixa) e está vinculada à turma
+                $disciplinaModel = $todasDisciplinas->first(function (Disciplina $d) use ($disciplinaAtualNome) {
+                    return Str::ascii(mb_strtolower($d->nome)) === Str::ascii(mb_strtolower($disciplinaAtualNome));
+                });
+
+                if (! $disciplinaModel) {
+                    $disciplinaModel = Disciplina::create([
+                        'nome' => $disciplinaAtualNome,
+                        'carga_horaria_anual' => 80,
+                    ]);
+                    $todasDisciplinas->push($disciplinaModel);
+                }
 
                 if (! $turma->disciplinas()->where('disciplinas.id_disciplina', $disciplinaModel->id_disciplina)->exists()) {
                     $turma->disciplinas()->syncWithoutDetaching([$disciplinaModel->id_disciplina]);
                 }
 
+                $periodoDaColuna = $this->normalizarPeriodoLetivo($subTexto, $periodoPadrao ?: '1º Trimestre');
+                $isRecuperacao = $subTexto === 'EIR' || str_contains($subTexto, 'RECUPERA');
+
                 $mapaColunas[$c] = [
                     'tipo' => $isFalta ? 'falta' : 'nota',
                     'disciplina_id' => $disciplinaModel->id_disciplina,
                     'nome_disciplina' => $disciplinaModel->nome,
+                    'periodo_letivo' => $periodoDaColuna,
+                    'tipo_avaliacao' => $isRecuperacao ? 'Recuperação (EIR)' : 'Diário Consolidado',
                 ];
             }
 
@@ -369,16 +510,28 @@ class EspecialistaDashboardService
                     continue;
                 }
 
+                $nomeUpper = Str::upper(trim($nomeColuna));
+                if ($nomeUpper === 'TOTAL' || str_contains($nomeUpper, 'TOTAL')) {
+                    $mapaColunas[$colIdx] = ['tipo' => 'ignorar'];
+
+                    continue;
+                }
+
                 $nomeNorm = Str::lower(Str::ascii($nomeColuna));
                 $isFalta = str_contains($nomeNorm, 'falta') || str_contains($nomeNorm, 'ausencia');
 
                 foreach ($todasDisciplinas as $disc) {
                     $discNorm = Str::lower(Str::ascii($disc->nome));
                     if (str_contains($nomeNorm, $discNorm) || str_contains($discNorm, $nomeNorm)) {
+                        $periodoDaColuna = $this->normalizarPeriodoLetivo($nomeColuna, $periodoPadrao ?: '1º Trimestre');
+                        $isRecuperacao = str_contains($nomeUpper, 'EIR') || str_contains($nomeUpper, 'RECUPERA');
+
                         $mapaColunas[$colIdx] = [
                             'tipo' => $isFalta ? 'falta' : 'nota',
                             'disciplina_id' => $disc->id_disciplina,
                             'nome_disciplina' => $disc->nome,
+                            'periodo_letivo' => $periodoDaColuna,
+                            'tipo_avaliacao' => $isRecuperacao ? 'Recuperação (EIR)' : 'Diário Consolidado',
                         ];
                         break;
                     }
@@ -408,7 +561,7 @@ class EspecialistaDashboardService
             // 1. Caso o Especialista já tenha resolvido a ambiguidade manualmente pelo modal
             if (isset($mapeamentosManuais[$identificadorAluno])) {
                 $opcaoEscolhida = $mapeamentosManuais[$identificadorAluno];
-                if ($opcaoEscolhida !== 'novo' && $opcaoEscolhida !== 'criar_novo') {
+                if ($opcaoEscolhida !== 'novo' && $opcaoEscolhida !== 'criar_novo' && $opcaoEscolhida !== 'ignorar' && $opcaoEscolhida !== 'nenhum') {
                     $alunoEncontrado = User::find((int) $opcaoEscolhida);
                 }
             } else {
@@ -435,42 +588,54 @@ class EspecialistaDashboardService
                 }
             }
 
-            // 3. Se o aluno não foi encontrado e não era homônimo pendente, ou foi marcado como 'novo':
+            // 3. Regra de Negócio: Se o aluno não foi cadastrado no sistema, não gerar usuário nem notas
             if (! $alunoEncontrado) {
-                $slugNome = Str::slug($identificadorAluno);
-                $emailGerado = "{$slugNome}.{$turma->id_turma}@aluno.mg.gov.br";
-                $emailFinal = $emailGerado;
-                $contador = 1;
-                while (User::where('email', $emailFinal)->exists()) {
-                    $contador++;
-                    $emailFinal = "{$slugNome}.{$turma->id_turma}.{$contador}@aluno.mg.gov.br";
-                }
+                $alertas[] = "Aluno '{$identificadorAluno}' ignorado: não está cadastrado no sistema com e-mail institucional (@aluno.mg.gov.br).";
+                $alunosIgnorados[] = [
+                    'nome_csv' => $identificadorAluno,
+                    'motivo' => 'Não cadastrado no sistema',
+                ];
 
-                $alunoEncontrado = User::create([
-                    'name' => $identificadorAluno,
-                    'email' => $emailFinal,
-                    'password' => bcrypt('12345678'),
-                    'role' => UserRole::ALUNO,
-                    'ativo' => true,
-                ]);
+                continue;
             }
 
-            // Garante a matrícula ativa do aluno na turma
-            Matricula::firstOrCreate(
-                [
-                    'turma_id' => $turma->id_turma,
-                    'usuario_id' => $alunoEncontrado->id,
-                ],
-                [
-                    'data_matricula' => now()->format('Y-m-d'),
-                    'status_matricula' => 'Ativo',
-                ]
-            );
+            // 4. Regra de Negócio: Valida se o aluno possui e-mail institucional oficial (@aluno.mg.gov.br)
+            if (! $alunoEncontrado->hasInstitutionalEmail()) {
+                $alertas[] = "Aluno '{$identificadorAluno}' ignorado: usuário cadastrado ({$alunoEncontrado->email}) não possui e-mail institucional oficial (@aluno.mg.gov.br).";
+                $alunosIgnorados[] = [
+                    'nome_csv' => $identificadorAluno,
+                    'email' => $alunoEncontrado->email,
+                    'motivo' => 'E-mail não institucional',
+                ];
+
+                continue;
+            }
+
+            // 5. Regra de Negócio: O aluno deve possuir matrícula ativa prévia nesta turma
+            $estaMatriculado = $turma->alunos()
+                ->where('users.id', $alunoEncontrado->id)
+                ->wherePivot('status_matricula', 'Ativo')
+                ->exists();
+
+            if (! $estaMatriculado) {
+                $alertas[] = "Aluno '{$identificadorAluno}' ignorado: não possui matrícula ativa na turma '{$turma->nome_identificador}'.";
+                $alunosIgnorados[] = [
+                    'nome_csv' => $identificadorAluno,
+                    'email' => $alunoEncontrado->email,
+                    'motivo' => 'Sem matrícula ativa nesta turma',
+                ];
+
+                continue;
+            }
 
             $notasDoAluno = [];
             $faltasDoAluno = [];
 
             foreach ($mapaColunas as $colIdx => $infoColuna) {
+                if (($infoColuna['tipo'] ?? '') === 'ignorar') {
+                    continue;
+                }
+
                 $valorBruto = trim($colunas[$colIdx] ?? '');
                 if ($valorBruto === '' || $valorBruto === '-') {
                     continue;
@@ -481,6 +646,9 @@ class EspecialistaDashboardService
                 if ($infoColuna['tipo'] === 'nota') {
                     $notasDoAluno[] = [
                         'disciplina_id' => $infoColuna['disciplina_id'],
+                        'nome_disciplina' => $infoColuna['nome_disciplina'] ?? '',
+                        'periodo_letivo' => $infoColuna['periodo_letivo'] ?? ($periodoPadrao ?: '1º Trimestre'),
+                        'tipo_avaliacao' => $infoColuna['tipo_avaliacao'] ?? 'Diário Consolidado',
                         'valor_nota' => $valorNumerico,
                     ];
                 } else {
@@ -503,39 +671,85 @@ class EspecialistaDashboardService
             'alunos_dados' => $alunosDados,
             'ambiguidades' => $ambiguidades,
             'alertas' => $alertas,
+            'alunos_ignorados' => $alunosIgnorados,
         ];
     }
 
     /**
+     * Compara as notas extraídas da planilha com as notas já registradas no banco de dados para a turma.
+     * Identifica divergências quando uma nota de período já cadastrado difere da nota da planilha em mais de 0.01 ponto.
+     *
+     * @param  Turma  $turma  Turma que está sendo processada
+     * @param  array  $alunosDados  Array de alunos com suas respectivas notas
+     * @return array<int, array{usuario_id: int, nome_aluno: string, disciplina_id: int, nome_disciplina: string, periodo_letivo: string, nota_atual: float, nova_nota: float}>
+     */
+    public function detectarDivergenciasNotas(Turma $turma, array $alunosDados): array
+    {
+        $divergencias = [];
+
+        // Carrega em cache as notas existentes da turma para verificação eficiente sem N+1
+        $notasExistentes = Nota::with('disciplina')
+            ->where('turma_id', $turma->id_turma)
+            ->get()
+            ->groupBy(fn (Nota $n) => "{$n->usuario_id}_{$n->disciplina_id}_{$n->periodo_letivo}");
+
+        foreach ($alunosDados as $alunoItem) {
+            $usuarioId = $alunoItem['usuario_id'];
+            $nomeAluno = $alunoItem['nome_aluno'];
+
+            foreach ($alunoItem['notas'] as $notaItem) {
+                $disciplinaId = $notaItem['disciplina_id'];
+                $periodoLetivo = $notaItem['periodo_letivo'];
+                $novaNota = (float) $notaItem['valor_nota'];
+
+                $chave = "{$usuarioId}_{$disciplinaId}_{$periodoLetivo}";
+                $notaRegistrada = $notasExistentes->get($chave)?->first();
+
+                if ($notaRegistrada !== null) {
+                    $notaAtual = (float) $notaRegistrada->valor_nota;
+
+                    // Se a nota cadastrada for diferente da nota da planilha (diferença > 0.01)
+                    if (abs($notaAtual - $novaNota) > 0.01) {
+                        $divergencias[] = [
+                            'usuario_id' => $usuarioId,
+                            'nome_aluno' => $nomeAluno,
+                            'disciplina_id' => $disciplinaId,
+                            'nome_disciplina' => $notaItem['nome_disciplina'] ?: ($notaRegistrada->disciplina?->nome ?? 'Disciplina'),
+                            'periodo_letivo' => $periodoLetivo,
+                            'nota_atual' => $notaAtual,
+                            'nova_nota' => $novaNota,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $divergencias;
+    }
+
+    /**
      * Efetua a persistência transacional (upsert) dos registros de notas e faltas extraídos.
-     * Ajusta automaticamente a escala de nota máxima (10.0, 30.0 ou 100.0) de acordo com os dados.
+     * Ajusta automaticamente a escala de nota máxima (10.0, 30.0, 35.0 ou 100.0) de acordo com os dados.
+     * Respeita a decisão do Especialista ('atualizar' ou 'manter') para períodos divergentes.
      */
     public function sincronizarRegistrosAcademicos(
         Turma $turma,
         array $dadosAlunos,
         string $periodoLetivo,
-        string $dataAula
+        string $dataAula,
+        ?string $decisaoDivergencias = null,
+        array $divergencias = []
     ): array {
         $notasSincronizadas = 0;
         $frequenciasSincronizadas = 0;
         $alertas = [];
 
-        // Descobre a maior nota informada para determinar a pontuação máxima do período
-        $maiorNotaGeral = 0.0;
-        foreach ($dadosAlunos as $alunoItem) {
-            foreach ($alunoItem['notas'] as $notaItem) {
-                if ($notaItem['valor_nota'] > $maiorNotaGeral) {
-                    $maiorNotaGeral = $notaItem['valor_nota'];
-                }
+        // Mapeia chaves de divergências caso a opção seja manter as notas anteriores
+        $chavesDivergentes = [];
+        if ($decisaoDivergencias === 'manter') {
+            foreach ($divergencias as $div) {
+                $chavesDivergentes["{$div['usuario_id']}_{$div['disciplina_id']}_{$div['periodo_letivo']}"] = true;
             }
-        }
-
-        // Se a maior nota for superior a 10 e até 35 (caso clássico de trimestre em MG), valor_maximo = 30.0
-        $valorMaximoPadrao = 10.00;
-        if ($maiorNotaGeral > 35) {
-            $valorMaximoPadrao = 100.00;
-        } elseif ($maiorNotaGeral > 10) {
-            $valorMaximoPadrao = 30.00;
         }
 
         DB::transaction(function () use (
@@ -543,7 +757,8 @@ class EspecialistaDashboardService
             $dadosAlunos,
             $periodoLetivo,
             $dataAula,
-            $valorMaximoPadrao,
+            $decisaoDivergencias,
+            $chavesDivergentes,
             &$notasSincronizadas,
             &$frequenciasSincronizadas
         ) {
@@ -552,17 +767,28 @@ class EspecialistaDashboardService
 
                 // 1. Sincroniza cada nota da planilha (Update or Create)
                 foreach ($alunoItem['notas'] as $notaItem) {
+                    $periodoDaNota = $notaItem['periodo_letivo'] ?? $periodoLetivo;
+                    $chaveNota = "{$usuarioId}_{$notaItem['disciplina_id']}_{$periodoDaNota}";
+
+                    // Se a decisão for manter, pula notas divergentes de períodos já cadastrados
+                    if ($decisaoDivergencias === 'manter' && isset($chavesDivergentes[$chaveNota])) {
+                        continue;
+                    }
+
+                    // Determina o valor máximo oficial correspondente ao período (1º Tri: 30, 2º Tri: 30, 3º Tri: 40)
+                    $valorMaximoNota = $this->obterValorMaximoPeriodo($periodoDaNota);
+
                     Nota::updateOrCreate(
                         [
                             'turma_id' => $turma->id_turma,
                             'disciplina_id' => $notaItem['disciplina_id'],
                             'usuario_id' => $usuarioId,
-                            'periodo_letivo' => $periodoLetivo,
+                            'periodo_letivo' => $periodoDaNota,
                         ],
                         [
-                            'tipo_avaliacao' => 'Diário Consolidado',
+                            'tipo_avaliacao' => $notaItem['tipo_avaliacao'] ?? 'Diário Consolidado',
                             'valor_nota' => $notaItem['valor_nota'],
-                            'valor_maximo' => $valorMaximoPadrao,
+                            'valor_maximo' => $valorMaximoNota,
                             'data_registro' => $dataAula,
                             'observacoes' => 'Importado via diário escolar consolidado do Especialista',
                         ]

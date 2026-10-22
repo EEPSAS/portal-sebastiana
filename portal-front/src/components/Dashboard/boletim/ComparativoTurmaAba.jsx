@@ -131,13 +131,13 @@ export default function ComparativoTurmaAba({
                       </div>
                       <BarraComparativa
                         valor={registro.notaAluno}
-                        maximo={10}
+                        maximo={registro.valorMaximo || 30}
                         cor="var(--dashboard-pink)"
                         rotulo={`Nota de ${registro.nome} do aluno`}
                       />
                       <BarraComparativa
                         valor={registro.mediaTurma}
-                        maximo={10}
+                        maximo={registro.valorMaximo || 30}
                         cor="var(--dashboard-gray)"
                         rotulo={`Média de ${registro.nome} da turma`}
                       />

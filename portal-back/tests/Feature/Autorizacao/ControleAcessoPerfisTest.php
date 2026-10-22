@@ -14,12 +14,12 @@ beforeEach(function () {
 
 test('administrador possui acesso total e pode gerenciar usuarios, papeis e bloqueios', function () {
     $admin = User::where('email', 'admin@sebastiana.edu.br')->first();
-    $aluno = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
+    $aluno = User::where('email', 'yasmin.teixeira@aluno.mg.gov.br')->first();
 
     // 1. Admin lista usuários
     $this->actingAs($admin, 'sanctum')->getJson('/api/usuarios')
         ->assertOk()
-        ->assertJsonFragment(['email' => 'yasmin.teixeira@sebastiana.edu.br']);
+        ->assertJsonFragment(['email' => 'yasmin.teixeira@aluno.mg.gov.br']);
 
     // 2. Admin cadastra novo usuário como Bibliotecária
     $respNovo = $this->actingAs($admin, 'sanctum')->postJson('/api/usuarios', [
@@ -65,7 +65,7 @@ test('administrador possui acesso total e pode gerenciar usuarios, papeis e bloq
 });
 
 test('usuario nao-administrador e impedido de acessar painel de gestao de usuarios', function () {
-    $aluno = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
+    $aluno = User::where('email', 'yasmin.teixeira@aluno.mg.gov.br')->first();
     $prof = User::where('email', 'carlos.silva@sebastiana.edu.br')->first();
 
     $this->actingAs($aluno, 'sanctum')->getJson('/api/usuarios')
@@ -83,7 +83,7 @@ test('usuario nao-administrador e impedido de acessar painel de gestao de usuari
 
 test('bibliotecaria pode gerenciar livros e emprestimos mas nao tem acesso a gestao academica ou de usuarios', function () {
     $biblio = User::where('email', 'bibliotecaria@sebastiana.edu.br')->first();
-    $aluno = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
+    $aluno = User::where('email', 'yasmin.teixeira@aluno.mg.gov.br')->first();
 
     // 1. Bibliotecária cria um livro
     $respLivro = $this->actingAs($biblio, 'sanctum')->postJson('/api/livros', [
@@ -144,7 +144,7 @@ test('professor pode criar e editar apenas noticias proprias e enviar remessas s
 });
 
 test('aluno tem acesso restrito ao consumo e e bloqueado em operacoes de gestao', function () {
-    $aluno = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
+    $aluno = User::where('email', 'yasmin.teixeira@aluno.mg.gov.br')->first();
     $livro = Livro::factory()->create();
 
     // Aluno visualiza livros públicos
@@ -169,7 +169,7 @@ test('aluno tem acesso restrito ao consumo e e bloqueado em operacoes de gestao'
 });
 
 test('aluno e todos os usuarios podem criar noticias e seus proprios eventos no calendario', function () {
-    $aluno = User::where('email', 'yasmin.teixeira@sebastiana.edu.br')->first();
+    $aluno = User::where('email', 'yasmin.teixeira@aluno.mg.gov.br')->first();
     $profCarlos = User::where('email', 'carlos.silva@sebastiana.edu.br')->first();
 
     // 1. Aluno cria notícia com sucesso

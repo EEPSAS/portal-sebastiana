@@ -1,3 +1,4 @@
+import "./GeralEspecialista.css";
 import { useDashboardEspecialista } from "../../../../hooks/geral/especialista/useDashboardEspecialista.js";
 import GeralSmallCards from "./Cards/EstatisticaDocenteCard.jsx";
 import GeralMediumCards from "./Cards/ResumoTurmasCard.jsx";
@@ -18,9 +19,11 @@ const GeralEspecialista = () => {
   const { user } = useAuth();
   const { cards, medias, frequencias, updates, loading, error } = useDashboardEspecialista();
 
-  // Define o cabeçalho dinamicamente conforme o papel (Professor vs Especialista/Adm)
+  // Define o cabeçalho dinamicamente conforme o papel (Administrador vs Professor vs Especialista)
   const tituloPainel =
-    user?.role === "professor"
+    user?.role === "adm"
+      ? "Painel Geral do Administrador"
+      : user?.role === "professor"
       ? "Painel Geral do Professor"
       : "Painel Geral do Especialista";
 
@@ -58,8 +61,14 @@ const GeralEspecialista = () => {
   }
 
   return (
-    <div>
-      <h1 className="h3 fw-bold mb-4">{tituloPainel}</h1>
+    <div className="geral-especialista-page">
+      {/* Cabeçalho estilizado com título da role e subtítulo descritivo */}
+      <div className="mb-4">
+        <h1 className="h3 fw-bold text-dark mb-1">{tituloPainel}</h1>
+        <p className="text-muted small mb-0">
+          Acompanhe os principais indicadores e o andamento da escola em tempo real.
+        </p>
+      </div>
 
       {/* Linha superior: 4 Small Cards de KPIs institucionais/docentes */}
       <div className="row g-3">

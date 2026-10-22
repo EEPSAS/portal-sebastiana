@@ -27,16 +27,17 @@ class UpdateUsuarioRequest extends FormRequest
         $usuarioId = is_object($usuario) ? $usuario->id : (int) $usuario;
         $isAdm = $this->user() && $this->user()->hasPermissionTo('gerenciar_usuarios');
 
+        // Nome institucional NÃO é editável pelo próprio usuário: sem regra, o validated() o descarta
         $rules = [
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
             'nickname' => ['nullable', 'string', 'max:50'],
             'telefone' => ['nullable', 'string', 'max:25'],
             'data_nascimento' => ['nullable', 'date'],
             'password' => ['nullable', 'string', 'min:8'],
         ];
 
-        // Apenas administradores podem alterar papel, status de ativação e e-mail
+        // Apenas administradores podem alterar nome, papel, status de ativação e e-mail
         if ($isAdm) {
+            $rules['name'] = ['sometimes', 'required', 'string', 'max:255'];
             $rules['email'] = ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($usuarioId)];
             $rules['role_id'] = ['nullable', 'exists:roles,id'];
             $rules['role'] = ['nullable', 'string', 'exists:roles,slug'];

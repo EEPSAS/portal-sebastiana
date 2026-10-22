@@ -86,25 +86,41 @@ export const formatarDuracaoISO8601 = (isoDuration) => {
 
 /**
  * Pesquisa videoaulas no YouTube pelo termo informado e enriquece com duração e URL.
+ * Segue a documentação oficial da YouTube Data API v3 (search: list):
+ * - part: snippet
+ * - type: video (restringe a busca estritamente a vídeos)
+ * - safeSearch: strict (garante ambiente seguro para ambiente escolar)
+ * - videoEmbeddable: true (apenas vídeos que podem ser incorporados/assistidos)
+ * - relevanceLanguage: pt (prioriza conteúdos didáticos em língua portuguesa)
+ * - order: relevance (ordenação oficial padrão do YouTube por relevância)
+ *
  * @param {string} searchTerm Termo de busca digitado pelo usuário.
- * @param {object} options Opções com signal para cancelamento.
- * @returns {Promise<Array>} Lista de vídeos formatados com duration e url.
+ * @param {object} options Opções com signal para cancelamento, pageToken e maxResults.
+ * @returns {Promise<{ videos: Array, nextPageToken: string|null, totalResults: number }>}
  */
-export const searchYouTubeVideos = async (searchTerm, { signal } = {}) => {
-  // Inclui safeSearch=strict e videoEmbeddable=true para garantir conteúdo adequado ao ambiente escolar
-  const payload = await requestYouTubeApi(
-    'search',
-    {
-      part: 'snippet',
-      type: 'video',
-      maxResults: '12',
-      safeSearch: 'strict',
-      videoEmbeddable: 'true',
-      relevanceLanguage: 'pt',
-      q: searchTerm,
-    },
-    signal
-  );
+export const searchYouTubeVideos = async (
+  searchTerm,
+  { signal, pageToken = null, maxResults = 12 } = {}
+) => {
+  // Monta os parâmetros oficiais de busca do YouTube Data API v3 (search: list)
+  const searchParams = {
+    part: 'snippet',
+    type: 'video',
+    maxResults: String(maxResults),
+    safeSearch: 'strict',
+    videoEmbeddable: 'true',
+    relevanceLanguage: 'pt',
+    order: 'relevance',
+    q: searchTerm,
+  };
+
+  if (pageToken) {
+    searchParams.pageToken = pageToken;
+  }
+
+  const payload = await requestYouTubeApi('search', searchParams, signal);
+  const nextPageToken = payload.nextPageToken || null;
+  const totalResults = payload.pageInfo?.totalResults ?? 0;
 
   const videosBasicos = (payload.items ?? [])
     .map((item) => {
@@ -128,7 +144,7 @@ export const searchYouTubeVideos = async (searchTerm, { signal } = {}) => {
     .filter(Boolean);
 
   if (videosBasicos.length === 0) {
-    return [];
+    return { videos: [], nextPageToken: null, totalResults };
   }
 
   // Consulta o endpoint 'videos?part=contentDetails,status' em lote para capturar a duração de cada vídeo
@@ -146,16 +162,24 @@ export const searchYouTubeVideos = async (searchTerm, { signal } = {}) => {
       }
     });
 
-    return videosBasicos.map((video) => ({
-      ...video,
-      duration: mapaDuracoes[video.videoId] || ''
-    }));
+    return {
+      videos: videosBasicos.map((video) => ({
+        ...video,
+        duration: mapaDuracoes[video.videoId] || '',
+      })),
+      nextPageToken,
+      totalResults,
+    };
   } catch (error) {
     if (error.name === 'AbortError') {
       throw error;
     }
     // Se a consulta complementar falhar, retorna os vídeos com os metadados básicos
-    return videosBasicos;
+    return {
+      videos: videosBasicos,
+      nextPageToken,
+      totalResults,
+    };
   }
 };
 
