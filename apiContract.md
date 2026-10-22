@@ -136,6 +136,8 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 |---|---|---|---|---|---|---|
 | `GET` | `/api/livros` | Público / Logado (Leitura para Aluno e Prof) | N/A | `LivroResource` (Coleção) | `bibliotecaService.listarLivros()` | Catálogo da biblioteca (pré-carrega os 5 últimos cadastrados; busca completa via `?q=`) |
 | `GET` | `/api/livros/{id}` | Público / Logado | N/A | `LivroResource` | `bibliotecaService.detalharLivro()` | Detalhes e disponibilidade do livro |
+| `GET` | `/api/emprestimos` | Logado (gestores da biblioteca recebem histórico global; demais usuários recebem apenas os próprios registros) | N/A | `EmprestimoResource` (Coleção) | `bibliotecaService.listarEmprestimos()` | Histórico usado no Geral da Bibliotecária para circulação, devoluções e destaque mensal |
+| `GET` | `/api/dashboard/biblioteca/top-livros` | Bibliotecária / Especialista / Adm | N/A | `TopLivrosEmprestadosResource` (proposto) | `bibliotecaService.obterTopLivrosMaisEmprestados()` (pendente) | **Solicitação à equipe backend:** retornar os três livros mais emprestados de todo o histórico; rota ainda não implementada |
 | `POST` | `/api/livros` | Bibliotecária / Especialista / Adm | `StoreLivroRequest` | `LivroResource` | `bibliotecaService.cadastrarLivro()` | Cadastra exemplar no acervo (`codigo_livro`, `titulo`, `editora`, `autor`, `genero`, `data_lancamento`) |
 | `POST` | `/api/livros/importar-csv` | Bibliotecária / Especialista / Adm | `ImportarLivrosCsvRequest` | `LivroResource` (Coleção) | `bibliotecaService.importarLivrosCSV()` | **Mass Assignment via CSV** (`titulo`, `editora`, `autor`, `genero`, `data_lancamento`, `codigo_livro`) |
 | `PUT` | `/api/livros/{id}` | Bibliotecária / Especialista / Adm | `UpdateLivroRequest` | `LivroResource` | `bibliotecaService.editarLivro()` | Atualiza dados do exemplar |
@@ -143,6 +145,25 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 | `POST` | `/api/emprestimos/solicitar` | Logado | `SolicitarEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.solicitarEmprestimo()` | Solicita retirada de livro |
 | `GET` | `/api/emprestimos/meus-emprestimos` | Logado | N/A | `EmprestimoResource` (Coleção)| `bibliotecaService.meusEmprestimos()` | Consulta histórico pessoal |
 | `PATCH`| `/api/emprestimos/{id}/status` | Bibliotecária / Especialista / Adm | `AtualizarStatusEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.atualizarEmprestimo()` | Aprova, renova ou registra devolução |
+
+#### Solicitação pendente: Top 3 de livros mais emprestados
+O endpoint proposto ainda não está disponível e fica registrado para implementação futura pela equipe backend. Deve contar os empréstimos de todo o histórico, ordenar pela quantidade decrescente e retornar até três livros:
+```json
+{
+  "data": [
+    {
+      "posicao": 1,
+      "livro_id": 1,
+      "titulo": "Dom Casmurro",
+      "autor": "Machado de Assis",
+      "genero": "Literatura Brasileira",
+      "capa_url": "https://exemplo.com/capa.jpg",
+      "total_emprestimos": 52
+    }
+  ]
+}
+```
+Enquanto a rota não estiver pronta, o frontend apresenta dados demonstrativos apenas no Top 3. Os demais indicadores consultam o endpoint existente `/api/emprestimos`.
 
 #### 3.2 Videoaulas (Google YouTube Data API)
 *Consulta de vídeos e videoaulas educativas através de integração frontend com API do Google.*
@@ -290,4 +311,3 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
 }
 ```
 * **Nota sobre Escopo**: Para o `especialista` e `adm`, os dados abrangem todas as turmas ativas da instituição. Para o `professor`, os KPIs e listagens de turmas são calculados dinamicamente com base nas turmas e disciplinas sob sua regência docente (com fallback automático para a visão da escola caso ainda não possua turmas atribuídas).
-
