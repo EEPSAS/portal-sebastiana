@@ -2,10 +2,10 @@
  * DashboardIndexRedirect.jsx - Redirecionador da Rota Raiz do Painel (/dashboard)
  *
  * Papel Didático:
- * Quando um usuário autenticado acessa a URL base `/dashboard`, este componente verifica
- * seu perfil e o redireciona imediatamente para a tela inicial correspondente:
- * - 'bibliotecario' ➔ /dashboard/biblioteca
- * - demais perfis ('aluno', 'professor', 'especialista', 'adm') ➔ /dashboard/geral
+ * Quando um usuário autenticado acessa a URL base `/dashboard`, este componente
+ * consulta a função pura `getRotaInicial(role)` para enviá-lo ao destino padrão seguro.
+ * Com a disponibilização de painéis gerais para todas as roles (incluindo a bibliotecária),
+ * todas as roles convergem diretamente para `/dashboard/geral`.
  *
  * O parâmetro `replace: true` impede que o redirecionamento fique gravado no histórico
  * de navegação do botão 'Voltar' do navegador.
@@ -13,13 +13,11 @@
 
 import { Navigate } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
+import { getRotaInicial } from "../../utils/rolesRoutes";
 
 const DashboardIndexRedirect = () => {
   const { user } = useAuth();
-  const role = user?.role || "aluno";
-  // Suporta identicamente as denominações 'bibliotecaria' e 'bibliotecario'
-  const isBibliotecaria = role === "bibliotecaria" || role === "bibliotecario";
-  const destinoInicial = isBibliotecaria ? "/dashboard/biblioteca" : "/dashboard/geral";
+  const destinoInicial = getRotaInicial(user?.role);
 
   return <Navigate to={destinoInicial} replace />;
 };

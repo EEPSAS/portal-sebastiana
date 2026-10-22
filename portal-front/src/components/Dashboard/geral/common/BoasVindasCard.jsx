@@ -1,13 +1,34 @@
 import { useAuth } from "../../../../hooks/useAuth";
+import { normalizarRole } from "../../../../utils/rolesRoutes";
+
+/**
+ * Mapeamento das mensagens contextuais do subtítulo para cada perfil de usuário.
+ */
+const MENSAGEM_POR_ROLE = {
+  aluno: "Seja bem-vinda ao Portal Sebastiana. Aqui você acompanha seu desempenho, frequência e tem acesso a todos os recursos da escola.",
+  professor: "Bem-vindo(a) ao Portal Sebastiana. Aqui você consulta o rendimento e a frequência das suas turmas.",
+  bibliotecaria: "Bem-vindo(a) ao Portal Sebastiana. Aqui você acompanha o acervo, os empréstimos e as devoluções da biblioteca.",
+  especialista: "Bem-vindo(a) ao Portal Sebastiana. Aqui você acompanha os indicadores pedagógicos e as atualizações da escola.",
+  adm: "Bem-vindo(a) ao Portal Sebastiana. Aqui você tem a visão consolidada de toda a escola.",
+};
 
 /**
  * BoasVindasCard.jsx - Saudação compartilhada pelas visões Gerais.
+ *
+ * Papel Didático:
+ * Renderiza o banner superior de acolhimento com foto/ícone de avatar, saudação
+ * amigável personalizada pelo `user.nickname` (com fallback) e subtítulo contextual
+ * de acordo com o papel acadêmico (role) do usuário.
  */
 export default function BoasVindasCard() {
   const { user } = useAuth();
 
-  // Prioriza o apelido para usar o nome escolhido pelo próprio usuário.
+  // Prioriza o apelido para usar o nome escolhido pelo próprio usuário
   const nomeExibicao = user?.nickname || user?.name || "Maria Eduarda";
+
+  // Identifica a role ativa normalizada para selecionar o texto descritivo correspondente
+  const role = normalizarRole(user?.role);
+  const mensagemSubtitulo = MENSAGEM_POR_ROLE[role] ?? MENSAGEM_POR_ROLE.aluno;
 
   return (
     <div className="card border-0 dashboard-card-shadow rounded-4 p-3 mb-3 bg-white">
@@ -40,8 +61,7 @@ export default function BoasVindasCard() {
             Olá, {nomeExibicao}!
           </h2>
           <p className="text-secondary small mb-0" style={{ maxWidth: "700px" }}>
-            Seja bem-vinda ao Portal Sebastiana. Aqui você acompanha seu desempenho,
-            frequência e tem acesso a todos os recursos da escola.
+            {mensagemSubtitulo}
           </p>
         </div>
       </div>

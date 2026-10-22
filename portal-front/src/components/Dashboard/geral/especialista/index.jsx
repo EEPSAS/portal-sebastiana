@@ -3,29 +3,19 @@ import { useDashboardEspecialista } from "../../../../hooks/geral/especialista/u
 import GeralSmallCards from "./Cards/EstatisticaDocenteCard.jsx";
 import GeralMediumCards from "./Cards/ResumoTurmasCard.jsx";
 import LatestUpdates from "./LatestUpdates/UltimasAtualizacoes.jsx";
-import { useAuth } from "../../../../hooks/useAuth.js";
 
 /**
- * GeralEspecialista (index.jsx) - Painel Analítico do Especialista, Professor e Administrador
+ * GeralEspecialista (index.jsx) - Painel Analítico do Especialista Pedagógico
  *
  * Papel Didático:
- * Consome o hook unificado useDashboardEspecialista() para buscar os dados reais do endpoint
- * GET /api/dashboard/geral em uma única requisição HTTP e distribuí-los como props para:
- * 1. GeralSmallCards (4 KPIs principais da escola/docência);
+ * Consome o hook unificado useDashboardEspecialista() para buscar os dados pedagógicos
+ * reais entregues pelo backend e distribuí-los para os componentes filhos:
+ * 1. GeralSmallCards (4 KPIs principais da gestão pedagógica);
  * 2. GeralMediumCards (Gráficos Recharts de Média de Notas e Taxa de Presença por Turma);
  * 3. LatestUpdates (Feed de últimas atualizações de notícias e notas).
  */
 const GeralEspecialista = () => {
-  const { user } = useAuth();
   const { cards, medias, frequencias, updates, loading, error } = useDashboardEspecialista();
-
-  // Define o cabeçalho dinamicamente conforme o papel (Administrador vs Professor vs Especialista)
-  const tituloPainel =
-    user?.role === "adm"
-      ? "Painel Geral do Administrador"
-      : user?.role === "professor"
-      ? "Painel Geral do Professor"
-      : "Painel Geral do Especialista";
 
   // 1. Estado Assíncrono: Carregando
   if (loading) {
@@ -34,7 +24,7 @@ const GeralEspecialista = () => {
         <div className="spinner-border text-primary" role="status">
           <span className="visually-hidden">Carregando indicadores...</span>
         </div>
-        <p className="text-muted mt-2 small">Carregando estatísticas acadêmicas...</p>
+        <p className="text-muted mt-2 small">Carregando estatísticas pedagógicas...</p>
       </div>
     );
   }
@@ -55,22 +45,22 @@ const GeralEspecialista = () => {
   if (semDadosGlobais) {
     return (
       <div className="card border-0 shadow-sm rounded-3 p-4 text-center text-muted">
-        Nenhum indicador acadêmico disponível no momento.
+        Nenhum indicador pedagógico disponível no momento.
       </div>
     );
   }
 
   return (
     <div className="geral-especialista-page">
-      {/* Cabeçalho estilizado com título da role e subtítulo descritivo */}
+      {/* Cabeçalho estilizado exclusivo da role de Especialista */}
       <div className="mb-4">
-        <h1 className="h3 fw-bold text-dark mb-1">{tituloPainel}</h1>
+        <h1 className="h3 fw-bold text-dark mb-1">Painel Geral do Especialista</h1>
         <p className="text-muted small mb-0">
-          Acompanhe os principais indicadores e o andamento da escola em tempo real.
+          Acompanhe os principais indicadores pedagógicos e o andamento da escola em tempo real.
         </p>
       </div>
 
-      {/* Linha superior: 4 Small Cards de KPIs institucionais/docentes */}
+      {/* Linha superior: 4 Small Cards de KPIs pedagógicos */}
       <div className="row g-3">
         {cards.map((card) => (
           <GeralSmallCards
