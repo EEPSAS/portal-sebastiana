@@ -10,6 +10,7 @@
 import GeralPadrao from "../../components/Dashboard/geral/padrao";
 import GeralEspecialista from "../../components/Dashboard/geral/especialista";
 import GeralBibliotecario from "../../components/Dashboard/geral/bibliotecario";
+import GeralProfessor from "../../components/Dashboard/geral/professor";
 import BoasVindasCard from "../../components/Dashboard/geral/common/BoasVindasCard";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -19,16 +20,14 @@ const GeralPage = () => {
 
   const isBibliotecaria = role === "bibliotecaria" || role === "bibliotecario";
 
-  // Professores, especialistas e administradores compartilham a visão executiva/docente
-  const isVisaoEspecialista =
-    role === "professor" || role === "especialista" || role === "adm";
-
   return (
     <>
       <BoasVindasCard />
       {isBibliotecaria ? (
         <GeralBibliotecario />
-      ) : isVisaoEspecialista ? (
+      ) : role === "professor" ? (
+        <GeralProfessor />
+      ) : role === "especialista" || role === "adm" ? (
         <GeralEspecialista />
       ) : (
         <GeralPadrao />

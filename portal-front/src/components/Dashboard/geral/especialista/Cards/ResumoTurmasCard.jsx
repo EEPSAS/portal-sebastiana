@@ -14,11 +14,10 @@ import {
  * ResumoTurmasCard.jsx - Painel Gráfico de Médias e Frequências por Turma (Recharts)
  *
  * Papel Didático:
- * Padroniza a visualização de indicadores analíticos do Especialista/Professor utilizando
- * a biblioteca oficial Recharts (<BarChart>), substituindo barras de progresso CSS/SVG manuais:
- * 1. Card Esquerdo (8 colunas): Gráfico de barras horizontais de Média de Notas por Turma (escala 0 a 10).
+ * Padroniza a visualização de indicadores analíticos utilizando a biblioteca oficial Recharts (<BarChart>):
+ * 1. Card Esquerdo (8 colunas): Média de Notas por Turma, com escala configurável (0 a 10 por padrão).
  * 2. Card Direito (4 colunas): Gráfico de barras horizontais de Taxa de Presença por Turma (escala 0% a 100%,
- *    com linha de referência na meta mínima legal de 75% da LDB).
+ *    com linha de referência opcional na meta mínima legal de 75% da LDB).
  * Contempla também os 3 estados assíncronos obrigatórios (Carregando, Erro Amigável e Vazio).
  */
 export default function GeralMediumCards({
@@ -26,6 +25,8 @@ export default function GeralMediumCards({
   frequencias = [],
   loading = false,
   error = null,
+  escalaNotaMaxima = 10,
+  mostrarLinhasReferencia = true,
 }) {
   // 1. Estado Assíncrono: Carregando
   if (loading) {
@@ -47,7 +48,7 @@ export default function GeralMediumCards({
     );
   }
 
-  // Prepara os dados de médias (garantindo número de 0 a 10 para o Recharts)
+  // Usa a escala recebida para compartilhar este componente entre os painéis.
   const dadosMedias = medias.map((item) => ({
     id: item.id,
     turma: item.turma,
@@ -76,7 +77,9 @@ export default function GeralMediumCards({
         <div className="card border-0 shadow-sm rounded-3 p-4 h-100">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="fw-bold text-dark mb-0">Média de Notas por Turma</h5>
-            <span className="badge bg-light text-secondary border">Escala 0 a 10</span>
+            <span className="badge bg-light text-secondary border">
+              Escala 0 a {escalaNotaMaxima}
+            </span>
           </div>
 
           {/* 3. Estado Assíncrono: Vazio */}
@@ -93,7 +96,11 @@ export default function GeralMediumCards({
                   margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" domain={[0, 10]} tickCount={6} />
+                  <XAxis
+                    type="number"
+                    domain={[0, escalaNotaMaxima]}
+                    tickCount={6}
+                  />
                   <YAxis
                     type="category"
                     dataKey="turma"
@@ -101,20 +108,35 @@ export default function GeralMediumCards({
                     tick={{ fontSize: 12 }}
                   />
                   <Tooltip
-                    formatter={(value) => [`${Number(value).toFixed(1)} pts`, "Média Geral"]}
+                    formatter={(value) => [
+                      `${Number(value).toFixed(escalaNotaMaxima === 10 ? 1 : 0)} ${
+                        escalaNotaMaxima === 10 ? "pts" : "%"
+                      }`,
+                      "Média Geral",
+                    ]}
                   />
-                  {/* Linha de referência na média escolar de aprovação (6,0) */}
-                  <ReferenceLine
-                    x={6}
-                    stroke="#dc3545"
-                    strokeDasharray="3 3"
-                    label={{ value: "Média 6,0", position: "top", fontSize: 11, fill: "#dc3545" }}
-                  />
+                  {mostrarLinhasReferencia && (
+                    <ReferenceLine
+                      x={escalaNotaMaxima * 0.6}
+                      stroke="#dc3545"
+                      strokeDasharray="3 3"
+                      label={{
+                        value: escalaNotaMaxima === 10 ? "Média 6,0" : "60%",
+                        position: "top",
+                        fontSize: 11,
+                        fill: "#dc3545",
+                      }}
+                    />
+                  )}
                   <Bar dataKey="nota" name="Média da Turma" radius={[0, 6, 6, 0]} barSize={22}>
                     {dadosMedias.map((entry) => (
                       <Cell
                         key={`cell-media-${entry.id}`}
-                        fill={entry.nota >= 6 ? "var(--dashboard-navy)" : "var(--dashboard-pink)"}
+                        fill={
+                          entry.nota >= escalaNotaMaxima * 0.6
+                            ? "var(--dashboard-navy)"
+                            : "var(--dashboard-pink)"
+                        }
                       />
                     ))}
                   </Bar>
@@ -162,12 +184,19 @@ export default function GeralMediumCards({
                     formatter={(value) => [`${value}%`, "Taxa de Presença"]}
                   />
                   {/* Linha de referência no limite mínimo legal de 75% de presença */}
-                  <ReferenceLine
-                    x={75}
-                    stroke="#dc3545"
-                    strokeDasharray="3 3"
-                    label={{ value: "75%", position: "top", fontSize: 11, fill: "#dc3545" }}
-                  />
+                  {mostrarLinhasReferencia && (
+                    <ReferenceLine
+                      x={75}
+                      stroke="#dc3545"
+                      strokeDasharray="3 3"
+                      label={{
+                        value: "75%",
+                        position: "top",
+                        fontSize: 11,
+                        fill: "#dc3545",
+                      }}
+                    />
+                  )}
                   <Bar dataKey="percentual" name="Presença (%)" radius={[0, 6, 6, 0]} barSize={22}>
                     {dadosFrequencias.map((entry) => (
                       <Cell
