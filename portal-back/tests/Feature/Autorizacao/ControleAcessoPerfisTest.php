@@ -127,7 +127,7 @@ test('professor pode criar e editar apenas noticias proprias e enviar remessas s
         'titulo' => 'Notícia do Prof Carlos',
         'descricao' => 'Resumo da notícia do professor',
         'conteudo' => 'Texto explicativo sobre a aula de física experimental.',
-        'categoria' => 'Aulas',
+        'categoria' => 'Pedagógico',
     ]);
     $respNoticia->assertCreated();
     $noticiaId = $respNoticia->json('id');
@@ -177,7 +177,7 @@ test('aluno e todos os usuarios podem criar noticias e seus proprios eventos no 
         'titulo' => 'Notícia do Grêmio Estudantil',
         'descricao' => 'Comunicado sobre o campeonato de xadrez',
         'conteudo' => 'Estão abertas as inscrições para o torneio de xadrez da escola.',
-        'categoria' => 'Estudantil',
+        'categoria' => 'Geral',
     ]);
     $respNoticia->assertCreated()
         ->assertJsonPath('titulo', 'Notícia do Grêmio Estudantil')
