@@ -23,7 +23,14 @@ export default function CirculacaoAtivaCard({
           <h2 className="h6 fw-bold mb-2">Devoluções recentes</h2>
           {devolucoesRecentes.length > 0 ? (
             <div className="table-responsive">
-              <table className="table table-sm align-middle mb-0">
+              <table
+                className="table table-sm align-middle mb-0"
+                style={{
+                  "--bs-table-bg": "var(--dashboard-amber)",
+                  "--bs-table-color": "var(--dashboard-navy)",
+                  "--bs-table-border-color": "rgba(var(--dashboard-navy-rgb), 0.22)",
+                }}
+              >
                 <thead>
                   <tr>
                     <th scope="col">Pessoa</th>

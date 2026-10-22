@@ -10,7 +10,7 @@ export default function BoasVindasCard() {
   const nomeExibicao = user?.nickname || user?.name || "Maria Eduarda";
 
   return (
-    <div className="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
+    <div className="card border-0 dashboard-card-shadow rounded-4 p-3 mb-3 bg-white">
       <div className="d-flex align-items-center gap-3">
         <div
           className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
