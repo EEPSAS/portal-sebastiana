@@ -87,15 +87,15 @@ class UsuarioSeeder extends Seeder
         $alunos = [
             [
                 'name' => 'Yasmin Teixeira',
-                'email' => 'yasmin.teixeira@sebastiana.edu.br',
+                'email' => 'yasmin.teixeira@aluno.mg.gov.br',
             ],
             [
                 'name' => 'Pedro Santos',
-                'email' => 'pedro.santos@sebastiana.edu.br',
+                'email' => 'pedro.santos@aluno.mg.gov.br',
             ],
             [
                 'name' => 'Beatriz Lima',
-                'email' => 'beatriz.lima@sebastiana.edu.br',
+                'email' => 'beatriz.lima@aluno.mg.gov.br',
             ],
         ];
 

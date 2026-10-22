@@ -125,9 +125,9 @@ class AcademicoSeeder extends Seeder
 
         // 4. Matrícula: Exatamente 1 Aluno Canônico por Turma
         $distribuicaoCanonica = [
-            'yasmin.teixeira@sebastiana.edu.br' => $turma1A,
-            'pedro.santos@sebastiana.edu.br' => $turma2B,
-            'beatriz.lima@sebastiana.edu.br' => $turma3A,
+            'yasmin.teixeira@aluno.mg.gov.br' => $turma1A,
+            'pedro.santos@aluno.mg.gov.br' => $turma2B,
+            'beatriz.lima@aluno.mg.gov.br' => $turma3A,
         ];
 
         foreach ($distribuicaoCanonica as $email => $turma) {

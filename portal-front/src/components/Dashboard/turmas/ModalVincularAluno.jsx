@@ -146,10 +146,25 @@ const ModalVincularAluno = ({
         dataMatricula,
       });
 
+      // Remove imediatamente o estudante homologado da fila local de pendências
+      const novosAlunos = alunos.filter(
+        (a) => String(a.id) !== String(usuarioIdSelecionado)
+      );
+      setAlunos(novosAlunos);
+
       if (onSuccess) {
         onSuccess(resposta);
       }
-      onClose();
+
+      if (novosAlunos.length > 0) {
+        // Avança automaticamente para o próximo estudante pendente na lista
+        setUsuarioIdSelecionado(String(novosAlunos[0].id));
+        setTurmaManualId(null);
+      } else {
+        // Encerra o modal caso não haja mais estudantes na fila
+        setUsuarioIdSelecionado("");
+        onClose();
+      }
     } catch (err) {
       setErro(err.message || "Falha ao homologar a matrícula do aluno.");
     } finally {

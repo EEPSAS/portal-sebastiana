@@ -167,15 +167,12 @@ class TurmaController extends Controller
     {
         Gate::authorize('update', $turma);
 
-        // Identificadores de usuários já matriculados como ativos na turma
-        $matriculadosIds = $turma->matriculas()
-            ->where('status_matricula', 'Ativo')
-            ->pluck('usuario_id');
-
-        // Busca usuários com papel aluno e que não estão matriculados nesta turma
+        // Alunos disponíveis para homologação: usuários com papel aluno que ainda não possuem matrícula ativa em nenhuma turma
         $query = User::query()
             ->where('role', UserRole::ALUNO)
-            ->whereNotIn('id', $matriculadosIds);
+            ->whereDoesntHave('matriculas', function ($q) {
+                $q->where('status_matricula', 'Ativo');
+            });
 
         // Suporte opcional a filtro de busca por nome ou e-mail
         if ($request->filled('q')) {
@@ -252,10 +249,16 @@ class TurmaController extends Controller
     {
         Gate::authorize('view', $turma);
 
-        $query = $turma->notas()->with([
-            'aluno:id,name,email',
-            'disciplina:id_disciplina,nome',
-        ]);
+        $query = $turma->notas()
+            ->whereHas('aluno', function ($q) {
+                // Blindagem pedagógica: exibe estritamente notas de alunos cadastrados com e-mail institucional
+                $q->where('role', UserRole::ALUNO)
+                    ->where('email', 'like', '%@aluno.mg.gov.br');
+            })
+            ->with([
+                'aluno:id,name,email',
+                'disciplina:id_disciplina,nome',
+            ]);
 
         // Filtro temporal por período letivo (ex: '1º Trimestre')
         if ($request->filled('periodo_letivo')) {

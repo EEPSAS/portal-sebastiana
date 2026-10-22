@@ -223,7 +223,53 @@ test('aluno consulta o comparativo individual vs turma para grafico de radar', f
     expect($item['nota_aluno'])->toEqual(9.0)
         ->and($item['faltas_aluno'])->toBe(0)
         ->and($item['media_turma'])->toEqual(7.0) // (9+5)/2
-        ->and($item['media_faltas_turma'])->toEqual(2.0); // 4 faltas / 2 alunos
+        ->and($item['media_faltas_turma'])->toEqual(2.0)
+        ->and($item['valor_maximo'])->toEqual(30.0);
+});
+
+test('boletim trimestral respeita valor_maximo de 30 para 1º trimestre e 40 para 3º trimestre com aprovacao em 60%', function () {
+    $turma = Turma::factory()->create();
+    $aluno = User::factory()->create(['role' => UserRole::ALUNO]);
+
+    Matricula::factory()->create(['turma_id' => $turma->id_turma, 'usuario_id' => $aluno->id, 'status_matricula' => 'Ativo']);
+
+    $disciplina = Disciplina::factory()->create(['nome' => 'Geografia']);
+
+    // 1º Trimestre: 18.0 de 30.0 (60% exato -> Aprovado)
+    Nota::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $disciplina->id_disciplina,
+        'usuario_id' => $aluno->id,
+        'periodo_letivo' => '1º Trimestre',
+        'valor_nota' => 18.0,
+        'valor_maximo' => 30.0,
+    ]);
+
+    // 3º Trimestre: 23.0 de 40.0 (< 60% que é 24 -> Abaixo da Média)
+    Nota::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $disciplina->id_disciplina,
+        'usuario_id' => $aluno->id,
+        'periodo_letivo' => '3º Trimestre',
+        'valor_nota' => 23.0,
+        'valor_maximo' => 40.0,
+    ]);
+
+    $respTri1 = $this->actingAs($aluno, 'sanctum')
+        ->getJson("/api/alunos/{$aluno->id}/turmas/{$turma->id_turma}/boletim?trimestre=1");
+
+    $respTri1->assertOk();
+    $itemTri1 = collect($respTri1->json('boletim'))->firstWhere('nome_disciplina', 'Geografia');
+    expect($itemTri1['valor_maximo'])->toEqual(30.0)
+        ->and($itemTri1['status'])->toBe('Aprovado');
+
+    $respTri3 = $this->actingAs($aluno, 'sanctum')
+        ->getJson("/api/alunos/{$aluno->id}/turmas/{$turma->id_turma}/boletim?trimestre=3");
+
+    $respTri3->assertOk();
+    $itemTri3 = collect($respTri3->json('boletim'))->firstWhere('nome_disciplina', 'Geografia');
+    expect($itemTri3['valor_maximo'])->toEqual(40.0)
+        ->and($itemTri3['status'])->toBe('Abaixo da Média');
 });
 
 test('aluno consulta o detalhamento de desempenho individual por componente curricular', function () {

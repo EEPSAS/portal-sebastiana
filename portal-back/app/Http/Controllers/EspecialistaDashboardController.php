@@ -43,23 +43,28 @@ class EspecialistaDashboardController extends Controller
         $dataAula = $request->input('data_aula');
         // Mapeamentos manuais de resolução de homônimos enviados pelo especialista
         $mapeamentosAlunos = $request->input('mapeamentos_alunos', []);
+        // Decisão do Especialista para notas divergentes ('atualizar' ou 'manter')
+        $decisaoDivergencias = $request->input('decisao_divergencias');
 
         $resultado = $this->dashboardService->processarPlanilhaConsolidada(
             $turma,
             $arquivo,
             $periodo,
             $dataAula,
-            $mapeamentosAlunos
+            $mapeamentosAlunos,
+            $decisaoDivergencias
         );
 
         return (new RelatorioImportadoResource([
             'status' => $resultado['status'] ?? 'sucesso',
             'message' => $resultado['message'] ?? 'Relatório da turma importado e sincronizado com sucesso.',
+            'tipo_pendencia' => $resultado['tipo_pendencia'] ?? null,
             'turma' => [
                 'id_turma' => $turma->id_turma,
                 'nome_identificador' => $turma->nome_identificador,
             ],
             'ambiguidades' => $resultado['ambiguidades'] ?? [],
+            'divergencias' => $resultado['divergencias'] ?? [],
             'dados' => $resultado,
         ]))->response()->setStatusCode(200);
     }

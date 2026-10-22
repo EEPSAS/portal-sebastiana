@@ -41,13 +41,15 @@ class ImportarRelatorioTurmaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Aceita tanto o campo 'arquivo' quanto 'planilha' para conveniência do frontend
-            'arquivo' => ['required_without:planilha', 'file', 'max:10240'],
-            'planilha' => ['required_without:arquivo', 'file', 'max:10240'],
+            // Aceita tanto o campo 'arquivo' quanto 'planilha', exigindo estritamente a extensão .csv
+            'arquivo' => ['required_without:planilha', 'file', 'extensions:csv', 'mimes:csv,txt', 'max:10240'],
+            'planilha' => ['required_without:arquivo', 'file', 'extensions:csv', 'mimes:csv,txt', 'max:10240'],
             'periodo_letivo' => ['nullable', 'string', 'max:100'],
             'data_aula' => ['nullable', 'date'],
-            // Mapeamento opcional de confirmação manual em caso de homônimos [nome_csv => id_usuario|'novo']
+            // Mapeamento opcional de confirmação manual em caso de homônimos [nome_csv => id_usuario|'ignorar']
             'mapeamentos_alunos' => ['nullable', 'array'],
+            // Decisão sobre notas divergentes de períodos já cadastrados ('atualizar' ou 'manter')
+            'decisao_divergencias' => ['nullable', 'string', 'in:atualizar,manter'],
         ];
     }
 
@@ -63,6 +65,10 @@ class ImportarRelatorioTurmaRequest extends FormRequest
             'planilha.required_without' => 'Por favor, selecione uma planilha ou arquivo CSV para importar.',
             'arquivo.file' => 'O item enviado deve ser um arquivo válido.',
             'planilha.file' => 'O item enviado deve ser um arquivo válido.',
+            'arquivo.extensions' => 'O formato de arquivo é incompatível com o sistema. Por favor, envie exclusivamente um arquivo no formato CSV.',
+            'planilha.extensions' => 'O formato de arquivo é incompatível com o sistema. Por favor, envie exclusivamente um arquivo no formato CSV.',
+            'arquivo.mimes' => 'O formato de arquivo é incompatível com o sistema. Por favor, envie exclusivamente um arquivo no formato CSV.',
+            'planilha.mimes' => 'O formato de arquivo é incompatível com o sistema. Por favor, envie exclusivamente um arquivo no formato CSV.',
             'arquivo.max' => 'O arquivo não pode exceder 10MB.',
             'planilha.max' => 'O arquivo não pode exceder 10MB.',
             'data_aula.date' => 'A data da aula informada deve ser uma data válida.',

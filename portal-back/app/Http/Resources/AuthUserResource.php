@@ -34,7 +34,7 @@ class AuthUserResource extends JsonResource
             'message' => $this->message,
             'token' => $this->token,
             'token_type' => 'Bearer',
-            'user' => new UsuarioResource($this->resource),
+            'user' => (new UsuarioResource($this->resource))->comApelido(),
         ];
     }
 }

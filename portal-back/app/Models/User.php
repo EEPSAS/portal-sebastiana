@@ -8,6 +8,7 @@ use App\Traits\HasRolesAndPermissions;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -253,5 +254,25 @@ class User extends Authenticatable
     public function planosEstudos(): HasMany
     {
         return $this->hasMany(PlanoEstudo::class, 'user_id', 'id');
+    }
+
+    /**
+     * Verifica se o e-mail do usuário pertence estritamente ao domínio institucional oficial (@aluno.mg.gov.br).
+     */
+    public function hasInstitutionalEmail(): bool
+    {
+        return ! empty($this->email) && str_ends_with(strtolower(trim($this->email)), '@aluno.mg.gov.br');
+    }
+
+    /**
+     * Escopo Eloquent didático para filtrar exclusivamente alunos cadastrados com e-mail institucional oficial.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    public function scopeAlunosInstitucionais($query)
+    {
+        return $query->where('role', UserRole::ALUNO)
+            ->where('email', 'like', '%@aluno.mg.gov.br');
     }
 }

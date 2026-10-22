@@ -16,10 +16,11 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
   const [erro, setErro] = useState("");
   const [resultado, setResultado] = useState(null);
 
-  // Estados pedagógicos para o fluxo de resolução de homônimos (Etapa 2)
-  const [etapa, setEtapa] = useState("upload"); // 'upload' ou 'confirmacao'
+  // Estados pedagógicos para o fluxo de resolução de homônimos e divergências
+  const [etapa, setEtapa] = useState("upload"); // 'upload', 'confirmacao' ou 'divergencias'
   const [ambiguidades, setAmbiguidades] = useState([]);
   const [mapeamentos, setMapeamentos] = useState({});
+  const [divergencias, setDivergencias] = useState([]);
 
   if (!isOpen) return null;
 
@@ -28,6 +29,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     setEtapa("upload");
     setAmbiguidades([]);
     setMapeamentos({});
+    setDivergencias([]);
     setErro("");
     setResultado(null);
     onClose();
@@ -54,6 +56,28 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     URL.revokeObjectURL(url);
   };
 
+  // Manipula e valida a seleção do arquivo, bloqueando formatos não-CSV instantaneamente
+  const handleArquivoChange = (event) => {
+    setErro("");
+    setResultado(null);
+    const file = event.target.files?.[0] || null;
+
+    if (!file) {
+      setArquivo(null);
+      return;
+    }
+
+    // Validação estrita: exige arquivo com extensão .csv
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setErro("O formato de arquivo é incompatível com o sistema. Por favor, envie exclusivamente um arquivo no formato CSV.");
+      setArquivo(null);
+      event.target.value = "";
+      return;
+    }
+
+    setArquivo(file);
+  };
+
   // Envio inicial da planilha (Etapa 1: Upload)
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -62,6 +86,11 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
 
     if (!arquivo) {
       setErro("Por favor, selecione um arquivo CSV para enviar.");
+      return;
+    }
+
+    if (!arquivo.name.toLowerCase().endsWith(".csv")) {
+      setErro("O formato de arquivo é incompatível com o sistema. Por favor, envie exclusivamente um arquivo no formato CSV.");
       return;
     }
 
@@ -78,17 +107,22 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     try {
       const resposta = await importarNotasCSV(turma.id_turma, formData);
 
-      // Se o backend detectou estudantes com mesmo primeiro/último nome pendentes de confirmação
-      if (resposta.status === "pendente_confirmacao" && resposta.ambiguidades?.length > 0) {
-        setAmbiguidades(resposta.ambiguidades);
-        const inicial = {};
-        resposta.ambiguidades.forEach((amb) => {
-          // Pré-seleciona o candidato que já estiver matriculado nesta turma ou o primeiro da lista
-          const matriculado = amb.candidatos?.find((c) => c.ja_matriculado);
-          inicial[amb.nome_csv] = matriculado ? matriculado.id : (amb.candidatos?.[0]?.id || "novo");
-        });
-        setMapeamentos(inicial);
-        setEtapa("confirmacao");
+      // Tratamento de pendências: homônimos prioritários ou divergências de notas
+      if (resposta.status === "pendente_confirmacao") {
+        if (resposta.tipo_pendencia === "divergencias_notas" || (resposta.divergencias?.length > 0 && (!resposta.ambiguidades || resposta.ambiguidades.length === 0))) {
+          setDivergencias(resposta.divergencias || []);
+          setEtapa("divergencias");
+        } else if (resposta.ambiguidades?.length > 0) {
+          setAmbiguidades(resposta.ambiguidades);
+          const inicial = {};
+          resposta.ambiguidades.forEach((amb) => {
+            // Pré-seleciona o candidato que já estiver matriculado nesta turma ou o primeiro da lista
+            const matriculado = amb.candidatos?.find((c) => c.ja_matriculado);
+            inicial[amb.nome_csv] = matriculado ? matriculado.id : (amb.candidatos?.[0]?.id || "ignorar");
+          });
+          setMapeamentos(inicial);
+          setEtapa("confirmacao");
+        }
       } else {
         setResultado(resposta);
         if (onSuccess) {
@@ -102,7 +136,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     }
   };
 
-  // Envio de confirmação manual de homônimos (Etapa 2: Resolução)
+  // Envio de confirmação manual de homônimos (Etapa 2: Resolução de Alunos)
   const handleConfirmarHomonimos = async (event) => {
     event.preventDefault();
     setErro("");
@@ -116,8 +150,48 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     if (dataAula) {
       formData.append("data_aula", dataAula);
     }
-    // Serializa o mapeamento de decisões [nome_csv => id_aluno | 'novo']
+    // Serializa o mapeamento de decisões [nome_csv => id_aluno | 'ignorar']
     formData.append("mapeamentos_alunos", JSON.stringify(mapeamentos));
+
+    setLoading(true);
+    try {
+      const resposta = await importarNotasCSV(turma.id_turma, formData);
+
+      // Se após resolver os homônimos houver divergência de notas em períodos anteriores
+      if (resposta.status === "pendente_confirmacao" && resposta.divergencias?.length > 0) {
+        setDivergencias(resposta.divergencias);
+        setEtapa("divergencias");
+      } else {
+        setResultado(resposta);
+        setEtapa("upload");
+        if (onSuccess) {
+          onSuccess(resposta);
+        }
+      }
+    } catch (err) {
+      setErro(err.message || "Ocorreu um erro ao confirmar a atribuição dos alunos.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Envio da decisão sobre notas divergentes de períodos anteriores (Etapa 3: 'atualizar' ou 'manter')
+  const handleConfirmarDivergencias = async (decisao) => {
+    setErro("");
+    setResultado(null);
+
+    const formData = new FormData();
+    formData.append("arquivo", arquivo);
+    if (periodoLetivo) {
+      formData.append("periodo_letivo", periodoLetivo);
+    }
+    if (dataAula) {
+      formData.append("data_aula", dataAula);
+    }
+    if (Object.keys(mapeamentos).length > 0) {
+      formData.append("mapeamentos_alunos", JSON.stringify(mapeamentos));
+    }
+    formData.append("decisao_divergencias", decisao);
 
     setLoading(true);
     try {
@@ -128,7 +202,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
         onSuccess(resposta);
       }
     } catch (err) {
-      setErro(err.message || "Ocorreu um erro ao confirmar a atribuição dos alunos.");
+      setErro(err.message || "Ocorreu um erro ao aplicar a decisão sobre as notas divergentes.");
     } finally {
       setLoading(false);
     }
@@ -142,7 +216,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     >
       <div
         className="turmas-modal-dialog"
-        style={{ width: "min(680px, 100%)" }}
+        style={{ width: etapa === "divergencias" ? "min(780px, 100%)" : "min(680px, 100%)" }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -179,17 +253,36 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
               </div>
             )}
 
-            {/* Alerta de Sucesso */}
+            {/* Alerta de Sucesso e Resumo */}
             {resultado && (
-              <div className="alert alert-success d-flex flex-column gap-1 mb-3" role="alert">
+              <div className="alert alert-success d-flex flex-column gap-2 mb-3" role="alert">
                 <div className="d-flex align-items-center gap-2 fw-bold">
                   <i className="bi bi-check-circle-fill fs-5"></i>
                   {resultado.message || "Importação concluída com sucesso!"}
                 </div>
                 {resultado.dados && (
-                  <small className="text-muted">
-                    Linhas lidas: {resultado.dados.linhas_lidas} | Alunos identificados: {resultado.dados.alunos_identificados} | Notas sincronizadas: {resultado.dados.notas_sincronizadas}
-                  </small>
+                  <div className="small text-muted border-top pt-2 mt-1">
+                    <div>
+                      Linhas lidas: <strong>{resultado.dados.linhas_lidas}</strong> | Alunos identificados: <strong>{resultado.dados.alunos_identificados}</strong> | Notas sincronizadas: <strong>{resultado.dados.notas_sincronizadas}</strong>
+                    </div>
+                    {resultado.dados.total_ignorados > 0 && (
+                      <div className="text-warning-emphasis fw-semibold mt-1 d-flex align-items-center gap-1">
+                        <i className="bi bi-exclamation-circle-fill text-warning"></i>
+                        <span>{resultado.dados.total_ignorados} aluno(s) ignorado(s) por falta de cadastro institucional (@aluno.mg.gov.br) ou matrícula ativa.</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Alertas detalhados da importação caso existam */}
+                {resultado.dados?.alertas && resultado.dados.alertas.length > 0 && (
+                  <div className="mt-2 p-2 bg-light rounded-2 border small" style={{ maxHeight: "120px", overflowY: "auto" }}>
+                    <div className="fw-semibold text-dark mb-1">Avisos da Importação:</div>
+                    <ul className="mb-0 ps-3 text-muted">
+                      {resultado.dados.alertas.map((alerta, aIdx) => (
+                        <li key={aIdx}>{alerta}</li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </div>
             )}
@@ -223,8 +316,8 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                   id="csv-file-input"
                   type="file"
                   className="form-control"
-                  accept=".csv,text/csv,text/plain"
-                  onChange={(e) => setArquivo(e.target.files?.[0] || null)}
+                  accept=".csv"
+                  onChange={handleArquivoChange}
                   required
                   disabled={loading}
                 />
@@ -369,7 +462,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
 
                     <label
                       className={`form-check-label p-2 rounded-2 border d-flex align-items-center gap-2 ${
-                        mapeamentos[amb.nome_csv] === "novo" ? "bg-white border-primary shadow-sm" : "bg-white-50"
+                        mapeamentos[amb.nome_csv] === "ignorar" ? "bg-white border-warning shadow-sm" : "bg-white-50"
                       }`}
                       style={{ cursor: "pointer" }}
                     >
@@ -377,19 +470,19 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                         type="radio"
                         className="form-check-input mt-0"
                         name={`ambiguidade-${index}`}
-                        value="novo"
-                        checked={mapeamentos[amb.nome_csv] === "novo"}
+                        value="ignorar"
+                        checked={mapeamentos[amb.nome_csv] === "ignorar"}
                         onChange={() =>
                           setMapeamentos((prev) => ({
                             ...prev,
-                            [amb.nome_csv]: "novo",
+                            [amb.nome_csv]: "ignorar",
                           }))
                         }
                         disabled={loading}
                       />
                       <div>
-                        <span className="fw-semibold text-primary">(+) Nenhum destes</span>
-                        <small className="text-muted ms-2">(Cadastrar como novo aluno nesta turma)</small>
+                        <span className="fw-semibold text-secondary">(-) Nenhum destes</span>
+                        <small className="text-muted ms-2">(Ignorar este aluno - não importar notas sem cadastro prévio)</small>
                       </div>
                     </label>
                   </div>
@@ -425,6 +518,102 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
               </button>
             </div>
           </form>
+        )}
+
+        {/* ETAPA 3: Resolução de Divergências em Notas de Períodos Anteriores */}
+        {etapa === "divergencias" && (
+          <div>
+            {erro && (
+              <div className="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
+                <i className="bi bi-exclamation-triangle-fill fs-5"></i>
+                <div>{erro}</div>
+              </div>
+            )}
+
+            <div className="alert alert-warning d-flex align-items-start gap-2 mb-3" role="alert">
+              <i className="bi bi-exclamation-octagon-fill fs-4 flex-shrink-0 text-warning"></i>
+              <div>
+                <strong className="d-block text-dark">Divergência detectada em notas de períodos anteriores</strong>
+                <small className="text-muted">
+                  Identificamos que as notas deste arquivo para períodos já cadastrados diferem dos valores atualmente registrados no banco de dados.
+                  Compare os lançamentos abaixo e confirme como deseja proceder:
+                </small>
+              </div>
+            </div>
+
+            {/* Tabela Comparativa de Divergências */}
+            <div className="table-responsive border rounded-3 mb-4" style={{ maxHeight: "320px", overflowY: "auto" }}>
+              <table className="table table-sm table-hover align-middle mb-0" style={{ fontSize: "0.875rem" }}>
+                <thead className="table-light sticky-top">
+                  <tr>
+                    <th scope="col" className="ps-3">Aluno</th>
+                    <th scope="col">Disciplina</th>
+                    <th scope="col">Período</th>
+                    <th scope="col" className="text-center">Nota Atual</th>
+                    <th scope="col" className="text-center">Nova Nota (Arquivo)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {divergencias.map((div, dIdx) => (
+                    <tr key={dIdx}>
+                      <td className="ps-3 fw-semibold text-dark">{div.nome_aluno}</td>
+                      <td className="text-muted">{div.nome_disciplina}</td>
+                      <td>
+                        <span className="badge bg-secondary-subtle text-secondary border">
+                          {div.periodo_letivo}
+                        </span>
+                      </td>
+                      <td className="text-center">
+                        <span className="badge bg-light text-danger border border-danger-subtle px-2 py-1">
+                          {Number(div.nota_atual).toFixed(2).replace(".", ",")}
+                        </span>
+                      </td>
+                      <td className="text-center">
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold">
+                          {Number(div.nova_nota).toFixed(2).replace(".", ",")}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Ações de Decisão Global */}
+            <div className="d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center gap-2 pt-3 border-top">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                onClick={() => setEtapa("upload")}
+                disabled={loading}
+              >
+                <i className="bi bi-arrow-left me-1"></i> Voltar ao arquivo
+              </button>
+
+              <div className="d-flex flex-column flex-sm-row gap-2">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-primary rounded-pill px-3 d-flex align-items-center justify-content-center gap-1"
+                  onClick={() => handleConfirmarDivergencias("manter")}
+                  disabled={loading}
+                  title="Preserva as notas anteriores e adiciona apenas novos trimestres"
+                >
+                  <i className="bi bi-shield-check"></i>
+                  <span>Manter Anteriores e Importar Novos</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm turmas-btn-primario rounded-pill px-3 d-flex align-items-center justify-content-center gap-1"
+                  onClick={() => handleConfirmarDivergencias("atualizar")}
+                  disabled={loading}
+                  title="Sobrescreve as notas anteriores com as novas notas do arquivo"
+                >
+                  <i className="bi bi-arrow-repeat"></i>
+                  <span>Atualizar Notas Anteriores</span>
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

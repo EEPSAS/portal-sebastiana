@@ -13,6 +13,7 @@ use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * Service responsável pela inteligência de dados e regras de negócio
@@ -90,7 +91,8 @@ class AlunoDashboardService
 
             $totalNotas = $queryNotas->count();
             $mediaNota = $queryNotas->avg('valor_nota');
-            $valorMaximo = (float) ($queryNotas->max('valor_maximo') ?: 10.0);
+            $valorMaximoPadrao = $this->obterValorMaximoPeriodo($trimestre);
+            $valorMaximo = (float) ($queryNotas->max('valor_maximo') ?: $valorMaximoPadrao);
 
             $queryFreq = Frequencia::where('turma_id', $turmaId)
                 ->where('disciplina_id', $disciplina->id_disciplina)
@@ -207,7 +209,8 @@ class AlunoDashboardService
 
             $media = $queryNotas->avg('valor_nota');
             $notaObtida = $media !== null ? round((float) $media, 2) : 0.0;
-            $valorMaximo = (float) ($queryNotas->max('valor_maximo') ?: 10.0);
+            $valorMaximoPadrao = $this->obterValorMaximoPeriodo($trimestre);
+            $valorMaximo = (float) ($queryNotas->max('valor_maximo') ?: $valorMaximoPadrao);
 
             $queryFreq = Frequencia::where('turma_id', $turmaId)
                 ->where('disciplina_id', $disciplina->id_disciplina)
@@ -325,6 +328,7 @@ class AlunoDashboardService
                 'faltas_aluno' => $faltasAlunoNum,
                 'media_turma' => $mediaTurmaNum,
                 'media_faltas_turma' => $mediaFaltasTurmaNum,
+                'valor_maximo' => $this->obterValorMaximoPeriodo($trimestre),
             ];
 
             $comparativo[] = $item;
@@ -503,8 +507,9 @@ class AlunoDashboardService
             $classificacaoFrequencia = 'Boa';
         }
 
-        // 2. Média de notas
-        $diffMedia = round($mediaGeral - 6.0, 1);
+        // 2. Média de notas proporcional à pontuação da rede estadual de MG (aprovação em 60%)
+        $notaCorte = $mediaGeral > 40.0 ? 60.0 : ($mediaGeral > 10.0 ? 18.0 : 6.0);
+        $diffMedia = round($mediaGeral - $notaCorte, 1);
         $comparacaoMedia = $diffMedia >= 0
             ? "+{$diffMedia} acima da média"
             : "{$diffMedia} abaixo da média";
@@ -589,6 +594,31 @@ class AlunoDashboardService
         }
 
         return Disciplina::whereIn('id_disciplina', $disciplinasIds)->get()->all();
+    }
+
+    /**
+     * Retorna o valor máximo oficial da avaliação de acordo com o trimestre informado (padrão SEE-MG / EEPSAS).
+     * 1º Trimestre: 30 pts, 2º Trimestre: 30 pts, 3º Trimestre: 40 pts (Totalizando 100 pontos).
+     */
+    public function obterValorMaximoPeriodo(?string $trimestre): float
+    {
+        if (empty($trimestre)) {
+            return 100.00;
+        }
+
+        $trimestreNorm = Str::ascii(Str::lower(trim($trimestre)));
+
+        if ($trimestreNorm === '1' || str_contains($trimestreNorm, '1º') || str_contains($trimestreNorm, '1')) {
+            return 30.00;
+        }
+        if ($trimestreNorm === '2' || str_contains($trimestreNorm, '2º') || str_contains($trimestreNorm, '2')) {
+            return 30.00;
+        }
+        if ($trimestreNorm === '3' || str_contains($trimestreNorm, '3º') || str_contains($trimestreNorm, '3')) {
+            return 40.00;
+        }
+
+        return 30.00;
     }
 
     /**

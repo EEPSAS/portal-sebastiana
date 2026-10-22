@@ -11,6 +11,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class UsuarioResource extends JsonResource
 {
+    // Quando true, o apelido é entregue mesmo sem usuário autenticado na requisição (login/cadastro)
+    protected bool $exibirApelido = false;
+
+    /**
+     * Libera o apelido na resposta. Use apenas quando o recurso representa o próprio usuário logado.
+     */
+    public function comApelido(): static
+    {
+        $this->exibirApelido = true;
+
+        return $this;
+    }
+
     /**
      * Transforma o model User em formato seguro para a API.
      *
@@ -26,7 +39,10 @@ class UsuarioResource extends JsonResource
             // Identificador e dados cadastrais
             'id' => $this->id,
             'name' => $this->name,
-            'nickname' => $this->nickname,
+            // Apelido privado: só o próprio usuário (ou a resposta de login dele) o recebe
+            'nickname' => ($this->exibirApelido || (int) $request->user()?->id === (int) $this->id)
+                ? $this->nickname
+                : null,
             'email' => $this->email,
             'telefone' => $this->telefone,
             // URL resolvida pública do avatar ou URL do Google OAuth
