@@ -126,6 +126,13 @@ test('usuario pode fazer upload e excluir sua foto de perfil', function () {
     expect($avatarPath)->not->toBeNull();
     Storage::disk('public')->assertExists($avatarPath);
 
+    // Garante que o disco public entrega o arquivo físico com status 200
+    $storageResponse = $this->get("/storage/{$avatarPath}");
+    $storageResponse->assertOk();
+
+    // Arquivo inexistente no storage deve retornar 404
+    $this->get('/storage/avatars/inexistente.jpg')->assertNotFound();
+
     $deleteResponse = $this->deleteJson("/api/usuarios/{$user->id}/avatar");
     $deleteResponse->assertOk();
 

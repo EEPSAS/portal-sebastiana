@@ -149,6 +149,9 @@ class AuthController extends Controller
             ->first();
 
         if (! $user) {
+            // Professores recém-chegados entram como 'pendente' até validação do Especialista
+            $statusConfirmacao = $defaultRole === UserRole::PROFESSOR ? 'pendente' : 'confirmado';
+
             $user = User::create([
                 'google_id' => $googleId,
                 'name' => $name ?: 'Usuário Institucional',
@@ -156,6 +159,7 @@ class AuthController extends Controller
                 'avatar' => $picture,
                 'role' => $defaultRole,
                 'ativo' => true,
+                'status_confirmacao' => $statusConfirmacao,
             ]);
         } else {
             // Atualiza os dados sincronizados do Google, preservando o papel já cadastrado.

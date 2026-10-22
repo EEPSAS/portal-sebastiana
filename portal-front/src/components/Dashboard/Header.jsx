@@ -45,6 +45,8 @@ const Header = ({
   const [dropdownAberto, setDropdownAberto] = useState(false);
   const [perfilSelecionado, setPerfilSelecionado] = useState(null);
   const [modalConfirmacaoAberto, setModalConfirmacaoAberto] = useState(false);
+  // Armazena a URL da foto com falha para fallback gracioso declarativo
+  const [urlFotoComErro, setUrlFotoComErro] = useState(null);
 
   // Redireciona obrigatoriamente para a página inicial pública do portal (/)
   const handleLogout = async () => {
@@ -155,12 +157,13 @@ const Header = ({
           </div>
 
           <div className="user-avatar-container">
-            {userPhoto ? (
+            {userPhoto && urlFotoComErro !== userPhoto ? (
               <img
                 src={userPhoto}
                 alt={userName}
                 className="rounded-circle border border-2 border-primary"
                 style={{ width: "42px", height: "42px", objectFit: "cover" }}
+                onError={() => setUrlFotoComErro(userPhoto)}
               />
             ) : (
               <div

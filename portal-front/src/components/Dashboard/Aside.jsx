@@ -11,10 +11,13 @@
  * - O badge colorido do perfil no topo do Aside é visível exclusivamente para o Administrador.
  *   As demais roles acompanham sua identificação diretamente pelo cabeçalho superior (Navbar).
  * - Suporta identicamente as denominações 'bibliotecaria' e 'bibliotecario'.
+ * - Inclui a área de gestão de "Professores" para Especialista e Administrador.
  */
 
+import { useState, useEffect } from "react";
 import { NavLink, Link } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
+import { listarProfessores } from "../../services/professoresService";
 
 /**
  * Matriz declarativa de navegação do Dashboard.
@@ -23,6 +26,7 @@ import { useAuth } from "../../hooks/useAuth";
  * - Boletim: aluno, adm
  * - Biblioteca: aluno, professor, bibliotecaria, bibliotecario, especialista, adm
  * - Turmas: professor, especialista, adm
+ * - Professores: especialista, adm
  * - Agenda: aluno, professor, bibliotecaria, bibliotecario, especialista, adm
  * - Notícias: especialista, adm
  */
@@ -58,6 +62,13 @@ const NAV_ITEMS = [
     path: "/dashboard/turmas",
     icon: "bi-people-fill",
     roles: ["professor", "especialista", "adm"],
+  },
+  {
+    label: "Professores",
+    path: "/dashboard/professores",
+    icon: "bi-person-badge",
+    roles: ["especialista", "adm"],
+    badgeKey: "professoresPendentes",
   },
   {
     label: "Agenda",
@@ -98,7 +109,7 @@ const ROLE_BADGES = {
  * permitindo destacar visualmente qual página o usuário está navegando.
  */
 const getLinkClass = ({ isActive }) =>
-  `nav-link d-flex align-items-center fw-semibold ${
+  `nav-link d-flex align-items-center justify-content-between fw-semibold ${
     isActive ? "active text-white" : "link-dark"
   }`;
 
@@ -106,9 +117,30 @@ const Aside = () => {
   const { user } = useAuth();
   const userRole = user?.role || "aluno";
   const badgeInfo = ROLE_BADGES[userRole] || { label: "Usuário", cor: "bg-secondary" };
-
-  // O badge colorido é exibido no topo do Aside apenas se o usuário for Administrador
   const isAdmin = userRole === "adm" || user?.realRole === "adm";
+  const podeGerenciarProfessores = userRole === "especialista" || userRole === "adm";
+
+  const [pendentesCount, setPendentesCount] = useState(0);
+
+  // Busca contagem de pendências de professores para Especialista e Adm
+  useEffect(() => {
+    if (!podeGerenciarProfessores) return;
+
+    let ativo = true;
+    listarProfessores()
+      .then((res) => {
+        if (ativo && res?.meta?.pendentes_count !== undefined) {
+          setPendentesCount(res.meta.pendentes_count);
+        }
+      })
+      .catch(() => {
+        // Falhas silenciosas para não interromper navegação do menu
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [podeGerenciarProfessores]);
 
   // Filtra apenas os itens de menu permitidos para o perfil ativo
   const itensPermitidos = NAV_ITEMS.filter((item) =>
@@ -140,8 +172,15 @@ const Aside = () => {
         {itensPermitidos.map((item) => (
           <li className="nav-item" key={item.path}>
             <NavLink to={item.path} className={getLinkClass}>
-              <i className={`bi ${item.icon} me-3 fs-5`}></i>
-              <span>{item.label}</span>
+              <div className="d-flex align-items-center">
+                <i className={`bi ${item.icon} me-3 fs-5`}></i>
+                <span>{item.label}</span>
+              </div>
+              {item.badgeKey === "professoresPendentes" && pendentesCount > 0 && (
+                <span className="badge rounded-pill bg-danger ms-2">
+                  {pendentesCount}
+                </span>
+              )}
             </NavLink>
           </li>
         ))}
@@ -153,8 +192,10 @@ const Aside = () => {
       <ul className="nav nav-pills flex-column gap-2 mb-2">
         <li className="nav-item">
           <NavLink to="/dashboard/configuracoes" className={getLinkClass}>
-            <i className="bi bi-gear me-3 fs-5"></i>
-            <span>Configurações</span>
+            <div className="d-flex align-items-center">
+              <i className="bi bi-gear me-3 fs-5"></i>
+              <span>Configurações</span>
+            </div>
           </NavLink>
         </li>
       </ul>
