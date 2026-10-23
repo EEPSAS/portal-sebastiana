@@ -2,6 +2,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,7 +14,11 @@ import {
  * Apresenta cards com indicadores agregados e gráficos interativos via Recharts
  * para acompanhamento da média geral e da frequência escolar por turma.
  */
-const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) => {
+const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false, temaGestao = false }) => {
+  // Cores das barras: tema de gestão (especialista/adm) usa a paleta azul do mockup; demais papéis mantêm a atual
+  const corBarraMedia = temaGestao ? "#6b86d6" : "var(--dashboard-pink)";
+  const corBarraPresenca = temaGestao ? "#1e3d70" : "var(--dashboard-navy)";
+
   // Cálculo direto dos indicadores globais para os cards (sem memoização prematura)
   const totalTurmas = resumoGeral.length;
 
@@ -92,13 +97,16 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
                 <h3 className="fw-bold mb-0 text-dark mt-1">{metricasGlobais.totalTurmas}</h3>
               </div>
               <div
-                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ backgroundColor: "var(--dashboard-pink-soft)", color: "var(--dashboard-pink)", width: "42px", height: "42px" }}
+                className="turma-stat-icon turma-stat-icon--turmas"
               >
                 <i className="bi bi-collection-fill fs-5"></i>
               </div>
             </div>
-            <small className="text-muted mt-2 d-block">Turmas registradas na escola</small>
+            {/* Rodapé do card: descrição + seta (a seta só aparece no tema de gestão) */}
+            <div className="turma-stat-rodape">
+              <small className="text-muted">Turmas registradas na escola</small>
+              <i className="bi bi-arrow-right turma-stat-seta" aria-hidden="true"></i>
+            </div>
           </div>
         </div>
 
@@ -113,13 +121,16 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
                 <h3 className="fw-bold mb-0 text-dark mt-1">{metricasGlobais.totalMatriculados}</h3>
               </div>
               <div
-                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ backgroundColor: "var(--dashboard-navy-soft)", color: "var(--dashboard-navy)", width: "42px", height: "42px" }}
+                className="turma-stat-icon turma-stat-icon--matriculas"
               >
                 <i className="bi bi-people-fill fs-5"></i>
               </div>
             </div>
-            <small className="text-muted mt-2 d-block">Estudantes com vínculo ativo</small>
+            {/* Rodapé do card: descrição + seta (a seta só aparece no tema de gestão) */}
+            <div className="turma-stat-rodape">
+              <small className="text-muted">Estudantes com vínculo ativo</small>
+              <i className="bi bi-arrow-right turma-stat-seta" aria-hidden="true"></i>
+            </div>
           </div>
         </div>
 
@@ -134,13 +145,16 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
                 <h3 className="fw-bold mb-0 text-dark mt-1">{metricasGlobais.mediaGeralGlobal}</h3>
               </div>
               <div
-                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ backgroundColor: "var(--dashboard-amber-soft)", color: "var(--dashboard-amber)", width: "42px", height: "42px" }}
+                className="turma-stat-icon turma-stat-icon--media"
               >
                 <i className="bi bi-award-fill fs-5"></i>
               </div>
             </div>
-            <small className="text-muted mt-2 d-block">Média aritmética consolidada</small>
+            {/* Rodapé do card: descrição + seta (a seta só aparece no tema de gestão) */}
+            <div className="turma-stat-rodape">
+              <small className="text-muted">Média aritmética consolidada</small>
+              <i className="bi bi-arrow-right turma-stat-seta" aria-hidden="true"></i>
+            </div>
           </div>
         </div>
 
@@ -159,13 +173,16 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
                 </h3>
               </div>
               <div
-                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ backgroundColor: "var(--dashboard-navy-soft)", color: "var(--dashboard-navy)", width: "42px", height: "42px" }}
+                className="turma-stat-icon turma-stat-icon--frequencia"
               >
                 <i className="bi bi-person-check-fill fs-5"></i>
               </div>
             </div>
-            <small className="text-muted mt-2 d-block">Taxa média de presença</small>
+            {/* Rodapé do card: descrição + seta (a seta só aparece no tema de gestão) */}
+            <div className="turma-stat-rodape">
+              <small className="text-muted">Taxa média de presença</small>
+              <i className="bi bi-arrow-right turma-stat-seta" aria-hidden="true"></i>
+            </div>
           </div>
         </div>
       </div>
@@ -185,7 +202,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
 
             <div style={{ width: "100%", height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dadosGraficoMedia} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
+                <BarChart data={dadosGraficoMedia} margin={{ top: temaGestao ? 22 : 10, right: 10, left: -20, bottom: 25 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--dashboard-gray-soft)" />
                   <XAxis
                     dataKey="turma"
@@ -200,7 +217,17 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
                     labelStyle={{ color: "var(--dashboard-navy)", fontWeight: "bold" }}
                     contentStyle={{ borderRadius: "8px", border: "1px solid var(--dashboard-gray-border)" }}
                   />
-                  <Bar dataKey="media" fill="var(--dashboard-pink)" radius={[6, 6, 0, 0]} maxBarSize={45} />
+                  <Bar dataKey="media" fill={corBarraMedia} radius={[6, 6, 0, 0]} maxBarSize={temaGestao ? 60 : 45}>
+                    {/* Valor acima de cada barra (somente tema de gestão) */}
+                    {temaGestao && (
+                      <LabelList
+                        dataKey="media"
+                        position="top"
+                        formatter={(v) => Number(v).toFixed(1)}
+                        style={{ fontSize: 11, fontWeight: 700, fill: "var(--dashboard-navy)" }}
+                      />
+                    )}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -220,7 +247,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
 
             <div style={{ width: "100%", height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dadosGraficoPresenca} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
+                <BarChart data={dadosGraficoPresenca} margin={{ top: temaGestao ? 22 : 10, right: 10, left: -20, bottom: 25 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--dashboard-gray-soft)" />
                   <XAxis
                     dataKey="turma"
@@ -229,13 +256,22 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false }) 
                     textAnchor="end"
                     interval={0}
                   />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--dashboard-ink-muted)" }} />
+                  <YAxis domain={[0, 100]} tickFormatter={(v) => temaGestao ? `${v}%` : v} tick={{ fontSize: 11, fill: "var(--dashboard-ink-muted)" }} />
                   <Tooltip
                     formatter={(valor) => [`${valor}%`, "Taxa de Presença"]}
                     labelStyle={{ color: "var(--dashboard-navy)", fontWeight: "bold" }}
                     contentStyle={{ borderRadius: "8px", border: "1px solid var(--dashboard-gray-border)" }}
                   />
-                  <Bar dataKey="frequencia" fill="var(--dashboard-navy)" radius={[6, 6, 0, 0]} maxBarSize={45} />
+                  <Bar dataKey="frequencia" fill={corBarraPresenca} radius={[6, 6, 0, 0]} maxBarSize={temaGestao ? 60 : 45}>
+                    {temaGestao && (
+                      <LabelList
+                        dataKey="frequencia"
+                        position="top"
+                        formatter={(v) => `${v}%`}
+                        style={{ fontSize: 11, fontWeight: 700, fill: "var(--dashboard-navy)" }}
+                      />
+                    )}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>

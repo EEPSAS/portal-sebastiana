@@ -380,7 +380,8 @@ const Turmas = () => {
     turmas.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) || turmas[0] || null;
 
   return (
-    <div className="position-relative">
+    // `turmas-tema-gestao` ativa o novo visual escopado no Turmas.css (somente especialista e adm)
+    <div className={`position-relative ${podeGerenciar ? "turmas-tema-gestao" : ""}`.trim()}>
       {/* Toast Flutuante no padrão da Biblioteca */}
       {notificacao && <div className="turmas-toast">✓ {notificacao}</div>}
 
@@ -410,11 +411,20 @@ const Turmas = () => {
         <header className="mb-4">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
-              <h2 className="fw-bold mb-1 text-primary fs-4">Gestão de Turmas</h2>
+              <h2 className="fw-bold mb-1 text-primary fs-4 turmas-header-titulo">Gestão de Turmas</h2>
               <p className="text-muted mb-0 small">
                 Acompanhamento analítico, enturmação de estudantes e diários escolares consolidados.
               </p>
+              {/* Linha divisória curta: só aparece no tema de gestão (CSS oculta nos demais) */}
+              {podeGerenciar && <span className="turmas-header-divisor" aria-hidden="true" />}
             </div>
+
+            {/* Frase institucional (sem ilustração), exclusiva de especialista e adm */}
+            {podeGerenciar && (
+              <p className="turmas-header-frase mb-0">
+                Cada turma, um futuro em construção.
+              </p>
+            )}
 
             <div className="d-flex align-items-center gap-2">
               <button
@@ -451,6 +461,7 @@ const Turmas = () => {
             resumoGeral={resumoGeral}
             totalMatriculados={matriculas.length}
             loading={loadingGeral}
+            temaGestao={podeGerenciar}
           />
         )}
 

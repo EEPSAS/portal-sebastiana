@@ -378,3 +378,102 @@
     width: 100%;
   }
 }
+
+/* ==========================================================================
+   Tema Gestão (Especialista e Adm) — Escopado em .dashboard-tema-gestao
+   ========================================================================== */
+
+/* Painel central: gradiente azul-claro suave e cantos arredondados */
+.dashboard-tema-gestao .bg-white.rounded-4 {
+  background: linear-gradient(180deg, #eaf2fd 0%, #f4f8fe 100%) !important;
+  border: 1px solid rgba(30, 61, 112, 0.1) !important;
+  box-shadow: 0 8px 28px rgba(var(--dashboard-navy-rgb), 0.06) !important;
+  border-radius: 16px !important;
+}
+
+/* Cabeçalho institucional: tipografia clássica Cormorant Garamond */
+.dashboard-tema-gestao .dashboard-header-titulo {
+  font-family: 'Cormorant Garamond', Georgia, "Times New Roman", serif !important;
+  font-size: clamp(1.9rem, 3.4vw, 2.4rem) !important;
+  font-weight: 700 !important;
+  color: var(--dashboard-navy) !important;
+  letter-spacing: -0.01em;
+}
+
+/* Linha divisória de 48px navy */
+.dashboard-tema-gestao .dashboard-header-divisor {
+  display: block;
+  width: 48px;
+  height: 2px;
+  margin-top: 0.75rem;
+  background-color: var(--dashboard-navy);
+  border-radius: 2px;
+}
+
+/* Barra de abas */
+.dashboard-tema-gestao nav.border-bottom {
+  border-bottom-color: rgba(30, 61, 112, 0.15) !important;
+}
+
+.dashboard-tema-gestao .biblioteca-tab-btn {
+  color: var(--dashboard-ink-muted);
+  font-size: 0.92rem;
+}
+
+.dashboard-tema-gestao .biblioteca-tab-btn:hover {
+  color: var(--dashboard-navy);
+}
+
+.dashboard-tema-gestao .biblioteca-tab-btn.is-active {
+  color: var(--dashboard-navy);
+  border-bottom: 2px solid var(--dashboard-navy);
+  font-weight: 700;
+}
+
+/* Cards do acervo, videoaulas e planos de estudo */
+.dashboard-tema-gestao .card,
+.dashboard-tema-gestao .acervo-livro-card,
+.dashboard-tema-gestao .plano-card {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  border: 1px solid rgba(30, 61, 112, 0.12) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 16px rgba(var(--dashboard-navy-rgb), 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-tema-gestao .card:hover,
+.dashboard-tema-gestao .acervo-livro-card:hover,
+.dashboard-tema-gestao .plano-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(var(--dashboard-navy-rgb), 0.09) !important;
+}
+
+/* Campo de busca da biblioteca */
+.dashboard-tema-gestao .biblioteca-search-input {
+  border-color: rgba(30, 61, 112, 0.2);
+  background-color: rgba(255, 255, 255, 0.85);
+}
+
+.dashboard-tema-gestao .biblioteca-search-input:focus {
+  border-color: var(--dashboard-navy);
+  box-shadow: 0 0 0 3px rgba(var(--dashboard-navy-rgb), 0.12);
+  background-color: #ffffff;
+}
+
+/* Botões de ação principais mantendo o rosa institucional */
+.dashboard-tema-gestao .biblioteca-btn-primario {
+  background-color: var(--dashboard-pink) !important;
+  border-color: var(--dashboard-pink) !important;
+  color: var(--dashboard-white) !important;
+  border-radius: 9999px;
+  font-weight: 700;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.dashboard-tema-gestao .biblioteca-btn-primario:hover {
+  background-color: var(--dashboard-pink) !important;
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(var(--dashboard-pink-rgb), 0.3) !important;
+}
+

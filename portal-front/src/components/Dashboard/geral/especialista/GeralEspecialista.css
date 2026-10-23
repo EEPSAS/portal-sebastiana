@@ -3,15 +3,17 @@
  *
  * Papel Didático:
  * Centraliza os estilos visuais da visão analítica de gestão escolar (GeralEspecialista),
- * garantindo fidelidade ao protótipo de design:
- * - Cartões de KPI limpos com cantos arredondados (16px), elevações suaves e ícones em cores pasteis;
- * - Cartões para os gráficos Recharts com badges arredondados;
- * - Feed de atividades recentes com separadores leves e navegação intuitiva.
+ * garantindo fidelidade estrita ao protótipo de design:
+ * - Título serifado imponente (#0d2346) com sublinhado decorativo azul;
+ * - Cartões de KPI com cantos arredondados (20px), ícones pastéis, valores marcantes e indicadores de tendência;
+ * - Cartões de gráficos Recharts lado a lado (50/50) com badges arredondados;
+ * - Card de atividades recentes com botão 'Ver todas →' e linhas com separadores suaves.
  */
 
 /* Container da página com animação suave de entrada */
 .geral-especialista-page {
   animation: fadeInGeral 250ms ease-in-out;
+  padding: 0.5rem 0.25rem 2rem 0.25rem;
 }
 
 @keyframes fadeInGeral {
@@ -26,27 +28,54 @@
 }
 
 /* ==========================================================================
+   0. Cabeçalho da Página
+   ========================================================================== */
+.geral-header-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.15rem;
+  font-weight: 700;
+  color: #0f2b5c;
+  letter-spacing: -0.02em;
+}
+
+.geral-header-subtitle {
+  color: #4a5d7c;
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.geral-header-line {
+  display: block;
+  width: 50px;
+  height: 3px;
+  background-color: #2b569a;
+  border-radius: 2px;
+  margin-top: 0.6rem;
+}
+
+/* ==========================================================================
    1. Cards de Indicadores Rápidos (KPIs)
    ========================================================================== */
 .geral-kpi-card {
-  background-color: var(--dashboard-white);
-  border: 1px solid rgba(var(--dashboard-gray-rgb), 0.2);
-  border-radius: 16px;
-  padding: 1.25rem 1.25rem 1rem 1.25rem;
+  background-color: #ffffff;
+  border: 1px solid #d9e5f5;
+  border-radius: 20px;
+  padding: 1.35rem 1.25rem 1.15rem 1.25rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
-  min-height: 110px;
+  min-height: 145px;
+  box-shadow: 0 4px 16px rgba(13, 35, 70, 0.03);
 }
 
 .geral-kpi-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0.5rem 1rem rgba(var(--dashboard-navy-rgb), 0.08) !important;
+  box-shadow: 0 8px 24px rgba(13, 35, 70, 0.07);
 }
 
 /* Container do ícone circular do KPI */
 .geral-kpi-icon {
-  width: 52px;
-  height: 52px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -59,77 +88,109 @@
   transform: scale(1.05);
 }
 
-/* Paleta de cores suaves (pastéis) dos ícones de KPI inspiradas na imagem */
+/* Cores pastéis elegantes idênticas à imagem */
 .geral-kpi-icon--alunos {
-  background-color: #fce8ef;
-  color: #d81b60;
+  background-color: #fce7ee;
+  color: #e6396f;
 }
 
 .geral-kpi-icon--notas {
-  background-color: #e8f0fe;
+  background-color: #e3eefd;
   color: #1a73e8;
 }
 
 .geral-kpi-icon--frequencia {
-  background-color: #e6f4ea;
-  color: #137333;
+  background-color: #e2f5ea;
+  color: #169c4f;
 }
 
 .geral-kpi-icon--noticias {
-  background-color: #f3e8fd;
-  color: #7b1fa2;
+  background-color: #f1e7fa;
+  color: #8435d6;
 }
 
 /* Rótulos e valores de KPI */
 .geral-kpi-label {
   font-size: 0.85rem;
-  color: var(--dashboard-ink-muted);
+  color: #4a5d7c;
   font-weight: 500;
   line-height: 1.2;
 }
 
 .geral-kpi-value {
-  font-size: 1.85rem;
+  font-size: 2.1rem;
   font-weight: 700;
-  color: var(--dashboard-navy);
+  color: #0f2b5c;
   line-height: 1.1;
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
 }
 
-/* Seta discreta no canto inferior direito do card */
-.geral-kpi-arrow {
-  color: var(--dashboard-gray);
-  opacity: 0.5;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  margin-top: auto;
-  align-self: flex-end;
+/* Rodapé do KPI com métrica de tendência e seta */
+.geral-kpi-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 0.85rem;
+  padding-top: 0.4rem;
 }
 
-.geral-kpi-card:hover .geral-kpi-arrow {
-  opacity: 1;
-  transform: translateX(3px);
-  color: var(--dashboard-navy);
+.geral-kpi-trend {
+  display: flex;
+  flex-direction: column;
+}
+
+.geral-kpi-trend-stat {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1c3d70;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.geral-kpi-trend-desc {
+  font-size: 0.75rem;
+  color: #7b8ea8;
+  margin-top: 0.1rem;
+}
+
+.geral-kpi-arrow-btn {
+  color: #3b6fb5;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.geral-kpi-card:hover .geral-kpi-arrow-btn {
+  transform: translateX(4px);
+  color: #0f2b5c;
 }
 
 /* ==========================================================================
    2. Cartões de Gráficos (Médias e Frequências por Turma)
    ========================================================================== */
 .geral-chart-card {
-  background-color: var(--dashboard-white);
-  border: 1px solid rgba(var(--dashboard-gray-rgb), 0.2);
-  border-radius: 16px;
+  background-color: #ffffff;
+  border: 1px solid #d9e5f5;
+  border-radius: 20px;
   padding: 1.5rem;
   height: 100%;
-  box-shadow: 0 2px 6px rgba(var(--dashboard-navy-rgb), 0.04);
+  box-shadow: 0 4px 16px rgba(13, 35, 70, 0.03);
+}
+
+.geral-chart-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f2b5c;
 }
 
 .geral-chart-badge {
   font-size: 0.75rem;
   font-weight: 500;
-  background-color: var(--dashboard-gray-soft);
-  color: var(--dashboard-ink-muted);
-  border: 1px solid rgba(var(--dashboard-gray-rgb), 0.3);
-  padding: 0.35rem 0.75rem;
+  background-color: #f0f4fa;
+  color: #4a5d7c;
+  border: 1px solid #d2e0f2;
+  padding: 0.35rem 0.85rem;
   border-radius: 50rem;
 }
 
@@ -137,19 +198,41 @@
    3. Card de Últimas Atualizações
    ========================================================================== */
 .geral-updates-card {
-  background-color: var(--dashboard-white);
-  border: 1px solid rgba(var(--dashboard-gray-rgb), 0.2);
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 6px rgba(var(--dashboard-navy-rgb), 0.04);
+  background-color: #ffffff;
+  border: 1px solid #d9e5f5;
+  border-radius: 20px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 4px 16px rgba(13, 35, 70, 0.03);
+}
+
+.geral-updates-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f2b5c;
+}
+
+.geral-updates-viewall {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #205493;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.geral-updates-viewall:hover {
+  color: #0f2b5c;
+  transform: translateX(2px);
 }
 
 .geral-update-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.85rem 0.5rem;
-  border-bottom: 1px solid rgba(var(--dashboard-gray-rgb), 0.15);
+  padding: 0.95rem 0.25rem;
+  border-bottom: 1px solid #eef3fa;
   transition: background-color 0.15s ease;
   border-radius: 8px;
 }
@@ -159,10 +242,9 @@
 }
 
 .geral-update-item:hover {
-  background-color: var(--dashboard-gray-soft);
+  background-color: #f7fafe;
 }
 
-/* Ícone circular da linha de atualização */
 .geral-update-icon-wrapper {
   width: 36px;
   height: 36px;
@@ -171,30 +253,30 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background-color: #e8f0fe;
+  background-color: #e3eefd;
   color: #1a73e8;
 }
 
 .geral-update-text {
   font-size: 0.9rem;
-  color: var(--dashboard-navy);
+  color: #1c3d70;
   font-weight: 500;
 }
 
 .geral-update-time {
-  font-size: 0.8rem;
-  color: var(--dashboard-gray);
+  font-size: 0.82rem;
+  color: #7b8ea8;
   white-space: nowrap;
 }
 
 .geral-update-chevron {
-  color: var(--dashboard-gray);
-  opacity: 0.6;
+  color: #9cb1ce;
   font-size: 0.85rem;
-  margin-left: 0.75rem;
+  margin-left: 0.85rem;
+  transition: transform 0.15s ease, color 0.15s ease;
 }
 
 .geral-update-item:hover .geral-update-chevron {
-  opacity: 1;
-  color: var(--dashboard-navy);
+  color: #1c3d70;
+  transform: translateX(2px);
 }

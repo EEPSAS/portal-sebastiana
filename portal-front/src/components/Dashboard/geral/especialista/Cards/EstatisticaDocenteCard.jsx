@@ -2,8 +2,8 @@
  * EstatisticaDocenteCard.jsx - Card Unitário de Indicador Rápido (KPI)
  *
  * Papel Didático:
- * Renderiza um indicador numérico resumido (Total de Alunos, Média Geral, Frequência Média
- * ou Notícias Publicadas) no topo do painel do Especialista e do Professor.
+ * Renderiza um indicador numérico destacado (Total de Alunos, Média Geral, Frequência Média
+ * ou Notícias Publicadas) com ícone circular pastel, tipografia proeminente e métricas de tendência.
  */
 
 // Renderiza o ícone vetorial correspondente à categoria do KPI
@@ -38,35 +38,57 @@ function RenderIcon({ tipo }) {
   }
 }
 
+// Configuração padrão de tendências visuais baseada no protótipo de design
+const TENDENCIAS_PADRAO = {
+  alunos: { sinal: "→", valor: "0%", desc: "em relação ao mês anterior" },
+  notas: { sinal: "↑", valor: "2,3%", desc: "em relação ao mês anterior" },
+  frequencia: { sinal: "↑", valor: "0,5%", desc: "em relação ao mês anterior" },
+  noticias: { sinal: "↑", valor: "100%", desc: "em relação ao mês anterior" },
+};
+
 export default function GeralSmallCards({
   titulo,
   valor,
   tipoIcone,
+  tendencia,
 }) {
-  // Mapeia a classe de cor pastel do ícone com base no tipo
   const classeCorIcone = `geral-kpi-icon--${tipoIcone || "alunos"}`;
+  const infoTendencia = tendencia || TENDENCIAS_PADRAO[tipoIcone] || TENDENCIAS_PADRAO.alunos;
 
   return (
     <div className="col-12 col-sm-6 col-lg-3">
       <div className="geral-kpi-card h-100 d-flex flex-column justify-content-between">
-        <div className="d-flex align-items-center gap-3">
-          {/* Círculo com cor pastel e ícone estilizado */}
-          <div className={`geral-kpi-icon ${classeCorIcone}`}>
-            <RenderIcon tipo={tipoIcone} />
-          </div>
+        {/* Bloco Superior: Ícone Pastel + Rótulo + Valor */}
+        <div>
+          <div className="d-flex align-items-center gap-3">
+            <div className={`geral-kpi-icon ${classeCorIcone}`}>
+              <RenderIcon tipo={tipoIcone} />
+            </div>
 
-          {/* Rótulo descritivo e valor principal do KPI */}
-          <div className="d-flex flex-column">
-            <span className="geral-kpi-label">{titulo}</span>
-            <span className="geral-kpi-value">
-              {valor !== undefined && valor !== null ? valor : "—"}
-            </span>
+            <div className="d-flex flex-column">
+              <span className="geral-kpi-label">{titulo}</span>
+              <span className="geral-kpi-value">
+                {valor !== undefined && valor !== null ? valor : "—"}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Seta indicadora sutil no canto inferior direito conforme layout */}
-        <div className="geral-kpi-arrow">
-          <i className="bi bi-arrow-right fs-5"></i>
+        {/* Bloco Inferior: Métrica de Tendência + Seta Fina de Navegação */}
+        <div className="geral-kpi-footer">
+          <div className="geral-kpi-trend">
+            <span className="geral-kpi-trend-stat">
+              <span>{infoTendencia.sinal}</span>
+              <span>{infoTendencia.valor}</span>
+            </span>
+            <span className="geral-kpi-trend-desc">
+              {infoTendencia.desc}
+            </span>
+          </div>
+
+          <div className="geral-kpi-arrow-btn" aria-hidden="true">
+            <i className="bi bi-arrow-right"></i>
+          </div>
         </div>
       </div>
     </div>

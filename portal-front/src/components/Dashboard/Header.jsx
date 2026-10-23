@@ -82,13 +82,37 @@ const Header = ({
 
   return (
     <>
-      <header className="dashboard-header bg-white shadow-sm d-flex align-items-center justify-content-between px-4 py-2 mb-3">
+      <header className="dashboard-header d-flex align-items-center justify-content-between px-4 py-3" style={{ background: "transparent" }}>
         <div className="d-flex align-items-center gap-3">
-          <span className="fs-5 fw-bold text-dark">Painel de Controle</span>
+          {/* Botão de menu/hamburguer sutil */}
+          <button
+            type="button"
+            className="btn btn-link text-dark p-0 d-flex align-items-center text-decoration-none"
+            aria-label="Menu"
+            style={{ fontSize: "1.4rem" }}
+          >
+            <i className="bi bi-list"></i>
+          </button>
+
+          <span className="fs-5 fw-bold text-dark me-2">Painel de Controle</span>
+
+          {/* Barra de Pesquisa Oval como no protótipo */}
+          <div className="d-none d-md-flex align-items-center position-relative" style={{ width: "260px" }}>
+            <i
+              className="bi bi-search position-absolute text-muted"
+              style={{ left: "12px", fontSize: "0.85rem" }}
+            ></i>
+            <input
+              type="text"
+              className="form-control form-control-sm rounded-pill ps-4 bg-white border"
+              placeholder="Buscar no portal..."
+              style={{ fontSize: "0.85rem", borderColor: "#d0ddef" }}
+            />
+          </div>
 
           {/* Menu Suspenso de Alternância de Visão exclusivo para o Administrador */}
           {isRealAdmin && (
-            <div className="position-relative">
+            <div className="position-relative ms-2">
               <button
                 type="button"
                 className="btn btn-sm btn-outline-primary dropdown-toggle d-flex align-items-center gap-2 fw-semibold rounded-pill px-3"
@@ -131,40 +155,66 @@ const Header = ({
           )}
         </div>
 
-        {/* Identificação do Usuário Logado (Lado Direito Fixo) */}
+        {/* Identificação do Usuário Logado, Notificação e Ações */}
         <div className="d-flex align-items-center ms-auto gap-3">
-          <div className="text-end">
-            <span className="fw-bold d-block text-dark lh-sm">{userName}</span>
-            <small className="text-muted d-block text-capitalize">
-              {realRoleLabel}
-            </small>
-          </div>
-
-          <div className="user-avatar-container">
-            {userPhoto ? (
-              <img
-                src={userPhoto}
-                alt={userName}
-                className="rounded-circle border border-2 border-primary"
-                style={{ width: "42px", height: "42px", objectFit: "cover" }}
-              />
-            ) : (
-              <div
-                className="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold border border-2 border-primary-subtle"
-                style={{ width: "42px", height: "42px", fontSize: "1.2rem" }}
-              >
-                <i className="bi bi-person-fill"></i>
-              </div>
-            )}
-          </div>
-
+          {/* Sino de Notificação com Indicador Vermelho */}
           <button
             type="button"
-            className="btn btn-outline-danger btn-sm rounded-pill px-3"
+            className="btn btn-link text-primary position-relative p-1 text-decoration-none"
+            aria-label="Notificações"
+            style={{ fontSize: "1.25rem" }}
+          >
+            <i className="bi bi-bell"></i>
+            <span
+              className="position-absolute bg-danger border border-light rounded-circle"
+              style={{ top: "4px", right: "4px", width: "8px", height: "8px" }}
+            ></span>
+          </button>
+
+          {/* Avatar e Dados do Usuário */}
+          <div className="d-flex align-items-center gap-2">
+            <div className="user-avatar-container">
+              {userPhoto ? (
+                <img
+                  src={userPhoto}
+                  alt={userName}
+                  className="rounded-circle border border-2 border-primary"
+                  style={{ width: "40px", height: "40px", objectFit: "cover" }}
+                />
+              ) : (
+                <div
+                  className="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center fw-bold"
+                  style={{ width: "40px", height: "40px", fontSize: "1.1rem" }}
+                >
+                  <i className="bi bi-person-fill"></i>
+                </div>
+              )}
+            </div>
+
+            <div className="text-start d-none d-sm-block">
+              <span className="fw-bold d-block text-dark lh-sm" style={{ fontSize: "0.9rem" }}>
+                {userName}
+              </span>
+              <small className="text-muted d-block" style={{ fontSize: "0.75rem" }}>
+                {tipoLoginLabel}
+              </small>
+            </div>
+          </div>
+
+          {/* Botão Sair conforme o protótipo (pílula com ícone e texto) */}
+          <button
+            type="button"
+            className="btn btn-sm rounded-pill px-3 d-flex align-items-center gap-1 fw-semibold"
+            style={{
+              borderColor: "#a3c2e6",
+              color: "#1c3d70",
+              backgroundColor: "transparent",
+            }}
             onClick={handleLogout}
             title="Sair do sistema e voltar ao portal público"
           >
-            <i className="bi bi-box-arrow-right me-1"></i> Sair
+            <i className="bi bi-box-arrow-right"></i>
+            <span>Sair</span>
           </button>
         </div>
       </header>

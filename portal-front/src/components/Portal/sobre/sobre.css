@@ -608,7 +608,59 @@
 /* Variação do botão de portfólio para os cards de Liderança */
 .portal-scope .sobre-dev-portfolio-btn--leader {
   align-self: flex-start;
+  margin-top: 0;
+}
+
+/* Linha de ações: Portfólio + ícones sociais lado a lado (quebra de linha em telas estreitas) */
+.portal-scope .sobre-dev-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.portal-scope .sobre-dev-actions .sobre-dev-portfolio-btn {
+  margin-top: 0;
+}
+
+.portal-scope .sobre-dev-actions--leader {
   margin-top: 0.65rem;
+}
+
+.portal-scope .sobre-dev-social {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Botão circular de ícone, com o mesmo visual da pílula de portfólio */
+.portal-scope .sobre-dev-social-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(40, 68, 119, 0.05);
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  text-decoration: none;
+  border: 1px solid rgba(40, 68, 119, 0.12);
+  transition: all var(--portal-transition);
+}
+
+.portal-scope .sobre-dev-social-btn:hover {
+  background: var(--color-pink);
+  color: #ffffff;
+  border-color: var(--color-pink);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(242, 53, 110, 0.25);
+}
+
+.portal-scope .sobre-dev-social-btn:focus-visible {
+  outline: 3px solid rgba(242, 53, 110, 0.45);
+  outline-offset: 2px;
 }
 
 /* Indicadores de Página (Exatamente 2 pontos) */

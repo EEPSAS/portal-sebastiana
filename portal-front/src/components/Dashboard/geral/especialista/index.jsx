@@ -52,12 +52,13 @@ const GeralEspecialista = () => {
 
   return (
     <div className="geral-especialista-page">
-      {/* Cabeçalho estilizado exclusivo da role de Especialista */}
+      {/* Cabeçalho estilizado com tipografia imponente e traço decorativo como na referência */}
       <div className="mb-4">
-        <h1 className="h3 fw-bold text-dark mb-1">Painel Geral do Especialista</h1>
-        <p className="text-muted small mb-0">
-          Acompanhe os principais indicadores pedagógicos e o andamento da escola em tempo real.
+        <h1 className="geral-header-title mb-1">{tituloPainel}</h1>
+        <p className="geral-header-subtitle mb-2">
+          Acompanhe os principais indicadores e o andamento da escola em tempo real.
         </p>
+        <span className="geral-header-line" aria-hidden="true"></span>
       </div>
 
       {/* Linha superior: 4 Small Cards de KPIs pedagógicos */}

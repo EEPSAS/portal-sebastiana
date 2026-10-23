@@ -6,20 +6,17 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
-  Cell,
+  LabelList,
 } from "recharts";
 
 /**
  * ResumoTurmasCard.jsx - Painel Gráfico de Médias e Frequências por Turma (Recharts)
  *
  * Papel Didático:
- * Padroniza a visualização de indicadores analíticos do Especialista/Professor utilizando
- * a biblioteca oficial Recharts (<BarChart>), substituindo barras de progresso CSS/SVG manuais:
- * 1. Card Esquerdo (8 colunas): Gráfico de barras horizontais de Média de Notas por Turma (escala 0 a 10).
- * 2. Card Direito (4 colunas): Gráfico de barras horizontais de Taxa de Presença por Turma (escala 0% a 100%,
- *    com linha de referência na meta mínima legal de 75% da LDB).
- * Contempla também os 3 estados assíncronos obrigatórios (Carregando, Erro Amigável e Vazio).
+ * Renderiza dois gráficos de barras horizontais lado a lado em proporção simétrica (50% / 50%):
+ * 1. Card Esquerdo: Média de Notas por Turma (escala 0 a 10), com barras azul marinho profundo (#164483);
+ * 2. Card Direito: Taxa de Presença (Frequência) por Turma (escala 0% a 100%).
+ * Inclui badges de contextualização no cabeçalho e labels de valor posicionados à direita das barras.
  */
 export default function GeralMediumCards({
   medias = [],
@@ -47,15 +44,18 @@ export default function GeralMediumCards({
     );
   }
 
-  // Prepara os dados de médias (garantindo número de 0 a 10 para o Recharts)
+  // Prepara os dados de médias (arredondado com 1 casa decimal)
   const dadosMedias = medias.map((item) => ({
     id: item.id,
     turma: item.turma,
     nota: item.nota !== null && item.nota !== undefined ? Number(item.nota) : 0,
-    possuiNota: item.nota !== null && item.nota !== undefined,
+    notaFormatada:
+      item.nota !== null && item.nota !== undefined
+        ? Number(item.nota).toFixed(1).replace(".", ",")
+        : "0,0",
   }));
 
-  // Prepara os dados de frequência (garantindo percentual de 0 a 100 para o Recharts)
+  // Prepara os dados de frequência (percentual inteiro)
   const dadosFrequencias = frequencias.map((item) => ({
     id: item.id,
     turma: item.turma,
@@ -63,20 +63,25 @@ export default function GeralMediumCards({
       item.percentual !== null && item.percentual !== undefined
         ? Number(item.percentual)
         : 0,
+    percentualFormatado: `${
+      item.percentual !== null && item.percentual !== undefined
+        ? Math.round(Number(item.percentual))
+        : 0
+    }%`,
   }));
 
-  // Calcula altura dinâmica proporcional ao número de turmas para evitar barras esmagadas
-  const alturaGraficoMedias = Math.max(220, dadosMedias.length * 56);
-  const alturaGraficoFrequencias = Math.max(220, dadosFrequencias.length * 56);
+  // Altura proporcional dinâmica para comportar as barras confortavelmente
+  const alturaGraficoMedias = Math.max(220, dadosMedias.length * 62);
+  const alturaGraficoFrequencias = Math.max(220, dadosFrequencias.length * 62);
 
   return (
-    <div className="row g-3 my-2">
-      {/* Card 1: Média de Notas por Turma com Recharts */}
-      <div className="col-12 col-lg-7">
+    <div className="row g-4 my-2">
+      {/* Card 1: Média de Notas por Turma (col-lg-6 = 50%) */}
+      <div className="col-12 col-lg-6">
         <div className="geral-chart-card">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-              <i className="bi bi-bell text-primary"></i>
+            <h5 className="geral-chart-title mb-0 d-flex align-items-center gap-2">
+              <i className="bi bi-bell text-primary fs-5"></i>
               <span>Média de Notas por Turma</span>
             </h5>
             <span className="geral-chart-badge">Escala 0 a 10</span>
@@ -93,33 +98,42 @@ export default function GeralMediumCards({
                 <BarChart
                   layout="vertical"
                   data={dadosMedias}
-                  margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
+                  margin={{ top: 12, right: 38, left: 10, bottom: 8 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" domain={[0, 10]} tickCount={6} />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e4edf7" />
+                  <XAxis
+                    type="number"
+                    domain={[0, 10]}
+                    tickCount={6}
+                    stroke="#9cb1ce"
+                    tick={{ fontSize: 11, fill: "#4a5d7c" }}
+                  />
                   <YAxis
                     type="category"
                     dataKey="turma"
-                    width={150}
-                    tick={{ fontSize: 12 }}
+                    width={140}
+                    stroke="#9cb1ce"
+                    tick={{ fontSize: 11, fill: "#1c3d70" }}
                   />
                   <Tooltip
                     formatter={(value) => [`${Number(value).toFixed(1)} pts`, "Média Geral"]}
+                    contentStyle={{ borderRadius: "10px", borderColor: "#d9e5f5" }}
                   />
-                  {/* Linha de referência na média escolar de aprovação (6,0) */}
-                  <ReferenceLine
-                    x={6}
-                    stroke="#dc3545"
-                    strokeDasharray="3 3"
-                    label={{ value: "Média geral", position: "top", fontSize: 11, fill: "#dc3545" }}
-                  />
-                  <Bar dataKey="nota" name="Média da Turma" radius={[0, 6, 6, 0]} barSize={22}>
-                    {dadosMedias.map((entry) => (
-                      <Cell
-                        key={`cell-media-${entry.id}`}
-                        fill={entry.nota >= 6 ? "var(--dashboard-navy)" : "var(--dashboard-pink)"}
-                      />
-                    ))}
+                  {/* Barra azul marinho elegante com extremidades arredondadas e valor ao final */}
+                  <Bar
+                    dataKey="nota"
+                    name="Média da Turma"
+                    fill="#174584"
+                    radius={[10, 10, 10, 10]}
+                    barSize={20}
+                  >
+                    <LabelList
+                      dataKey="notaFormatada"
+                      position="right"
+                      fill="#0f2b5c"
+                      fontSize={13}
+                      fontWeight={700}
+                    />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -128,12 +142,12 @@ export default function GeralMediumCards({
         </div>
       </div>
 
-      {/* Card 2: Taxa de Presença (Frequência) por Turma com Recharts */}
-      <div className="col-12 col-lg-5">
+      {/* Card 2: Frequência por Turma (col-lg-6 = 50%) */}
+      <div className="col-12 col-lg-6">
         <div className="geral-chart-card">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-              <i className="bi bi-calendar3 text-primary"></i>
+            <h5 className="geral-chart-title mb-0 d-flex align-items-center gap-2">
+              <i className="bi bi-calendar3 text-primary fs-5"></i>
               <span>Frequência por Turma</span>
             </h5>
             <span className="geral-chart-badge">Meta mín. 75%</span>
@@ -150,41 +164,43 @@ export default function GeralMediumCards({
                 <BarChart
                   layout="vertical"
                   data={dadosFrequencias}
-                  margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
+                  margin={{ top: 12, right: 42, left: 10, bottom: 8 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e4edf7" />
                   <XAxis
                     type="number"
                     domain={[0, 100]}
+                    ticks={[0, 25, 50, 75, 100]}
                     tickFormatter={(val) => `${val}%`}
+                    stroke="#9cb1ce"
+                    tick={{ fontSize: 11, fill: "#4a5d7c" }}
                   />
                   <YAxis
                     type="category"
                     dataKey="turma"
-                    width={130}
-                    tick={{ fontSize: 12 }}
+                    width={140}
+                    stroke="#9cb1ce"
+                    tick={{ fontSize: 11, fill: "#1c3d70" }}
                   />
                   <Tooltip
                     formatter={(value) => [`${value}%`, "Taxa de Presença"]}
+                    contentStyle={{ borderRadius: "10px", borderColor: "#d9e5f5" }}
                   />
-                  {/* Linha de referência no limite mínimo legal de 75% de presença */}
-                  <ReferenceLine
-                    x={75}
-                    stroke="#dc3545"
-                    strokeDasharray="3 3"
-                    label={{ value: "75%", position: "top", fontSize: 11, fill: "#dc3545" }}
-                  />
-                  <Bar dataKey="percentual" name="Presença (%)" radius={[0, 6, 6, 0]} barSize={22}>
-                    {dadosFrequencias.map((entry) => (
-                      <Cell
-                        key={`cell-freq-${entry.id}`}
-                        fill={
-                          entry.percentual >= 75
-                            ? "var(--dashboard-navy)"
-                            : "var(--dashboard-pink)"
-                        }
-                      />
-                    ))}
+                  {/* Barra horizontal Recharts com rótulo percentual destacado à direita */}
+                  <Bar
+                    dataKey="percentual"
+                    name="Presença"
+                    fill="#174584"
+                    radius={[10, 10, 10, 10]}
+                    barSize={20}
+                  >
+                    <LabelList
+                      dataKey="percentualFormatado"
+                      position="right"
+                      fill="#0f2b5c"
+                      fontSize={13}
+                      fontWeight={700}
+                    />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>

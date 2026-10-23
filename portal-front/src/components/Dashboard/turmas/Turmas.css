@@ -263,3 +263,218 @@
   background-color: var(--dashboard-gray-soft);
 }
 
+
+/* ==========================================================================
+   8. Ícones e rodapé dos cards de indicador (valem para todos os papéis)
+   As cores padrão replicam o que antes era estilo inline em GeralAba.jsx.
+   ========================================================================== */
+
+.turma-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+}
+
+.turma-stat-icon--turmas {
+  background-color: var(--dashboard-pink-soft);
+  color: var(--dashboard-pink);
+}
+
+.turma-stat-icon--matriculas,
+.turma-stat-icon--frequencia {
+  background-color: var(--dashboard-navy-soft);
+  color: var(--dashboard-navy);
+}
+
+.turma-stat-icon--media {
+  background-color: var(--dashboard-amber-soft);
+  color: var(--dashboard-amber);
+}
+
+.turma-stat-rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+}
+
+/* A seta só existe visualmente no tema de gestão */
+.turma-stat-seta {
+  display: none;
+}
+
+/* ==========================================================================
+   9. Tema Gestão (Especialista e Adm) — tudo escopado em .turmas-tema-gestao
+   Ativado por `podeGerenciar` em turmas/index.jsx; professor e aluno não são afetados.
+   Mantém o rosa (--dashboard-pink) nos botões de ação principais para contraste.
+   ========================================================================== */
+
+/* Painel central: fundo azul-claro suave no lugar do branco */
+.turmas-tema-gestao .bg-white.rounded-4 {
+  background: linear-gradient(180deg, #eaf2fd 0%, #f4f8fe 100%) !important;
+  border: 1px solid rgba(30, 61, 112, 0.1);
+  box-shadow: 0 8px 28px rgba(var(--dashboard-navy-rgb), 0.06) !important;
+}
+
+/* Cabeçalho: título em Cormorant Garamond (autoridade institucional), subtítulo e divisória */
+.turmas-tema-gestao .turmas-header-titulo,
+.dashboard-tema-gestao .turmas-header-titulo {
+  font-family: 'Cormorant Garamond', Georgia, "Times New Roman", serif;
+  font-size: clamp(1.9rem, 3.4vw, 2.4rem) !important;
+  font-weight: 700;
+  color: var(--dashboard-navy) !important;
+  letter-spacing: -0.01em;
+}
+
+.turmas-tema-gestao .turmas-header-divisor,
+.dashboard-tema-gestao .turmas-header-divisor {
+  display: block;
+  width: 48px;
+  height: 2px;
+  margin-top: 0.75rem;
+  background-color: var(--dashboard-navy);
+  border-radius: 2px;
+}
+
+/* Frase institucional à direita, com filete lateral (sem ilustração) */
+.turmas-tema-gestao .turmas-header-frase,
+.dashboard-tema-gestao .turmas-header-frase {
+  margin-left: auto;
+  padding-left: 1rem;
+  border-left: 1px solid rgba(30, 61, 112, 0.25);
+  max-width: 220px;
+  font-family: 'Cormorant Garamond', Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--dashboard-blue-accent);
+  text-align: right;
+}
+
+/* Abas: sublinhado navy (o rosa fica para as ações principais) */
+.turmas-tema-gestao .turmas-tab-btn {
+  color: var(--dashboard-ink-muted);
+  font-size: 0.9rem;
+}
+
+.turmas-tema-gestao .turmas-tab-btn.is-active {
+  color: var(--dashboard-navy);
+  border-bottom-color: var(--dashboard-navy);
+}
+
+.turmas-tema-gestao nav.border-bottom {
+  border-bottom-color: rgba(30, 61, 112, 0.15) !important;
+}
+
+/* Cards (indicadores e gráficos): fundo translúcido, borda azul-clara, cantos 16px */
+.turmas-tema-gestao .turma-stat-card,
+.turmas-tema-gestao .turmas-filtro-box {
+  background-color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(30, 61, 112, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(var(--dashboard-navy-rgb), 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.turmas-tema-gestao .turma-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(var(--dashboard-navy-rgb), 0.09);
+}
+
+/* Número grande com autoridade tipográfica */
+.turmas-tema-gestao .turma-stat-card h3,
+.dashboard-tema-gestao .turma-stat-card h3 {
+  font-family: 'Cormorant Garamond', Georgia, "Times New Roman", serif;
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: var(--dashboard-navy) !important;
+}
+
+/* Rótulo do indicador sem caixa alta, como no mockup */
+.turmas-tema-gestao .turma-stat-card small.text-uppercase {
+  text-transform: none !important;
+  font-size: 0.8rem !important;
+  color: var(--dashboard-navy) !important;
+}
+
+/* Ícones circulares com as cores do mockup */
+.turmas-tema-gestao .turma-stat-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.turmas-tema-gestao .turma-stat-icon--turmas {
+  background-color: #dfe8fb;
+  color: #3f63c7;
+}
+
+.turmas-tema-gestao .turma-stat-icon--matriculas {
+  background-color: #e4e2fa;
+  color: #5b4fc7;
+}
+
+.turmas-tema-gestao .turma-stat-icon--media {
+  background-color: #d9f3ea;
+  color: #1f9d73;
+}
+
+.turmas-tema-gestao .turma-stat-icon--frequencia {
+  background-color: #fde3ec;
+  color: var(--dashboard-pink);
+}
+
+/* Seta no canto inferior direito do card */
+.turmas-tema-gestao .turma-stat-seta {
+  display: inline-block;
+  color: var(--dashboard-blue-accent);
+  opacity: 0.7;
+}
+
+/* Selo dos gráficos (Notas / Frequência) em pílula azul-clara */
+.turmas-tema-gestao .turma-stat-card .badge.bg-light {
+  background-color: #e3ecfb !important;
+  color: var(--dashboard-blue-accent) !important;
+  border-color: rgba(30, 61, 112, 0.15) !important;
+  border-radius: 9999px;
+  font-weight: 600;
+  padding: 0.4em 0.9em;
+}
+
+/* Abas Turmas e Notas: cards de turma com borda azul-clara e destaque navy na seleção */
+.turmas-tema-gestao .turma-card {
+  border: 1px solid rgba(30, 61, 112, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(var(--dashboard-navy-rgb), 0.05);
+}
+
+.turmas-tema-gestao .turma-card.is-selected {
+  border-color: var(--dashboard-navy);
+  background: linear-gradient(180deg, #eaf2fd 0%, #ffffff 40%);
+  box-shadow: 0 12px 28px rgba(var(--dashboard-navy-rgb), 0.14), 0 0 0 3px rgba(var(--dashboard-navy-rgb), 0.12);
+}
+
+.turmas-tema-gestao .turma-card-top-stripe,
+.turmas-tema-gestao .turma-card.is-selected .turma-card-top-stripe {
+  background: linear-gradient(90deg, #1e3d70 0%, #6b86d6 100%);
+}
+
+.turmas-tema-gestao .turmas-filtro-select {
+  border-color: rgba(30, 61, 112, 0.2);
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.turmas-tema-gestao .turmas-filtro-select:focus {
+  border-color: var(--dashboard-navy);
+  box-shadow: 0 0 0 3px rgba(var(--dashboard-navy-rgb), 0.12);
+}
+
+/* Telas estreitas: a frase institucional sai para não apertar o cabeçalho */
+@media (max-width: 767.98px) {
+  .turmas-tema-gestao .turmas-header-frase {
+    display: none;
+  }
+}

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useAuth } from "../../../hooks/useAuth";
 import { useBoletim } from "../../../hooks/Boletim/useBoletim";
 import ComparativoTurmaAba from "./ComparativoTurmaAba";
 import FrequenciaDetalhadaAba from "./FrequenciaDetalhadaAba";
@@ -22,6 +23,9 @@ const ABAS = [
 ];
 
 export default function Boletim({ turmaId, alunoId }) {
+  const { user } = useAuth();
+  const podeGerenciar = user?.role === "especialista" || user?.role === "adm";
+
   const [abaAtiva, setAbaAtiva] = useState("resumo");
   const referenciasAbas = useRef([]);
   const {
@@ -74,11 +78,13 @@ export default function Boletim({ turmaId, alunoId }) {
   };
 
   return (
-    <main className="boletim-page container-fluid px-0">
+    <main className={`boletim-page container-fluid px-0 ${podeGerenciar ? 'dashboard-tema-gestao' : ''}`.trim()}>
       <header className="boletim-page__header">
         <div>
           <p className="boletim-page__eyebrow mb-1">Área do estudante</p>
-          <h1 className="h3 mb-0">Boletim Escolar</h1>
+          <h1 className="h3 mb-0 dashboard-header-titulo">Boletim Escolar</h1>
+          {/* Linha divisória de 48px: visível exclusivamente para Especialista e Adm */}
+          {podeGerenciar && <span className="dashboard-header-divisor" aria-hidden="true" />}
         </div>
         <span className="boletim__badge rounded-pill">
           <i className="bi bi-calendar3 me-2" aria-hidden="true" />
