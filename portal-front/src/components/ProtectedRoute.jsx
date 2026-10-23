@@ -7,12 +7,13 @@
  * 1. Enquanto a sessão é verificada na API, exibe um indicador amigável de carregamento.
  * 2. Se não estiver logado, redireciona o usuário para o `/login`.
  * 3. Se a rota exigir perfis específicos (`allowedRoles`) e o perfil do usuário não estiver
- *    na lista, redireciona-o automaticamente para a página inicial do seu perfil, evitando
- *    erros 403 e mantendo a navegação consistente.
+ *    na lista, redireciona-o automaticamente para a página inicial do seu perfil através de
+ *    `getRotaInicial(userRole)`, evitando erros 403 e mantendo a navegação consistente.
  */
 
 import { Navigate, Outlet } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
+import { getRotaInicial } from '../utils/rolesRoutes';
 
 const ProtectedRoute = ({ allowedRoles }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -41,10 +42,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
 
     if (!temPermissao) {
       // Redireciona para o destino padrão seguro de acordo com o perfil
-      const rotaPadrao =
-        userRole === 'bibliotecaria' || userRole === 'bibliotecario'
-          ? '/dashboard/biblioteca'
-          : '/dashboard/geral';
+      const rotaPadrao = getRotaInicial(userRole);
       return <Navigate to={rotaPadrao} replace />;
     }
   }

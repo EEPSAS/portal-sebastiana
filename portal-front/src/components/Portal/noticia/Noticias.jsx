@@ -82,19 +82,28 @@ const NoticiasSection = () => {
           <div className="news-layout row g-3">
             <div className="col-12 col-lg-9 d-flex flex-column">
               <div className="news-group news-group--featured">
-                <HorizontalNewsCard noticia={noticias.destaque} loading={loading} />
+                <HorizontalNewsCard
+                  noticia={noticias.destaque}
+                  loading={loading}
+                />
               </div>
               <div className="news-group news-group--small-grid row g-3 mt-0 flex-grow-1">
                 {noticias.pequenas.map((noticia, idx) => (
                   <div className="col-12 col-sm-6 col-lg-4" key={noticia?.id || `small-slot-${idx}`}>
-                    <SmallNewsCard noticia={noticia} loading={loading} />
+                    <SmallNewsCard
+                      noticia={noticia}
+                      loading={loading}
+                    />
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="news-group news-group--vertical col-12 col-lg-3 d-flex flex-column">
-              <VerticalNewsCard noticia={noticias.vertical} loading={loading} />
+              <VerticalNewsCard
+                noticia={noticias.vertical}
+                loading={loading}
+              />
             </div>
           </div>
         )}

@@ -76,6 +76,10 @@ button {
 }
 
 /* Tokens locais mantêm a nova paleta restrita às páginas do Dashboard. */
+.dashboard-card-shadow {
+  box-shadow: var(--bs-box-shadow-sm, 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075)) !important;
+}
+
 .dashboard-shell {
   --dashboard-navy: #0d2346;
   --dashboard-navy-rgb: 13, 35, 70;

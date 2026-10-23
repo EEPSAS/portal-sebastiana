@@ -2,8 +2,8 @@
  * Biblioteca.jsx - Página do Acervo da Biblioteca Escolar
  *
  * Papel Didático:
- * Rota `/dashboard/biblioteca`. É a página inicial padrão do perfil 'bibliotecario',
- * e também está acessível a alunos, professores e especialistas.
+ * Rota `/dashboard/biblioteca`. Oferece aos estudantes e à equipe pedagógica
+ * o catálogo de livros, planos de leitura e controle de empréstimos.
  */
 
 import Biblioteca from "../../components/Dashboard/biblioteca";

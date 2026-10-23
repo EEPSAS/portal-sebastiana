@@ -5,6 +5,7 @@
  * Captura o identificador `:id` da URL via `useParams()`, busca os detalhes no
  * backend através de `useNoticia(id)` e trata os estados Carregando, Erro/Não encontrada e Sucesso.
  */
+import { useEffect } from "react";
 import { Link, useParams } from "react-router";
 import NoticiaHeader from "../../components/Portal/noticia/NoticiaHeader";
 import NoticiaContent from "../../components/Portal/noticia/NoticiaContent";
@@ -15,6 +16,15 @@ import "../../components/Portal/noticia/noticiaDetail.css";
 const Noticia = () => {
   const { id } = useParams();
   const { noticia, loading, error } = useNoticia(id);
+
+  // Garante que a abertura da notícia sempre posicione o leitor no topo da página
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'instant',
+    });
+  }, [id]);
 
   return (
     <section className="noticia-detail">

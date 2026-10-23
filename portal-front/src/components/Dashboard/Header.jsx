@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
+import { getRotaInicial } from "../../utils/rolesRoutes";
 
 const ROLES_SIMULACAO = [
   { value: "adm", label: "Administrador (Padrão)", icon: "bi-shield-lock" },
@@ -32,11 +33,9 @@ const ROLE_DISPLAY_NAMES = {
   adm: "Administrador",
 };
 
-
 const Header = ({
   userName = "Maria Silva",
   role = "Usuário",
-  turma,
   userPhoto,
   onLogout,
 }) => {
@@ -69,11 +68,8 @@ const Header = ({
       switchSimulatedRole(novaRole);
       setModalConfirmacaoAberto(false);
 
-      // Destino padrão do papel selecionado
-      const destino =
-        novaRole === "bibliotecaria" || novaRole === "bibliotecario"
-          ? "/dashboard/biblioteca"
-          : "/dashboard/geral";
+      // Destino padrão do papel selecionado obtido centralizadamente
+      const destino = getRotaInicial(novaRole);
 
       navigate(destino);
     }
@@ -83,16 +79,6 @@ const Header = ({
   const realRole = user?.realRole || user?.role || "aluno";
   const realRoleLabel = ROLE_DISPLAY_NAMES[realRole] || "Usuário";
   const activeRoleLabel = ROLE_DISPLAY_NAMES[user?.role] || role;
-
-  // Identifica se a sessão ativa corresponde a um aluno (seja papel real ou simulado)
-  const isAluno = (user?.role === "aluno" || user?.role === "padrao" || realRole === "aluno");
-  const turmaNome = turma || user?.turma;
-
-  // Didática: Se o usuário for Aluno e possuir turma ativa vinculada, exibe "Aluno - {Nome da Turma}".
-  // Se não possuir turma ou for outro papel acadêmico, mantém a exibição padrão do papel.
-  const tipoLoginLabel = isAluno && turmaNome
-    ? `Aluno - ${turmaNome}`
-    : (isRealAdmin && user?.role && user.role !== realRole ? activeRoleLabel : realRoleLabel);
 
   return (
     <>
@@ -238,7 +224,7 @@ const Header = ({
         <div
           className="modal fade show d-block"
           tabIndex="-1"
-          style={{ backgroundColor: "rgba(var(--dashboard-navy-rgb), 0.55)", zIndex: 1060 }}
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.55)", zIndex: 1060 }}
           role="dialog"
         >
           <div className="modal-dialog modal-dialog-centered">

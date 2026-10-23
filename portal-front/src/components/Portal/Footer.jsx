@@ -13,16 +13,11 @@ const Footer = () => {
               <h2 className="m-0 fw-bold fs-4 text-white">EEPSAS</h2>
             </div>
 
-            {/* Ícones de Redes Sociais da Esquerda */}
-            <div className="d-flex gap-3 my-2">
-              <a href="#facebook" className="portal-footer__social-btn" aria-label="Facebook">f</a>
-              <a href="#twitter" className="portal-footer__social-btn" aria-label="Twitter">t</a>
-              <a href="#instagram" className="portal-footer__social-btn" aria-label="Instagram">ig</a>
-            </div>
+            
 
             <blockquote className="blockquote fs-6 text-white-50 m-0">
               <p className="mb-1 text-white">escolasebastiana@gmail.com</p>
-              <p className="mb-1 text-white">(31) 3456-7890</p>
+              <p className="mb-1 text-white">(31) 7191-0470</p>
               <br />
               <p className="mb-1 text-white">EEPSAS Jaguaraçu, Rua São José nº 30</p>
               <p className="mb-0 text-white">Cidade de Jaguaraçu - MG</p>
@@ -34,12 +29,12 @@ const Footer = () => {
             <div>
               <p className="mb-1 text-white-50">Siga o:</p>
               <p className="mb-1 text-white">Instagram do Terceirão:</p>
-              <a href="#instagram-terceirao" className="fw-bold">@eepsas26</a>
+              <a href="https://www.instagram.com/eepsas26/" className="fw-bold">@eepsas26</a>
             </div>
 
             <div>
               <p className="mb-1 text-white">Instagram da escola:</p>
-              <a href="#instagram-escola" className="fw-bold">@professsorasebastiana</a>
+              <a href="https://www.instagram.com/professsorasebastiana/" className="fw-bold">@professsorasebastiana</a>
             </div>
 
             <div className="mt-2">

@@ -108,6 +108,12 @@ export const meusEmprestimos = ({ signal } = {}) =>
   requestJson('/emprestimos/meus-emprestimos', { signal });
 
 /**
+ * Consulta o histórico global; a API limita os resultados conforme a permissão do usuário.
+ */
+export const listarEmprestimos = ({ signal } = {}) =>
+  requestJson('/emprestimos', { signal });
+
+/**
  * Solicita a retirada de um livro físico da biblioteca escolar.
  * @param {object} dados Objeto com livro_id, data_prevista_devolucao e observacoes.
  */
@@ -130,6 +136,7 @@ export const bibliotecaService = {
   editarLivro,
   excluirLivro,
   meusEmprestimos,
+  listarEmprestimos,
   solicitarEmprestimo,
   atualizarEmprestimo,
 };
