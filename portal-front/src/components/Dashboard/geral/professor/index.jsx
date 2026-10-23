@@ -28,8 +28,7 @@ const GeralProfessor = () => {
     <div className="teacher-overview">
       <div className="mb-3">
         <div
-          className="btn-group flex-wrap bg-light rounded-pill border"
-          style={{ padding: "0.27rem" }}
+          className="btn-group flex-wrap p-1 bg-light rounded-pill border"
           role="group"
           aria-label="Selecionar matéria"
         >
@@ -37,12 +36,11 @@ const GeralProfessor = () => {
             <button
               type="button"
               key={materia.id}
-              className={`btn rounded-pill fw-semibold transition ${
+              className={`btn btn-sm rounded-pill px-3 fw-semibold transition ${
                 materia.id === materiaSelecionada.id
                   ? "btn-primary shadow-sm text-white"
                   : "text-secondary border-0"
               }`}
-              style={{ fontSize: "0.945rem", padding: "0.27rem 1.08rem" }}
               aria-pressed={materia.id === materiaSelecionada.id}
               onClick={() => setMateriaSelecionadaId(materia.id)}
             >
@@ -56,6 +54,7 @@ const GeralProfessor = () => {
         <AlunosRiscoCards
           dados={materiaSelecionada.risco}
           periodo="Período trimestral não configurado"
+          materia={materiaSelecionada.nome}
         />
       </div>
 
