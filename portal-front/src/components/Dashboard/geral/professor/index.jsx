@@ -1,41 +1,73 @@
+import { useState } from "react";
 import GeralMediumCards from "../especialista/Cards/ResumoTurmasCard";
-import { useDashboardEspecialista } from "../../../../hooks/geral/especialista/useDashboardEspecialista";
 import AlunosRiscoCards from "./Cards/AlunosRiscoCards";
-import dadosRiscoProfessorMock from "./dadosRiscoProfessorMock";
+import materiasProfessorMock from "./materiasProfessorMock";
 
-/** Monta a visão do professor com os indicadores disponíveis no frontend atual. */
+const materiasOrdenadas = [...materiasProfessorMock].sort((a, b) =>
+  a.nome.localeCompare(b.nome, "pt-BR"),
+);
+
+/** Exibe dados demonstrativos por matéria até a API oferecer esse recorte. */
 const GeralProfessor = () => {
-  const { medias, frequencias, loading, error } = useDashboardEspecialista();
+  const [materiaSelecionadaId, setMateriaSelecionadaId] = useState(
+    materiasOrdenadas[0]?.id ?? "",
+  );
+  const materiaSelecionada =
+    materiasOrdenadas.find((materia) => materia.id === materiaSelecionadaId) ??
+    materiasOrdenadas[0];
 
-  const mediasNaEscalaPercentual = medias.map((item) => ({
-    ...item,
-    nota:
-      item.nota === null || item.nota === undefined
-        ? item.nota
-        : Number(item.nota) * 10,
-  }));
+  if (!materiaSelecionada) {
+    return (
+      <p className="text-muted">
+        Nenhuma matéria demonstrativa está disponível.
+      </p>
+    );
+  }
 
   return (
     <div className="teacher-overview">
-      <h1 className="h3 fw-bold mb-4">Painel Geral do Professor</h1>
+      <div className="mb-3">
+        <div
+          className="btn-group flex-wrap bg-light rounded-pill border"
+          style={{ padding: "0.27rem" }}
+          role="group"
+          aria-label="Selecionar matéria"
+        >
+          {materiasOrdenadas.map((materia) => (
+            <button
+              type="button"
+              key={materia.id}
+              className={`btn rounded-pill fw-semibold transition ${
+                materia.id === materiaSelecionada.id
+                  ? "btn-primary shadow-sm text-white"
+                  : "text-secondary border-0"
+              }`}
+              style={{ fontSize: "0.945rem", padding: "0.27rem 1.08rem" }}
+              aria-pressed={materia.id === materiaSelecionada.id}
+              onClick={() => setMateriaSelecionadaId(materia.id)}
+            >
+              {materia.nome}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="row g-3 mb-3">
         <AlunosRiscoCards
-          dados={dadosRiscoProfessorMock}
-          periodo={dadosRiscoProfessorMock.periodo}
+          dados={materiaSelecionada.risco}
+          periodo="Período trimestral não configurado"
         />
       </div>
 
       <p className="text-muted small mb-2">
-        Gráficos com agregados atuais da API por turma, sem recorte trimestral.
+        Indicadores demonstrativos por matéria; aguardando integração com dados reais da API.
       </p>
       <GeralMediumCards
-        medias={mediasNaEscalaPercentual}
-        frequencias={frequencias}
-        loading={loading}
-        error={error}
+        medias={materiaSelecionada.medias}
+        frequencias={materiaSelecionada.frequencias}
         escalaNotaMaxima={100}
         mostrarLinhasReferencia={false}
+        badgeMedia="Meta mín. 60%"
       />
     </div>
   );

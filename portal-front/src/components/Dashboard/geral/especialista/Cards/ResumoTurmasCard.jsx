@@ -27,6 +27,7 @@ export default function GeralMediumCards({
   error = null,
   escalaNotaMaxima = 10,
   mostrarLinhasReferencia = true,
+  badgeMedia = null,
 }) {
   // 1. Estado Assíncrono: Carregando
   if (loading) {
@@ -78,7 +79,7 @@ export default function GeralMediumCards({
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="fw-bold text-dark mb-0">Média de Notas por Turma</h5>
             <span className="badge bg-light text-secondary border">
-              Escala 0 a {escalaNotaMaxima}
+              {badgeMedia || `Escala 0 a ${escalaNotaMaxima}`}
             </span>
           </div>
 
