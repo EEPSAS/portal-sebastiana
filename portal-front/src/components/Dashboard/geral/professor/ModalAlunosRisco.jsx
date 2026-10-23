@@ -63,7 +63,7 @@ export default function ModalAlunosRisco({
         width: "100vw",
         height: "100dvh",
         padding: "1rem",
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
         overflowY: "auto",
         boxSizing: "border-box",
       }}
@@ -111,29 +111,31 @@ export default function ModalAlunosRisco({
           {alunosPorAno.map((ano) => (
             <section className="mb-3" key={ano.valor}>
               <h3 className="h6 fw-bold text-uppercase mb-2">{ano.titulo}</h3>
-              <table className="table table-sm table-bordered border-dark align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th scope="col">Nome do aluno</th>
-                    <th scope="col">{configuracao.tituloColuna}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ano.alunos.map((aluno) => (
-                    <tr key={aluno.id}>
-                      <td>{aluno.nome}</td>
-                      <td>{aluno[configuracao.propriedadeValor]}%</td>
-                    </tr>
-                  ))}
-                  {ano.alunos.length === 0 && (
+              <div className="rounded-3 overflow-hidden border border-dark">
+                <table className="table table-sm table-bordered border-dark align-middle mb-0">
+                  <thead>
                     <tr>
-                      <td colSpan="2" className="text-center py-3">
-                        Nenhum aluno nesta lista.
-                      </td>
+                      <th scope="col">Nome do aluno</th>
+                      <th scope="col">{configuracao.tituloColuna}</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {ano.alunos.map((aluno) => (
+                      <tr key={aluno.id}>
+                        <td>{aluno.nome}</td>
+                        <td>{aluno[configuracao.propriedadeValor]}%</td>
+                      </tr>
+                    ))}
+                    {ano.alunos.length === 0 && (
+                      <tr>
+                        <td colSpan="2" className="text-center py-3">
+                          Nenhum aluno nesta lista.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </section>
           ))}
         </div>
