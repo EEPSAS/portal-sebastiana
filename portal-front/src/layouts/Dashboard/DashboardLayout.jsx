@@ -5,6 +5,10 @@
  * Em aplicações React SPA, o Layout define a "moldura" fixa (Aside lateral + Header superior)
  * que não é recarregada ao navegar. O componente `<Outlet />` dentro do `<Panel />` renderiza
  * dinamicamente a página filha correspondente à rota ativa (ex: Geral, Boletim, Biblioteca).
+ *
+ * Integração:
+ * O `<DonaNanaFloatingWidget />` é montado aqui de forma global para a área logada,
+ * importado do módulo unificado `dona-nana`, ficando fixado no canto inferior direito.
  */
 
 import { Outlet } from "react-router";
@@ -12,6 +16,7 @@ import Aside from "../../components/Dashboard/Aside";
 // Import respeitando o case exato registrado no índice do Git para sistemas Linux (case-sensitive)
 import Panel from "../../components/dashboard/panel";
 import Header from "../../components/Dashboard/Header";
+import { DonaNanaFloatingWidget } from "../../components/Dashboard/dona-nana";
 import { useAuth } from "../../hooks/useAuth";
 
 const ROLE_DISPLAY_NAMES = {
@@ -50,6 +55,9 @@ const DashboardLayout = () => {
           <Outlet />
         </Panel>
       </div>
+
+      {/* Balão Flutuante da Dona Nana no Canto Inferior Direito */}
+      <DonaNanaFloatingWidget />
     </div>
   );
 };

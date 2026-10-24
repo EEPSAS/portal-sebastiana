@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             RadioatividadeSeeder::class,
             BibliotecaSeeder::class,
             AcademicoSeeder::class,
+            DonaNanaConfigSeeder::class,
         ]);
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BibliotecaController;
 use App\Http\Controllers\DashboardGeralController;
 use App\Http\Controllers\DisciplinaController;
+use App\Http\Controllers\DonaNanaController;
 use App\Http\Controllers\EmprestimoController;
 use App\Http\Controllers\EspecialistaDashboardController;
 use App\Http\Controllers\EventoController;
@@ -153,6 +154,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/usuarios/{usuario}/papel', [UsuarioController::class, 'alterarPapel']);
     Route::post('/usuarios/{usuario}/permissoes', [UsuarioController::class, 'atribuirPermissoes']);
     Route::apiResource('usuarios', UsuarioController::class);
+
+    // Assistente Virtual Inteligente: Dona Nana (Gemini 3.8 Flash)
+    Route::post('/dona-nana/chat', [DonaNanaController::class, 'chat'])
+        ->middleware('throttle:30,1')
+        ->name('dona-nana.chat');
+    Route::get('/dona-nana/config', [DonaNanaController::class, 'getConfig'])
+        ->name('dona-nana.config.get');
+    Route::put('/dona-nana/config', [DonaNanaController::class, 'updateConfig'])
+        ->name('dona-nana.config.update');
 });
 
 /*

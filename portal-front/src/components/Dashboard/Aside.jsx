@@ -11,6 +11,7 @@
  * - O badge colorido do perfil no topo do Aside é visível exclusivamente para o Administrador.
  *   As demais roles acompanham sua identificação diretamente pelo cabeçalho superior (Navbar).
  * - Suporta identicamente as denominações 'bibliotecaria' e 'bibliotecario'.
+ * - O item "Dona Nana" é posicionado fixamente acima de Configurações, disponível para todos.
  */
 
 import { NavLink, Link } from "react-router";
@@ -157,8 +158,14 @@ const Aside = () => {
 
       <hr className="my-2" />
 
-      {/* Seção Inferior Fixa: Configurações */}
+      {/* Seção Inferior Fixa: Dona Nana (acima de Configurações) e Configurações */}
       <ul className="nav nav-pills flex-column gap-2 mb-2">
+        <li className="nav-item">
+          <NavLink to="/dashboard/dona-nana" className={getLinkClass}>
+            <i className="bi bi-chat-heart-fill me-3 fs-5 text-warning"></i>
+            <span>Dona Nana</span>
+          </NavLink>
+        </li>
         <li className="nav-item">
           <NavLink to="/dashboard/configuracoes" className={getLinkClass}>
             <i className="bi bi-gear me-3 fs-5"></i>

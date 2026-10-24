@@ -32,6 +32,8 @@ import TurmaPage from "./pages/Dashboard/Turma";
 import AgendaPage from "./pages/Dashboard/Agenda";
 import NoticiasAdminPage from "./pages/Dashboard/Noticias";
 import ConfiguracoesPage from "./pages/Dashboard/Configuracoes";
+import DonaNanaPage from "./pages/Dashboard/DonaNana";
+import ConfiguracaoDonaNana from "./pages/Dashboard/ConfiguracaoDonaNana";
 
 const App = () => {
   return (
@@ -64,6 +66,7 @@ const App = () => {
             <Route path="biblioteca/planos/:id" element={<PlanoDetalhe />} />
             <Route path="agenda" element={<AgendaPage />} />
             <Route path="configuracoes" element={<ConfiguracoesPage />} />
+            <Route path="dona-nana" element={<DonaNanaPage />} />
 
             {/* Rota restrita: Boletim (alunos e administradores) */}
             <Route element={<ProtectedRoute allowedRoles={["aluno", "adm", "padrao"]} />}>
@@ -78,6 +81,11 @@ const App = () => {
             {/* Rota restrita: Gestão de Notícias (especialistas e administradores) */}
             <Route element={<ProtectedRoute allowedRoles={["especialista", "adm"]} />}>
               <Route path="noticias" element={<NoticiasAdminPage />} />
+            </Route>
+
+            {/* Rota restrita: Configuração da Persona da Dona Nana (especialistas e administradores) */}
+            <Route element={<ProtectedRoute allowedRoles={["especialista", "adm"]} />}>
+              <Route path="dona-nana/configuracao" element={<ConfiguracaoDonaNana />} />
             </Route>
           </Route>
         </Route>

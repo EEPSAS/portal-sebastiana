@@ -315,3 +315,59 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
 }
 ```
 * **Nota sobre Escopo**: Para o `especialista` e `adm`, os dados abrangem todas as turmas ativas da instituição. Para o `professor`, os KPIs e listagens de turmas são calculados dinamicamente com base nas turmas e disciplinas sob sua regência docente (com fallback automático para a visão da escola caso ainda não possua turmas atribuídas).
+
+---
+
+### Módulo 8: Assistente Virtual "Dona Nana" (Gemini 3.8 Flash)
+*Inteligência artificial conversacional humanizada na persona da patrona da escola (Professora Sebastiana de Almeida e Silva).*
+
+| Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front (`src/services/`) | Descrição |
+|---|---|---|---|---|---|---|
+| `POST` | `/api/dona-nana/chat` | Autenticado (Todos) | `ChatDonaNanaRequest` | `DonaNanaChatResource` | `donaNanaService.enviarMensagem()` | Processa diálogo com a Dona Nana via Gemini 3.8 Flash (com histórico e fallback) |
+| `GET` | `/api/dona-nana/config` | Especialista / Adm | N/A | `DonaNanaConfigResource` | `donaNanaService.obterConfiguracao()` | Obtém os 4 pilares instrucionais do prompt e dados do avatar |
+| `PUT` | `/api/dona-nana/config` | Especialista / Adm | `UpdateDonaNanaConfigRequest` | `DonaNanaConfigResource` | `donaNanaService.salvarConfiguracao()` | Atualiza os 4 pilares instrucionais do prompt e avatar |
+
+#### Especificação de Payload: Entrada (`ChatDonaNanaRequest`)
+```json
+{
+  "mensagem": "Dona Nana, como eu faço para consultar meu boletim?",
+  "historico": [
+    { "role": "user", "text": "Bom dia, professora!" },
+    { "role": "model", "text": "Bom dia, meu querido! Como posso te ajudar hoje?" }
+  ],
+  "contexto_origem": "balao"
+}
+```
+
+#### Especificação de Payload: Saída (`DonaNanaChatResource`)
+```json
+{
+  "resposta": "Olá, meu querido! Para consultar suas notas e frequência, basta clicar na aba Boletim ali no menu lateral. Lá você encontrará todas as disciplinas organizadas com muito carinho!",
+  "sugestoes": [
+    "Como vejo minhas notas no Boletim?",
+    "Como reservo um livro na Biblioteca?",
+    "Me conte um causo sobre Jaguaraçu!",
+    "Quais eventos teremos este mês na Agenda?"
+  ],
+  "autor": "Professora Sebastiana (Dona Nana)",
+  "origem": "gemini-3.8-flash",
+  "timestamp": "2026-10-24T04:00:00Z"
+}
+```
+
+#### Especificação de Payload: Configuração (`DonaNanaConfigResource`)
+```json
+{
+  "id": 1,
+  "personalidade": "Você é a Professora Sebastiana de Almeida e Silva, carinhosamente chamada por toda a comunidade de Dona Nana...",
+  "conhecimento_portal": "Você conhece com precisão cada cantinho do Portal Sebastiana...",
+  "historias_causos": "Quando perguntarem sobre você, sua vida ou a história da escola, conte causos doces...",
+  "diretrizes_resposta": "1. Responda sempre em português brasileiro de forma acolhedora...",
+  "avatar_url": "/img/escola-professora.jpeg",
+  "modelo": "gemini-3.8-flash",
+  "temperatura": 0.7,
+  "ativo": true,
+  "prompt_montado": "### SUA PERSONALIDADE:\n...\n\n### SEU CONHECIMENTO SOBRE O PORTAL:\n...",
+  "updated_at": "2026-10-24T04:00:00Z"
+}
+```
