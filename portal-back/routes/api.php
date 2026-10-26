@@ -13,6 +13,7 @@ use App\Http\Controllers\LivroController;
 use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\NotaController;
 use App\Http\Controllers\NoticiaController;
+use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\PlanoEstudoController;
 use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\TurmaController;
@@ -62,6 +63,12 @@ Route::middleware('auth:sanctum')->group(function () {
         // Retorna os dados do usuário logado padronizados e blindados via UsuarioResource
         return new UsuarioResource($user);
     });
+
+    Route::get('/notificacoes/super-importantes', [NotificacaoController::class, 'superImportantes']);
+    Route::get('/notificacoes', [NotificacaoController::class, 'index']);
+    Route::post('/notificacoes', [NotificacaoController::class, 'store']);
+    Route::patch('/notificacoes/marcar-padrao-lidas', [NotificacaoController::class, 'marcarPadraoLidas']);
+    Route::patch('/notificacoes/{notificacao}/lida', [NotificacaoController::class, 'marcarLida']);
 
     Route::apiResource('noticias', NoticiaController::class)->except(['index', 'show']);
     Route::apiResource('radioatividades', RadioatividadeController::class);

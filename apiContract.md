@@ -295,3 +295,51 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
 ```
 * **Nota sobre Escopo**: Para o `especialista` e `adm`, os dados abrangem todas as turmas ativas da instituição. Para o `professor`, os KPIs e listagens de turmas são calculados dinamicamente com base nas turmas e disciplinas sob sua regência docente (com fallback automático para a visão da escola caso ainda não possua turmas atribuídas).
 
+---
+
+## Módulo Transversal: Notificações
+*Caixa de notificações autenticada, mensagens manuais e alertas acadêmicos originados na importação CSV.*
+
+| Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
+|---|---|---|---|---|---|---|
+| `GET` | `/api/notificacoes?page={n}&per_page={n}` | Logado | N/A | `NotificacaoResource` (paginada) | `notificacoesService.listarNotificacoes()` | Lista notificações não confirmadas do próprio usuário, da mais recente para a mais antiga; `per_page` é limitado a 100 |
+| `GET` | `/api/notificacoes/super-importantes` | Logado | N/A | `NotificacaoResource` (Array JSON na raiz) | `notificacoesService.listarSuperImportantes()` | Lista notificações super-importantes não confirmadas para exibição no login |
+| `POST` | `/api/notificacoes` | Professor / Especialista / Adm | `StoreNotificacaoRequest` | `NotificacaoResource` (Array JSON na raiz) | `notificacoesService.criarNotificacao()` | Cria mensagens para aluno, turma ou comunidade escolar; professor só pode alcançar alunos/turmas sob sua regência; comunicado geral é restrito a Especialista/Adm |
+| `PATCH` | `/api/notificacoes/{id}/lida` | Destinatário | N/A | `NotificacaoResource` | `notificacoesService.marcarNotificacaoLida()` | Confirma individualmente e retira a notificação da caixa pendente |
+| `PATCH` | `/api/notificacoes/marcar-padrao-lidas` | Logado | N/A | Sem conteúdo (`204`) | `notificacoesService.marcarPadraoComoLidas()` | Confirma em massa somente notificações padrão; importantes/super-importantes exigem confirmação individual |
+
+#### Entrada: `StoreNotificacaoRequest`
+```json
+{
+  "titulo": "string (obrigatório, máx. 255)",
+  "assunto": "string (obrigatório, máx. 5000)",
+  "destinatario_tipo": "aluno | turma | geral",
+  "aluno_id": "integer (obrigatório quando destinatario_tipo=aluno)",
+  "turma_id": "integer (obrigatório quando destinatario_tipo=turma)",
+  "super_importante": "boolean (opcional, padrão false)"
+}
+```
+Para cada destinatário, o canal de banco nativo do Laravel cria um registro individual com `id`, `titulo`, `assunto`, `tipo`, `origem`, `prioridade`, `criador_id`, `criador_nome`, `destinatario_id`, `event_key`, `read_at` e `created_at`. O estado `read_at` é individual, mesmo quando a mensagem foi enviada para uma turma/comunidade.
+
+#### Saída: `NotificacaoResource`
+```json
+{
+  "id": "uuid",
+  "titulo": "string",
+  "assunto": "string",
+  "tipo": "manual | frequencia_risco | nota_alerta | nota_destaque | lembrete",
+  "origem": "usuario | sistema",
+  "prioridade": "padrao | importante | super_importante",
+  "criador_id": 3,
+  "criador_nome": "Clara Mendes",
+  "destinatario_id": 12,
+  "read_at": null,
+  "created_at": "2026-10-23T15:00:00.000000Z"
+}
+```
+
+#### Gatilhos acadêmicos e lembretes
+- Após a sincronização concluída de um CSV, a presença é avaliada por aluno, disciplina e período letivo. Ao atingir `75%` ou menos, é enviada uma notificação padrão ao aluno, ao professor da disciplina e à equipe pedagógica dentro das permissões existentes. Para CSVs com apenas totais de faltas, a projeção trimestral segue a carga horária usada pelo boletim.
+- A nota consolidada por aluno, disciplina e período é normalizada pelo valor máximo. Abaixo de `60%` gera alerta; a partir de `80%` gera destaque individual. Alunos recebem somente seus próprios dados; professor/especialista/adm veem nome e nota apenas dentro do escopo autorizado.
+- Os `event_key` estáveis impedem duplicação de alertas acadêmicos em reimportações equivalentes. Uma nova categoria de desempenho pode produzir um novo aviso para a mesma nota consolidada.
+- O agendamento `app:enviar-lembretes-notificacoes` envia uma única lembrança após três dias somente para notificações manuais não confirmadas, ao destinatário e ao criador. Alertas acadêmicos do sistema e os próprios lembretes não entram nesse fluxo. O ambiente publicado deve executar o scheduler Laravel diariamente.

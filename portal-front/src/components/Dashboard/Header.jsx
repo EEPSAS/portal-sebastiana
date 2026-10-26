@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
+import NotificacoesHeader from "./NotificacoesHeader";
 
 const ROLES_SIMULACAO = [
   { value: "adm", label: "Administrador (Padrão)", icon: "bi-shield-lock" },
@@ -171,6 +172,9 @@ const Header = ({
               </div>
             )}
           </div>
+
+          {/* Mantém o acesso às notificações imediatamente antes da ação de sair. */}
+          <NotificacoesHeader />
 
           <button
             type="button"
