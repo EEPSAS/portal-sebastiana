@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ModalDetalhesAluno from "./ModalDetalhesAluno";
+import ModalCriarNotificacao from "./ModalCriarNotificacao";
 
 /**
  * Aba Turmas: Apresenta o Quadro de Turmas e Alunos.
@@ -15,12 +16,15 @@ const TurmasAba = ({
   turmas = [],
   matriculas = [],
   podeGerenciar = false,
+  podeCriarNotificacao = false,
+  role = "",
   onCriarTurma,
   onEditarTurma,
   onVincularAluno,
   onImportarNotas,
   onExcluirTurma,
   onDesvincularAluno,
+  onNotificacaoCriada,
   loading = false,
 }) => {
   // 1. Estados locais para filtros superiores de ano letivo e turno
@@ -32,6 +36,7 @@ const TurmasAba = ({
 
   // 3. Estado para controlar qual aluno/matrícula está aberto no modal de detalhes
   const [matriculaModal, setMatriculaModal] = useState(null);
+  const [matriculaParaNotificar, setMatriculaParaNotificar] = useState(null);
 
   // Garante que matriculas seja sempre um array iterável mesmo em caso de envelope
   const matriculasArray = Array.isArray(matriculas)
@@ -482,7 +487,9 @@ const TurmasAba = ({
                   <th scope="col">Turma Vinculada</th>
                   <th scope="col" className="text-center">Data de Matrícula</th>
                   <th scope="col" className="text-center">Status</th>
-                  {podeGerenciar && <th scope="col" className="text-end">Ações</th>}
+                  {(podeGerenciar || podeCriarNotificacao) && (
+                    <th scope="col" className="text-end">Ações</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -579,8 +586,21 @@ const TurmasAba = ({
                       </td>
 
                       {/* 6. Ações de Gestão */}
-                      {podeGerenciar && (
+                      {(podeGerenciar || podeCriarNotificacao) && (
                         <td className="text-end">
+                          <div className="d-inline-flex align-items-center gap-2">
+                            {podeCriarNotificacao && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-primary rounded-pill px-2"
+                                title={`Criar notificação para ${alunoNome}`}
+                                aria-label={`Criar notificação para ${alunoNome}`}
+                                onClick={() => setMatriculaParaNotificar(mat)}
+                              >
+                                <i className="bi bi-bell"></i>
+                              </button>
+                            )}
+                            {podeGerenciar && (
                           <button
                             type="button"
                             className="btn btn-sm btn-outline-danger py-1 px-3 rounded-pill small"
@@ -591,6 +611,8 @@ const TurmasAba = ({
                             <i className="bi bi-person-dash me-1"></i>
                             Desvincular
                           </button>
+                            )}
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -608,6 +630,20 @@ const TurmasAba = ({
           matricula={matriculaModal}
           turmaInfo={turmaDoAlunoModal}
           onClose={() => setMatriculaModal(null)}
+        />
+      )}
+
+      {matriculaParaNotificar && (
+        <ModalCriarNotificacao
+          matricula={matriculaParaNotificar}
+          matriculas={matriculasArray}
+          turmas={turmas}
+          role={role}
+          onClose={() => setMatriculaParaNotificar(null)}
+          onCreated={() => {
+            setMatriculaParaNotificar(null);
+            onNotificacaoCriada?.();
+          }}
         />
       )}
     </div>

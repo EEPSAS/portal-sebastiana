@@ -23,6 +23,8 @@ use Illuminate\Support\Str;
  */
 class EspecialistaDashboardService
 {
+    public function __construct(private readonly NotificacaoService $notificacaoService) {}
+
     /**
      * Processa uma planilha consolidada do diário escolar (formato padrão EEPSAS / DED MG),
      * detectando automaticamente metadados, cabeçalhos de disciplinas (inclusive em múltiplas linhas),
@@ -816,6 +818,14 @@ class EspecialistaDashboardService
                     $frequenciasSincronizadas++;
                 }
             }
+
+            // Mantém os avisos no mesmo commit dos dados importados, sem notificações parciais.
+            $this->notificacaoService->notificarImportacaoAcademica(
+                $turma,
+                $dadosAlunos,
+                $periodoLetivo,
+                $dataAula
+            );
         });
 
         return [

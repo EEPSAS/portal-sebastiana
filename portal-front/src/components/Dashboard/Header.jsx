@@ -7,13 +7,15 @@
  *    Se o usuário real for Administrador (`adm`), ele pode alternar sua visão
  *    para qualquer papel (Aluno, Professor, Bibliotecária, Especialista).
  *    Ao escolher uma opção, abre um modal de confirmação e recarrega a página.
- * 3. Botão 'Sair': Encerra a sessão e redireciona expressamente para o portal público (`/`).
+ * 3. Central de Notificações (`NotificacoesHeader`): Sino interativo com listagem e avisos.
+ * 4. Botão 'Sair': Encerra a sessão e redireciona expressamente para o portal público (`/`).
  */
 
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
 import { getRotaInicial } from "../../utils/rolesRoutes";
+import NotificacoesHeader from "./NotificacoesHeader";
 
 const ROLES_SIMULACAO = [
   { value: "adm", label: "Administrador (Padrão)", icon: "bi-shield-lock" },
@@ -173,19 +175,8 @@ const Header = ({
 
         {/* Identificação do Usuário Logado, Notificação e Ações */}
         <div className="d-flex align-items-center ms-auto gap-3">
-          {/* Sino de Notificação com Indicador Vermelho */}
-          <button
-            type="button"
-            className="btn btn-link text-primary position-relative p-1 text-decoration-none"
-            aria-label="Notificações"
-            style={{ fontSize: "1.25rem" }}
-          >
-            <i className="bi bi-bell"></i>
-            <span
-              className="position-absolute bg-danger border border-light rounded-circle"
-              style={{ top: "4px", right: "4px", width: "8px", height: "8px" }}
-            ></span>
-          </button>
+          {/* Central de Notificações interativa */}
+          <NotificacoesHeader />
 
           {/* Avatar e Dados do Usuário */}
           <div className="d-flex align-items-center gap-2">
