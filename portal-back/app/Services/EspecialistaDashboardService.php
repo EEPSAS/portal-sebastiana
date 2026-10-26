@@ -1416,6 +1416,11 @@ class EspecialistaDashboardService
             return $item;
         }, array_slice($atualizacoes, 0, 5));
 
+        // Nomes das disciplinas sob regência do docente
+        $disciplinasDocenteNomes = $isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()
+            ? Disciplina::whereIn('id_disciplina', $disciplinasIdsProf)->pluck('nome')->values()->toArray()
+            : [];
+
         return [
             'kpis' => [
                 'total_alunos' => $totalAlunos,
@@ -1428,6 +1433,7 @@ class EspecialistaDashboardService
                 'medias' => $mediasTurmas,
                 'frequencias' => $frequenciasTurmas,
             ],
+            'disciplinas_docente' => $disciplinasDocenteNomes,
             'ultimas_atualizacoes' => $ultimasAtualizacoes,
         ];
     }

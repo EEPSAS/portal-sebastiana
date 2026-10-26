@@ -57,6 +57,8 @@ class UsuarioResource extends JsonResource
             'turma' => $this->turma_ativa?->nome_identificador,
             'turma_id' => $this->turma_ativa?->id_turma,
             'ativo' => (bool) $this->ativo,
+            'status_confirmacao' => $this->status_confirmacao ?? 'confirmado',
+            'confirmado_em' => $this->confirmado_em?->toISOString(),
             'permissoes' => method_exists($this->resource, 'getPermissionsSlugs')
                 ? $this->getPermissionsSlugs()
                 : [],

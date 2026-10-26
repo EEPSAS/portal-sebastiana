@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "../../../../hooks/useAuth";
 import { normalizarRole } from "../../../../utils/rolesRoutes";
 
@@ -22,6 +23,8 @@ const MENSAGEM_POR_ROLE = {
  */
 export default function BoasVindasCard() {
   const { user } = useAuth();
+  // Armazena a URL da foto com falha para fallback gracioso declarativo
+  const [urlFotoComErro, setUrlFotoComErro] = useState(null);
 
   // Prioriza o apelido para usar o nome escolhido pelo próprio usuário
   const nomeExibicao = user?.nickname || user?.name || "Maria Eduarda";
@@ -34,12 +37,13 @@ export default function BoasVindasCard() {
     <div className="card border-0 dashboard-card-shadow rounded-4 p-3 mb-3 bg-white">
       <div className="d-flex align-items-center gap-3">
         {/* Avatar do usuário: foto de perfil ou ícone padrão quando não houver foto */}
-        {user?.avatar ? (
+        {user?.avatar && urlFotoComErro !== user?.avatar ? (
           <img
             src={user.avatar}
             alt={nomeExibicao}
             className="rounded-circle flex-shrink-0 object-fit-cover"
             style={{ width: "58px", height: "58px" }}
+            onError={() => setUrlFotoComErro(user?.avatar)}
           />
         ) : (
           <div

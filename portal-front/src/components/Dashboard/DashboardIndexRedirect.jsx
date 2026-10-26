@@ -3,9 +3,9 @@
  *
  * Papel Didático:
  * Quando um usuário autenticado acessa a URL base `/dashboard`, este componente
- * consulta a função pura `getRotaInicial(role)` para enviá-lo ao destino padrão seguro.
- * Com a disponibilização de painéis gerais para todas as roles (incluindo a bibliotecária),
- * todas as roles convergem diretamente para `/dashboard/geral`.
+ * verifica se é um professor pendente de confirmação (redirecionando-o para `/dashboard/espera`)
+ * e, para os demais casos, consulta a função pura `getRotaInicial(role)` para enviá-lo
+ * ao destino padrão seguro (`/dashboard/geral`).
  *
  * O parâmetro `replace: true` impede que o redirecionamento fique gravado no histórico
  * de navegação do botão 'Voltar' do navegador.
@@ -17,7 +17,14 @@ import { getRotaInicial } from "../../utils/rolesRoutes";
 
 const DashboardIndexRedirect = () => {
   const { user } = useAuth();
-  const destinoInicial = getRotaInicial(user?.role);
+  const role = user?.role || "aluno";
+  const isProfessorPendente = role === "professor" && user?.status_confirmacao === "pendente";
+
+  if (isProfessorPendente) {
+    return <Navigate to="/dashboard/espera" replace />;
+  }
+
+  const destinoInicial = getRotaInicial(role);
 
   return <Navigate to={destinoInicial} replace />;
 };

@@ -36,6 +36,7 @@ const ROLE_DISPLAY_NAMES = {
 const Header = ({
   userName = "Maria Silva",
   role = "Usuário",
+  turma,
   userPhoto,
   onLogout,
 }) => {
@@ -44,6 +45,8 @@ const Header = ({
   const [dropdownAberto, setDropdownAberto] = useState(false);
   const [perfilSelecionado, setPerfilSelecionado] = useState(null);
   const [modalConfirmacaoAberto, setModalConfirmacaoAberto] = useState(false);
+  // Armazena a URL da foto com falha para fallback gracioso declarativo
+  const [urlFotoComErro, setUrlFotoComErro] = useState(null);
 
   // Redireciona obrigatoriamente para a página inicial pública do portal (/)
   const handleLogout = async () => {
@@ -79,6 +82,19 @@ const Header = ({
   const realRole = user?.realRole || user?.role || "aluno";
   const realRoleLabel = ROLE_DISPLAY_NAMES[realRole] || "Usuário";
   const activeRoleLabel = ROLE_DISPLAY_NAMES[user?.role] || role;
+
+  // Identifica se a sessão ativa corresponde a um aluno (seja papel real ou simulado)
+  const isAluno = user?.role === "aluno" || user?.role === "padrao" || realRole === "aluno";
+  const turmaNome = turma || user?.turma;
+
+  // Didática: Se o usuário for Aluno e possuir turma ativa vinculada, exibe "Aluno - {Nome da Turma}".
+  // Se não possuir turma ou for outro papel acadêmico, mantém a exibição padrão do papel.
+  const tipoLoginLabel =
+    isAluno && turmaNome
+      ? `Aluno - ${turmaNome}`
+      : isRealAdmin && user?.role && user.role !== realRole
+      ? activeRoleLabel
+      : realRoleLabel;
 
   return (
     <>
@@ -174,12 +190,13 @@ const Header = ({
           {/* Avatar e Dados do Usuário */}
           <div className="d-flex align-items-center gap-2">
             <div className="user-avatar-container">
-              {userPhoto ? (
+              {userPhoto && urlFotoComErro !== userPhoto ? (
                 <img
                   src={userPhoto}
                   alt={userName}
                   className="rounded-circle border border-2 border-primary"
                   style={{ width: "40px", height: "40px", objectFit: "cover" }}
+                  onError={() => setUrlFotoComErro(userPhoto)}
                 />
               ) : (
                 <div

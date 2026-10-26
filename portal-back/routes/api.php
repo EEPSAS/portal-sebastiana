@@ -14,6 +14,7 @@ use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\NotaController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\PlanoEstudoController;
+use App\Http\Controllers\ProfessorController;
 use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\TurmaController;
 use App\Http\Controllers\UsuarioController;
@@ -102,6 +103,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Módulo Acadêmico: Disciplinas
     Route::post('/disciplinas/{disciplina}/vincular-professor', [DisciplinaController::class, 'vincularProfessor']);
     Route::apiResource('disciplinas', DisciplinaController::class);
+
+    // Módulo Acadêmico: Gestão de Professores (Especialista e Administrador)
+    Route::get('/professores', [ProfessorController::class, 'index']);
+    Route::get('/professores/{professor}', [ProfessorController::class, 'show']);
+    Route::patch('/professores/{professor}/confirmar', [ProfessorController::class, 'confirmar']);
+    Route::patch('/professores/{professor}/recusar', [ProfessorController::class, 'recusar']);
+    Route::post('/professores/{professor}/vincular-disciplina', [ProfessorController::class, 'vincularDisciplina']);
+    Route::delete('/professores/{professor}/desvincular-disciplina/{disciplina}', [ProfessorController::class, 'desvincularDisciplina']);
 
     // Módulo Acadêmico: Matrículas
     Route::get('/matriculas', [MatriculaController::class, 'index']);

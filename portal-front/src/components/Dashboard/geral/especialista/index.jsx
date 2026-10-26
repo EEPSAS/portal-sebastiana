@@ -54,7 +54,7 @@ const GeralEspecialista = () => {
     <div className="geral-especialista-page">
       {/* Cabeçalho estilizado com tipografia imponente e traço decorativo como na referência */}
       <div className="mb-4">
-        <h1 className="geral-header-title mb-1">{tituloPainel}</h1>
+        <h1 className="geral-header-title mb-1">Painel Geral do Especialista</h1>
         <p className="geral-header-subtitle mb-2">
           Acompanhe os principais indicadores e o andamento da escola em tempo real.
         </p>

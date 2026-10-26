@@ -18,7 +18,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 // Campos permitidos para gravacao em massa
-#[Fillable(['name', 'nickname', 'email', 'telefone', 'password', 'role', 'role_id', 'ativo', 'google_id', 'avatar', 'data_nascimento'])]
+#[Fillable(['name', 'nickname', 'email', 'telefone', 'password', 'role', 'role_id', 'ativo', 'status_confirmacao', 'confirmado_em', 'google_id', 'avatar', 'data_nascimento'])]
 // Campos ocultos na serializacao
 #[Hidden(['password', 'remember_token'])]
 // Model de usuário autenticável do sistema.
@@ -36,6 +36,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => UserRole::class,
             'ativo' => 'boolean',
+            'confirmado_em' => 'datetime',
             'data_nascimento' => 'date:Y-m-d',
         ];
     }
@@ -274,5 +275,42 @@ class User extends Authenticatable
     {
         return $query->where('role', UserRole::ALUNO)
             ->where('email', 'like', '%@aluno.mg.gov.br');
+    }
+
+    /**
+     * Verifica se o usuário é um professor confirmado pela equipe pedagógica.
+     */
+    public function isProfessorConfirmado(): bool
+    {
+        return $this->isProfessor() && ($this->status_confirmacao === 'confirmado' || empty($this->status_confirmacao));
+    }
+
+    /**
+     * Verifica se o usuário é um professor aguardando confirmação do Especialista.
+     */
+    public function isProfessorPendente(): bool
+    {
+        return $this->isProfessor() && $this->status_confirmacao === 'pendente';
+    }
+
+    /**
+     * Disciplinas curriculares vinculadas diretamente ao professor pelo Especialista.
+     *
+     * @return BelongsToMany<Disciplina, $this>
+     */
+    public function disciplinasDocente(): BelongsToMany
+    {
+        return $this->belongsToMany(Disciplina::class, 'disciplina_professores', 'professor_id', 'disciplina_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Vínculos específicos em turmas onde este professor leciona disciplinas.
+     *
+     * @return HasMany<TurmaDisciplina, $this>
+     */
+    public function turmaDisciplinasDocente(): HasMany
+    {
+        return $this->hasMany(TurmaDisciplina::class, 'professor_id', 'id');
     }
 }
