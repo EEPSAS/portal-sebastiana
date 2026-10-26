@@ -6,6 +6,7 @@ import {
   marcarNotificacaoLida,
   marcarPadraoComoLidas,
 } from "../../services/notificacoesService";
+import "./NotificacoesHeader.css";
 
 const lerLista = (resposta) => {
   if (Array.isArray(resposta)) return resposta;
@@ -28,6 +29,7 @@ const NotificacoesHeader = () => {
   const [carregandoMais, setCarregandoMais] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [erro, setErro] = useState("");
+  const [notificacoesNovas, setNotificacoesNovas] = useState(null);
 
   useEffect(() => {
     let ativo = true;
@@ -45,9 +47,11 @@ const NotificacoesHeader = () => {
         if (!ativo) return;
 
         const listaSuper = lerLista(prioritarias);
+        const paginaMeta = lerMeta(pagina);
         setNotificacoes(lerLista(pagina));
         setSuperImportantes(listaSuper);
-        setMeta(lerMeta(pagina));
+        setMeta(paginaMeta);
+        setNotificacoesNovas({ userId: user.id, quantidade: paginaMeta.total });
 
         if (listaSuper.length > 0) {
           setSelecionada(listaSuper[0]);
@@ -67,6 +71,17 @@ const NotificacoesHeader = () => {
       ativo = false;
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (notificacoesNovas === null) return;
+
+    // Remove a mensagem quando termina a animação CSS de cinco segundos.
+    const temporizador = window.setTimeout(() => {
+      setNotificacoesNovas(null);
+    }, 5000);
+
+    return () => window.clearTimeout(temporizador);
+  }, [notificacoesNovas]);
 
   const carregarMais = async (event) => {
     const elemento = event.currentTarget;
@@ -189,6 +204,17 @@ const NotificacoesHeader = () => {
             </span>
           )}
         </button>
+
+        {notificacoesNovas?.userId === user?.id && (
+          <p
+            className="position-absolute top-100 start-50 translate-middle-x mt-2 mb-0 rounded-3 bg-dark text-white px-3 py-2 small shadow text-nowrap notificacoes-mensagem-novas"
+            role="status"
+          >
+            Você tem {notificacoesNovas.quantidade} nova
+            {notificacoesNovas.quantidade === 1 ? "" : "s"} notifica
+            {notificacoesNovas.quantidade === 1 ? "ção" : "ções"}
+          </p>
+        )}
 
         {aberta && (
           <section
