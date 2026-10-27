@@ -205,6 +205,44 @@ Suporta envio tanto em `application/json` quanto em `multipart/form-data` (quand
 
 > **Regra de Visibilidade dos Calendários:** O calendário do Portal Público é uma visão *read-only* alimentada pelos eventos que o **Especialista / Adm** cadastra. No Dashboard, qualquer usuário logado pode criar eventos. Eventos criados por **Professores** são visíveis a todos os usuários autenticados; eventos de **Alunos** e **Bibliotecárias** ficam visíveis somente ao autor. Eventos do Especialista/Adm continuam institucionais e visíveis para toda a comunidade escolar. A visibilidade compartilhada não concede permissão para editar ou excluir eventos de terceiros.
 
+#### Horários semanais
+*Grades por turma e ano letivo, consultadas na Agenda do Dashboard.*
+
+| Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
+|---|---|---|---|---|---|---|
+| `GET` | `/api/horarios` | Especialista / Adm (todas as turmas), Professor (turmas vinculadas), Aluno (turma ativa própria) | N/A | `TurmaHorarioResource` (Coleção) | `horariosService.listar()` | Lista as turmas autorizadas, com horário concluído ou `null` quando ainda não foi gerado |
+| `POST` | `/api/turmas/{turma_id}/horario/gerar` | Especialista / Adm | `GenerateHorarioRequest` (autorização; sem corpo) | `HorarioResource` | `horariosService.gerar()` | Gera a grade da turma selecionada; confere currículo, cargas anuais e disponibilidade docente no mesmo ano letivo |
+| `PATCH` | `/api/horarios/{horario_id}/aulas/{aula_id}` | Especialista / Adm | `MoveHorarioAulaRequest` | `HorarioResource` | `horariosService.moverAula()` | Move uma aula para posição vazia ou troca com a aula ocupante e recusa violações docentes |
+
+**Regras da grade:** 5 dias × 6 períodos (30 aulas semanais); o número semanal de aulas é a carga anual da disciplina dividida por 40. Geografia, Filosofia, Artes, Sociologia, Educação Física, Inglês, Biologia e Educação Digital têm 40 aulas anuais; Química, Física e História, 80; Sustentabilidade e Produção Cultural, 120; Português e Matemática, 200. O gerador confere todas as disciplinas e cargas em cada tentativa. Um professor não pode lecionar em duas turmas no mesmo período, ultrapassar 5 aulas diárias ou lecionar 3 períodos consecutivos na mesma turma. Evitar períodos consecutivos é preferência; a geração favorece concentrar as aulas do professor no mesmo dia. Sem combinação válida, retorna `422` e mantém a grade anterior.
+
+**Saída: `TurmaHorarioResource`**
+```json
+{
+  "turma": {
+    "id_turma": 1,
+    "nome_identificador": "1º Ano A - Ensino Médio",
+    "ano_letivo": 2026
+  },
+  "horario": {
+    "id": 8,
+    "ano_letivo": 2026,
+    "status": "concluido",
+    "aulas": [
+      {
+        "id": 31,
+        "dia_semana": 1,
+        "aula_numero": 1,
+        "disciplina": { "id_disciplina": 5, "nome": "Matemática" },
+        "professor": { "id": 3, "name": "Carlos Silva" }
+      }
+    ]
+  }
+}
+```
+`dia_semana` usa `1` para segunda-feira até `5` para sexta-feira; `aula_numero` vai de `1` a `6`. Enquanto a requisição de geração está em andamento, a interface exibe `em_montagem`; após persistência integral, o horário fica `concluido`. A troca de posições usa os campos `destino_dia_semana` e `destino_aula_numero`.
+As respostas seguem a configuração global `JsonResource::withoutWrapping()`: o detalhe é um objeto na raiz e `GET /api/horarios` retorna a coleção como array na raiz.
+
 ---
 
 ### Módulo 5: Turmas / Boletim (Escopo Enxuto via CSV)

@@ -9,6 +9,7 @@ use App\Http\Controllers\EmprestimoController;
 use App\Http\Controllers\EspecialistaDashboardController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\FrequenciaController;
+use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\LivroController;
 use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\NotaController;
@@ -77,6 +78,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Operações autenticadas de Eventos (detalhe individual, criação, edição e exclusão)
     Route::apiResource('eventos', EventoController::class)->except(['index']);
+
+    // Horários escolares: leitura por perfil, gestão restrita a Especialista e Adm.
+    Route::get('/horarios', [HorarioController::class, 'index']);
+    Route::post('/turmas/{turma}/horario/gerar', [HorarioController::class, 'gerar']);
+    Route::patch('/horarios/{horario}/aulas/{aula}', [HorarioController::class, 'moverAula']);
 
     // Módulo Acadêmico: Turmas
     Route::get('/turmas/resumo-geral', [TurmaController::class, 'resumoGeral']);

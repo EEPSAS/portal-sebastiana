@@ -16,6 +16,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useEventos } from '../../hooks/useEventos';
 import Calendario from '../../components/Portal/calendario/Calendario';
 import CadastroEventoModal from '../../components/Portal/calendario/CadastroEventoModal';
+import HorariosEscolares from '../../components/Dashboard/agenda/HorariosEscolares';
 import '../../pages/Portal/portal.css';
 
 const AgendaPage = () => {
@@ -168,6 +169,10 @@ const AgendaPage = () => {
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
       />
+
+      <div className="bg-white rounded-4 shadow-sm p-4 mt-4">
+        <HorariosEscolares />
+      </div>
     </div>
   );
 };
