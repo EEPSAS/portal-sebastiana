@@ -7,13 +7,15 @@
  *    Se o usuário real for Administrador (`adm`), ele pode alternar sua visão
  *    para qualquer papel (Aluno, Professor, Bibliotecária, Especialista).
  *    Ao escolher uma opção, abre um modal de confirmação e recarrega a página.
- * 3. Botão 'Sair': Encerra a sessão e redireciona expressamente para o portal público (`/`).
+ * 3. Central de Notificações (`NotificacoesHeader`): Sino interativo com listagem e avisos.
+ * 4. Botão 'Sair': Encerra a sessão e redireciona expressamente para o portal público (`/`).
  */
 
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
 import { getRotaInicial } from "../../utils/rolesRoutes";
+import NotificacoesHeader from "./NotificacoesHeader";
 
 const ROLES_SIMULACAO = [
   { value: "adm", label: "Administrador (Padrão)", icon: "bi-shield-lock" },
@@ -36,6 +38,7 @@ const ROLE_DISPLAY_NAMES = {
 const Header = ({
   userName = "Maria Silva",
   role = "Usuário",
+  turma,
   userPhoto,
   onLogout,
 }) => {
@@ -44,6 +47,8 @@ const Header = ({
   const [dropdownAberto, setDropdownAberto] = useState(false);
   const [perfilSelecionado, setPerfilSelecionado] = useState(null);
   const [modalConfirmacaoAberto, setModalConfirmacaoAberto] = useState(false);
+  // Armazena a URL da foto com falha para fallback gracioso declarativo
+  const [urlFotoComErro, setUrlFotoComErro] = useState(null);
 
   // Redireciona obrigatoriamente para a página inicial pública do portal (/)
   const handleLogout = async () => {
@@ -79,6 +84,19 @@ const Header = ({
   const realRole = user?.realRole || user?.role || "aluno";
   const realRoleLabel = ROLE_DISPLAY_NAMES[realRole] || "Usuário";
   const activeRoleLabel = ROLE_DISPLAY_NAMES[user?.role] || role;
+
+  // Identifica se a sessão ativa corresponde a um aluno (seja papel real ou simulado)
+  const isAluno = user?.role === "aluno" || user?.role === "padrao" || realRole === "aluno";
+  const turmaNome = turma || user?.turma;
+
+  // Didática: Se o usuário for Aluno e possuir turma ativa vinculada, exibe "Aluno - {Nome da Turma}".
+  // Se não possuir turma ou for outro papel acadêmico, mantém a exibição padrão do papel.
+  const tipoLoginLabel =
+    isAluno && turmaNome
+      ? `Aluno - ${turmaNome}`
+      : isRealAdmin && user?.role && user.role !== realRole
+      ? activeRoleLabel
+      : realRoleLabel;
 
   return (
     <>
@@ -157,29 +175,19 @@ const Header = ({
 
         {/* Identificação do Usuário Logado, Notificação e Ações */}
         <div className="d-flex align-items-center ms-auto gap-3">
-          {/* Sino de Notificação com Indicador Vermelho */}
-          <button
-            type="button"
-            className="btn btn-link text-primary position-relative p-1 text-decoration-none"
-            aria-label="Notificações"
-            style={{ fontSize: "1.25rem" }}
-          >
-            <i className="bi bi-bell"></i>
-            <span
-              className="position-absolute bg-danger border border-light rounded-circle"
-              style={{ top: "4px", right: "4px", width: "8px", height: "8px" }}
-            ></span>
-          </button>
+          {/* Central de Notificações interativa */}
+          <NotificacoesHeader />
 
           {/* Avatar e Dados do Usuário */}
           <div className="d-flex align-items-center gap-2">
             <div className="user-avatar-container">
-              {userPhoto ? (
+              {userPhoto && urlFotoComErro !== userPhoto ? (
                 <img
                   src={userPhoto}
                   alt={userName}
                   className="rounded-circle border border-2 border-primary"
                   style={{ width: "40px", height: "40px", objectFit: "cover" }}
+                  onError={() => setUrlFotoComErro(userPhoto)}
                 />
               ) : (
                 <div

@@ -52,6 +52,7 @@ const Turmas = () => {
   const { user } = useAuth();
   const role = user?.role || "aluno";
   const podeGerenciar = role === "especialista" || role === "adm";
+  const podeCriarNotificacao = ["professor", "especialista", "adm", "admin"].includes(role);
 
   // Estados de navegação
   const [abaAtiva, setAbaAtiva] = useState("geral");
@@ -471,12 +472,15 @@ const Turmas = () => {
             turmas={turmas}
             matriculas={matriculas}
             podeGerenciar={podeGerenciar}
+            podeCriarNotificacao={podeCriarNotificacao}
+            role={role}
             onCriarTurma={handleAbrirCriarTurma}
             onEditarTurma={handleAbrirEditarTurma}
             onVincularAluno={handleAbrirVincularAluno}
             onImportarNotas={handleAbrirImportarNotas}
             onExcluirTurma={setTurmaParaExcluir}
             onDesvincularAluno={setMatriculaParaDesvincular}
+            onNotificacaoCriada={() => dispararNotificacao("Notificação enviada com sucesso.")}
             loading={loadingGeral}
           />
         )}

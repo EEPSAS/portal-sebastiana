@@ -13,6 +13,7 @@ const AvatarCard = ({ user, onUserUpdated }) => {
   const [carregando, setCarregando] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState('');
   const [mensagemErro, setMensagemErro] = useState('');
+  const [urlFotoComErro, setUrlFotoComErro] = useState(null);
   const fileInputRef = useRef(null);
 
   // Limpa mensagens após 4 segundos
@@ -117,12 +118,13 @@ const AvatarCard = ({ user, onUserUpdated }) => {
       {/* Visualização da Foto */}
       <div className="d-flex flex-column align-items-center text-center my-auto">
         <div className="position-relative mb-3">
-          {user?.avatar ? (
+          {user?.avatar && urlFotoComErro !== user?.avatar ? (
             <img
               src={user.avatar}
               alt={user?.name || 'Foto de perfil'}
               className="rounded-circle border border-3 border-primary-subtle shadow-sm object-fit-cover"
               style={{ width: '130px', height: '130px' }}
+              onError={() => setUrlFotoComErro(user?.avatar)}
             />
           ) : (
             <div

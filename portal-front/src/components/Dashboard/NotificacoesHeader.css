@@ -1,0 +1,14 @@
+.notificacoes-mensagem-novas {
+  z-index: 1085;
+  animation: notificacoes-fade-out 5s ease forwards;
+}
+
+@keyframes notificacoes-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}

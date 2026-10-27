@@ -5,14 +5,14 @@ import { fetchDashboardGeral, montarCardsKpis } from "../../../services/geralSer
  * useDashboardEspecialista.js - Hook Unificado do Painel Analítico (Especialista / Professor / Adm)
  *
  * Papel Didático:
- * Substitui os 3 micro-hooks anteriores (useSmallCardsEspecialista, useMediumCardsEspecialista e
- * useLatestUpdatesEspecialista) por uma única chamada HTTP ao endpoint GET /api/dashboard/geral.
- * Dessa forma evitamos requisições triplicadas e eliminamos a necessidade de cache manual de Promises.
+ * Realiza uma única chamada HTTP ao endpoint GET /api/dashboard/geral e distribui
+ * os KPIs, médias, frequências e a relação de disciplinas sob regência do docente.
  */
 export function useDashboardEspecialista() {
   const [cards, setCards] = useState([]);
   const [medias, setMedias] = useState([]);
   const [frequencias, setFrequencias] = useState([]);
+  const [disciplinasDocente, setDisciplinasDocente] = useState([]);
   const [updates, setUpdates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,6 +33,7 @@ export function useDashboardEspecialista() {
         setCards(montarCardsKpis(payload?.kpis || {}));
         setMedias(payload?.resumo_turmas?.medias || []);
         setFrequencias(payload?.resumo_turmas?.frequencias || []);
+        setDisciplinasDocente(payload?.disciplinas_docente || []);
         setUpdates(payload?.ultimas_atualizacoes || []);
       } catch (err) {
         if (isMounted) {
@@ -56,9 +57,9 @@ export function useDashboardEspecialista() {
     cards,
     medias,
     frequencias,
+    disciplinasDocente,
     updates,
     loading,
     error,
   };
 }
-

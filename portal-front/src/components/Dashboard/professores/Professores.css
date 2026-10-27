@@ -1,0 +1,49 @@
+/**
+ * Professores.css - Estilos da Gestão de Professores pelo Especialista
+ */
+
+.professores-page .nav-pills .nav-link {
+  color: #495057;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 8px 16px;
+  transition: all 0.2s ease-in-out;
+}
+
+.professores-page .nav-pills .nav-link.active {
+  background-color: var(--bs-primary, #0d6efd);
+  color: #ffffff;
+}
+
+.professor-card {
+  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.professor-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
+}
+
+.badge-pendente {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+}
+
+.badge-confirmado {
+  background-color: #d1e7dd;
+  color: #0f5132;
+  border: 1px solid #badbcc;
+}
+
+.disciplina-tag {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.825rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

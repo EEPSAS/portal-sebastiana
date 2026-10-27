@@ -29,6 +29,8 @@ import BoletimPage from "./pages/Dashboard/Boletim";
 import BibliotecaPage from "./pages/Dashboard/Biblioteca";
 import PlanoDetalhe from "./pages/Dashboard/PlanoDetalhe";
 import TurmaPage from "./pages/Dashboard/Turma";
+import ProfessoresPage from "./pages/Dashboard/Professores";
+import EsperaProfessor from "./pages/Dashboard/EsperaProfessor";
 import AgendaPage from "./pages/Dashboard/Agenda";
 import NoticiasAdminPage from "./pages/Dashboard/Noticias";
 import ConfiguracoesPage from "./pages/Dashboard/Configuracoes";
@@ -56,6 +58,9 @@ const App = () => {
         {/* 2. Área Privada do Painel de Controle (Dashboard)         */}
         {/* ======================================================== */}
         <Route path="dashboard" element={<ProtectedRoute />}>
+          {/* Tela de Espera: Acessível por professores com confirmação pendente */}
+          <Route path="espera" element={<EsperaProfessor />} />
+
           <Route element={<DashboardLayout />}>
             {/* Redirecionamento inicial baseado no perfil do usuário */}
             <Route index element={<DashboardIndexRedirect />} />
@@ -76,6 +81,11 @@ const App = () => {
             {/* Rota restrita: Turmas (professores, especialistas e administradores) */}
             <Route element={<ProtectedRoute allowedRoles={["professor", "especialista", "adm"]} />}>
               <Route path="turmas" element={<TurmaPage />} />
+            </Route>
+
+            {/* Rota restrita: Gestão de Professores (especialistas e administradores) */}
+            <Route element={<ProtectedRoute allowedRoles={["especialista", "adm"]} />}>
+              <Route path="professores" element={<ProfessoresPage />} />
             </Route>
 
             {/* Rota restrita: Gestão de Notícias (especialistas e administradores) */}

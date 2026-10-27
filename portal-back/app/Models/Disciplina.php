@@ -77,4 +77,14 @@ class Disciplina extends Model
     {
         return $this->hasMany(Nota::class, 'disciplina_id', 'id_disciplina');
     }
+
+    /**
+     * @return BelongsToMany<User, $this>
+     */
+    // Professores vinculados diretamente a esta disciplina
+    public function professores(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'disciplina_professores', 'disciplina_id', 'professor_id')
+            ->withTimestamps();
+    }
 }

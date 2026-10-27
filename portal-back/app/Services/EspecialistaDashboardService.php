@@ -23,6 +23,8 @@ use Illuminate\Support\Str;
  */
 class EspecialistaDashboardService
 {
+    public function __construct(private readonly NotificacaoService $notificacaoService) {}
+
     /**
      * Processa uma planilha consolidada do diário escolar (formato padrão EEPSAS / DED MG),
      * detectando automaticamente metadados, cabeçalhos de disciplinas (inclusive em múltiplas linhas),
@@ -816,6 +818,14 @@ class EspecialistaDashboardService
                     $frequenciasSincronizadas++;
                 }
             }
+
+            // Mantém os avisos no mesmo commit dos dados importados, sem notificações parciais.
+            $this->notificacaoService->notificarImportacaoAcademica(
+                $turma,
+                $dadosAlunos,
+                $periodoLetivo,
+                $dataAula
+            );
         });
 
         return [
@@ -1416,6 +1426,11 @@ class EspecialistaDashboardService
             return $item;
         }, array_slice($atualizacoes, 0, 5));
 
+        // Nomes das disciplinas sob regência do docente
+        $disciplinasDocenteNomes = $isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()
+            ? Disciplina::whereIn('id_disciplina', $disciplinasIdsProf)->pluck('nome')->values()->toArray()
+            : [];
+
         return [
             'kpis' => [
                 'total_alunos' => $totalAlunos,
@@ -1428,6 +1443,7 @@ class EspecialistaDashboardService
                 'medias' => $mediasTurmas,
                 'frequencias' => $frequenciasTurmas,
             ],
+            'disciplinas_docente' => $disciplinasDocenteNomes,
             'ultimas_atualizacoes' => $ultimasAtualizacoes,
         ];
     }
