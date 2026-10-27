@@ -6,11 +6,14 @@
  * - Listagem com cartões responsivos dos livros e exemplares;
  * - Controle de disponibilidade e solicitação de empréstimo pelo estudante;
  * - Modal controlado de cadastro/edição de títulos conectado à API RESTful;
+ * - Busca automatizada na web (Google Books API) via botão de lupa para preenchimento
+ *   dos metadados bibliográficos e miniatura da capa;
  * - Modal de solicitação de retirada de exemplares físicos.
  */
 
 import { useState } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
+import { searchGoogleBooks } from '../../../services/biblioteca/googleBooksService';
 
 const ESTADO_LIVRO_INICIAL = {
   id: null,
@@ -55,9 +58,20 @@ const AcervoAba = ({
   const [observacaoEmprestimo, setObservacaoEmprestimo] = useState('');
   const [salvando, setSalvando] = useState(false);
 
+  // Estados da busca na web (Google Books API) para autopreenchimento do cadastro
+  const [termoBuscaWeb, setTermoBuscaWeb] = useState('');
+  const [buscandoWeb, setBuscandoWeb] = useState(false);
+  const [resultadosWeb, setResultadosWeb] = useState([]);
+  const [erroBuscaWeb, setErroBuscaWeb] = useState('');
+  const [livroWebConfirmado, setLivroWebConfirmado] = useState(false);
+
   // ================= Ações do Formulário de Livro =================
   const abrirNovoLivro = () => {
     setFormData(ESTADO_LIVRO_INICIAL);
+    setTermoBuscaWeb('');
+    setResultadosWeb([]);
+    setErroBuscaWeb('');
+    setLivroWebConfirmado(false);
     setModalFormAberto(true);
   };
 
@@ -74,7 +88,59 @@ const AcervoAba = ({
       quantidade_total: livro.quantidade_total || 1,
       capa: livro.capa || livro.capa_url || '',
     });
+    setTermoBuscaWeb(livro.titulo || '');
+    setResultadosWeb([]);
+    setErroBuscaWeb('');
+    setLivroWebConfirmado(false);
     setModalFormAberto(true);
+  };
+
+  /**
+   * Consulta a API pública do Google Books a partir do botão de lupa (🔍)
+   * usando o termo de busca ou o título digitado pelo usuário.
+   */
+  const handleBuscarLivroWeb = async () => {
+    const consulta = (termoBuscaWeb || formData.titulo).trim();
+    if (!consulta) {
+      setErroBuscaWeb('Digite o título, autor ou ISBN do livro antes de clicar na lupa.');
+      return;
+    }
+
+    setBuscandoWeb(true);
+    setErroBuscaWeb('');
+    setLivroWebConfirmado(false);
+
+    try {
+      const encontrados = await searchGoogleBooks(consulta);
+      setResultadosWeb(encontrados);
+      if (encontrados.length === 0) {
+        setErroBuscaWeb('Nenhum livro correspondente foi encontrado no Google Books.');
+      }
+    } catch (err) {
+      setResultadosWeb([]);
+      setErroBuscaWeb(err.message || 'Erro ao buscar informações do livro na web.');
+    } finally {
+      setBuscandoWeb(false);
+    }
+  };
+
+  /**
+   * Preenche o formulário com os dados normalizados do livro selecionado na busca web,
+   * permitindo ao usuário confirmar os dados e definir a quantidade de exemplares.
+   */
+  const handleSelecionarLivroWeb = (obra) => {
+    setFormData((prev) => ({
+      ...prev,
+      titulo: obra.titulo || prev.titulo,
+      autor: obra.autor || prev.autor,
+      editora: obra.editora || prev.editora,
+      genero: obra.genero || prev.genero,
+      data_lancamento: obra.data_lancamento || prev.data_lancamento,
+      codigo_livro: prev.codigo_livro || obra.codigo_livro || '',
+      capa: obra.capa || prev.capa,
+    }));
+    setResultadosWeb([]);
+    setLivroWebConfirmado(true);
   };
 
   const handleSubmitLivro = async (e) => {
@@ -192,7 +258,7 @@ const AcervoAba = ({
                 {/* Capa */}
                 <div
                   className="livro-card-cover"
-                  style={{ backgroundColor: "var(--dashboard-gray-soft)" }}
+                  style={{ backgroundColor: 'var(--dashboard-gray-soft)' }}
                 >
                   {capaUrl ? (
                     <img
@@ -204,7 +270,7 @@ const AcervoAba = ({
                   ) : (
                     <div
                       className="livro-card-placeholder"
-                      style={{ color: "var(--dashboard-navy)" }}
+                      style={{ color: 'var(--dashboard-navy)' }}
                     >
                       📖
                     </div>
@@ -424,7 +490,7 @@ const AcervoAba = ({
         >
           <div
             className="biblioteca-modal-dialog p-4 position-relative"
-            style={{ maxWidth: '520px' }}
+            style={{ maxWidth: '580px' }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -436,9 +502,116 @@ const AcervoAba = ({
               className="btn-close position-absolute top-0 end-0 m-3"
               aria-label="Fechar formulário"
             />
-            <h4 id="form-livro-titulo" className="fw-bold mb-3 text-dark fs-5">
+            <h4 id="form-livro-titulo" className="fw-bold mb-2 text-dark fs-5">
               {formData.id ? 'Editar Exemplar' : 'Cadastrar Exemplar no Acervo'}
             </h4>
+
+            {/* Busca Automatizada na Web via Google Books API (Botão de Lupa) */}
+            <div className="bg-light border rounded-3 p-3 mb-3">
+              <label htmlFor="busca-web-livro" className="form-label small fw-semibold mb-1 text-primary">
+                Buscar dados do livro na internet (Google Books)
+              </label>
+              <div className="input-group input-group-sm">
+                <input
+                  id="busca-web-livro"
+                  type="text"
+                  className="form-control"
+                  placeholder="Digite título, autor ou ISBN e clique na lupa..."
+                  value={termoBuscaWeb}
+                  onChange={(e) => setTermoBuscaWeb(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleBuscarLivroWeb();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleBuscarLivroWeb}
+                  disabled={buscandoWeb}
+                  className="btn btn-primary px-3 fw-semibold"
+                  title="Buscar informações do livro na internet"
+                  aria-label="Buscar livro na internet"
+                >
+                  {buscandoWeb ? (
+                    <span className="spinner-border spinner-border-sm" role="status" />
+                  ) : (
+                    '🔍 Buscar'
+                  )}
+                </button>
+              </div>
+
+              {erroBuscaWeb && (
+                <div className="text-danger small mt-2">{erroBuscaWeb}</div>
+              )}
+
+              {/* Lista de Resultados Encontrados no Google Books para Confirmação */}
+              {resultadosWeb.length > 0 && (
+                <div
+                  className="mt-2 border rounded-3 bg-white p-2 overflow-auto"
+                  style={{ maxHeight: '220px' }}
+                >
+                  <div className="small text-muted fw-semibold mb-2 px-1">
+                    Selecione o livro correspondente para preencher a ficha:
+                  </div>
+                  <div className="d-flex flex-column gap-2">
+                    {resultadosWeb.map((obra) => (
+                      <div
+                        key={obra.id}
+                        className="d-flex align-items-center justify-content-between gap-2 p-2 border rounded-3 bg-light-subtle"
+                      >
+                        <div className="d-flex align-items-center gap-2 min-w-0">
+                          {obra.thumbnail ? (
+                            <img
+                              src={obra.thumbnail}
+                              alt={obra.titulo}
+                              style={{ width: '36px', height: '52px', objectFit: 'cover' }}
+                              className="rounded border flex-shrink-0"
+                            />
+                          ) : (
+                            <div
+                              style={{ width: '36px', height: '52px' }}
+                              className="rounded border bg-white d-flex align-items-center justify-content-center flex-shrink-0 small"
+                            >
+                              📖
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="fw-bold small text-dark text-truncate" title={obra.titulo}>
+                              {obra.titulo}
+                            </div>
+                            <div className="text-muted text-truncate" style={{ fontSize: '11px' }}>
+                              {obra.autor}
+                              {obra.editora ? ` · ${obra.editora}` : ''}
+                              {obra.anoPublicacao ? ` (${obra.anoPublicacao})` : ''}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSelecionarLivroWeb(obra)}
+                          className="btn btn-sm btn-outline-primary rounded-pill px-3 flex-shrink-0"
+                        >
+                          Confirmar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {livroWebConfirmado && (
+                <div className="alert alert-success py-1 px-2 small mt-2 mb-0 d-flex align-items-center gap-2">
+                  <span>✓</span>
+                  <span>
+                    Dados do livro importados! Confira as informações abaixo, informe a{' '}
+                    <strong>quantidade de cópias</strong> e confirme o salvamento.
+                  </span>
+                </div>
+              )}
+            </div>
+
             <form onSubmit={handleSubmitLivro}>
               <div className="row g-2 mb-2">
                 <div className="col-8">
@@ -560,16 +733,26 @@ const AcervoAba = ({
 
               <div className="mb-3">
                 <label htmlFor="livro-capa" className="form-label small fw-semibold mb-1">
-                  URL da Imagem de Capa
+                  URL da Imagem de Capa (Miniatura)
                 </label>
-                <input
-                  id="livro-capa"
-                  type="url"
-                  className="form-control form-control-sm"
-                  placeholder="https://..."
-                  value={formData.capa}
-                  onChange={(e) => setFormData({ ...formData, capa: e.target.value })}
-                />
+                <div className="d-flex align-items-center gap-2">
+                  <input
+                    id="livro-capa"
+                    type="url"
+                    className="form-control form-control-sm"
+                    placeholder="https://..."
+                    value={formData.capa}
+                    onChange={(e) => setFormData({ ...formData, capa: e.target.value })}
+                  />
+                  {formData.capa && (
+                    <img
+                      src={formData.capa}
+                      alt="Prévia da capa"
+                      style={{ width: '32px', height: '44px', objectFit: 'cover' }}
+                      className="rounded border flex-shrink-0"
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="d-flex justify-content-end gap-2 pt-2 border-top">

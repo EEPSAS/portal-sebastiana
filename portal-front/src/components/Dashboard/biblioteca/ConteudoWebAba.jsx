@@ -1,16 +1,22 @@
 /**
- * ConteudoWebAba.jsx - Pesquisa de Conteúdos Didáticos no Google Books API
+ * ConteudoWebAba.jsx - Pesquisa de Conteúdo Web via Google Programmable Search Engine
  *
  * Papel Didático:
- * Centraliza a pesquisa em tempo real de referências pedagógicas, apostilas,
- * livros digitais e resumos acadêmicos consumindo a API oficial do Google Books.
- * Trata rigorosamente os 3 estados assíncronos: Carregando, Erro Amigável e Vazio.
+ * Integra o mecanismo oficial de busca incorporada do Google (cx: a4b2ccff7fbbe46ad):
+ * - Carrega o script cse.js como singleton em modo explícito (parsetags: 'explicit');
+ * - Renderiza o widget com overlayResults=false para exibir os resultados diretamente
+ *   dentro da própria página (sem abrir modal sobreposto externo);
+ * - Acopla botões de "Acessar conteúdo ↗" e "+ Adicionar aos planos" diretamente nos
+ *   resultados renderizados pelo Google (via MutationObserver) e oferece sugestões rápidas.
  */
 
-import { useState, useEffect, useRef } from 'react';
-import { searchGoogleBooks } from '../../../services/biblioteca/googleBooksService';
+import { useEffect, useRef, useState } from 'react';
 
-const TERMOS_SUGERIDOS = [
+const GOOGLE_CSE_SCRIPT_ID = 'google-programmable-search-script';
+const GOOGLE_CSE_SCRIPT_URL = 'https://cse.google.com/cse.js?cx=a4b2ccff7fbbe46ad';
+
+// Sugestões pedagógicas para facilitar pesquisas rápidas dentro da aba
+const SUGESTOES_PESQUISA = [
   'Literatura Brasileira',
   'História do Brasil',
   'Matemática Ensino Médio',
@@ -19,263 +25,317 @@ const TERMOS_SUGERIDOS = [
   'Redação ENEM',
 ];
 
-const ConteudoWebAba = ({ onAviso, onAdicionarAoPlano }) => {
-  const [busca, setBusca] = useState('Literatura Brasileira');
-  const [resultados, setResultados] = useState([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState('');
-  const [buscaRealizada, setBuscaRealizada] = useState(false);
+// Singleton e contador de instância para evitar duplicidade de scripts ao trocar de abas na SPA
+let promessaScriptGoogle = null;
+let contadorInstanciaCse = 0;
 
-  const abortControllerRef = useRef(null);
+const carregarScriptGoogle = () => {
+  // Se a API do elemento de busca já estiver pronta na janela, resolve imediatamente
+  if (window.google?.search?.cse?.element?.render) {
+    return Promise.resolve();
+  }
 
-  // Carrega automaticamente sugestões pedagógicas na montagem do componente
+  if (promessaScriptGoogle) {
+    return promessaScriptGoogle;
+  }
+
+  promessaScriptGoogle = new Promise((resolve, reject) => {
+    // Define renderização explícita para podermos forçar overlayResults: false (resultados inline)
+    window.__gcse = {
+      ...(window.__gcse || {}),
+      parsetags: 'explicit',
+      initializationCallback: () => resolve(),
+    };
+
+    const scriptExistente = document.getElementById(GOOGLE_CSE_SCRIPT_ID);
+    const script = scriptExistente || document.createElement('script');
+
+    script.addEventListener(
+      'load',
+      () => {
+        if (window.google?.search?.cse?.element?.render) {
+          resolve();
+        }
+      },
+      { once: true }
+    );
+
+    script.addEventListener(
+      'error',
+      () => {
+        script.remove();
+        reject(new Error('Não foi possível carregar o mecanismo de busca do Google.'));
+      },
+      { once: true }
+    );
+
+    if (!scriptExistente) {
+      script.id = GOOGLE_CSE_SCRIPT_ID;
+      script.src = GOOGLE_CSE_SCRIPT_URL;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  }).catch((error) => {
+    promessaScriptGoogle = null;
+    throw error;
+  });
+
+  return promessaScriptGoogle;
+};
+
+const ConteudoWebAba = ({ onAdicionarAoPlano }) => {
+  const [carregandoWidget, setCarregandoWidget] = useState(true);
+  const [erroWidget, setErroWidget] = useState('');
+  const [termoSugeridoAtivo, setTermoSugeridoAtivo] = useState('');
+  const containerRef = useRef(null);
+  const elementoCseRef = useRef(null);
+
   useEffect(() => {
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
+    let componenteAtivo = true;
 
-    searchGoogleBooks('Literatura Brasileira', { signal: controller.signal })
-      .then((itens) => {
-        setResultados(itens);
-        setBuscaRealizada(true);
-      })
-      .catch((error) => {
-        if (error?.name !== 'AbortError') {
-          setErro(
-            error.message ||
-            'Não foi possível consultar os materiais no Google Books no momento. Tente novamente mais tarde.'
+    const inicializarWidget = async () => {
+      try {
+        setCarregandoWidget(true);
+        setErroWidget('');
+        await carregarScriptGoogle();
+        if (!componenteAtivo || !containerRef.current) return;
+
+        const apiElemento = window.google?.search?.cse?.element;
+        if (apiElemento?.render) {
+          // Limpa o container e cria um nó dedicado para a instância atual da aba
+          containerRef.current.innerHTML = '';
+          const divAlvo = document.createElement('div');
+          containerRef.current.appendChild(divAlvo);
+
+          contadorInstanciaCse += 1;
+          const nomeInstancia = `biblioteca-conteudo-web-${contadorInstanciaCse}`;
+
+          // Força overlayResults: false para que os resultados apareçam dentro da própria página
+          const instancia = apiElemento.render({
+            div: divAlvo,
+            tag: 'search',
+            gname: nomeInstancia,
+            attributes: {
+              overlayResults: false,
+              linkTarget: '_blank',
+              enableHistory: false,
+            },
+          });
+
+          elementoCseRef.current = instancia || apiElemento.getElement?.(nomeInstancia) || null;
+        }
+      } catch {
+        if (componenteAtivo) {
+          setErroWidget(
+            'Não foi possível carregar a busca integrada do Google. Verifique sua conexão e tente novamente.'
           );
-          setBuscaRealizada(true);
         }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setCarregando(false);
+      } finally {
+        if (componenteAtivo) {
+          setCarregandoWidget(false);
         }
-      });
+      }
+    };
 
-    return () => controller.abort();
+    inicializarWidget();
+
+    return () => {
+      componenteAtivo = false;
+    };
   }, []);
 
-  /**
-   * Executa a busca assíncrona ao submeter o formulário ou clicar numa sugestão.
-   */
-  const executarBusca = async (termoPesquisa) => {
-    const termo = (termoPesquisa ?? busca).trim();
-    if (!termo) {
-      onAviso?.('Digite um termo para pesquisar conteúdos no Google Books.');
+  // Observa os resultados renderizados pelo Google para organizar os links e botões de ação
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return undefined;
+
+    const organizarResultadosGoogle = () => {
+      const resultados = container.querySelectorAll('.gsc-webResult.gsc-result');
+
+      resultados.forEach((resultadoEl) => {
+        if (resultadoEl.querySelector('.acoes-resultado-cse')) return;
+
+        const linkEl = resultadoEl.querySelector('a.gs-title');
+        const titulo = linkEl?.textContent?.trim();
+        const url = linkEl?.getAttribute('data-ctorig') || linkEl?.getAttribute('href') || '';
+
+        if (!titulo || !url) return;
+
+        // Garante que o clique no título redirecione para a página do resultado com segurança
+        linkEl.setAttribute('target', '_blank');
+        linkEl.setAttribute('rel', 'noopener noreferrer');
+
+        const snippetEl = resultadoEl.querySelector('.gs-snippet');
+        const fonteEl =
+          resultadoEl.querySelector('.gs-visibleUrl-short') ||
+          resultadoEl.querySelector('.gs-visibleUrl');
+        const thumbEl = resultadoEl.querySelector('img.gs-image');
+
+        const descricao = snippetEl?.textContent?.trim() || '';
+        const fonte = fonteEl?.textContent?.trim() || 'Pesquisa Google Web';
+        const thumbnail = thumbEl?.getAttribute('src') || null;
+
+        // Barra inferior de ações do resultado: acessar o conteúdo ou salvar nos planos
+        const wrapperAcao = document.createElement('div');
+        wrapperAcao.className =
+          'acoes-resultado-cse mt-3 pt-2 border-top d-flex flex-wrap justify-content-between align-items-center gap-2';
+
+        const badgeFonte = document.createElement('span');
+        badgeFonte.className =
+          'badge bg-light text-secondary border rounded-pill px-2 py-1 fw-normal';
+        badgeFonte.textContent = `🌐 ${fonte}`;
+
+        const grupoBotoes = document.createElement('div');
+        grupoBotoes.className = 'd-flex flex-wrap gap-2 ms-auto';
+
+        const linkAcessar = document.createElement('a');
+        linkAcessar.href = url;
+        linkAcessar.target = '_blank';
+        linkAcessar.rel = 'noopener noreferrer';
+        linkAcessar.className =
+          'btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold small';
+        linkAcessar.textContent = 'Acessar conteúdo ↗';
+
+        grupoBotoes.appendChild(linkAcessar);
+
+        if (onAdicionarAoPlano) {
+          const botaoPlano = document.createElement('button');
+          botaoPlano.type = 'button';
+          botaoPlano.className =
+            'btn btn-sm btn-outline-success rounded-pill px-3 fw-semibold small btn-adicionar-plano-cse';
+          botaoPlano.textContent = '+ Adicionar aos planos';
+          botaoPlano.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onAdicionarAoPlano({
+              tipo: 'conteudo_web',
+              conteudo_id: url,
+              titulo,
+              descricao,
+              url,
+              thumbnail,
+              fonte,
+              duracao: null,
+            });
+          });
+
+          grupoBotoes.appendChild(botaoPlano);
+        }
+
+        wrapperAcao.appendChild(badgeFonte);
+        wrapperAcao.appendChild(grupoBotoes);
+        resultadoEl.appendChild(wrapperAcao);
+      });
+    };
+
+    const observer = new MutationObserver(() => {
+      organizarResultadosGoogle();
+    });
+
+    observer.observe(container, { childList: true, subtree: true });
+    organizarResultadosGoogle();
+
+    return () => observer.disconnect();
+  }, [onAdicionarAoPlano]);
+
+  // Executa uma pesquisa diretamente dentro da página ao clicar em um tema sugerido
+  const handlePesquisarSugestao = (termo) => {
+    setTermoSugeridoAtivo(termo);
+    if (elementoCseRef.current?.execute) {
+      elementoCseRef.current.execute(termo);
       return;
     }
 
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setCarregando(true);
-    setErro('');
-    setBuscaRealizada(true);
-
-    try {
-      const itens = await searchGoogleBooks(termo, { signal: controller.signal });
-      setResultados(itens);
-    } catch (error) {
-      if (error?.name === 'AbortError') return;
-      setResultados([]);
-      setErro(
-        error.message ||
-        'Não foi possível consultar os materiais no Google Books no momento. Tente novamente mais tarde.'
-      );
-    } finally {
-      if (!controller.signal.aborted) {
-        setCarregando(false);
-      }
+    // Fallback preenchendo o campo e acionando o botão de busca do Google CSE
+    const inputGoogle = containerRef.current?.querySelector('input.gsc-input');
+    const botaoGoogle = containerRef.current?.querySelector('button.gsc-search-button');
+    if (inputGoogle && botaoGoogle) {
+      inputGoogle.value = termo;
+      botaoGoogle.click();
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    executarBusca();
-  };
+  // Abre o modal permitindo salvar manualmente um conteúdo ou link pesquisado no plano de estudos
+  const handleAbrirAdicaoManual = () => {
+    const inputGoogle = containerRef.current?.querySelector('input.gsc-input');
+    const termoDigitado = inputGoogle?.value?.trim() || termoSugeridoAtivo || '';
 
-  const handleSelecionarSugestao = (sugestao) => {
-    setBusca(sugestao);
-    executarBusca(sugestao);
+    onAdicionarAoPlano?.({
+      tipo: 'conteudo_web',
+      conteudo_id: null,
+      titulo: termoDigitado,
+      descricao: '',
+      url: '',
+      thumbnail: null,
+      fonte: 'Pesquisa Google Web',
+      duracao: null,
+      editavel: true,
+    });
   };
 
   return (
-    <section aria-label="Pesquisa de Conteúdo Web no Google Books">
-      {/* Cabeçalho e Barra de Pesquisa do Google Books */}
-      <div className="bg-light p-4 rounded-4 border mb-4">
-        <div className="mb-3">
-          <h5 className="fw-bold text-dark mb-1">Pesquisa de Livros e Conteúdos Didáticos</h5>
-          <p className="text-muted small mb-0">
-            Consulte obras acadêmicas, apostilas e referências complementares integradas à biblioteca digital do Google Books.
-          </p>
+    <section aria-label="Pesquisa de Conteúdo Web no Google">
+      {/* Cabeçalho de Orientação e Atalho para Salvar Conteúdo no Plano de Estudos */}
+      <div className="bg-light p-3 p-md-4 rounded-4 mb-4 border border-light-subtle">
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+          <div>
+            <h5 className="fw-bold text-dark mb-1 fs-6">
+              Pesquisa Acadêmica Integrada (Google)
+            </h5>
+            <p className="text-muted small mb-0">
+              Pesquise artigos, resumos e materiais didáticos na web. Os resultados aparecem abaixo nesta mesma página.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAbrirAdicaoManual}
+            className="btn btn-sm btn-outline-success rounded-pill px-3 py-2 fw-semibold flex-shrink-0"
+          >
+            + Salvar conteúdo pesquisado no plano
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="d-flex flex-column flex-sm-row gap-2 mb-3">
-          <input
-            type="search"
-            className="form-control rounded-pill px-4"
-            placeholder="Pesquisar por tema, disciplina, obra ou autor..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            aria-label="Termo de pesquisa no Google Books"
-          />
-          <button
-            type="submit"
-            className="btn btn-primary rounded-pill px-4 fw-semibold"
-            disabled={carregando}
-          >
-            {carregando ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-2" role="status" />
-                Pesquisando...
-              </>
-            ) : (
-              'Pesquisar'
-            )}
-          </button>
-        </form>
-
-        {/* Pílulas de Sugestões de Estudo */}
-        <div className="d-flex flex-wrap gap-2 align-items-center">
-          <span className="text-muted small fw-semibold">Sugestões de temas:</span>
-          {TERMOS_SUGERIDOS.map((termo) => (
+        {/* Sugestões Rápidas para Pesquisa Imediata Dentro da Aba */}
+        <div className="d-flex flex-wrap align-items-center gap-2 pt-2 border-top border-secondary-subtle">
+          <span className="text-secondary small fw-semibold me-1">Sugestões rápidas:</span>
+          {SUGESTOES_PESQUISA.map((sugestao) => (
             <button
-              key={termo}
+              key={sugestao}
               type="button"
-              onClick={() => handleSelecionarSugestao(termo)}
-              className="btn btn-sm btn-white bg-white border rounded-pill text-secondary py-1 px-3 small"
+              onClick={() => handlePesquisarSugestao(sugestao)}
+              className={`btn btn-sm rounded-pill px-3 py-1 small ${
+                termoSugeridoAtivo === sugestao
+                  ? 'btn-primary fw-semibold'
+                  : 'btn-white bg-white border text-secondary'
+              }`}
             >
-              {termo}
+              {sugestao}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Estado 1: Alerta de Erro Amigável */}
-      {erro && (
-        <div
-          className="alert alert-warning d-flex justify-content-between align-items-center mb-4 rounded-3 shadow-sm"
-          role="alert"
-        >
-          <div className="d-flex align-items-center gap-2">
-            <span className="fs-5">⚠️</span>
-            <span className="small fw-semibold text-warning-emphasis">{erro}</span>
-          </div>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-dark rounded-pill fw-semibold"
-            onClick={() => executarBusca()}
-          >
-            Tentar novamente
-          </button>
-        </div>
-      )}
-
-      {/* Estado 2: Carregando com Spinner */}
-      {carregando && (
-        <div className="py-5 text-center text-muted" role="status">
-          <div className="spinner-border text-primary mb-3" role="status" />
-          <p className="fw-semibold mb-0">Consultando referências no Google Books...</p>
-        </div>
-      )}
-
-      {/* Grade de Resultados */}
-      {!carregando && resultados.length > 0 && (
-        <div className="row g-4">
-          {resultados.map((obra) => (
-            <div key={obra.id} className="col-12 col-md-6">
-              <div className="card h-100 border-0 shadow-sm p-3 rounded-4 hover-shadow">
-                <div className="d-flex gap-3">
-                  {/* Capa da Obra */}
-                  <div
-                    className="flex-shrink-0 rounded-3 overflow-hidden bg-light d-flex align-items-center justify-content-center"
-                    style={{ width: '84px', height: '120px' }}
-                  >
-                    {obra.thumbnail ? (
-                      <img
-                        src={obra.thumbnail}
-                        alt={obra.titulo}
-                        className="w-100 h-100 object-fit-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <span className="fs-2 text-primary">📖</span>
-                    )}
-                  </div>
-
-                  {/* Informações Bibliográficas */}
-                  <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-                    <h5
-                      className="card-title fw-bold text-dark mb-1 fs-6 text-truncate"
-                      title={obra.titulo}
-                    >
-                      {obra.titulo}
-                    </h5>
-
-                    <p className="card-subtitle text-muted small mb-2 text-truncate">
-                      Por <strong>{obra.fonte}</strong>
-                      {obra.dataPublicacao && ` · ${obra.dataPublicacao.slice(0, 4)}`}
-                    </p>
-
-                    <p className="card-text text-secondary small flex-grow-1 mb-3 line-clamp-3">
-                      {obra.snippet}
-                    </p>
-
-                    <div className="d-flex justify-content-between align-items-center pt-2 border-top flex-wrap gap-2">
-                      <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small">
-                        Google Books
-                      </span>
-
-                      <div className="d-flex gap-2">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-success rounded-pill px-3 fw-semibold small"
-                          onClick={() =>
-                            onAdicionarAoPlano?.({
-                              tipo: 'conteudo_web',
-                              conteudo_id: obra.id,
-                              titulo: obra.titulo,
-                              descricao: obra.snippet,
-                              url: obra.link,
-                              thumbnail: obra.thumbnail,
-                              fonte: obra.fonte,
-                              duracao: null,
-                            })
-                          }
-                        >
-                          + Adicionar aos planos
-                        </button>
-
-                        {obra.link && (
-                          <a
-                            href={obra.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold small"
-                          >
-                            Acessar Obra ↗
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Estado 3: Vazio Obrigatório */}
-      {!carregando && buscaRealizada && resultados.length === 0 && !erro && (
-        <div className="py-5 text-center text-muted" role="status">
-          <span className="fs-1 d-block mb-2">🔍</span>
-          <p className="mb-1 fw-semibold fs-6">Nenhum conteúdo encontrado para "{busca}".</p>
-          <p className="small text-secondary">
-            Tente pesquisar com outras palavras-chave ou escolha uma das sugestões acima.
+      {/* Estado Assíncrono 1: Carregando o Mecanismo de Busca */}
+      {carregandoWidget && (
+        <div className="py-4 text-center text-muted" role="status">
+          <div className="spinner-border spinner-border-sm text-primary mb-2" role="status" />
+          <p className="small mb-0 fw-semibold">
+            Carregando barra de pesquisa integrada do Google...
           </p>
+        </div>
+      )}
+
+      {/* Container Inline do Google Programmable Search Engine (Sem Overlay Externo) */}
+      <div
+        ref={containerRef}
+        className="conteudo-web-google bg-white border rounded-4 p-3 p-md-4 shadow-sm"
+      />
+
+      {/* Estado Assíncrono 2: Erro Amigável */}
+      {erroWidget && (
+        <div className="alert alert-warning mt-3 mb-0 rounded-3 shadow-sm small" role="alert">
+          ⚠️ {erroWidget}
         </div>
       )}
     </section>

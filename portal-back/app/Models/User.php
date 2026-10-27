@@ -249,6 +249,16 @@ class User extends Authenticatable
     }
 
     /**
+     * @return BelongsToMany<Turma, $this>
+     */
+    // Turmas escolares em que o professor leciona disciplinas (via tabela turma_disciplinas)
+    public function turmasLecionadas(): BelongsToMany
+    {
+        return $this->belongsToMany(Turma::class, 'turma_disciplinas', 'professor_id', 'turma_id')
+            ->withTimestamps();
+    }
+
+    /**
      * @return HasMany<PlanoEstudo, $this>
      */
     // Planos de estudo criados pelo usuário
