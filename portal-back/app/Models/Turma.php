@@ -74,6 +74,14 @@ class Turma extends Model
     }
 
     /**
+     * @return HasMany<Horario, $this>
+     */
+    public function horarios(): HasMany
+    {
+        return $this->hasMany(Horario::class, 'turma_id', 'id_turma');
+    }
+
+    /**
      * @return BelongsToMany<Disciplina, $this>
      */
     // Disciplinas ministradas nesta turma
