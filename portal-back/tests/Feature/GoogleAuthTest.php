@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 
-test('permite autenticação de aluno com email institucional @aluno.mg.gov.br e emite token Sanctum', function () {
+test('cria pedido pendente para aluno sem emitir token Sanctum', function () {
     Http::fake([
         'https://oauth2.googleapis.com/tokeninfo*' => Http::response([
             'sub' => 'google-user-123',
@@ -21,17 +21,19 @@ test('permite autenticação de aluno com email institucional @aluno.mg.gov.br e
         'credential' => 'valid-jwt-token',
     ]);
 
-    $response->assertOk()
+    $response->assertForbidden()
         ->assertJsonPath('user.email', 'ada.lovelace@aluno.mg.gov.br')
         ->assertJsonPath('user.role', 'aluno')
         ->assertJsonPath('user.avatar', 'https://example.com/ada.jpg')
         ->assertJsonPath('user.google_vinculado', true)
-        ->assertJsonStructure(['user', 'token', 'token_type']);
+        ->assertJsonPath('approval_status', 'pending')
+        ->assertJsonPath('token', null);
 
     $user = User::where('email', 'ada.lovelace@aluno.mg.gov.br')->first();
     expect($user)->not->toBeNull()
         ->and($user->google_id)->toBe('google-user-123')
-        ->and($user->role)->toBe(UserRole::ALUNO);
+        ->and($user->role)->toBe(UserRole::ALUNO)
+        ->and($user->approval_status)->toBe('pending');
 });
 
 test('cria vinculo de turma em stand by com status Pendente para o aluno', function () {
@@ -55,7 +57,8 @@ test('cria vinculo de turma em stand by com status Pendente para o aluno', funct
         'turma_id' => $turma->id_turma,
     ]);
 
-    $response->assertOk();
+    $response->assertForbidden()
+        ->assertJsonPath('approval_status', 'pending');
 
     $user = User::where('email', 'turing@aluno.mg.gov.br')->first();
     expect($user)->not->toBeNull();
@@ -82,9 +85,11 @@ test('permite login de professor com @educacao.mg.gov.br e atribui perfil profes
         'credential' => 'valid-jwt-token',
     ]);
 
-    $response->assertOk()
+    $response->assertForbidden()
         ->assertJsonPath('user.email', 'margaret.hamilton@educacao.mg.gov.br')
-        ->assertJsonPath('user.role', 'professor');
+        ->assertJsonPath('user.role', 'professor')
+        ->assertJsonPath('approval_status', 'pending')
+        ->assertJsonPath('token', null);
 });
 
 test('normaliza automaticamente email institucional com acento @educação.mg.gov.br', function () {
@@ -101,8 +106,9 @@ test('normaliza automaticamente email institucional com acento @educação.mg.go
         'credential' => 'valid-jwt-token',
     ]);
 
-    $response->assertOk()
-        ->assertJsonPath('user.email', 'professor@educacao.mg.gov.br');
+    $response->assertForbidden()
+        ->assertJsonPath('user.email', 'professor@educacao.mg.gov.br')
+        ->assertJsonPath('approval_status', 'pending');
 });
 
 test('bloqueia e retorna 403 para dominios publicos como @gmail.com com mensagem oficial de seguranca', function () {
@@ -119,7 +125,7 @@ test('bloqueia e retorna 403 para dominios publicos como @gmail.com com mensagem
     ]);
 
     $response->assertStatus(403)
-        ->assertJsonPath('message', 'Acesso restrito. Utilize exclusivamente seu e-mail institucional (@aluno.mg.gov.br ou @educacao.mg.gov.br)');
+        ->assertJsonPath('message', 'Acesso restrito. Utilize seu e-mail @aluno.mg.gov.br ou @educacao.mg.gov.br.');
 });
 
 test('retorna 401 quando o token do Google for invalido ou expirado', function () {
@@ -161,8 +167,10 @@ test('bloqueia login de usuario desativado pelo administrador', function () {
 
 test('mantem login tradicional por email e senha funcionando normalmente (fallback)', function () {
     $user = User::factory()->create([
+        'email' => 'professor.login@educacao.mg.gov.br',
         'password' => Hash::make('senha-secreta-123'),
         'ativo' => true,
+        'role' => UserRole::PROFESSOR,
     ]);
 
     $response = $this->postJson('/api/auth/login', [

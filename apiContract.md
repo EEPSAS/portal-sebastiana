@@ -48,11 +48,19 @@ Sempre que um **Model**, **Migration**, **Form Request**, **API Resource** ou se
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front (`src/services/`) | Descrição |
 |---|---|---|---|---|---|---|
-| `POST` | `/api/auth/google` | Público | `AuthGoogleRequest` | `AuthUserResource` | `authService.googleLogin()` | Login e auto-cadastro via Google OAuth (com turma em standby) |
-| `POST` | `/api/auth/login` | Público | `AuthLoginRequest` | `AuthUserResource` | `authService.login()` | Login tradicional e emissão do token Sanctum (fallback) |
-| `POST` | `/api/auth/register` | Público | `AuthRegisterRequest` | `AuthUserResource` | `authService.register()` | Auto-cadastro (recebe role `aluno`) |
+| `POST` | `/api/auth/google` | Público | `AuthGoogleRequest` | `AuthUserResource` | `authService.googleLogin()` | Login Google; novos alunos/professores aguardam aprovação antes de receber token |
+| `POST` | `/api/auth/login` | Público | `AuthLoginRequest` | `AuthUserResource` | `authService.login()` | Login tradicional; contas pendentes/rejeitadas não recebem token |
+| `POST` | `/api/auth/register` | Público | `AuthRegisterRequest` | `AuthUserResource` | `authService.register()` | Solicita acesso com e-mail escolar (`aluno` ou `educacao`), sem emitir token |
 | `POST` | `/api/auth/logout` | Autenticado | N/A | Mensagem 200/204 | `authService.logout()` | Invalida o token atual |
 | `GET` | `/api/user` | Autenticado | N/A | `UsuarioResource` | `authService.getUser()` | Retorna o usuário logado e permissões |
+| `GET` | `/api/aprovacoes/usuarios` | Especialista | N/A | `SolicitacaoAprovacaoResource` (Coleção) | `aprovacaoService.listarSolicitacoes()` | Lista pedidos pendentes de alunos e professores |
+| `PATCH` | `/api/aprovacoes/usuarios/{usuario}` | Especialista | `DecidirAprovacaoRequest` | `SolicitacaoAprovacaoResource` | `aprovacaoService.decidirSolicitacao()` | Aprova ou rejeita um pedido pendente |
+
+O cadastro público aceita somente `@aluno.mg.gov.br` (papel `aluno`) e `@educacao.mg.gov.br` (papel `professor`). Ambos os perfis precisam da aprovação exclusiva do Especialista. Respostas de autenticação pendente usam HTTP `403` com `approval_status: "pending"` e `token: null`; o cadastro inicial retorna HTTP `202`. Contas pendentes também são bloqueadas nas rotas autenticadas, inclusive quando possuem um token antigo.
+
+Contas criadas pelo administrador ou alteradas para os papéis de aluno/professor também entram pendentes e têm os tokens anteriores revogados, sem permitir contornar a aprovação.
+
+O endpoint de decisão recebe `{"approval_status":"approved"}` ou `{"approval_status":"rejected"}`. Ao tentar autenticar novamente após rejeição, o pedido retorna à fila como pendente.
 
 #### Especificação de Payload: `UsuarioResource`
 Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api/auth/login`, `/api/auth/google` e `/api/auth/register`:
@@ -61,7 +69,7 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
   "id": 1,
   "name": "Yasmin Teixeira",
   "nickname": "Yasmin",
-  "email": "yasmin.teixeira@sebastiana.edu.br",
+  "email": "yasmin.teixeira@aluno.mg.gov.br",
   "telefone": "(31) 98888-0001",
   "avatar": "http://localhost:8000/storage/avatars/avatar.webp",
   "data_nascimento": "2008-05-14",
@@ -69,6 +77,7 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
   "tem_senha": true,
   "role": "aluno",
   "role_label": "Aluno",
+  "approval_status": "approved",
   "turma": "1º Ano A - Ensino Médio",
   "turma_id": 1,
   "ativo": true,
@@ -290,4 +299,3 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
 }
 ```
 * **Nota sobre Escopo**: Para o `especialista` e `adm`, os dados abrangem todas as turmas ativas da instituição. Para o `professor`, os KPIs e listagens de turmas são calculados dinamicamente com base nas turmas e disciplinas sob sua regência docente (com fallback automático para a visão da escola caso ainda não possua turmas atribuídas).
-

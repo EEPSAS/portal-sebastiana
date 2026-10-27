@@ -17,7 +17,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 // Campos permitidos para gravacao em massa
-#[Fillable(['name', 'nickname', 'email', 'telefone', 'password', 'role', 'role_id', 'ativo', 'google_id', 'avatar', 'data_nascimento'])]
+#[Fillable(['name', 'nickname', 'email', 'telefone', 'password', 'role', 'role_id', 'ativo', 'approval_status', 'google_id', 'avatar', 'data_nascimento'])]
 // Campos ocultos na serializacao
 #[Hidden(['password', 'remember_token'])]
 // Model de usuário autenticável do sistema.
@@ -26,6 +26,11 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     // Autenticacao via API, criacao por factory e notificacoes
     use HasApiTokens, HasFactory, HasRolesAndPermissions, Notifiable;
+
+    // Contas criadas pela gestão são aprovadas por padrão; os fluxos públicos definem "pending".
+    protected $attributes = [
+        'approval_status' => 'approved',
+    ];
 
     // Conversoes de tipos de atributos
     protected function casts(): array

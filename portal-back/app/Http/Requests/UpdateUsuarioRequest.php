@@ -2,8 +2,12 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\UserRole;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 // Validação para atualização cadastral de usuários pelo próprio usuário ou pelo administrador.
 class UpdateUsuarioRequest extends FormRequest
@@ -52,6 +56,40 @@ class UpdateUsuarioRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        if (! $this->user()?->hasPermissionTo('gerenciar_usuarios')) {
+            return;
+        }
+
+        $validator->after(function (Validator $validator): void {
+            // Só o administrador pode alterar e-mail/papel; valida os novos dados combinados.
+            $usuario = $this->route('usuario');
+            if (! $usuario instanceof User) {
+                $usuario = User::find($usuario);
+            }
+
+            if (! $usuario) {
+                return;
+            }
+
+            $role = $this->input('role');
+            if ($this->filled('role_id')) {
+                $role = Role::find($this->input('role_id'))?->slug ?? $role;
+            }
+            if (! $role) {
+                $role = $usuario->role instanceof UserRole ? $usuario->role->value : (string) $usuario->role;
+            }
+
+            $domain = UserRole::tryFrom((string) $role)?->institutionalEmailDomain();
+            $email = strtolower(trim((string) $this->input('email', $usuario->email)));
+
+            if ($domain !== null && ! str_ends_with($email, $domain)) {
+                $validator->errors()->add('email', 'O e-mail deve corresponder ao papel escolar informado.');
+            }
+        });
     }
 
     // Mensagens didáticas de validação em português

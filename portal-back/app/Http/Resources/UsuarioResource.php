@@ -41,6 +41,7 @@ class UsuarioResource extends JsonResource
             'turma' => $this->turma_ativa?->nome_identificador,
             'turma_id' => $this->turma_ativa?->id_turma,
             'ativo' => (bool) $this->ativo,
+            'approval_status' => $this->approval_status,
             'permissoes' => method_exists($this->resource, 'getPermissionsSlugs')
                 ? $this->getPermissionsSlugs()
                 : [],

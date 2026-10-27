@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AlunoDashboardController;
+use App\Http\Controllers\AprovacaoUsuarioController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BibliotecaController;
 use App\Http\Controllers\DashboardGeralController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\PlanoEstudoController;
 use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\TurmaController;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Middleware\EnsureUserApproved;
 use App\Http\Resources\UsuarioResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -55,13 +57,17 @@ Route::prefix('auth')->name('auth.')->group(function () {
 });
 
 // Rotas protegidas (auth:sanctum)
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', EnsureUserApproved::class])->group(function () {
     Route::get('/user', function (Request $request) {
         $user = $request->user()->load('roleModel.permissions');
 
         // Retorna os dados do usuário logado padronizados e blindados via UsuarioResource
         return new UsuarioResource($user);
     });
+
+    // Pedidos de acesso disponíveis somente para o Especialista autenticado.
+    Route::get('/aprovacoes/usuarios', [AprovacaoUsuarioController::class, 'index']);
+    Route::patch('/aprovacoes/usuarios/{usuario}', [AprovacaoUsuarioController::class, 'update']);
 
     Route::apiResource('noticias', NoticiaController::class)->except(['index', 'show']);
     Route::apiResource('radioatividades', RadioatividadeController::class);

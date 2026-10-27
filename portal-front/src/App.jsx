@@ -31,6 +31,7 @@ import TurmaPage from "./pages/Dashboard/Turma";
 import AgendaPage from "./pages/Dashboard/Agenda";
 import NoticiasAdminPage from "./pages/Dashboard/Noticias";
 import ConfiguracoesPage from "./pages/Dashboard/Configuracoes";
+import AprovacoesPage from "./pages/Dashboard/Aprovacoes";
 
 const App = () => {
   return (
@@ -75,6 +76,11 @@ const App = () => {
             {/* Rota restrita: Gestão de Notícias (especialistas e administradores) */}
             <Route element={<ProtectedRoute allowedRoles={["especialista", "adm"]} />}>
               <Route path="noticias" element={<NoticiasAdminPage />} />
+            </Route>
+
+            {/* A análise das solicitações de acesso é exclusiva do Especialista. */}
+            <Route element={<ProtectedRoute allowedRoles={["especialista"]} />}>
+              <Route path="aprovacoes" element={<AprovacoesPage />} />
             </Route>
           </Route>
         </Route>

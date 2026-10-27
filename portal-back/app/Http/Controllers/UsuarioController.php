@@ -79,6 +79,15 @@ class UsuarioController extends Controller
         }
 
         $dados['ativo'] = $dados['ativo'] ?? true;
+        $roleValue = $dados['role'] instanceof UserRole ? $dados['role']->value : (string) $dados['role'];
+        // Contas escolares criadas pela gestão também precisam da decisão do Especialista.
+        if (in_array($roleValue, [
+            UserRole::ALUNO->value,
+            UserRole::PADRAO->value,
+            UserRole::PROFESSOR->value,
+        ], true)) {
+            $dados['approval_status'] = 'pending';
+        }
 
         $usuario = User::create($dados);
         $usuario->load('roleModel.permissions');
@@ -129,6 +138,21 @@ class UsuarioController extends Controller
                     $dados['role_id'] = $roleModel->id;
                 }
             }
+        }
+
+        $roleValue = $dados['role'] ?? $usuario->role->value;
+        $currentRole = $usuario->role instanceof UserRole ? $usuario->role->value : (string) $usuario->role;
+        // Mudança de papel ou e-mail escolar invalida sessões e exige nova análise.
+        if (in_array($roleValue, [
+            UserRole::ALUNO->value,
+            UserRole::PADRAO->value,
+            UserRole::PROFESSOR->value,
+        ], true) && (
+            $roleValue !== $currentRole
+            || (isset($dados['email']) && $dados['email'] !== $usuario->email)
+        )) {
+            $dados['approval_status'] = 'pending';
+            $usuario->tokens()->delete();
         }
 
         $usuario->update($dados);
@@ -231,11 +255,22 @@ class UsuarioController extends Controller
         $roleValue = $validated['role'];
 
         $roleModel = Role::where('slug', $roleValue)->first();
-
-        $usuario->update([
+        $dadosPapel = [
             'role_id' => $roleModel?->id,
             'role' => $roleValue,
-        ]);
+        ];
+
+        if (in_array($roleValue, [
+            UserRole::ALUNO->value,
+            UserRole::PADRAO->value,
+            UserRole::PROFESSOR->value,
+        ], true)) {
+            // Uma troca para aluno/professor nunca deve herdar uma aprovação anterior.
+            $dadosPapel['approval_status'] = 'pending';
+            $usuario->tokens()->delete();
+        }
+
+        $usuario->update($dadosPapel);
 
         $usuario->load('roleModel.permissions');
 

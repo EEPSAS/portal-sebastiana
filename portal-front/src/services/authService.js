@@ -23,7 +23,9 @@ export const googleLogin = async ({ credential, turma_id }) => {
 
   // Em caso de falha de validação ou credencial expirada, dispara o erro com a mensagem do servidor
   if (!response.ok) {
-    throw new Error(data.message || 'Erro ao realizar login institucional com Google.');
+    const error = new Error(data.message || 'Erro ao realizar login institucional com Google.');
+    error.approvalStatus = data.approval_status || null;
+    throw error;
   }
 
   // Persiste a sessão autenticada localmente para manter o estado após recarregar
@@ -46,7 +48,9 @@ export const login = async ({ email, password }) => {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.message || 'Erro ao realizar login.');
+    const error = new Error(data.message || 'Erro ao realizar login.');
+    error.approvalStatus = data.approval_status || null;
+    throw error;
   }
 
   localStorage.setItem('auth_token', data.token);

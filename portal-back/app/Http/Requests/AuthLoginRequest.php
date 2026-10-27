@@ -18,6 +18,14 @@ class AuthLoginRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('email')) {
+            // Usa o mesmo formato normalizado aplicado no cadastro.
+            $this->merge(['email' => strtolower(trim((string) $this->input('email')))]);
+        }
+    }
+
     /**
      * Regras de validação para autenticação.
      *

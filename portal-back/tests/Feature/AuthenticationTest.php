@@ -3,24 +3,25 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-test('registers a user and returns a sanctum token', function () {
+test('registers a student as pending without issuing a sanctum token', function () {
     $response = $this->postJson('/api/auth/register', [
         'name' => 'Ana',
-        'email' => 'ana@example.com',
+        'email' => 'ana@aluno.mg.gov.br',
         'password' => 'password',
         'password_confirmation' => 'password',
     ]);
 
-    $response->assertCreated()
-        ->assertJsonPath('user.email', 'ana@example.com')
-        ->assertJsonPath('token_type', 'Bearer')
-        ->assertJsonStructure(['user', 'token', 'token_type']);
+    $response->assertAccepted()
+        ->assertJsonPath('user.email', 'ana@aluno.mg.gov.br')
+        ->assertJsonPath('approval_status', 'pending')
+        ->assertJsonPath('token', null);
 
-    expect(User::where('email', 'ana@example.com')->exists())->toBeTrue();
+    expect(User::where('email', 'ana@aluno.mg.gov.br')->value('approval_status'))->toBe('pending');
 });
 
 test('logs in with valid credentials and rejects invalid credentials', function () {
     $user = User::factory()->create([
+        'email' => 'aluno.login@aluno.mg.gov.br',
         'password' => Hash::make('password'),
     ]);
 
@@ -73,6 +74,7 @@ test('unauthenticated non-json requests to protected api routes return 401 json 
 
 test('allows logging in via direct /api/login endpoint as well as /api/auth/login', function () {
     $user = User::factory()->create([
+        'email' => 'aluno.direto@aluno.mg.gov.br',
         'password' => Hash::make('password'),
     ]);
 

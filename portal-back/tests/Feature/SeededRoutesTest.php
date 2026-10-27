@@ -31,13 +31,12 @@ test('testa autenticacao com usuarios povoados', function () {
         ->assertOk()
         ->assertJsonPath('email', 'admin@sebastiana.edu.br');
 
-    // 3. Login como Professor
+    // 3. Endereços legados fora dos domínios institucionais atuais não podem autenticar.
     $respProf = $this->postJson('/api/auth/login', [
         'email' => 'carlos.silva@sebastiana.edu.br',
         'password' => 'password',
     ]);
-    $respProf->assertOk()
-        ->assertJsonPath('user.role', 'professor');
+    $respProf->assertForbidden();
 
     // 4. Login como Especialista
     $respEsp = $this->postJson('/api/auth/login', [
@@ -47,13 +46,12 @@ test('testa autenticacao com usuarios povoados', function () {
     $respEsp->assertOk()
         ->assertJsonPath('user.role', 'especialista');
 
-    // 5. Login como Aluna Yasmin
+    // 5. A conta legada de aluno também precisa usar o domínio escolar oficial.
     $respAluna = $this->postJson('/api/auth/login', [
         'email' => 'yasmin.teixeira@sebastiana.edu.br',
         'password' => 'password',
     ]);
-    $respAluna->assertOk()
-        ->assertJsonPath('user.role', 'aluno');
+    $respAluna->assertForbidden();
 });
 
 test('testa rotas publicas de noticias e biblioteca', function () {

@@ -88,7 +88,7 @@ test('endpoint /api/user entrega o campo turma do aluno autenticado', function (
 
 test('login tradicional entrega os dados do aluno com o campo turma', function () {
     $aluno = User::factory()->create([
-        'email' => 'estudante.teste@sebastiana.edu.br',
+        'email' => 'estudante.teste@aluno.mg.gov.br',
         'password' => 'secret123456',
         'role' => UserRole::ALUNO,
         'ativo' => true,
@@ -107,7 +107,7 @@ test('login tradicional entrega os dados do aluno com o campo turma', function (
     ]);
 
     $response = $this->postJson('/api/auth/login', [
-        'email' => 'estudante.teste@sebastiana.edu.br',
+        'email' => 'estudante.teste@aluno.mg.gov.br',
         'password' => 'secret123456',
     ]);
 

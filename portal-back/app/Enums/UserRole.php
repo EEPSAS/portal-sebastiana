@@ -18,6 +18,28 @@ enum UserRole: string
     // Papel Nível 3: Administrador Geral
     case ADM = 'adm';
 
+    /** Identifica o papel público pelo domínio institucional usado no cadastro. */
+    public static function fromInstitutionalEmail(string $email): ?self
+    {
+        $normalizedEmail = strtolower(trim($email));
+
+        return match (true) {
+            str_ends_with($normalizedEmail, '@aluno.mg.gov.br') => self::ALUNO,
+            str_ends_with($normalizedEmail, '@educacao.mg.gov.br') => self::PROFESSOR,
+            default => null,
+        };
+    }
+
+    /** Informa o domínio que deve corresponder a alunos e professores. */
+    public function institutionalEmailDomain(): ?string
+    {
+        return match ($this) {
+            self::ALUNO, self::PADRAO => '@aluno.mg.gov.br',
+            self::PROFESSOR => '@educacao.mg.gov.br',
+            default => null,
+        };
+    }
+
     // Retorna o nome legível do papel para exibição nas telas (UI/Blade/JSON).
     public function label(): string
     {

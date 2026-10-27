@@ -18,7 +18,8 @@ class AuthUserResource extends JsonResource
     public function __construct(
         $resource,
         protected ?string $token = null,
-        protected string $message = 'Autenticação realizada com sucesso.'
+        protected string $message = 'Autenticação realizada com sucesso.',
+        protected ?string $approvalStatus = null
     ) {
         parent::__construct($resource);
     }
@@ -34,6 +35,7 @@ class AuthUserResource extends JsonResource
             'message' => $this->message,
             'token' => $this->token,
             'token_type' => 'Bearer',
+            'approval_status' => $this->approvalStatus ?? $this->resource->approval_status,
             'user' => new UsuarioResource($this->resource),
         ];
     }

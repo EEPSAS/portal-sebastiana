@@ -19,6 +19,7 @@ const LoginSection = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
+  const [pendingMessage, setPendingMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
@@ -39,12 +40,17 @@ const LoginSection = () => {
           if (!response?.credential) return;
           setGoogleSubmitting(true);
           setError(null);
+          setPendingMessage(null);
           try {
             // Envia o id_token (JWT) do Google para validação e emissão do token Sanctum no Laravel
             await loginWithGoogleRef.current({ credential: response.credential });
             navigateRef.current("/dashboard");
           } catch (err) {
-            setError(err.message);
+            if (err.approvalStatus === "pending") {
+              setPendingMessage(err.message);
+            } else {
+              setError(err.message);
+            }
           } finally {
             setGoogleSubmitting(false);
           }
@@ -83,13 +89,18 @@ const LoginSection = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError(null);
+    setPendingMessage(null);
     setSubmitting(true);
 
     try {
       await login({ email, password });
       navigate("/dashboard");
     } catch (err) {
-      setError(err.message);
+      if (err.approvalStatus === "pending") {
+        setPendingMessage(err.message);
+      } else {
+        setError(err.message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -109,7 +120,7 @@ const LoginSection = () => {
                 <div className="text-center mb-4">
                   <h2 className="fw-bold text-dark mb-2">Acesso ao Portal</h2>
                   <p className="text-secondary small">
-                    Identifique-se com sua conta Google institucional ou credenciais.
+                    Use seu e-mail escolar. O acesso de alunos e professores depende da aprovação do Especialista.
                   </p>
                 </div>
 
@@ -141,6 +152,12 @@ const LoginSection = () => {
                 {error && (
                   <div className="alert alert-danger py-2 small" role="alert">
                     {error}
+                  </div>
+                )}
+                {pendingMessage && (
+                  <div className="alert alert-warning py-3 small" role="status">
+                    <strong className="d-block mb-1">Pedido pendente</strong>
+                    {pendingMessage}
                   </div>
                 )}
 

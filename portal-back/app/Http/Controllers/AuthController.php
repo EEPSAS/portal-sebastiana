@@ -20,27 +20,47 @@ use Illuminate\Support\Facades\Http;
 class AuthController extends Controller
 {
     /**
-     * Registra um novo usuário com papel 'aluno' e emite o token Sanctum.
+     * Registra um pedido de aluno ou professor sem liberar acesso antes da análise.
      *
      * @param  AuthRegisterRequest  $request  Form Request validada
-     * @return JsonResponse Payload padronizado por AuthUserResource
+     * @return JsonResponse Pedido encapsulado pelo AuthUserResource, sem token
      */
     public function register(AuthRegisterRequest $request): JsonResponse
     {
         $validated = $request->validated();
 
-        // Se o nome vier vazio, define um identificador derivado do e-mail
-        if (empty($validated['name'])) {
-            $validated['name'] = strstr($validated['email'], '@', true) ?: 'Aluno';
+        $role = $this->roleForEmail($validated['email']);
+        $existingUser = User::where('email', $validated['email'])->first();
+
+        if ($existingUser) {
+            if ($existingUser->role !== $role) {
+                return response()->json([
+                    'message' => 'Este e-mail já está associado a outra conta escolar.',
+                ], 409);
+            }
+
+            if ($existingUser->approval_status === 'rejected') {
+                $existingUser->update(['approval_status' => 'pending']);
+            }
+
+            if ($existingUser->approval_status !== 'approved') {
+                return $this->approvalResponse(
+                    $existingUser,
+                    202,
+                    'Seu pedido foi enviado novamente e aguarda análise do Especialista.'
+                );
+            }
+
+            return response()->json([
+                'message' => 'Este e-mail já possui uma conta aprovada. Entre com suas credenciais.',
+            ], 409);
         }
 
-        // Auto-cadastro público recebe exclusivamente o papel 'aluno'
-        $validated['role'] = UserRole::ALUNO;
-
-        // Persiste o usuário no banco (a senha é hasheada via cast do model)
+        $validated['role'] = $role;
+        $validated['approval_status'] = 'pending';
         $user = User::create($validated);
 
-        return $this->tokenResponse($user, 201, 'Cadastro realizado com sucesso.');
+        return $this->approvalResponse($user, 202, 'Pedido enviado. Aguarde a aprovação do Especialista.');
     }
 
     /**
@@ -52,21 +72,36 @@ class AuthController extends Controller
     {
         $credentials = $request->validated();
 
-        // Busca o usuário pelo e-mail
         $user = User::where('email', $credentials['email'])->first();
 
-        // Verifica a existência e a integridade da senha hasheada
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'message' => 'As credenciais informadas são inválidas.',
             ], 401);
         }
 
-        // Verifica se a conta do usuário foi desativada/bloqueada pela administração
+        if (! $this->emailMatchesUserRole($user, $credentials['email'])) {
+            return response()->json([
+                'message' => 'Acesso restrito ao e-mail institucional correspondente ao seu vínculo escolar.',
+            ], 403);
+        }
+
         if (isset($user->ativo) && ! $user->ativo) {
             return response()->json([
                 'message' => 'Usuário bloqueado pelo administrador. Acesso negado.',
             ], 403);
+        }
+
+        if ($user->approval_status === 'rejected') {
+            $user->update(['approval_status' => 'pending']);
+        }
+
+        if ($user->approval_status !== 'approved') {
+            return $this->approvalResponse(
+                $user,
+                403,
+                'Seu pedido está pendente de análise pelo Especialista.'
+            );
         }
 
         return $this->tokenResponse($user, 200, 'Login realizado com sucesso.');
@@ -76,8 +111,7 @@ class AuthController extends Controller
      * Autentica ou cadastra o usuário através do Google Identity Services (GIS).
      *
      * Valida o token criptográfico com o Google, verifica se o e-mail pertence
-     * aos domínios da rede estadual de MG (@aluno.mg.gov.br ou @educacao.mg.gov.br)
-     * e vincula o aluno à turma com status 'Pendente'.
+     * aos domínios escolares de alunos e professores e só emite token após aprovação.
      *
      * @param  AuthGoogleRequest  $request  Form Request com credencial do Google
      */
@@ -127,11 +161,12 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // 2. Validação estrita do domínio institucional da rede estadual de MG
+        // 2. Aceita somente os domínios institucionais de alunos e professores.
+        $rawEmail = trim($rawEmail);
         $institutionalRegex = '/^[a-zA-Z0-9._%+-]+@(aluno|educacao|educação)\.mg\.gov\.br$/i';
         if (! preg_match($institutionalRegex, $rawEmail)) {
             return response()->json([
-                'message' => 'Acesso restrito. Utilize exclusivamente seu e-mail institucional (@aluno.mg.gov.br ou @educacao.mg.gov.br)',
+                'message' => 'Acesso restrito. Utilize seu e-mail @aluno.mg.gov.br ou @educacao.mg.gov.br.',
             ], 403);
         }
 
@@ -156,8 +191,15 @@ class AuthController extends Controller
                 'avatar' => $picture,
                 'role' => $defaultRole,
                 'ativo' => true,
+                'approval_status' => 'pending',
             ]);
         } else {
+            if (! $this->emailMatchesUserRole($user, $normalizedEmail)) {
+                return response()->json([
+                    'message' => 'O e-mail institucional não corresponde ao vínculo desta conta.',
+                ], 403);
+            }
+
             // Atualiza os dados sincronizados do Google, preservando o papel já cadastrado
             $user->update([
                 'google_id' => $googleId,
@@ -171,6 +213,10 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Usuário bloqueado pelo administrador. Acesso negado.',
             ], 403);
+        }
+
+        if ($user->approval_status === 'rejected') {
+            $user->update(['approval_status' => 'pending']);
         }
 
         // 7. Vínculo de Turma para o aluno:
@@ -189,6 +235,14 @@ class AuthController extends Controller
                     'status_matricula' => 'Pendente',
                 ]);
             }
+        }
+
+        if ($user->approval_status !== 'approved') {
+            return $this->approvalResponse(
+                $user,
+                403,
+                'Seu pedido está pendente de análise pelo Especialista.'
+            );
         }
 
         return $this->tokenResponse($user, 200, 'Login institucional com Google realizado com sucesso.');
@@ -223,5 +277,34 @@ class AuthController extends Controller
         return (new AuthUserResource($user, $token, $message))
             ->response()
             ->setStatusCode($status);
+    }
+
+    private function approvalResponse(User $user, int $status, string $message): JsonResponse
+    {
+        return (new AuthUserResource($user, null, $message, $user->approval_status))
+            ->response()
+            ->setStatusCode($status);
+    }
+
+    private function roleForEmail(string $email): UserRole
+    {
+        return str_ends_with($email, '@aluno.mg.gov.br')
+            ? UserRole::ALUNO
+            : UserRole::PROFESSOR;
+    }
+
+    private function emailMatchesUserRole(User $user, string $email): bool
+    {
+        $domain = $user->role->institutionalEmailDomain();
+        if ($domain !== null) {
+            return str_ends_with($email, $domain);
+        }
+
+        // Contas internas criadas pela gestão não passam pelo cadastro público de alunos/professores.
+        return in_array($user->role, [
+            UserRole::ESPECIALISTA,
+            UserRole::ADM,
+            UserRole::BIBLIOTECARIA,
+        ], true);
     }
 }

@@ -79,6 +79,12 @@ const NAV_ITEMS = [
     icon: "bi-newspaper",
     roles: ["especialista", "adm"],
   },
+  {
+    label: "Pedidos de acesso",
+    path: "/dashboard/aprovacoes",
+    icon: "bi-person-check",
+    roles: ["especialista"],
+  },
 ];
 
 // Mapeamento amigável do identificador de role para exibição na interface
