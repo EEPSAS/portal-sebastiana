@@ -7,6 +7,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   LabelList,
+  ReferenceLine,
 } from "recharts";
 
 /**
@@ -14,7 +15,7 @@ import {
  *
  * Papel Didático:
  * Renderiza dois gráficos de barras horizontais lado a lado em proporção simétrica (50% / 50%):
- * 1. Card Esquerdo: Média de Notas por Turma (escala 0 a 10), com barras azul marinho profundo (#164483);
+ * 1. Card Esquerdo: Média de Notas por Turma (escala configurável, 0 a 10 por padrão), com barras azul marinho profundo (#164483);
  * 2. Card Direito: Taxa de Presença (Frequência) por Turma (escala 0% a 100%).
  * Inclui badges de contextualização no cabeçalho e labels de valor posicionados à direita das barras.
  */
@@ -23,6 +24,9 @@ export default function GeralMediumCards({
   frequencias = [],
   loading = false,
   error = null,
+  escalaNotaMaxima = 10,
+  mostrarLinhasReferencia = true,
+  badgeMedia = null,
 }) {
   // 1. Estado Assíncrono: Carregando
   if (loading) {
@@ -44,16 +48,21 @@ export default function GeralMediumCards({
     );
   }
 
-  // Prepara os dados de médias (arredondado com 1 casa decimal)
-  const dadosMedias = medias.map((item) => ({
-    id: item.id,
-    turma: item.turma,
-    nota: item.nota !== null && item.nota !== undefined ? Number(item.nota) : 0,
-    notaFormatada:
-      item.nota !== null && item.nota !== undefined
-        ? Number(item.nota).toFixed(1).replace(".", ",")
-        : "0,0",
-  }));
+  // Usa a escala recebida para compartilhar este componente entre os painéis.
+  const dadosMedias = medias.map((item) => {
+    const valorNum = item.nota !== null && item.nota !== undefined ? Number(item.nota) : 0;
+    const notaFormatada =
+      escalaNotaMaxima === 10
+        ? valorNum.toFixed(1).replace(".", ",")
+        : `${Math.round(valorNum)}%`;
+
+    return {
+      id: item.id,
+      turma: item.turma,
+      nota: valorNum,
+      notaFormatada,
+    };
+  });
 
   // Prepara os dados de frequência (percentual inteiro)
   const dadosFrequencias = frequencias.map((item) => ({
@@ -84,7 +93,9 @@ export default function GeralMediumCards({
               <i className="bi bi-bell text-primary fs-5"></i>
               <span>Média de Notas por Turma</span>
             </h5>
-            <span className="geral-chart-badge">Escala 0 a 10</span>
+            <span className="geral-chart-badge">
+              {badgeMedia || `Escala 0 a ${escalaNotaMaxima}`}
+            </span>
           </div>
 
           {/* 3. Estado Assíncrono: Vazio */}
@@ -103,7 +114,7 @@ export default function GeralMediumCards({
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e4edf7" />
                   <XAxis
                     type="number"
-                    domain={[0, 10]}
+                    domain={[0, escalaNotaMaxima]}
                     tickCount={6}
                     stroke="#9cb1ce"
                     tick={{ fontSize: 11, fill: "#4a5d7c" }}
@@ -116,9 +127,21 @@ export default function GeralMediumCards({
                     tick={{ fontSize: 11, fill: "#1c3d70" }}
                   />
                   <Tooltip
-                    formatter={(value) => [`${Number(value).toFixed(1)} pts`, "Média Geral"]}
+                    formatter={(value) => [
+                      `${Number(value).toFixed(escalaNotaMaxima === 10 ? 1 : 0)} ${
+                        escalaNotaMaxima === 10 ? "pts" : "%"
+                      }`,
+                      "Média Geral",
+                    ]}
                     contentStyle={{ borderRadius: "10px", borderColor: "#d9e5f5" }}
                   />
+                  {mostrarLinhasReferencia && (
+                    <ReferenceLine
+                      x={escalaNotaMaxima * 0.6}
+                      stroke="#dc3545"
+                      strokeDasharray="3 3"
+                    />
+                  )}
                   {/* Barra azul marinho elegante com extremidades arredondadas e valor ao final */}
                   <Bar
                     dataKey="nota"
@@ -186,6 +209,13 @@ export default function GeralMediumCards({
                     formatter={(value) => [`${value}%`, "Taxa de Presença"]}
                     contentStyle={{ borderRadius: "10px", borderColor: "#d9e5f5" }}
                   />
+                  {mostrarLinhasReferencia && (
+                    <ReferenceLine
+                      x={75}
+                      stroke="#dc3545"
+                      strokeDasharray="3 3"
+                    />
+                  )}
                   {/* Barra horizontal Recharts com rótulo percentual destacado à direita */}
                   <Bar
                     dataKey="percentual"
