@@ -42,4 +42,10 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI', 'http://localhost:5173/login'),
     ],
 
+    // Integração com Google Gemini AI (Assistente Dona Nana)
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.8-flash'),
+    ],
+
 ];

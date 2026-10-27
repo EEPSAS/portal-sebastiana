@@ -196,8 +196,14 @@ const Aside = () => {
 
       <hr className="my-2" />
 
-      {/* Seção Inferior Fixa: Configurações */}
+      {/* Seção Inferior Fixa: Dona Nana (acima de Configurações) e Configurações */}
       <ul className="nav nav-pills flex-column gap-2 mb-2">
+        <li className="nav-item">
+          <NavLink to="/dashboard/dona-nana" className={getLinkClass}>
+            <i className="bi bi-chat-heart-fill me-3 fs-5 text-warning"></i>
+            <span>Dona Nana</span>
+          </NavLink>
+        </li>
         <li className="nav-item">
           <NavLink to="/dashboard/configuracoes" className={getLinkClass}>
             <div className="d-flex align-items-center">
