@@ -10,7 +10,12 @@ const CONFIGURACAO_INDICADOR = {
 };
 
 /** Exibe todos os alunos em risco em uma tabela única por indicador. */
-export default function ListaAlunosRisco({ indicador, alunos }) {
+export default function ListaAlunosRisco({
+  indicador,
+  alunos,
+  corFundo,
+  corTexto,
+}) {
   const configuracao = CONFIGURACAO_INDICADOR[indicador];
 
   if (!configuracao) {
@@ -19,18 +24,51 @@ export default function ListaAlunosRisco({ indicador, alunos }) {
 
   return (
     <div
-      className="border-start border-dark border-opacity-10 ps-3 flex-grow-1"
-      style={{ maxHeight: "11.5rem", minWidth: 0, overflowY: "auto" }}
+      className="border-start ps-3 flex-grow-1"
+      style={{
+        maxHeight: "14rem",
+        minWidth: 0,
+        overflowY: "auto",
+        borderColor: "rgba(38, 52, 74, 0.12)",
+      }}
       tabIndex={0}
       aria-label="Lista de alunos em risco"
     >
-      <div className="rounded-3 overflow-hidden border border-dark">
-        <table className="table table-sm table-bordered border-dark align-middle mb-0 small">
+      <div
+        className="rounded-3 overflow-hidden border"
+        style={{ borderColor: "rgba(38, 52, 74, 0.14)" }}
+      >
+        <table
+          className="table table-sm table-bordered align-middle mb-0 small"
+          style={{
+            "--bs-table-bg": corFundo,
+            "--bs-table-color": "#39465b",
+            "--bs-table-border-color": "rgba(38, 52, 74, 0.12)",
+          }}
+        >
           <thead>
             <tr>
-              <th scope="col">Nome do aluno</th>
-              <th scope="col">Turma</th>
-              <th scope="col">{configuracao.tituloColuna}</th>
+              <th
+                className="fw-bold"
+                scope="col"
+                style={{ color: corTexto, backgroundColor: "rgba(38, 52, 74, 0.045)" }}
+              >
+                Nome do aluno
+              </th>
+              <th
+                className="fw-bold text-nowrap"
+                scope="col"
+                style={{ color: corTexto, backgroundColor: "rgba(38, 52, 74, 0.045)" }}
+              >
+                Turma
+              </th>
+              <th
+                className="fw-bold text-nowrap"
+                scope="col"
+                style={{ color: corTexto, backgroundColor: "rgba(38, 52, 74, 0.045)" }}
+              >
+                {configuracao.tituloColuna}
+              </th>
             </tr>
           </thead>
           <tbody>
