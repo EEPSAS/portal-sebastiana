@@ -54,7 +54,6 @@ const GeralProfessor = () => {
         <AlunosRiscoCards
           dados={materiaSelecionada.risco}
           periodo="Período trimestral não configurado"
-          materia={materiaSelecionada.nome}
         />
       </div>
 

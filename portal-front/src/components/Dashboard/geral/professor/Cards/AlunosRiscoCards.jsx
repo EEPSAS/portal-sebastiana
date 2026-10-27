@@ -1,5 +1,4 @@
-import { useState } from "react";
-import ModalAlunosRisco from "../ModalAlunosRisco";
+import ListaAlunosRisco from "../ListaAlunosRisco";
 
 const CARDS_RISCO = [
   {
@@ -23,9 +22,7 @@ const CARDS_RISCO = [
 ];
 
 /** Exibe os totais demonstrativos com a linguagem visual dos cards bibliotecários. */
-export default function AlunosRiscoCards({ dados, periodo, materia }) {
-  const [cardSelecionado, setCardSelecionado] = useState(null);
-
+export default function AlunosRiscoCards({ dados, periodo }) {
   return (
     <>
       {CARDS_RISCO.map((card) => (
@@ -45,49 +42,20 @@ export default function AlunosRiscoCards({ dados, periodo, materia }) {
               </span>
             </div>
 
-            <strong className="display-4 lh-1 my-3">{dados[card.valor]}</strong>
-            <span className="small">alunos</span>
-            <p className="small text-white mt-3 mb-0">{periodo}</p>
-
-            <button
-              type="button"
-              className="btn border-0 rounded-circle text-white d-flex align-items-center justify-content-center"
-              style={{
-                position: "absolute",
-                right: "1rem",
-                bottom: "1rem",
-                width: "3.0875rem",
-                height: "3.0875rem",
-                backgroundColor: "rgba(255, 255, 255, 0.072)",
-                boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.116)",
-              }}
-              title="Ver alunos em risco"
-              aria-label={`Ver alunos em risco por ${card.indicador === "nota" ? "nota" : "frequência"}`}
-              onClick={() =>
-                setCardSelecionado({
-                  ...card,
-                  alunos: dados[card.alunos] || [],
-                })
-              }
-            >
-              <i
-                className="bi bi-people"
-                style={{ fontSize: "1.425rem" }}
-                aria-hidden="true"
+            <div className="d-flex flex-column flex-lg-row align-items-lg-center gap-3 mt-3">
+              <div className="flex-shrink-0">
+                <strong className="display-4 lh-1">{dados[card.valor]}</strong>
+                <span className="small d-block">alunos</span>
+                <p className="small text-white mt-3 mb-0">{periodo}</p>
+              </div>
+              <ListaAlunosRisco
+                indicador={card.indicador}
+                alunos={dados[card.alunos] || []}
               />
-            </button>
+            </div>
           </section>
         </div>
       ))}
-      {cardSelecionado && (
-        <ModalAlunosRisco
-          titulo={cardSelecionado.titulo}
-          indicador={cardSelecionado.indicador}
-          alunos={cardSelecionado.alunos}
-          materia={materia}
-          onClose={() => setCardSelecionado(null)}
-        />
-      )}
     </>
   );
 }
