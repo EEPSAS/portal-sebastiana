@@ -3,18 +3,19 @@
  *
  * Papel Didático:
  * Centraliza as requisições HTTP RESTful para a gestão de trilhas de estudo:
- * - Listagem com contadores reais por tipo;
+ * - Listagem com contadores reais por tipo (incluindo planos compartilhados com a turma do aluno);
  * - Criação de novos planos;
  * - Consulta de plano completo com seus itens;
  * - Adição de conteúdos (com proteção contra duplicidade);
- * - Remoção de conteúdos preservando a fonte original.
+ * - Remoção de conteúdos preservando a fonte original;
+ * - Consulta de turmas lecionadas pelo professor (1º, 2º e 3º ano) e compartilhamento de planos com turmas.
  */
 
 import { api } from '../api';
 
 export const planosService = {
   /**
-   * Lista todos os planos de estudos do usuário autenticado.
+   * Lista todos os planos de estudos do usuário autenticado (e planos compartilhados com sua turma se for aluno).
    */
   async listar(signal) {
     const res = await api('/planos-estudos', { signal });
@@ -96,5 +97,38 @@ export const planosService = {
       throw new Error(err.message || 'Erro ao remover item do plano.');
     }
     return res.json();
+  },
+
+  /**
+   * Lista as turmas vinculadas ao professor autenticado (1º, 2º ou 3º ano),
+   * permitindo filtragem por termo de busca textual.
+   */
+  async listarTurmasLecionadas(termoBusca = '', signal) {
+    const query = termoBusca.trim()
+      ? `?q=${encodeURIComponent(termoBusca.trim())}`
+      : '';
+    const res = await api(`/me/turmas-lecionadas${query}`, { signal });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Erro ao carregar as turmas vinculadas ao professor.');
+    }
+    return res.json();
+  },
+
+  /**
+   * Compartilha (sincroniza) um plano de estudos criado pelo professor com as turmas selecionadas.
+   */
+  async compartilhar(planoId, turmaIds) {
+    const res = await api(`/planos-estudos/${planoId}/compartilhar`, {
+      method: 'POST',
+      body: { turma_ids: turmaIds },
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const mensagemErro = data.errors?.turma_ids?.[0] || data.message || 'Erro ao compartilhar plano com as turmas.';
+      throw new Error(mensagemErro);
+    }
+    return data;
   },
 };

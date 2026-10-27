@@ -1,8 +1,13 @@
 <?php
 
+use App\Enums\UserRole;
+use App\Models\Disciplina;
 use App\Models\Livro;
+use App\Models\Matricula;
 use App\Models\PlanoEstudo;
 use App\Models\PlanoEstudoItem;
+use App\Models\Turma;
+use App\Models\TurmaDisciplina;
 use App\Models\User;
 
 test('usuario autenticado pode criar um plano de estudos', function () {
@@ -220,4 +225,112 @@ test('excluir plano de estudos remove os itens associados em cascata', function 
 
     $this->assertDatabaseMissing('planos_estudos', ['id' => $plano->id]);
     $this->assertDatabaseCount('plano_estudo_itens', 0);
+});
+
+test('professor pode buscar suas turmas vinculadas e compartilhar plano com turmas de 1o, 2o ou 3o ano', function () {
+    $professor = User::factory()->create(['role' => UserRole::PROFESSOR, 'name' => 'Carlos Silva']);
+    $disciplina = Disciplina::factory()->create(['nome' => 'Matemática']);
+
+    $turma1 = Turma::factory()->create(['nome_identificador' => '1º Ano A - Ensino Médio', 'status' => 'Ativa']);
+    $turma2 = Turma::factory()->create(['nome_identificador' => '2º Ano B - Ensino Médio', 'status' => 'Ativa']);
+    $turma3NaoVinculada = Turma::factory()->create(['nome_identificador' => '3º Ano C - Ensino Médio', 'status' => 'Ativa']);
+
+    TurmaDisciplina::create([
+        'turma_id' => $turma1->id_turma,
+        'disciplina_id' => $disciplina->id_disciplina,
+        'professor_id' => $professor->id,
+    ]);
+    TurmaDisciplina::create([
+        'turma_id' => $turma2->id_turma,
+        'disciplina_id' => $disciplina->id_disciplina,
+        'professor_id' => $professor->id,
+    ]);
+
+    // Consulta das turmas vinculadas ao professor com filtro de busca (?q=1º)
+    $resTurmas = $this->actingAs($professor, 'sanctum')
+        ->getJson('/api/me/turmas-lecionadas?q=1º');
+
+    $resTurmas->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonFragment(['nome_identificador' => '1º Ano A - Ensino Médio']);
+
+    // Criação e compartilhamento do plano pelo professor
+    $plano = PlanoEstudo::create([
+        'user_id' => $professor->id,
+        'nome' => 'Revisão Geometria Analítica',
+        'disciplina' => 'Matemática',
+    ]);
+
+    $resCompartilhar = $this->actingAs($professor, 'sanctum')
+        ->postJson("/api/planos-estudos/{$plano->id}/compartilhar", [
+            'turma_ids' => [$turma1->id_turma, $turma2->id_turma],
+        ]);
+
+    $resCompartilhar->assertOk()
+        ->assertJsonPath('turma_ids', [$turma1->id_turma, $turma2->id_turma]);
+
+    $this->assertDatabaseHas('plano_estudo_turmas', [
+        'plano_estudo_id' => $plano->id,
+        'turma_id' => $turma1->id_turma,
+    ]);
+});
+
+test('aluno visualiza apenas seus proprios planos e planos compartilhados pelo professor com sua turma, sem poder compartilhar', function () {
+    $professor = User::factory()->create(['role' => UserRole::PROFESSOR, 'name' => 'Prof. Helena']);
+    $aluno1 = User::factory()->create(['role' => UserRole::ALUNO, 'name' => 'Aluno Turma 1']);
+    $outroAluno = User::factory()->create(['role' => UserRole::ALUNO, 'name' => 'Outro Aluno']);
+
+    $turma1 = Turma::factory()->create(['nome_identificador' => '1º Ano A - Ensino Médio', 'status' => 'Ativa']);
+    $turma2 = Turma::factory()->create(['nome_identificador' => '2º Ano B - Ensino Médio', 'status' => 'Ativa']);
+
+    Matricula::create([
+        'turma_id' => $turma1->id_turma,
+        'usuario_id' => $aluno1->id,
+        'data_matricula' => now()->toDateString(),
+        'status_matricula' => 'Ativo',
+    ]);
+
+    $planoPessoalAluno1 = PlanoEstudo::create([
+        'user_id' => $aluno1->id,
+        'nome' => 'Meu Plano Pessoal',
+        'disciplina' => 'História',
+    ]);
+
+    $planoPrivadoOutroAluno = PlanoEstudo::create([
+        'user_id' => $outroAluno->id,
+        'nome' => 'Plano Secreto Outro Aluno',
+        'disciplina' => 'Física',
+    ]);
+
+    $planoProfessorTurma1 = PlanoEstudo::create([
+        'user_id' => $professor->id,
+        'nome' => 'Trilha Oficial 1º Ano',
+        'disciplina' => 'Português',
+    ]);
+    $planoProfessorTurma1->turmas()->sync([$turma1->id_turma]);
+
+    $planoProfessorTurma2 = PlanoEstudo::create([
+        'user_id' => $professor->id,
+        'nome' => 'Trilha Oficial 2º Ano',
+        'disciplina' => 'Português',
+    ]);
+    $planoProfessorTurma2->turmas()->sync([$turma2->id_turma]);
+
+    // Aluno 1 lista os planos: deve ver seu próprio plano + o plano compartilhado com a Turma 1
+    $resLista = $this->actingAs($aluno1, 'sanctum')
+        ->getJson('/api/planos-estudos');
+
+    $resLista->assertOk()
+        ->assertJsonCount(2)
+        ->assertJsonFragment(['nome' => 'Meu Plano Pessoal', 'compartilhado_por_professor' => false])
+        ->assertJsonFragment(['nome' => 'Trilha Oficial 1º Ano', 'compartilhado_por_professor' => true])
+        ->assertJsonMissing(['nome' => 'Plano Secreto Outro Aluno'])
+        ->assertJsonMissing(['nome' => 'Trilha Oficial 2º Ano']);
+
+    // Aluno 1 tenta compartilhar seu próprio plano com uma turma: deve receber 403 Forbidden
+    $this->actingAs($aluno1, 'sanctum')
+        ->postJson("/api/planos-estudos/{$planoPessoalAluno1->id}/compartilhar", [
+            'turma_ids' => [$turma1->id_turma],
+        ])
+        ->assertForbidden();
 });

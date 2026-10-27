@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -12,7 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * Papel Didático:
  * Agrupa materiais didáticos (livros, videoaulas, conteúdos web) por disciplina
- * pertencentes a um usuário autenticado.
+ * pertencentes a um usuário autenticado, permitindo compartilhamento com turmas
+ * quando criado por um professor.
  */
 class PlanoEstudo extends Model
 {
@@ -48,6 +50,15 @@ class PlanoEstudo extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
+    }
+
+    /**
+     * Turmas escolares com as quais este plano de estudos foi compartilhado pelo professor.
+     */
+    public function turmas(): BelongsToMany
+    {
+        return $this->belongsToMany(Turma::class, 'plano_estudo_turmas', 'plano_estudo_id', 'turma_id')
+            ->withTimestamps();
     }
 
     /**

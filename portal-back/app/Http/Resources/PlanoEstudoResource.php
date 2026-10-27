@@ -9,8 +9,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * API Resource para padronização e serialização de Planos de Estudos.
  *
  * Papel Didático:
- * Encapsula os dados do plano e agrega contadores reais por tipo de material
- * (livros, videoaulas e conteúdos web), além de incluir a lista de itens quando carregada.
+ * Encapsula os dados do plano, agrega contadores reais por tipo de material
+ * (livros, videoaulas e conteúdos web), informa as turmas com as quais o plano
+ * está compartilhado e identifica se o plano pertence ao usuário logado ou foi
+ * recomendado por um professor.
  */
 class PlanoEstudoResource extends JsonResource
 {
@@ -35,9 +37,15 @@ class PlanoEstudoResource extends JsonResource
             $totalItens = (int) ($this->total_itens ?? ($livrosCount + $videoaulasCount + $conteudosWebCount));
         }
 
+        $usuarioAtual = $request->user();
+        $ehProprietario = $usuarioAtual ? ($this->user_id === $usuarioAtual->id) : false;
+
         return [
             'id' => $this->id,
             'user_id' => $this->user_id,
+            'autor_nome' => $this->whenLoaded('user', fn () => $this->user?->name),
+            'eh_proprietario' => $ehProprietario,
+            'compartilhado_por_professor' => $usuarioAtual ? ($this->user_id !== $usuarioAtual->id) : false,
             'nome' => $this->nome,
             'disciplina' => $this->disciplina,
             'descricao' => $this->descricao,
@@ -47,6 +55,13 @@ class PlanoEstudoResource extends JsonResource
             'videoaulas_count' => $videoaulasCount,
             'conteudos_web_count' => $conteudosWebCount,
             'total_itens' => $totalItens,
+            // Turmas vinculadas pelo compartilhamento do professor
+            'turmas' => TurmaResource::collection($this->whenLoaded('turmas')),
+            'turma_ids' => $this->whenLoaded(
+                'turmas',
+                fn () => $this->turmas->pluck('id_turma')->map(fn ($id) => (int) $id)->values()->all(),
+                []
+            ),
             // Lista detalhada de itens incluída quando solicitada (ex: show)
             'itens' => PlanoEstudoItemResource::collection($this->whenLoaded('itens')),
             'created_at' => $this->created_at?->toISOString() ?? $this->created_at,

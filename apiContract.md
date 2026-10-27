@@ -93,14 +93,16 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
 ---
 
 ### Módulo 3: Biblioteca Escolar
-*Acervo escolar com 3 abas fundamentais no painel.*
+*Acervo escolar com 4 abas fundamentais no painel (Acervo de Livros, Videoaulas, Conteúdo Web e Planos de Estudos).*
 
 #### 3.1 Acervo de Livros Físicos e Empréstimos
+*Suporta autopreenchimento bibliográfico via busca na Google Books API v1 (`searchGoogleBooks` em `googleBooksService.js`) diretamente no modal de cadastro.*
+
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
 |---|---|---|---|---|---|---|
 | `GET` | `/api/livros` | Público / Logado (Leitura para Aluno e Prof) | N/A | `LivroResource` (Coleção) | `bibliotecaService.listarLivros()` | Catálogo da biblioteca (pré-carrega os 5 últimos cadastrados; busca completa via `?q=`) |
 | `GET` | `/api/livros/{id}` | Público / Logado | N/A | `LivroResource` | `bibliotecaService.detalharLivro()` | Detalhes e disponibilidade do livro |
-| `POST` | `/api/livros` | Bibliotecária / Especialista / Adm | `StoreLivroRequest` | `LivroResource` | `bibliotecaService.cadastrarLivro()` | Cadastra exemplar no acervo (`codigo_livro`, `titulo`, `editora`, `autor`, `genero`, `data_lancamento`) |
+| `POST` | `/api/livros` | Bibliotecária / Especialista / Adm | `StoreLivroRequest` | `LivroResource` | `bibliotecaService.cadastrarLivro()` | Cadastra exemplar no acervo (`codigo_livro`, `titulo`, `editora`, `autor`, `genero`, `data_lancamento`, `capa`, `quantidade_total`, `prateleira_localizacao`) |
 | `POST` | `/api/livros/importar-csv` | Bibliotecária / Especialista / Adm | `ImportarLivrosCsvRequest` | `LivroResource` (Coleção) | `bibliotecaService.importarLivrosCSV()` | **Mass Assignment via CSV** (`titulo`, `editora`, `autor`, `genero`, `data_lancamento`, `codigo_livro`) |
 | `PUT` | `/api/livros/{id}` | Bibliotecária / Especialista / Adm | `UpdateLivroRequest` | `LivroResource` | `bibliotecaService.editarLivro()` | Atualiza dados do exemplar |
 | `DELETE` | `/api/livros/{id}` | Bibliotecária / Especialista / Adm | N/A | Mensagem 200/204 | `bibliotecaService.excluirLivro()` | Exclui exemplar do acervo |
@@ -124,30 +126,24 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
   }
   ```
 
-#### 3.3 Conteúdo Web (Google Search API / Google Books API)
-*Pesquisa de artigos, referências didáticas e materiais pedagógicos na web.*
-* **Parâmetros da Consulta**: `q` (termo de busca acadêmica), `num=10`.
-* **Payload Esperado (Front)**:
-  ```json
-  {
-    "titulo": "string",
-    "link": "string (url)",
-    "snippet": "string (resumo)",
-    "fonte": "string"
-  }
-  ```
+#### 3.3 Conteúdo Web (Google Programmable Search Engine - CSE)
+*Pesquisa de artigos, referências didáticas e materiais pedagógicos na web via widget oficial incorporado do Google.*
+* **Integração**: Carregamento único do script `https://cse.google.com/cse.js?cx=a4b2ccff7fbbe46ad` e renderização explícita via `google.search.cse.element.render` (`overlayResults: false` e `linkTarget: '_blank'`) em `ConteudoWebAba.jsx`, exibindo os resultados diretamente dentro da página (não requer chave de API para a busca web).
+* **Integração com Planos de Estudos**: Permite acessar cada resultado encontrado e salvá-lo no plano de estudos do usuário (`tipo: 'conteudo_web'`, `conteudo_id`, `titulo`, `url`, `fonte`, `descricao`, `thumbnail`).
 
-#### 3.4 Planos de Estudos (Integração da Biblioteca)
-*Trilhas de estudo personalizadas agrupando livros do acervo, videoaulas do YouTube e conteúdos didáticos web.*
+#### 3.4 Planos de Estudos (Integração da Biblioteca e Compartilhamento por Turma)
+*Trilhas de estudo personalizadas agrupando livros do acervo, videoaulas do YouTube e conteúdos didáticos web. O aluno visualiza apenas seus próprios planos e os planos compartilhados pelos professores para sua turma ativa; somente o professor (ou adm) pode compartilhar planos com turmas do 1º, 2º ou 3º ano.*
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front (`src/services/biblioteca/planosService.js`) | Descrição |
 |---|---|---|---|---|---|---|
-| `GET` | `/api/planos-estudos` | Logado | N/A | `PlanoEstudoResource` (Coleção) | `planosService.listar()` | Lista os planos do usuário com contadores reais por tipo |
+| `GET` | `/api/planos-estudos` | Logado | N/A | `PlanoEstudoResource` (Coleção) | `planosService.listar()` | Lista os planos do usuário (e planos compartilhados com a turma ativa do aluno) |
 | `POST` | `/api/planos-estudos` | Logado | `StorePlanoEstudoRequest` | `PlanoEstudoResource` | `planosService.criar()` | Cria um novo plano de estudos |
-| `GET` | `/api/planos-estudos/{id}` | Logado (Dono/Adm) | N/A | `PlanoEstudoResource` | `planosService.obterPorId()` | Detalhes do plano completo com itens aninhados |
+| `GET` | `/api/planos-estudos/{id}` | Logado (Dono / Aluno da Turma / Adm) | N/A | `PlanoEstudoResource` | `planosService.obterPorId()` | Detalhes do plano completo com itens aninhados |
 | `DELETE` | `/api/planos-estudos/{id}` | Logado (Dono/Adm) | N/A | Mensagem 200 | `planosService.excluir()` | Remove o plano (itens associados em cascata) |
 | `POST` | `/api/planos-estudos/{id}/itens` | Logado (Dono/Adm) | `StorePlanoEstudoItemRequest` | `PlanoEstudoItemResource` | `planosService.adicionarItem()` | Adiciona conteúdo ao plano (com prevenção de duplicata) |
 | `DELETE` | `/api/planos-estudos/{id}/itens/{item_id}` | Logado (Dono/Adm) | N/A | Mensagem 200 | `planosService.removerItem()` | Remove o conteúdo do plano (preserva fonte original) |
+| `GET` | `/api/me/turmas-lecionadas` | Professor / Adm | N/A | `TurmaResource` (Coleção) | `planosService.listarTurmasLecionadas()` | Lista turmas vinculadas ao professor (com suporte a busca `?q=`) |
+| `POST` | `/api/planos-estudos/{id}/compartilhar` | Professor (Dono) / Adm | `CompartilharPlanoEstudoRequest` | `PlanoEstudoResource` | `planosService.compartilhar()` | Compartilha (sincroniza) o plano com turmas de 1º, 2º ou 3º ano (`turma_ids`) |
 
 ---
 

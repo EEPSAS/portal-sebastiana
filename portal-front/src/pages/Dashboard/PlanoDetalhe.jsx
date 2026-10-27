@@ -6,8 +6,9 @@
  * Apresenta todos os materiais vinculados ao plano organizados em 3 seções:
  * 1. Livros do Acervo
  * 2. Videoaulas do YouTube
- * 3. Conteúdo Didático Web (Google Books)
- * Permite desvincular itens preservando o conteúdo original na Biblioteca.
+ * 3. Conteúdo Didático Web (Pesquisa Google)
+ * Permite ao criador do plano desvincular itens preservando o conteúdo original na Biblioteca,
+ * e permite aos alunos consultarem planos compartilhados pelos professores com sua turma.
  */
 
 import { useState, useEffect } from 'react';
@@ -117,6 +118,8 @@ export default function PlanoDetalhe() {
   const livros = itens.filter((i) => i.tipo === 'livro');
   const videoaulas = itens.filter((i) => i.tipo === 'videoaula');
   const conteudosWeb = itens.filter((i) => i.tipo === 'conteudo_web');
+  // Apenas o proprietário do plano pode desvincular materiais
+  const podeEditarItens = plano.eh_proprietario !== false;
 
   return (
     <div className="position-relative">
@@ -132,7 +135,7 @@ export default function PlanoDetalhe() {
         {/* Cabeçalho da Trilha de Estudos */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pb-3 border-bottom">
           <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
+            <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
               <Link
                 to="/dashboard/biblioteca"
                 className="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold"
@@ -142,6 +145,11 @@ export default function PlanoDetalhe() {
               <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill">
                 {plano.disciplina}
               </span>
+              {plano.compartilhado_por_professor && (
+                <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-1 rounded-pill">
+                  🎓 Compartilhado por Prof. {plano.autor_nome || 'Docente'}
+                </span>
+              )}
             </div>
             <h2 className="fw-bold mb-1 text-dark fs-4">{plano.nome}</h2>
             {plano.descricao && (
@@ -182,7 +190,7 @@ export default function PlanoDetalhe() {
               <span className="fs-2">📄</span>
               <div>
                 <h6 className="fw-bold mb-0 text-dark">{conteudosWeb.length} Conteúdo{conteudosWeb.length !== 1 ? 's' : ''} Web</h6>
-                <small className="text-muted">Artigos e livros do Google Books</small>
+                <small className="text-muted">Artigos e conteúdos pesquisados na Web</small>
               </div>
             </div>
           </div>
@@ -243,14 +251,16 @@ export default function PlanoDetalhe() {
                             Acessar Obra ↗
                           </a>
                         )}
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-danger rounded-pill px-3 small"
-                          onClick={() => handleRemoverItem(item.id)}
-                          disabled={removendoId === item.id}
-                        >
-                          {removendoId === item.id ? 'Removendo...' : 'Desvincular'}
-                        </button>
+                        {podeEditarItens && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger rounded-pill px-3 small"
+                            onClick={() => handleRemoverItem(item.id)}
+                            disabled={removendoId === item.id}
+                          >
+                            {removendoId === item.id ? 'Removendo...' : 'Desvincular'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -319,14 +329,16 @@ export default function PlanoDetalhe() {
                             Assistir no YouTube ↗
                           </a>
                         )}
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-danger rounded-pill px-3 small"
-                          onClick={() => handleRemoverItem(item.id)}
-                          disabled={removendoId === item.id}
-                        >
-                          {removendoId === item.id ? 'Removendo...' : 'Desvincular'}
-                        </button>
+                        {podeEditarItens && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger rounded-pill px-3 small"
+                            onClick={() => handleRemoverItem(item.id)}
+                            disabled={removendoId === item.id}
+                          >
+                            {removendoId === item.id ? 'Removendo...' : 'Desvincular'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -391,14 +403,16 @@ export default function PlanoDetalhe() {
                             Abrir Conteúdo ↗
                           </a>
                         )}
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-danger rounded-pill px-3 small"
-                          onClick={() => handleRemoverItem(item.id)}
-                          disabled={removendoId === item.id}
-                        >
-                          {removendoId === item.id ? 'Removendo...' : 'Desvincular'}
-                        </button>
+                        {podeEditarItens && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger rounded-pill px-3 small"
+                            onClick={() => handleRemoverItem(item.id)}
+                            disabled={removendoId === item.id}
+                          >
+                            {removendoId === item.id ? 'Removendo...' : 'Desvincular'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

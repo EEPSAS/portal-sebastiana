@@ -2,44 +2,72 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CompartilharPlanoEstudoRequest;
 use App\Http\Requests\StorePlanoEstudoItemRequest;
 use App\Http\Requests\StorePlanoEstudoRequest;
 use App\Http\Resources\PlanoEstudoItemResource;
 use App\Http\Resources\PlanoEstudoResource;
+use App\Http\Resources\TurmaResource;
 use App\Models\Livro;
 use App\Models\PlanoEstudo;
 use App\Models\PlanoEstudoItem;
+use App\Models\Turma;
+use App\Models\TurmaDisciplina;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
- * Controller responsável pelo gerenciamento de Planos de Estudos e seus itens associados.
+ * Controller responsável pelo gerenciamento de Planos de Estudos, seus itens e compartilhamento por turma.
  *
  * Papel Didático:
  * Centraliza as ações RESTful de trilhas de estudo:
  * - Listagem agregada com contadores reais de livros, videoaulas e conteúdos web;
- * - Criação e exclusão de planos de estudos pessoais;
+ * - Isolamento de visibilidade: alunos veem apenas seus planos e os planos compartilhados com sua turma;
+ * - Compartilhamento exclusivo por professores para turmas do 1º, 2º ou 3º ano;
  * - Adição e remoção de conteúdos preservando as fontes originais da Biblioteca.
  */
 class PlanoEstudoController extends Controller
 {
     /**
-     * Lista todos os planos de estudos do usuário autenticado com contadores reais por tipo.
+     * Lista os planos de estudos visíveis ao usuário autenticado com contadores reais por tipo.
+     * Alunos visualizam seus próprios planos e os planos compartilhados com sua turma ativa.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
         $usuario = $request->user();
 
-        // Carrega os planos do usuário com contagem agregada de cada categoria de material
-        $planos = $usuario->planosEstudos()
+        $query = PlanoEstudo::query()
+            ->with(['user:id,name', 'turmas'])
             ->withCount([
                 'itens as livros_count' => fn ($q) => $q->where('tipo', 'livro'),
                 'itens as videoaulas_count' => fn ($q) => $q->where('tipo', 'videoaula'),
                 'itens as conteudos_web_count' => fn ($q) => $q->where('tipo', 'conteudo_web'),
-            ])
-            ->latest()
-            ->get();
+            ]);
+
+        if ($usuario->isAluno()) {
+            // Identifica as turmas ativas em que o estudante está matriculado
+            $turmaIds = $usuario->turmas()
+                ->wherePivot('status_matricula', 'Ativo')
+                ->pluck('turmas.id_turma')
+                ->all();
+
+            // O aluno enxerga seus próprios planos OU planos compartilhados por professores com sua turma
+            $query->where(function ($subQuery) use ($usuario, $turmaIds) {
+                $subQuery->where('user_id', $usuario->id);
+
+                if (! empty($turmaIds)) {
+                    $subQuery->orWhereHas('turmas', function ($turmaQuery) use ($turmaIds) {
+                        $turmaQuery->whereIn('turmas.id_turma', $turmaIds);
+                    });
+                }
+            });
+        } else {
+            // Professores e demais perfis visualizam na listagem principal os planos criados por eles
+            $query->where('user_id', $usuario->id);
+        }
+
+        $planos = $query->latest()->get();
 
         return PlanoEstudoResource::collection($planos);
     }
@@ -53,6 +81,7 @@ class PlanoEstudoController extends Controller
         $dados['user_id'] = $request->user()->id;
 
         $plano = PlanoEstudo::create($dados);
+        $plano->load(['user:id,name', 'turmas']);
 
         return (new PlanoEstudoResource($plano))
             ->response()
@@ -64,17 +93,96 @@ class PlanoEstudoController extends Controller
      */
     public function show(Request $request, PlanoEstudo $plano): PlanoEstudoResource|JsonResponse
     {
-        // Autorização: apenas o criador ou administradores podem visualizar o plano
-        if ($plano->user_id !== $request->user()->id && ! $request->user()->isAdm()) {
+        $usuario = $request->user();
+        $ehProprietarioOuAdm = $plano->user_id === $usuario->id || $usuario->isAdm();
+
+        // Verifica se o aluno tem acesso via compartilhamento do professor com a sua turma ativa
+        $compartilhadoComAluno = false;
+        if (! $ehProprietarioOuAdm && $usuario->isAluno()) {
+            $turmaIds = $usuario->turmas()
+                ->wherePivot('status_matricula', 'Ativo')
+                ->pluck('turmas.id_turma')
+                ->all();
+
+            if (! empty($turmaIds)) {
+                $compartilhadoComAluno = $plano->turmas()
+                    ->whereIn('turmas.id_turma', $turmaIds)
+                    ->exists();
+            }
+        }
+
+        if (! $ehProprietarioOuAdm && ! $compartilhadoComAluno) {
             return response()->json([
                 'message' => 'Você não possui autorização para acessar este plano de estudos.',
             ], 403);
         }
 
-        // Carrega os itens ordenados do mais recente para o mais antigo
-        $plano->load(['itens' => fn ($q) => $q->latest()]);
+        // Carrega o criador, turmas vinculadas e itens ordenados do mais recente para o mais antigo
+        $plano->load([
+            'user:id,name',
+            'turmas',
+            'itens' => fn ($q) => $q->latest(),
+        ]);
 
         return new PlanoEstudoResource($plano);
+    }
+
+    /**
+     * Compartilha (sincroniza) um plano de estudos do professor com turmas selecionadas (1º, 2º ou 3º ano).
+     */
+    public function compartilhar(CompartilharPlanoEstudoRequest $request, PlanoEstudo $plano): PlanoEstudoResource
+    {
+        $turmaIds = $request->validated('turma_ids') ?? [];
+
+        // Sincroniza os vínculos na tabela pivot plano_estudo_turmas
+        $plano->turmas()->sync($turmaIds);
+
+        $plano->load(['user:id,name', 'turmas']);
+        $plano->loadCount([
+            'itens as livros_count' => fn ($q) => $q->where('tipo', 'livro'),
+            'itens as videoaulas_count' => fn ($q) => $q->where('tipo', 'videoaula'),
+            'itens as conteudos_web_count' => fn ($q) => $q->where('tipo', 'conteudo_web'),
+        ]);
+
+        return new PlanoEstudoResource($plano);
+    }
+
+    /**
+     * Lista as turmas às quais o professor autenticado está vinculado (com suporte a busca textual).
+     */
+    public function turmasLecionadas(Request $request): AnonymousResourceCollection|JsonResponse
+    {
+        $usuario = $request->user();
+
+        if (! $usuario->isProfessor() && ! $usuario->isAdm()) {
+            return response()->json([
+                'message' => 'Apenas professores podem consultar turmas para compartilhamento de planos.',
+            ], 403);
+        }
+
+        $query = Turma::query()
+            ->withCount(['alunos', 'disciplinas'])
+            ->where('status', 'Ativa');
+
+        // Filtra estritamente pelas turmas vinculadas ao professor na tabela turma_disciplinas
+        if ($usuario->isProfessor() && ! $usuario->isAdm()) {
+            $possuiVinculoDocente = TurmaDisciplina::where('professor_id', $usuario->id)->exists();
+            if ($possuiVinculoDocente) {
+                $query->whereHas('turmaDisciplinas', function ($q) use ($usuario) {
+                    $q->where('professor_id', $usuario->id);
+                });
+            }
+        }
+
+        // Filtro opcional de busca por nome/série da turma (ex: 1º, 2º, 3º ano)
+        if ($request->filled('q')) {
+            $termo = trim($request->string('q')->toString());
+            $query->where('nome_identificador', 'like', "%{$termo}%");
+        }
+
+        $turmas = $query->orderBy('nome_identificador')->get();
+
+        return TurmaResource::collection($turmas);
     }
 
     /**
