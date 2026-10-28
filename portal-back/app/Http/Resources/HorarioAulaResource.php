@@ -19,6 +19,8 @@ class HorarioAulaResource extends JsonResource
             'disciplina' => [
                 'id_disciplina' => $this->disciplina->id_disciplina,
                 'nome' => $this->disciplina->nome,
+                'aulas_semanais' => (int) ($this->disciplina->aulas_semanais ?: intdiv(max(40, (int) $this->disciplina->carga_horaria_anual), 40)),
+                'carga_horaria_anual' => (int) $this->disciplina->carga_horaria_anual,
             ],
             'professor' => [
                 'id' => $this->professor->id,

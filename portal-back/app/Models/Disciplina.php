@@ -23,9 +23,40 @@ class Disciplina extends Model
     // Campos preenchíveis em massa
     protected $fillable = [
         'nome',
+        'aulas_semanais',
         'carga_horaria_anual',
         'descricao',
+        'ementa',
+        'habilidades_bncc',
+        'objetivo_geral',
+        'objetivo_especifico',
     ];
+
+    /**
+     * Sincroniza automaticamente a quantidade de aulas semanais e a carga horária anual
+     * considerando a base oficial de 40 semanas letivas (Item 3.3).
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Disciplina $disciplina) {
+            $aulasInformadas = $disciplina->getAttribute('aulas_semanais');
+            $cargaInformada = $disciplina->getAttribute('carga_horaria_anual');
+
+            if ($disciplina->isDirty('aulas_semanais') && $aulasInformadas !== null) {
+                $disciplina->aulas_semanais = max(1, (int) $aulasInformadas);
+                $disciplina->carga_horaria_anual = $disciplina->aulas_semanais * 40;
+            } elseif ($cargaInformada !== null && (! $disciplina->isDirty('aulas_semanais'))) {
+                $disciplina->carga_horaria_anual = max(40, (int) $cargaInformada);
+                $disciplina->aulas_semanais = max(1, (int) round($disciplina->carga_horaria_anual / 40));
+            } elseif ($aulasInformadas !== null) {
+                $disciplina->aulas_semanais = max(1, (int) $aulasInformadas);
+                $disciplina->carga_horaria_anual = $disciplina->aulas_semanais * 40;
+            } else {
+                $disciplina->aulas_semanais = 2;
+                $disciplina->carga_horaria_anual = 80;
+            }
+        });
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -36,8 +67,24 @@ class Disciplina extends Model
     protected function casts(): array
     {
         return [
+            'aulas_semanais' => 'integer',
             'carga_horaria_anual' => 'integer',
         ];
+    }
+
+    /**
+     * Ciclos escolares aos quais esta disciplina pertence (ex: 1º Ano, 2º Ano, 3º Ano).
+     *
+     * @return BelongsToMany<Ciclo, $this>
+     */
+    public function ciclos(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Ciclo::class,
+            'ciclo_disciplinas',
+            'disciplina_id',
+            'ciclo_id'
+        )->withTimestamps();
     }
 
     /**
@@ -86,5 +133,42 @@ class Disciplina extends Model
     {
         return $this->belongsToMany(User::class, 'disciplina_professores', 'disciplina_id', 'professor_id')
             ->withTimestamps();
+    }
+
+    /**
+     * Alias semântico para os professores titulares da disciplina.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function professoresTitulares(): BelongsToMany
+    {
+        return $this->professores();
+    }
+
+    /**
+     * Propaga esta disciplina para todas as turmas pertencentes aos Ciclos vinculados.
+     */
+    public function sincronizarComTurmasDosCiclos(): void
+    {
+        $ciclos = $this->ciclos()->with('turmas')->get();
+        $professorPadraoId = $this->professores()->first()?->id;
+
+        foreach ($ciclos as $ciclo) {
+            foreach ($ciclo->turmas as $turma) {
+                $alocacao = TurmaDisciplina::firstOrCreate(
+                    [
+                        'turma_id' => $turma->id_turma,
+                        'disciplina_id' => $this->id_disciplina,
+                    ],
+                    [
+                        'professor_id' => $professorPadraoId,
+                    ]
+                );
+
+                if ($alocacao->professor_id === null && $professorPadraoId !== null) {
+                    $alocacao->update(['professor_id' => $professorPadraoId]);
+                }
+            }
+        }
     }
 }

@@ -1,0 +1,791 @@
+/**
+ * Disciplinas.jsx - Módulo Acadêmico de Gestão e Consulta de Disciplinas por Ciclos
+ *
+ * Papel Didático:
+ * Implementa integralmente a Diretriz 3 (28/10/2026):
+ * 1. Visão Especialista / Admin:
+ *    - Lista todas as disciplinas agrupadas por "Ciclos" (ex: 1º Ano, 2º Ano, 3º Ano);
+ *    - Permite criar ciclos avulsos ou criar/editar disciplinas selecionando múltiplos ciclos
+ *      existentes E/OU criando um novo ciclo diretamente no ato do cadastro;
+ *    - Campos obrigatórios: Nome e Qtd. de Aulas Semanais (calcula e exibe automaticamente
+ *      a Qtd. Total de Aulas Anuais = Aulas Semanais * 40 semanas letivas);
+ *    - Campos opcionais: Ementa, Habilidades BNCC, Objetivo Geral e Objetivo Específico.
+ * 2. Visão Aluno / Professor:
+ *    - Exibe de forma semântica e organizada as disciplinas do seu ciclo/turma (ou regência),
+ *      com acesso à ementa, habilidades BNCC, objetivos e carga horária.
+ */
+
+import { useEffect, useState } from "react";
+import { useAuth } from "../../hooks/useAuth";
+import {
+  listarDisciplinasPorCiclo,
+  criarCiclo,
+  criarDisciplina,
+  atualizarDisciplina,
+  excluirDisciplina,
+} from "../../services/disciplinasService";
+
+const DisciplinasPage = () => {
+  const { user } = useAuth();
+  const role = user?.role || "aluno";
+  const podeGerenciar = role === "especialista" || role === "adm";
+
+  const [ciclos, setCiclos] = useState([]);
+  const [disciplinasSemCiclo, setDisciplinasSemCiclo] = useState([]);
+  const [todasDisciplinas, setTodasDisciplinas] = useState([]);
+  const [busca, setBusca] = useState("");
+  const [recargaKey, setRecargaKey] = useState(0);
+
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState("");
+  const [feedback, setFeedback] = useState("");
+
+  // Modal de Criação/Edição de Disciplina
+  const [modalAberto, setModalAberto] = useState(false);
+  const [disciplinaEmEdicao, setDisciplinaEmEdicao] = useState(null);
+  const [nome, setNome] = useState("");
+  const [aulasSemanais, setAulasSemanais] = useState(4);
+  const [ciclosSelecionados, setCiclosSelecionados] = useState([]);
+  const [novoCicloNome, setNovoCicloNome] = useState("");
+  const [ementa, setEmenta] = useState("");
+  const [habilidadesBncc, setHabilidadesBncc] = useState("");
+  const [objetivoGeral, setObjetivoGeral] = useState("");
+  const [objetivoEspecifico, setObjetivoEspecifico] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erroModal, setErroModal] = useState("");
+
+  // Modal de Detalhes Pedagógicos (Ementa / BNCC / Objetivos)
+  const [disciplinaDetalhe, setDisciplinaDetalhe] = useState(null);
+
+  // Criação rápida de Ciclo na barra superior
+  const [nomeCicloRapido, setNomeCicloRapido] = useState("");
+  const [criandoCiclo, setCriandoCiclo] = useState(false);
+
+  const exibirFeedback = (msg) => {
+    setFeedback(msg);
+    setTimeout(() => setFeedback(""), 4500);
+  };
+
+  useEffect(() => {
+    let ativo = true;
+
+    listarDisciplinasPorCiclo()
+      .then((res) => {
+        if (!ativo) return;
+        setCiclos(res?.ciclos || []);
+        setDisciplinasSemCiclo(res?.disciplinas_sem_ciclo || []);
+        setTodasDisciplinas(res?.todas_disciplinas || []);
+      })
+      .catch((err) => {
+        if (!ativo) return;
+        setErro(err.message || "Não foi possível carregar as disciplinas.");
+      })
+      .finally(() => {
+        if (ativo) setLoading(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [recargaKey]);
+
+  // Cálculo automático baseado em 40 semanas letivas (Item 3.3)
+  const totalAulasCalculado = Math.max(0, Number(aulasSemanais || 0)) * 40;
+
+  const handleAbrirNovaDisciplina = (cicloPreSelecionadoId = null) => {
+    setDisciplinaEmEdicao(null);
+    setNome("");
+    setAulasSemanais(4);
+    setCiclosSelecionados(cicloPreSelecionadoId ? [Number(cicloPreSelecionadoId)] : []);
+    setNovoCicloNome("");
+    setEmenta("");
+    setHabilidadesBncc("");
+    setObjetivoGeral("");
+    setObjetivoEspecifico("");
+    setErroModal("");
+    setModalAberto(true);
+  };
+
+  const handleAbrirEditarDisciplina = (disc) => {
+    setDisciplinaEmEdicao(disc);
+    setNome(disc.nome || "");
+    setAulasSemanais(disc.aulas_semanais || Math.max(1, Math.round((disc.carga_horaria_anual || 160) / 40)));
+    setCiclosSelecionados((disc.ciclos || []).map((c) => Number(c.id)));
+    setNovoCicloNome("");
+    setEmenta(disc.ementa || "");
+    setHabilidadesBncc(disc.habilidades_bncc || "");
+    setObjetivoGeral(disc.objetivo_geral || "");
+    setObjetivoEspecifico(disc.objetivo_especifico || "");
+    setErroModal("");
+    setModalAberto(true);
+  };
+
+  const toggleCicloNoModal = (idCiclo) => {
+    const idNum = Number(idCiclo);
+    setCiclosSelecionados((prev) =>
+      prev.includes(idNum) ? prev.filter((id) => id !== idNum) : [...prev, idNum]
+    );
+  };
+
+  const handleSalvarDisciplina = async (e) => {
+    e.preventDefault();
+    setErroModal("");
+
+    if (!nome.trim()) {
+      setErroModal("O nome da disciplina é obrigatório.");
+      return;
+    }
+
+    if (!aulasSemanais || Number(aulasSemanais) < 1) {
+      setErroModal("Informe uma quantidade válida de aulas semanais (mínimo 1).");
+      return;
+    }
+
+    if (ciclosSelecionados.length === 0 && !novoCicloNome.trim()) {
+      setErroModal("Selecione ao menos um Ciclo existente ou informe o nome de um novo Ciclo.");
+      return;
+    }
+
+    setSalvando(true);
+    try {
+      const payload = {
+        nome: nome.trim(),
+        aulas_semanais: Number(aulasSemanais),
+        ciclo_ids: ciclosSelecionados,
+        novo_ciclo_nome: novoCicloNome.trim() || null,
+        ementa: ementa.trim() || null,
+        habilidades_bncc: habilidadesBncc.trim() || null,
+        objetivo_geral: objetivoGeral.trim() || null,
+        objetivo_especifico: objetivoEspecifico.trim() || null,
+      };
+
+      if (disciplinaEmEdicao?.id_disciplina) {
+        const res = await atualizarDisciplina(disciplinaEmEdicao.id_disciplina, payload);
+        exibirFeedback(res?.message || "Disciplina atualizada com sucesso!");
+      } else {
+        const res = await criarDisciplina(payload);
+        exibirFeedback(res?.message || "Disciplina criada e vinculada ao(s) ciclo(s) com sucesso!");
+      }
+
+      setModalAberto(false);
+      setRecargaKey((k) => k + 1);
+    } catch (err) {
+      setErroModal(err.message || "Erro ao salvar disciplina.");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleCriarCicloRapido = async (e) => {
+    e.preventDefault();
+    if (!nomeCicloRapido.trim()) return;
+
+    setCriandoCiclo(true);
+    try {
+      await criarCiclo({ nome: nomeCicloRapido.trim() });
+      exibirFeedback(`Ciclo "${nomeCicloRapido.trim()}" criado com sucesso!`);
+      setNomeCicloRapido("");
+      setRecargaKey((k) => k + 1);
+    } catch (err) {
+      alert(err.message || "Erro ao criar ciclo.");
+    } finally {
+      setCriandoCiclo(false);
+    }
+  };
+
+  const handleExcluirDisciplina = async (disc) => {
+    if (
+      !window.confirm(
+        `Deseja realmente remover a disciplina "${disc.nome}" do catálogo escolar?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await excluirDisciplina(disc.id_disciplina);
+      exibirFeedback(res?.message || "Disciplina removida com sucesso.");
+      setRecargaKey((k) => k + 1);
+    } catch (err) {
+      alert(err.message || "Não foi possível remover a disciplina.");
+    }
+  };
+
+  const termoFiltro = busca.trim().toLowerCase();
+
+  const filtrarLista = (lista = []) =>
+    lista.filter(
+      (d) =>
+        !termoFiltro ||
+        String(d.nome || "").toLowerCase().includes(termoFiltro) ||
+        String(d.ementa || "").toLowerCase().includes(termoFiltro) ||
+        String(d.habilidades_bncc || "").toLowerCase().includes(termoFiltro)
+    );
+
+  // Renderizador de Card de Disciplina
+  const renderCardDisciplina = (disc) => {
+    const aulasSem = disc.aulas_semanais || Math.max(1, Math.round((disc.carga_horaria_anual || 160) / 40));
+    const totalAulas = disc.total_aulas_anuais || disc.carga_horaria_anual || aulasSem * 40;
+
+    return (
+      <div className="col-12 col-md-6 col-xl-4" key={disc.id_disciplina}>
+        <div className="card h-100 border rounded-4 shadow-sm p-3 bg-white d-flex flex-column justify-content-between">
+          <div>
+            <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+              <h3 className="h6 fw-bold text-dark mb-0">{disc.nome}</h3>
+              <span className="badge bg-primary-subtle text-primary rounded-pill text-nowrap">
+                {aulasSem} aula(s)/sem • {totalAulas} aulas/ano
+              </span>
+            </div>
+
+            {/* Badges dos Ciclos aos quais a disciplina pertence */}
+            {Array.isArray(disc.ciclos) && disc.ciclos.length > 0 && (
+              <div className="d-flex flex-wrap gap-1 mb-2">
+                {disc.ciclos.map((c) => (
+                  <span
+                    key={c.id}
+                    className="badge bg-secondary-subtle text-dark rounded-pill"
+                    style={{ fontSize: "0.72rem" }}
+                  >
+                    <i className="bi bi-diagram-3 me-1"></i>
+                    {c.nome}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Resumo de Ementa / BNCC */}
+            {disc.ementa ? (
+              <p className="text-muted small mb-2" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                <strong>Ementa:</strong> {disc.ementa}
+              </p>
+            ) : (
+              <p className="text-muted small fst-italic mb-2">
+                Ementa opcional não informada.
+              </p>
+            )}
+
+            {disc.habilidades_bncc && (
+              <p className="text-muted small mb-2 text-truncate">
+                <strong>BNCC:</strong> {disc.habilidades_bncc}
+              </p>
+            )}
+
+            {/* Professores vinculados */}
+            {Array.isArray(disc.professores) && disc.professores.length > 0 && (
+              <div className="small text-secondary mb-2">
+                <i className="bi bi-person-badge me-1 text-primary"></i>
+                <strong>Docente(s):</strong>{" "}
+                {disc.professores.map((p) => p.name).join(", ")}
+              </div>
+            )}
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center pt-2 border-top mt-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-link text-decoration-none px-0 fw-semibold"
+              onClick={() => setDisciplinaDetalhe(disc)}
+            >
+              <i className="bi bi-eye me-1"></i>
+              Ver Plano Pedagógico
+            </button>
+
+            {podeGerenciar && (
+              <div className="btn-group btn-group-sm">
+                <button
+                  type="button"
+                  className="btn btn-outline-primary rounded-start-pill px-2"
+                  onClick={() => handleAbrirEditarDisciplina(disc)}
+                  title="Editar disciplina"
+                >
+                  <i className="bi bi-pencil"></i>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-danger rounded-end-pill px-2"
+                  onClick={() => handleExcluirDisciplina(disc)}
+                  title="Excluir disciplina"
+                >
+                  <i className="bi bi-trash"></i>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="position-relative">
+      {feedback && (
+        <div
+          className="alert alert-success position-fixed top-0 end-0 m-3 shadow-sm py-2 px-3 small z-3"
+          role="status"
+        >
+          ✓ {feedback}
+        </div>
+      )}
+
+      <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
+        {/* Cabeçalho */}
+        <header className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 pb-3 mb-4 border-bottom">
+          <div>
+            <h1 className="h4 fw-bold text-primary mb-1">
+              Matriz Curricular e Disciplinas por Ciclos
+            </h1>
+            <p className="text-muted small mb-0">
+              {podeGerenciar
+                ? "Organize as disciplinas por Ciclos (1º Ano, 2º Ano, 3º Ano), defina aulas semanais (base de 40 semanas letivas), ementa e BNCC."
+                : "Consulte as disciplinas do seu ciclo escolar, carga horária anual, ementas, habilidades da BNCC e objetivos pedagógicos."}
+            </p>
+          </div>
+
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            {podeGerenciar && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm rounded-pill px-3 fw-bold"
+                onClick={() => handleAbrirNovaDisciplina()}
+              >
+                <i className="bi bi-plus-lg me-1"></i>
+                Nova Disciplina
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Barra de Busca + Criação Rápida de Ciclo (Especialista/Admin) */}
+        <div className="row g-3 align-items-end mb-4">
+          <div className={podeGerenciar ? "col-12 col-lg-7" : "col-12"}>
+            <label htmlFor="busca-disciplinas" className="form-label small fw-bold text-dark mb-1">
+              Pesquisar Disciplina, Ementa ou Código BNCC:
+            </label>
+            <div className="input-group">
+              <span className="input-group-text bg-white text-muted">
+                <i className="bi bi-search"></i>
+              </span>
+              <input
+                id="busca-disciplinas"
+                type="search"
+                className="form-control"
+                placeholder="Ex: Língua Portuguesa, Matemática, EM13LGG..."
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {podeGerenciar && (
+            <div className="col-12 col-lg-5">
+              <form onSubmit={handleCriarCicloRapido}>
+                <label htmlFor="novo-ciclo-rapido" className="form-label small fw-bold text-dark mb-1">
+                  Criar Novo Ciclo Escolar:
+                </label>
+                <div className="input-group">
+                  <input
+                    id="novo-ciclo-rapido"
+                    type="text"
+                    className="form-control"
+                    placeholder="Ex: 1º Ano, 2º Ano, 3º Ano..."
+                    value={nomeCicloRapido}
+                    onChange={(e) => setNomeCicloRapido(e.target.value)}
+                    disabled={criandoCiclo}
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn-outline-primary fw-semibold"
+                    disabled={criandoCiclo || !nomeCicloRapido.trim()}
+                  >
+                    {criandoCiclo ? "Criando..." : "+ Criar Ciclo"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+
+        {erro && (
+          <div className="alert alert-danger rounded-3 small mb-4" role="alert">
+            {erro}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center py-5">
+            <div className="spinner-border text-primary" role="status"></div>
+            <p className="text-muted small mt-2">Carregando ciclos e disciplinas...</p>
+          </div>
+        ) : (
+          <div className="d-flex flex-column gap-4">
+            {/* Listagem agrupada por Ciclos */}
+            {ciclos.map((ciclo) => {
+              const disciplinasFiltradas = filtrarLista(ciclo.disciplinas || []);
+              if (termoFiltro && disciplinasFiltradas.length === 0) return null;
+
+              return (
+                <section
+                  key={ciclo.id}
+                  className="p-4 rounded-4 border bg-light"
+                  aria-labelledby={`titulo-ciclo-${ciclo.id}`}
+                >
+                  <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="badge bg-primary rounded-pill px-3 py-2 fs-6">
+                        <i className="bi bi-layers-fill me-1"></i>
+                        {ciclo.nome}
+                      </span>
+                      <span id={`titulo-ciclo-${ciclo.id}`} className="text-muted small fw-semibold">
+                        {disciplinasFiltradas.length} disciplina(s) vinculada(s)
+                      </span>
+                    </div>
+
+                    {podeGerenciar && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold"
+                        onClick={() => handleAbrirNovaDisciplina(ciclo.id)}
+                      >
+                        <i className="bi bi-plus-circle me-1"></i>
+                        Adicionar Disciplina ao {ciclo.nome}
+                      </button>
+                    )}
+                  </div>
+
+                  {disciplinasFiltradas.length === 0 ? (
+                    <div className="text-center py-3 text-muted small">
+                      Nenhuma disciplina vinculada a este ciclo até o momento.
+                    </div>
+                  ) : (
+                    <div className="row g-3">
+                      {disciplinasFiltradas.map((disc) => renderCardDisciplina(disc))}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+
+            {/* Disciplinas ainda sem ciclo atribuído (ou visão geral de aluno sem ciclo fixo) */}
+            {filtrarLista(disciplinasSemCiclo).length > 0 && (
+              <section className="p-4 rounded-4 border bg-light">
+                <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                  <h2 className="h6 fw-bold text-secondary mb-0">
+                    <i className="bi bi-journal-bookmark me-2"></i>
+                    Disciplinas Gerais / Aguardando Atribuição de Ciclo
+                  </h2>
+                  <span className="badge bg-secondary rounded-pill">
+                    {filtrarLista(disciplinasSemCiclo).length}
+                  </span>
+                </div>
+                <div className="row g-3">
+                  {filtrarLista(disciplinasSemCiclo).map((disc) => renderCardDisciplina(disc))}
+                </div>
+              </section>
+            )}
+
+            {ciclos.length === 0 && todasDisciplinas.length === 0 && (
+              <div className="text-center py-5 border rounded-4 bg-light">
+                <i className="bi bi-journal-bookmark fs-1 text-muted d-block mb-2"></i>
+                <h2 className="h5 fw-bold text-dark">Nenhuma disciplina cadastrada</h2>
+                <p className="text-muted small mb-0">
+                  Utilize o botão &ldquo;Nova Disciplina&rdquo; para criar o primeiro ciclo e cadastrar as matérias escolares.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Modal de Criação / Edição de Disciplina (Itens 3.1, 3.2, 3.3) */}
+      {modalAberto && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-disciplina-titulo"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header border-bottom-0 pb-0">
+                <div>
+                  <h2 id="modal-disciplina-titulo" className="modal-title h5 fw-bold text-dark mb-0">
+                    {disciplinaEmEdicao ? "Editar Disciplina Curricular" : "Cadastrar Nova Disciplina"}
+                  </h2>
+                  <p className="text-muted small mb-0">
+                    A carga horária total é calculada automaticamente considerando 40 semanas letivas.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label="Fechar"
+                  onClick={() => setModalAberto(false)}
+                  disabled={salvando}
+                ></button>
+              </div>
+
+              <form onSubmit={handleSalvarDisciplina}>
+                <div className="modal-body py-3">
+                  {erroModal && (
+                    <div className="alert alert-danger py-2 px-3 small rounded-3 mb-3" role="alert">
+                      {erroModal}
+                    </div>
+                  )}
+
+                  {/* Linha 1: Nome (Obrigatório) + Aulas Semanais (Obrigatório) + Total Calculado (40 semanas) */}
+                  <div className="row g-3 mb-3">
+                    <div className="col-12 col-md-6">
+                      <label htmlFor="disc-nome" className="form-label small fw-bold text-dark">
+                        Nome da Disciplina (Obrigatório):
+                      </label>
+                      <input
+                        id="disc-nome"
+                        type="text"
+                        className="form-control"
+                        placeholder="Ex: Língua Portuguesa"
+                        value={nome}
+                        onChange={(e) => setNome(e.target.value)}
+                        disabled={salvando}
+                        required
+                      />
+                    </div>
+
+                    <div className="col-6 col-md-3">
+                      <label htmlFor="disc-aulas-semanais" className="form-label small fw-bold text-dark">
+                        Qtd. Aulas Semanais:
+                      </label>
+                      <input
+                        id="disc-aulas-semanais"
+                        type="number"
+                        min={1}
+                        max={30}
+                        className="form-control"
+                        value={aulasSemanais}
+                        onChange={(e) => setAulasSemanais(e.target.value)}
+                        disabled={salvando}
+                        required
+                      />
+                    </div>
+
+                    <div className="col-6 col-md-3">
+                      <label className="form-label small fw-bold text-primary">
+                        Total Anual (40 sem.):
+                      </label>
+                      <div className="form-control bg-primary-subtle text-primary fw-bold text-center">
+                        {totalAulasCalculado} aulas
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Linha 2: Seleção de Ciclos Existentes E/OU Criação de Novo Ciclo */}
+                  <div className="p-3 rounded-3 bg-light border mb-3">
+                    <label className="form-label small fw-bold text-dark d-block mb-2">
+                      Ciclos Escolares da Disciplina (Pode pertencer a vários ciclos, ex: 1º, 2º e 3º Ano):
+                    </label>
+
+                    {ciclos.length > 0 && (
+                      <div className="d-flex flex-wrap gap-2 mb-3">
+                        {ciclos.map((c) => {
+                          const ativo = ciclosSelecionados.includes(Number(c.id));
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => toggleCicloNoModal(c.id)}
+                              className={`btn btn-sm rounded-pill px-3 ${
+                                ativo ? "btn-primary fw-bold" : "btn-outline-secondary bg-white"
+                              }`}
+                            >
+                              <i
+                                className={`bi ${
+                                  ativo ? "bi-check-circle-fill" : "bi-circle"
+                                } me-1`}
+                              ></i>
+                              {c.nome}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div>
+                      <label htmlFor="disc-novo-ciclo" className="form-label small text-muted mb-1">
+                        E/OU criar um novo Ciclo agora e vincular esta disciplina a ele:
+                      </label>
+                      <input
+                        id="disc-novo-ciclo"
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="Digite o nome de um novo Ciclo (ex: 1º Ano, 2º Ano, 3º Ano)..."
+                        value={novoCicloNome}
+                        onChange={(e) => setNovoCicloNome(e.target.value)}
+                        disabled={salvando}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Linha 3: Campos Pedagógicos Opcionais (Item 3.3) */}
+                  <div className="row g-3">
+                    <div className="col-12 col-md-6">
+                      <label htmlFor="disc-ementa" className="form-label small fw-bold text-dark">
+                        Ementa (Opcional):
+                      </label>
+                      <textarea
+                        id="disc-ementa"
+                        rows={3}
+                        className="form-control"
+                        placeholder="Resumo dos conteúdos programáticos da disciplina..."
+                        value={ementa}
+                        onChange={(e) => setEmenta(e.target.value)}
+                        disabled={salvando}
+                      />
+                    </div>
+
+                    <div className="col-12 col-md-6">
+                      <label htmlFor="disc-bncc" className="form-label small fw-bold text-dark">
+                        Habilidades BNCC (Opcional):
+                      </label>
+                      <textarea
+                        id="disc-bncc"
+                        rows={3}
+                        className="form-control"
+                        placeholder="Ex: EM13LGG101, EM13LGG102..."
+                        value={habilidadesBncc}
+                        onChange={(e) => setHabilidadesBncc(e.target.value)}
+                        disabled={salvando}
+                      />
+                    </div>
+
+                    <div className="col-12 col-md-6">
+                      <label htmlFor="disc-obj-geral" className="form-label small fw-bold text-dark">
+                        Objetivo Geral (Opcional):
+                      </label>
+                      <textarea
+                        id="disc-obj-geral"
+                        rows={2}
+                        className="form-control"
+                        placeholder="Objetivo pedagógico geral da disciplina..."
+                        value={objetivoGeral}
+                        onChange={(e) => setObjetivoGeral(e.target.value)}
+                        disabled={salvando}
+                      />
+                    </div>
+
+                    <div className="col-12 col-md-6">
+                      <label htmlFor="disc-obj-especifico" className="form-label small fw-bold text-dark">
+                        Objetivo Específico (Opcional):
+                      </label>
+                      <textarea
+                        id="disc-obj-especifico"
+                        rows={2}
+                        className="form-control"
+                        placeholder="Objetivos específicos de aprendizagem..."
+                        value={objetivoEspecifico}
+                        onChange={(e) => setObjetivoEspecifico(e.target.value)}
+                        disabled={salvando}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-footer border-top-0 pt-0">
+                  <button
+                    type="button"
+                    className="btn btn-light rounded-pill px-3"
+                    onClick={() => setModalAberto(false)}
+                    disabled={salvando}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary rounded-pill px-4 fw-bold"
+                    disabled={salvando}
+                  >
+                    {salvando ? "Salvando..." : "Salvar Disciplina"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Consulta Detalhada do Plano Pedagógico da Disciplina */}
+      {disciplinaDetalhe && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          role="dialog"
+          aria-modal="true"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header border-bottom-0 pb-0">
+                <div>
+                  <h2 className="modal-title h5 fw-bold text-primary mb-1">
+                    {disciplinaDetalhe.nome}
+                  </h2>
+                  <span className="badge bg-primary-subtle text-primary rounded-pill">
+                    {disciplinaDetalhe.aulas_semanais || 4} aulas semanais •{" "}
+                    {disciplinaDetalhe.carga_horaria_anual || 160} aulas anuais (40 semanas)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label="Fechar"
+                  onClick={() => setDisciplinaDetalhe(null)}
+                ></button>
+              </div>
+
+              <div className="modal-body py-3 small">
+                <div className="mb-3">
+                  <strong className="d-block text-dark mb-1">Ementa:</strong>
+                  <p className="text-muted mb-0">
+                    {disciplinaDetalhe.ementa || "Não informada."}
+                  </p>
+                </div>
+                <div className="mb-3">
+                  <strong className="d-block text-dark mb-1">Habilidades BNCC:</strong>
+                  <p className="text-muted mb-0">
+                    {disciplinaDetalhe.habilidades_bncc || "Não informadas."}
+                  </p>
+                </div>
+                <div className="mb-3">
+                  <strong className="d-block text-dark mb-1">Objetivo Geral:</strong>
+                  <p className="text-muted mb-0">
+                    {disciplinaDetalhe.objetivo_geral || "Não informado."}
+                  </p>
+                </div>
+                <div>
+                  <strong className="d-block text-dark mb-1">Objetivo Específico:</strong>
+                  <p className="text-muted mb-0">
+                    {disciplinaDetalhe.objetivo_especifico || "Não informado."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="modal-footer border-top-0 pt-0">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm rounded-pill px-4"
+                  onClick={() => setDisciplinaDetalhe(null)}
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default DisciplinasPage;
+

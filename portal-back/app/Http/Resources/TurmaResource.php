@@ -18,9 +18,11 @@ class TurmaResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            // Identificador da turma
+            // Identificador da turma e vínculo com Ciclo Escolar (Item 3.2a)
             'id_turma' => $this->id_turma,
             'nome_identificador' => $this->nome_identificador,
+            'ciclo_id' => $this->ciclo_id,
+            'ciclo_nome' => $this->relationLoaded('ciclo') ? $this->ciclo?->nome : null,
             'ano_letivo' => (int) $this->ano_letivo,
             'turno' => $this->turno,
             'capacidade_maxima' => (int) ($this->capacidade_maxima ?? 40),

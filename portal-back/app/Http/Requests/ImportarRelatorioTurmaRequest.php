@@ -6,7 +6,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validação para o upload de relatório/planilha consolidada do diário escolar.
+ * Validação para o upload de relatório/planilha consolidada do diário escolar (Item 3.4d).
  */
 class ImportarRelatorioTurmaRequest extends FormRequest
 {
@@ -20,8 +20,8 @@ class ImportarRelatorioTurmaRequest extends FormRequest
 
     /**
      * Prepara os dados antes da validação.
-     * Como o envio ocorre via FormData a partir do frontend React, o mapa de confirmação
-     * pode vir serializado como string JSON; fazemos o parsing prévio para array.
+     * Como o envio ocorre via FormData a partir do frontend React, os mapas de confirmação
+     * de alunos e disciplinas podem vir serializados como string JSON.
      */
     protected function prepareForValidation(): void
     {
@@ -29,6 +29,13 @@ class ImportarRelatorioTurmaRequest extends FormRequest
             $decodificado = json_decode($this->input('mapeamentos_alunos'), true);
             if (is_array($decodificado)) {
                 $this->merge(['mapeamentos_alunos' => $decodificado]);
+            }
+        }
+
+        if ($this->has('mapeamentos_disciplinas') && is_string($this->input('mapeamentos_disciplinas'))) {
+            $decodificadoDisc = json_decode($this->input('mapeamentos_disciplinas'), true);
+            if (is_array($decodificadoDisc)) {
+                $this->merge(['mapeamentos_disciplinas' => $decodificadoDisc]);
             }
         }
     }
@@ -48,6 +55,8 @@ class ImportarRelatorioTurmaRequest extends FormRequest
             'data_aula' => ['nullable', 'date'],
             // Mapeamento opcional de confirmação manual em caso de homônimos [nome_csv => id_usuario|'ignorar']
             'mapeamentos_alunos' => ['nullable', 'array'],
+            // Mapeamento/conciliação de disciplinas do CSV com o catálogo escolar (Item 3.4d)
+            'mapeamentos_disciplinas' => ['nullable', 'array'],
             // Decisão sobre notas divergentes de períodos já cadastrados ('atualizar' ou 'manter')
             'decisao_divergencias' => ['nullable', 'string', 'in:atualizar,manter'],
         ];

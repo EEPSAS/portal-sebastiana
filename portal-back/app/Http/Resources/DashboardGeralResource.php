@@ -42,6 +42,7 @@ class DashboardGeralResource extends JsonResource
 
             // Disciplinas curriculares vinculadas à regência do professor (quando aplicável)
             'disciplinas_docente' => $this->resource['disciplinas_docente'] ?? [],
+            'disciplinas_detalhadas' => $this->resource['disciplinas_detalhadas'] ?? [],
 
             // Seção inferior: Feed dinâmico de últimas atualizações escolares
             'ultimas_atualizacoes' => $this->resource['ultimas_atualizacoes'] ?? [],

@@ -12,7 +12,7 @@ AGENTS.md
 apiContract.md
 portal-front/AGENTS.md
 portal-back/AGENTS.md
---VERIFICAR O STATUS, e se não for POSITIVO, EXECUTAR obrigatoriamente a conguração do 'Login With Google' existente nas orientações do agente.md--
+--VERIFICAR O STATUS da funcionalidade 'Login With Gogoogle', e se não for POSITIVO, EXECUTAR obrigatoriamente a conguração do 'Login With Google' existente nas orientações do agente.md--
 
 ===============================================================================
 2. RELATÓRIO TÉCNICO OBRIGATÓRIO DE FECHAMENTO (Deve ser gerado SOMENTE quando o aluno solicitar: 'RELATÓRIO DE FECHAMENTO')

@@ -1,14 +1,26 @@
-import { useState } from "react";
+/**
+ * ModalTurma.jsx - Formulário de Criação e Edição de Turma com Vínculo de Ciclo
+ *
+ * Papel Didático:
+ * Atende à Diretriz 3.2a:
+ * Permite atribuir um Ciclo (ex: 1º Ano, 2º Ano, 3º Ano) à Turma.
+ * Ao pertencer a um Ciclo, a turma herda automaticamente todas as disciplinas
+ * daquele ciclo e seus respectivos professores titulares.
+ */
+
+import { useEffect, useState } from "react";
 import { atualizarTurma, criarTurma } from "../../../services/turmasService";
+import { listarCiclos } from "../../../services/disciplinasService";
 
 /**
  * Conteúdo interno do formulário de criação/edição de turma.
- * Utiliza inicialização preguiçosa de estado via chave única de componente (key),
- * eliminando efeitos colaterais e renderizações em cascata.
  */
 const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
   const [nomeIdentificador, setNomeIdentificador] = useState(
     () => turmaParaEditar?.nome_identificador || ""
+  );
+  const [cicloId, setCicloId] = useState(
+    () => (turmaParaEditar?.ciclo_id ? String(turmaParaEditar.ciclo_id) : "")
   );
   const [turno, setTurno] = useState(() => turmaParaEditar?.turno || "Matutino");
   const [anoLetivo, setAnoLetivo] = useState(
@@ -16,10 +28,23 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
   );
   const [status, setStatus] = useState(() => turmaParaEditar?.status || "Ativa");
 
+  const [ciclosDisponiveis, setCiclosDisponiveis] = useState([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
   const isEdicao = Boolean(turmaParaEditar?.id_turma);
+
+  useEffect(() => {
+    let ativo = true;
+    listarCiclos()
+      .then((lista) => {
+        if (ativo) setCiclosDisponiveis(lista || []);
+      })
+      .catch(() => {});
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -34,6 +59,7 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
     try {
       const payload = {
         nome_identificador: nomeIdentificador.trim(),
+        ciclo_id: cicloId ? Number(cicloId) : null,
         turno,
         ano_letivo: Number(anoLetivo),
         status,
@@ -107,6 +133,30 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
               disabled={salvando}
               required
             />
+          </div>
+
+          {/* Seleção de Ciclo Curricular (Diretriz 3.2a) */}
+          <div className="mb-3">
+            <label htmlFor="ciclo-turma" className="form-label small fw-bold text-dark">
+              Ciclo Curricular (Herdar Disciplinas e Professores):
+            </label>
+            <select
+              id="ciclo-turma"
+              className="form-select"
+              value={cicloId}
+              onChange={(e) => setCicloId(e.target.value)}
+              disabled={salvando}
+            >
+              <option value="">Sem ciclo específico (personalizado)</option>
+              {ciclosDisponiveis.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </select>
+            <small className="text-muted d-block mt-1" style={{ fontSize: "0.75rem" }}>
+              Ao associar um Ciclo, a turma herda automaticamente todas as disciplinas e docentes daquele ciclo.
+            </small>
           </div>
 
           <div className="row g-2 mb-3">

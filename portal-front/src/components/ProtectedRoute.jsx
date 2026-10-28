@@ -6,7 +6,8 @@
  * anônimos nem por usuários sem a devida permissão. Este componente atua como uma barreira:
  * 1. Enquanto a sessão é verificada na API, exibe um indicador amigável de carregamento.
  * 2. Se não estiver logado, redireciona o usuário para o `/login`.
- * 3. Se o usuário for um professor com confirmação pendente, redireciona-o para a tela de espera.
+ * 3. Se o usuário (Aluno ou Professor) estiver com aprovação pendente (`status_confirmacao === 'pendente'`),
+ *    redireciona-o obrigatoriamente para a tela semântica de espera (`/dashboard/espera`).
  * 4. Se a rota exigir perfis específicos (`allowedRoles`) e o perfil do usuário não estiver
  *    na lista, redireciona-o automaticamente para a página inicial do seu perfil através de
  *    `getRotaInicial(userRole)`, evitando erros 403 e mantendo a navegação consistente.
@@ -37,17 +38,18 @@ const ProtectedRoute = ({ allowedRoles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Estado 3: Professor pendente de validação escolar
-  const isProfessorPendente =
-    user?.role === 'professor' && user?.status_confirmacao === 'pendente';
+  // Estado 3: Usuário (Aluno ou Professor) pendente de aprovação institucional (Diretriz 2.1)
+  const isUsuarioPendente =
+    !user?.isSimulated &&
+    (user?.status_confirmacao === 'pendente' || user?.status_confirmacao === 'inativo');
 
-  // Se o professor estiver pendente e tentar acessar qualquer outra área operacional, redireciona para a espera
-  if (isProfessorPendente && location.pathname !== '/dashboard/espera') {
+  // Se o usuário estiver pendente e tentar acessar qualquer área operacional, redireciona para a tela de espera
+  if (isUsuarioPendente && location.pathname !== '/dashboard/espera') {
     return <Navigate to="/dashboard/espera" replace />;
   }
 
-  // Se o professor já estiver confirmado (ou for outro papel) e tentar acessar a tela de espera, redireciona para o geral
-  if (!isProfessorPendente && location.pathname === '/dashboard/espera') {
+  // Se o usuário já estiver confirmado e tentar acessar a tela de espera, redireciona para o painel geral
+  if (!isUsuarioPendente && location.pathname === '/dashboard/espera') {
     return <Navigate to="/dashboard/geral" replace />;
   }
 

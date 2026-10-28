@@ -66,6 +66,9 @@ class HorarioService
 
         return $query
             ->with([
+                'ciclo.disciplinas',
+                'turmaDisciplinas.disciplina',
+                'turmaDisciplinas.professor',
                 'horarios' => fn (Relation $builder) => $builder
                     ->with(['aulas.disciplina', 'aulas.professor']),
             ])
@@ -82,6 +85,9 @@ class HorarioService
                 ->orderBy('id_turma')
                 ->lockForUpdate()
                 ->get(['id_turma']);
+
+            // Sincroniza disciplinas e professores herdados do Ciclo Escolar antes de validar a grade
+            $turma->herdarDisciplinasDoCiclo();
 
             $turma->load(['turmaDisciplinas.disciplina', 'turmaDisciplinas.professor']);
             $atribuicoes = $this->validarCurriculo($turma);
@@ -159,21 +165,29 @@ class HorarioService
                 ->first();
 
             if ($aulaDestino === null) {
-                throw ValidationException::withMessages([
-                    'destino_aula_numero' => 'A grade concluída está incompleta; atualize o horário antes de editá-lo.',
+                if ($horario->turma?->ciclo_id === null) {
+                    throw ValidationException::withMessages([
+                        'destino_aula_numero' => 'A grade concluída está incompleta; atualize o horário antes de editá-lo.',
+                    ]);
+                }
+
+                // Em grades vinculadas a um Ciclo Escolar com menos de 30 aulas, permite mover para um período vago
+                $aula->update([
+                    'dia_semana' => $diaDestino,
+                    'aula_numero' => $periodoDestino,
+                ]);
+            } else {
+                // Uma posição temporária permite trocar duas aulas sem violar a chave única do período.
+                $aula->update([
+                    'dia_semana' => 0,
+                    'aula_numero' => 0,
+                ]);
+                $aulaDestino->update($origem);
+                $aula->update([
+                    'dia_semana' => $diaDestino,
+                    'aula_numero' => $periodoDestino,
                 ]);
             }
-
-            // Uma posição temporária permite trocar duas aulas sem violar a chave única do período.
-            $aula->update([
-                'dia_semana' => 0,
-                'aula_numero' => 0,
-            ]);
-            $aulaDestino->update($origem);
-            $aula->update([
-                'dia_semana' => $diaDestino,
-                'aula_numero' => $periodoDestino,
-            ]);
 
             $gradeAtualizada = $horario->aulas()->get();
             $usoExistente = $this->usoDeOutrasTurmas($horario->ano_letivo, $horario->turma_id);
@@ -189,9 +203,10 @@ class HorarioService
     }
 
     /**
-     * Confere a lista, a carga anual e o professor responsável de todas as disciplinas.
+     * Confere as disciplinas vinculadas à turma (ou herdadas do Ciclo), suas aulas semanais
+     * (calculadas sobre 40 semanas letivas) e o professor responsável (Itens 3.3 e 3.4c).
      *
-     * @return array<int, array{professor_id: int, aulas_semanais: int}>
+     * @return array<string, array{professor_id: int, aulas_semanais: int, disciplina_id: int}>
      */
     private function validarCurriculo(Turma $turma): array
     {
@@ -200,44 +215,60 @@ class HorarioService
 
         foreach ($turma->turmaDisciplinas as $vinculo) {
             $disciplina = $vinculo->disciplina;
-            $nome = $this->normalizarNome($disciplina->nome);
-            $nomeCanonico = self::NOMES_ALTERNATIVOS[$nome] ?? $nome;
-
-            if (! array_key_exists($nomeCanonico, self::DISCIPLINAS_ANUAIS)) {
-                $erros[] = "A disciplina {$disciplina->nome} não faz parte da carga horária definida para os horários.";
-
+            if (! $disciplina) {
                 continue;
             }
 
-            if (isset($atribuicoes[$nomeCanonico])) {
+            $nome = $this->normalizarNome($disciplina->nome);
+            $chave = self::NOMES_ALTERNATIVOS[$nome] ?? $nome ?: 'disc_'.$disciplina->id_disciplina;
+
+            if (isset($atribuicoes[$chave])) {
                 $erros[] = "A disciplina {$disciplina->nome} está vinculada mais de uma vez à turma.";
 
                 continue;
             }
 
-            $cargaAnual = self::DISCIPLINAS_ANUAIS[$nomeCanonico];
-            if ((int) $disciplina->carga_horaria_anual !== $cargaAnual) {
-                $erros[] = "{$disciplina->nome} deve ter {$cargaAnual} aulas anuais.";
+            // Aulas semanais vindas diretamente do cadastro da disciplina (ou derivadas de 40 semanas letivas)
+            $aulasSemanais = (int) ($disciplina->aulas_semanais ?: intdiv(max(40, (int) $disciplina->carga_horaria_anual), 40));
+
+            if ($aulasSemanais < 1 || $aulasSemanais > 30) {
+                $erros[] = "A disciplina {$disciplina->nome} possui quantidade de aulas semanais inválida ({$aulasSemanais}).";
             }
 
-            if ($vinculo->professor === null || ! $vinculo->professor->isProfessor()) {
+            // Tenta recuperar o professor titular da disciplina caso a alocação da turma esteja sem professor
+            $professor = $vinculo->professor;
+            if ($professor === null) {
+                $professorTitular = $disciplina->professores()->first();
+                if ($professorTitular) {
+                    $vinculo->update(['professor_id' => $professorTitular->id]);
+                    $professor = $professorTitular;
+                }
+            }
+
+            if ($professor === null || ! $professor->isProfessor()) {
                 $erros[] = "Vincule um professor válido à disciplina {$disciplina->nome}.";
             }
 
-            $atribuicoes[$nomeCanonico] = [
-                'professor_id' => (int) $vinculo->professor_id,
-                'aulas_semanais' => intdiv($cargaAnual, 40),
+            $atribuicoes[$chave] = [
+                'professor_id' => (int) ($professor?->id ?? $vinculo->professor_id),
+                'aulas_semanais' => $aulasSemanais,
                 'disciplina_id' => (int) $disciplina->id_disciplina,
             ];
         }
 
-        $faltantes = array_diff(array_keys(self::DISCIPLINAS_ANUAIS), array_keys($atribuicoes));
-        if ($faltantes !== []) {
-            $erros[] = 'Inclua na turma todas as disciplinas previstas: '.implode(', ', $faltantes).'.';
+        if ($atribuicoes === []) {
+            $erros[] = 'Nenhuma disciplina vinculada à turma ou ao seu Ciclo Escolar.';
         }
 
         $totalAulas = array_sum(array_column($atribuicoes, 'aulas_semanais'));
-        if ($totalAulas !== 30) {
+
+        // Se a turma está vinculada a um Ciclo Escolar dinâmico, permite gerar grade com até 30 aulas semanais;
+        // para turmas sem ciclo (modo legado), exige a grade completa de 30 aulas semanais.
+        if ($turma->ciclo_id !== null) {
+            if ($totalAulas < 1 || $totalAulas > 30) {
+                $erros[] = "A soma de aulas semanais do ciclo deve estar entre 1 e 30 aulas; atual: {$totalAulas}.";
+            }
+        } elseif ($totalAulas !== 30) {
             $erros[] = "A carga horária semanal deve totalizar 30 aulas; a configuração atual totaliza {$totalAulas}.";
         }
 

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -18,7 +19,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 // Campos permitidos para gravacao em massa
-#[Fillable(['name', 'nickname', 'email', 'telefone', 'password', 'role', 'role_id', 'ativo', 'status_confirmacao', 'confirmado_em', 'google_id', 'avatar', 'data_nascimento'])]
+#[Fillable(['name', 'nickname', 'email', 'telefone', 'password', 'role', 'role_id', 'ativo', 'status_confirmacao', 'confirmado_em', 'autorizado_por_id', 'comentario_admin', 'google_id', 'avatar', 'data_nascimento'])]
 // Campos ocultos na serializacao
 #[Hidden(['password', 'remember_token'])]
 // Model de usuário autenticável do sistema.
@@ -322,5 +323,78 @@ class User extends Authenticatable
     public function turmaDisciplinasDocente(): HasMany
     {
         return $this->hasMany(TurmaDisciplina::class, 'professor_id', 'id');
+    }
+
+    /**
+     * Relacionamento N:1: Gestor (Especialista/Admin) que autorizou o vínculo atual do usuário.
+     */
+    public function autorizadoPor(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'autorizado_por_id', 'id');
+    }
+
+    /**
+     * Histórico completo de vínculos do usuário com a escola ao longo do tempo.
+     *
+     * @return HasMany<UsuarioVinculo, $this>
+     */
+    public function vinculos(): HasMany
+    {
+        return $this->hasMany(UsuarioVinculo::class, 'usuario_id', 'id')->latest('iniciado_em');
+    }
+
+    /**
+     * Retorna o vínculo escolar atualmente em aberto (sem data de encerramento).
+     */
+    public function vinculoAtivo(): HasOne
+    {
+        return $this->hasOne(UsuarioVinculo::class, 'usuario_id', 'id')
+            ->whereNull('encerrado_em')
+            ->latestOfMany('id_vinculo');
+    }
+
+    /**
+     * Verifica se o usuário (Aluno ou Professor) está aguardando aprovação de login.
+     */
+    public function isPendenteAprovacao(): bool
+    {
+        return $this->status_confirmacao === 'pendente';
+    }
+
+    /**
+     * Registra ou renova formalmente o vínculo ativo do usuário após aprovação pedagógica/administrativa.
+     */
+    public function registrarVinculoEscolar(?int $autorizadoPorId = null, ?string $observacoes = null): UsuarioVinculo
+    {
+        $agora = now();
+        $roleValor = $this->role instanceof UserRole ? $this->role->value : (string) $this->role;
+
+        $this->update([
+            'ativo' => true,
+            'status_confirmacao' => 'confirmado',
+            'confirmado_em' => $agora,
+            'autorizado_por_id' => $autorizadoPorId,
+        ]);
+
+        // Caso já exista um vínculo aberto, atualiza os metadados; caso contrário, abre um novo ciclo de vínculo
+        $vinculoAberto = $this->vinculos()->whereNull('encerrado_em')->first();
+
+        if ($vinculoAberto) {
+            $vinculoAberto->update([
+                'role_no_vinculo' => $roleValor,
+                'autorizado_por_id' => $autorizadoPorId ?? $vinculoAberto->autorizado_por_id,
+                'iniciado_em' => $vinculoAberto->iniciado_em ?? $agora,
+                'observacoes' => $observacoes ?? $vinculoAberto->observacoes,
+            ]);
+
+            return $vinculoAberto;
+        }
+
+        return $this->vinculos()->create([
+            'role_no_vinculo' => $roleValor,
+            'autorizado_por_id' => $autorizadoPorId,
+            'iniciado_em' => $agora,
+            'observacoes' => $observacoes,
+        ]);
     }
 }

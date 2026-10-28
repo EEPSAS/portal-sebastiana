@@ -54,6 +54,65 @@ class NotificacaoService
     }
 
     /**
+     * Envia uma notificação administrativa direta para qualquer usuário do sistema
+     * a partir da tela de Controle de Usuários (Item 1.3.8).
+     */
+    public function enviarDiretaParaUsuario(
+        User $autor,
+        User $destinatario,
+        string $mensagem,
+        bool $superImportante = false,
+        ?string $titulo = null
+    ): void {
+        $eventKey = 'admin_direta:'.Str::uuid();
+        $payload = [
+            'titulo' => $titulo ?: 'Comunicado da Administração Escolar',
+            'assunto' => trim($mensagem),
+            'tipo' => 'manual',
+            'origem' => 'usuario',
+            'prioridade' => $superImportante ? 'super_importante' : 'importante',
+            'criador_id' => $autor->id,
+            'criador_nome' => $autor->name,
+            'event_key' => $eventKey,
+        ];
+
+        $destinatario->notify(new NotificacaoPortal($payload));
+    }
+
+    /**
+     * Emite uma notificação no sininho para todos os Especialistas e Administradores
+     * quando um Aluno ou Professor realiza login e fica aguardando aprovação (Item 2.4).
+     */
+    public function notificarAprovacaoPendente(User $usuarioPendente): void
+    {
+        $papelLabel = $usuarioPendente->isProfessor() ? 'Professor(a)' : 'Aluno(a)';
+        $eventKey = "aprovacao_pendente:{$usuarioPendente->id}:".($usuarioPendente->updated_at?->timestamp ?? time());
+
+        $payload = [
+            'titulo' => "Aprovação de Login Pendente ({$papelLabel})",
+            'assunto' => "{$usuarioPendente->name} ({$usuarioPendente->email}) aguarda aprovação e vínculo no sistema.",
+            'tipo' => 'aprovacao_login',
+            'origem' => 'sistema',
+            'prioridade' => 'importante',
+            'criador_id' => $usuarioPendente->id,
+            'criador_nome' => $usuarioPendente->name,
+            'event_key' => $eventKey,
+        ];
+
+        $gestores = User::query()
+            ->where('ativo', true)
+            ->where(function ($query) {
+                $query->whereIn('role', [UserRole::ESPECIALISTA->value, UserRole::ADM->value])
+                    ->orWhereHas('roleModel', fn ($roleQuery) => $roleQuery->whereIn('slug', ['especialista', 'adm', 'admin']));
+            })
+            ->get();
+
+        foreach ($gestores as $gestor) {
+            $this->enviarUmaVez($gestor, $payload);
+        }
+    }
+
+    /**
      * Cria alertas acadêmicos depois que as notas e frequências do CSV foram sincronizadas.
      *
      * @param  array<int, array<string, mixed>>  $alunosDados

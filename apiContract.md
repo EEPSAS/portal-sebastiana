@@ -1,4 +1,4 @@
-﻿# Contrato de API — Portal Sebastiana (`apiContract.md`)
+# Contrato de API — Portal Sebastiana (`apiContract.md`)
 
 Este documento é a **fonte única da verdade** para a integração entre o frontend React SPA (`portal-front`) e o backend Laravel API RESTful (`portal-back`).
 
@@ -284,10 +284,18 @@ As respostas seguem a configuração global `JsonResource::withoutWrapping()`: o
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/comparativo-turma` | Aluno / Prof / Esp / Adm | N/A | `ComparativoTurmaResource` | `boletimService.obterComparativoTurma()` | Dados comparativos do aluno vs média da turma por disciplina |
 | `GET` | `/api/professores` | Especialista / Adm | N/A | `ProfessorResource` (Coleção + `meta.pendentes_count`) | `professoresService.listarProfessores()` | Lista professores cadastrados, status de confirmação e disciplinas vinculadas |
 | `GET` | `/api/professores/{professor}` | Especialista / Adm | N/A | `ProfessorResource` | `professoresService.obterProfessor()` | Detalhes de um professor e suas disciplinas |
-| `PATCH` | `/api/professores/{professor}/confirmar` | Especialista / Adm | N/A | `ProfessorResource` | `professoresService.confirmarProfessor()` | Confirma o vínculo institucional do professor |
+| `PATCH` | `/api/professores/{professor}/confirmar` | Especialista / Adm | `ConfirmarProfessorRequest` | `ProfessorResource` | `professoresService.confirmarProfessor()` | Confirma o vínculo institucional do professor exigindo vínculo a ao menos 1 disciplina (`disciplina_ids`) |
 | `PATCH` | `/api/professores/{professor}/recusar` | Especialista / Adm | N/A | `UsuarioResource` | `professoresService.recusarProfessor()` | Recusa a solicitação docente, revertendo o papel para `aluno` |
 | `POST` | `/api/professores/{professor}/vincular-disciplina` | Especialista / Adm | `VincularProfessorDisciplinaRequest` | `ProfessorResource` | `professoresService.vincularDisciplinaProfessor()` | Vincula disciplina (existente ou recém-criada) ao professor confirmado |
 | `DELETE` | `/api/professores/{professor}/desvincular-disciplina/{disciplina}` | Especialista / Adm | N/A | `ProfessorResource` | `professoresService.desvincularDisciplinaProfessor()` | Remove o vínculo de regência entre o professor e a disciplina |
+| `GET` | `/api/ciclos` | Aluno / Prof / Esp / Adm | N/A | `CicloResource` (Coleção + `disciplinas_sem_ciclo`) | `disciplinasService.listarDisciplinasPorCiclo()` | Lista todos os Ciclos Escolares (`1º Ano`, `2º Ano`, `3º Ano`) com suas disciplinas agrupadas, professores e turmas |
+| `POST` | `/api/ciclos` | Especialista / Adm | `StoreCicloRequest` | `CicloResource` | `disciplinasService.criarCiclo()` | Cria um novo Ciclo Escolar |
+| `PUT` | `/api/ciclos/{ciclo}` | Especialista / Adm | `StoreCicloRequest` | `CicloResource` | `disciplinasService.atualizarCiclo()` | Atualiza um Ciclo Escolar |
+| `DELETE` | `/api/ciclos/{ciclo}` | Especialista / Adm | N/A | Sem conteúdo (`204`) | `disciplinasService.excluirCiclo()` | Remove um Ciclo Escolar |
+| `GET` | `/api/disciplinas` | Aluno / Prof / Esp / Adm | N/A | `DisciplinaResource` (Coleção) | `disciplinasService.listarDisciplinas()` | Lista disciplinas com `aulas_semanais`, `carga_horaria_anual` (`aulas_semanais * 40`), `ementa`, `habilidades_bncc`, `objetivo_geral`, `objetivo_especifico` e `ciclos` |
+| `POST` | `/api/disciplinas` | Especialista / Adm | `StoreDisciplinaRequest` | `DisciplinaResource` | `disciplinasService.criarDisciplina()` | Cadastra disciplina vinculando a ciclos existentes (`ciclo_ids`) e/ou criando novo ciclo (`novo_ciclo_nome`) |
+| `PUT` | `/api/disciplinas/{disciplina}` | Especialista / Adm | `UpdateDisciplinaRequest` | `DisciplinaResource` | `disciplinasService.atualizarDisciplina()` | Atualiza disciplina, recalcula carga anual (40 semanas) e propaga herança para as turmas dos ciclos |
+| `DELETE` | `/api/disciplinas/{disciplina}` | Especialista / Adm | N/A | Sem conteúdo (`204`) | `disciplinasService.excluirDisciplina()` | Remove disciplina do catálogo |
 
 > **Regra de Escopo:** O Professor possui acesso **estritamente consultivo** aos dados da turma e dos alunos. Não há telas nem rotas para cadastro diário de tarefas ou chamada manual. A criação de turmas e a vinculação de alunos são privativas do Especialista e Administrador. A importação de CSV não realiza auto-cadastro de novos alunos nem cria matrículas avulsas.
 
@@ -298,10 +306,13 @@ As respostas seguem a configuração global `JsonResource::withoutWrapping()`: o
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
 |---|---|---|---|---|---|---|
-| `PUT` | `/api/usuarios/{id}` | Logado (próprio perfil) | `UpdateUsuarioRequest` | `UsuarioResource` | `usuarioService.atualizarPerfil()` | Usuário comum atualiza apenas nickname, telefone, data de nascimento e senha. **Nome institucional e e-mail são bloqueados** (ignorados no envio); somente Adm (`gerenciar_usuarios`) altera `name`, `email`, papel e status |
+| `PUT` | `/api/usuarios/{id}` | Logado (próprio perfil) / Adm | `UpdateUsuarioRequest` | `UsuarioResource` | `usuarioService.atualizarPerfil()` / `atualizarUsuario()` | Usuário comum atualiza nickname, telefone, data de nascimento e senha. Adm altera `role`, `comentario_admin` e emite notificação direta (`mensagem_notificacao` + `super_importante`) |
 | `POST` | `/api/usuarios/{id}/avatar` | Logado (próprio perfil) | `UploadAvatarRequest` | `UsuarioResource` | `usuarioService.uploadAvatar()` | Envia e atualiza a foto de perfil (avatar) |
 | `DELETE` | `/api/usuarios/{id}/avatar` | Logado (próprio perfil) | N/A | `UsuarioResource` | `usuarioService.removerAvatar()` | Remove a foto de perfil atual do usuário |
-| `GET` | `/api/usuarios` | Adm | N/A | `UsuarioResource` (Coleção) | `usuarioService.listarTodos()` | Gestão administrativa de usuários |
+| `GET` | `/api/usuarios` | Adm | N/A | `UsuarioResource` (Coleção paginada, padrão 15 últimos) | `usuarioService.listarUsuarios()` | Lista os 15 últimos usuários cadastrados com filtro por `role`, `busca` por nome, autorizador e data de vínculo |
+| `DELETE` | `/api/usuarios/{id}` | Adm | `DesvincularUsuarioRequest` | `UsuarioResource` | `usuarioService.desvincularUsuario()` | Exclusão lógica em 2 etapas (exige `confirmacao_nome` idêntico ao nome completo): inativa usuário, encerra vínculo ativo preservando histórico e revoga tokens Sanctum (logoff forçado) |
+| `GET` | `/api/usuarios/pendentes-resumo` | Especialista / Adm | N/A | Envelope JSON (`alunos_pendentes`, `professores_pendentes`, `total_pendentes`) | `usuarioService.obterPendentesResumo()` | Retorna contadores e lista de aprovações de login pendentes (`@aluno` e `@educacao`) |
+| `PATCH` | `/api/usuarios/{id}/confirmar-vinculo-aluno` | Especialista / Adm | `ConfirmarAlunoVinculoRequest` | `UsuarioResource` | `usuarioService.confirmarVinculoAluno()` | Aprova login institucional de estudante (`@aluno`) vinculando-o a uma turma (`turma_id`) |
 | `PATCH`| `/api/usuarios/{id}/bloquear` | Adm | N/A | `UsuarioResource` | `usuarioService.alternarBloqueio()` | Ativa ou desativa acesso do usuário |
 | `PATCH`| `/api/usuarios/{id}/papel` | Adm | `AlterarPapelRequest` | `UsuarioResource` | `usuarioService.alterarPapel()` | Atualiza o `UserRole` do usuário |
 

@@ -29,6 +29,7 @@ class UpdateTurmaRequest extends FormRequest
         return [
             // Identificador amigável da turma (ex: 3º Ano Técnico)
             'nome_identificador' => ['sometimes', 'required', 'string', 'max:100'],
+            'ciclo_id' => ['nullable', 'integer', 'exists:ciclos,id_ciclo'],
             'ano_letivo' => ['sometimes', 'required', 'integer', 'min:2020', 'max:2100'],
             'turno' => ['sometimes', 'required', 'string', 'in:Matutino,Vespertino,Noturno,Integral'],
             // Limite de vagas da sala para controle de matrículas ativas
@@ -46,6 +47,7 @@ class UpdateTurmaRequest extends FormRequest
     {
         return [
             'nome_identificador.required' => 'O nome identificador da turma é obrigatório.',
+            'ciclo_id.exists' => 'O ciclo escolar selecionado é inválido.',
             'ano_letivo.integer' => 'O ano letivo deve ser um número inteiro válido.',
             'turno.in' => 'O turno selecionado é inválido.',
             'capacidade_maxima.integer' => 'A capacidade máxima deve ser um número inteiro válido.',

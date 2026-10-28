@@ -2,16 +2,16 @@
  * usuarioService.js - Serviço de Integração para Perfil e Configurações de Usuário
  *
  * Papel Didático:
- * Centraliza as chamadas à API RESTful para o Módulo 6 (Gestão do Usuário / Configurações).
- * Todos os métodos passam pela camada central `api.js`, garantindo envio do Bearer token
- * e tratamento uniforme de respostas em JSON e multipart/form-data.
+ * Centraliza as chamadas à API RESTful para o Módulo 6 (Gestão do Usuário / Configurações)
+ * e para o Controle Administrativo de Usuários e Aprovações de Login (Diretrizes 1 e 2).
  */
 
 import { api } from './api';
 
 /**
  * Atualiza os dados cadastrais do perfil do próprio usuário (ou via gestão).
- * Suporta atualização de name, nickname, telefone, data_nascimento e password.
+ * Suporta atualização de name, nickname, telefone, data_nascimento, password,
+ * role, comentario_admin e emissão de notificação direta.
  *
  * @param {number|string} id Identificador do usuário
  * @param {object} dados Dados validados para atualização (UpdateUsuarioRequest)
@@ -84,13 +84,16 @@ export const removerAvatar = async (id) => {
 
 /**
  * GET /api/usuarios — Lista os usuários cadastrados (Privativo: Administrador).
+ * Carrega por padrão os 15 últimos usuários cadastrados com filtro por Role e busca por nome (Item 1.3).
  */
 export const listarTodos = async (filtros = {}, { signal } = {}) => {
   const params = new URLSearchParams();
+  if (filtros.busca) params.set('busca', filtros.busca);
   if (filtros.q) params.set('q', filtros.q);
   if (filtros.role) params.set('role', filtros.role);
   if (filtros.ativo !== undefined) params.set('ativo', String(filtros.ativo));
-  if (filtros.per_page) params.set('per_page', String(filtros.per_page));
+  if (filtros.page) params.set('page', String(filtros.page));
+  params.set('per_page', String(filtros.per_page || 15));
 
   const query = params.toString() ? `?${params.toString()}` : '';
   const response = await api(`/usuarios${query}`, { signal });
@@ -98,6 +101,57 @@ export const listarTodos = async (filtros = {}, { signal } = {}) => {
 
   if (!response.ok) {
     throw new Error(data?.message || 'Não foi possível listar os usuários.');
+  }
+
+  return data;
+};
+
+/**
+ * DELETE /api/usuarios/{id} — Encerra o vínculo do usuário em duas etapas (estilo GitHub)
+ * preservando o histórico acadêmico e forçando o logoff imediato (Itens 1.3.6 e 1.3.7).
+ */
+export const desvincularUsuario = async (id, confirmacaoNome) => {
+  const response = await api(`/usuarios/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    body: { confirmacao_nome: confirmacaoNome },
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message || 'Não foi possível excluir/desvincular o usuário.');
+  }
+
+  return data;
+};
+
+/**
+ * GET /api/usuarios/pendentes-resumo — Retorna contadores e lista de aprovações de login pendentes.
+ */
+export const obterPendentesResumo = async ({ signal } = {}) => {
+  const response = await api('/usuarios/pendentes-resumo', { signal });
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message || 'Não foi possível carregar o resumo de aprovações pendentes.');
+  }
+
+  return data;
+};
+
+/**
+ * PATCH /api/usuarios/{id}/confirmar-vinculo-aluno — Aprova o login do aluno vinculando-o a uma turma (Item 2.3.1).
+ */
+export const confirmarVinculoAluno = async (usuarioId, turmaId) => {
+  const response = await api(`/usuarios/${encodeURIComponent(usuarioId)}/confirmar-vinculo-aluno`, {
+    method: 'PATCH',
+    body: { turma_id: Number(turmaId) },
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message || 'Não foi possível aprovar e vincular o aluno à turma.');
   }
 
   return data;
@@ -140,11 +194,19 @@ export const alterarPapel = async (id, role) => {
   return data;
 };
 
+export const listarUsuarios = listarTodos;
+export const atualizarUsuario = atualizarPerfil;
+
 export const usuarioService = {
   atualizarPerfil,
+  atualizarUsuario,
   uploadAvatar,
   removerAvatar,
   listarTodos,
+  listarUsuarios,
+  desvincularUsuario,
+  obterPendentesResumo,
+  confirmarVinculoAluno,
   alternarBloqueio,
   alterarPapel,
 };

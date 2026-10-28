@@ -45,6 +45,9 @@ class EspecialistaDashboardController extends Controller
         $mapeamentosAlunos = $request->input('mapeamentos_alunos', []);
         // Decisão do Especialista para notas divergentes ('atualizar' ou 'manter')
         $decisaoDivergencias = $request->input('decisao_divergencias');
+        // Mapeamentos manuais de conciliação de disciplinas (Item 3.4d)
+        $mapeamentosDisciplinas = $request->input('mapeamentos_disciplinas', []);
+        $exigirConciliacao = $request->boolean('exigir_conciliacao_disciplinas', false) || $turma->ciclo_id !== null;
 
         $resultado = $this->dashboardService->processarPlanilhaConsolidada(
             $turma,
@@ -52,7 +55,9 @@ class EspecialistaDashboardController extends Controller
             $periodo,
             $dataAula,
             $mapeamentosAlunos,
-            $decisaoDivergencias
+            $decisaoDivergencias,
+            is_array($mapeamentosDisciplinas) ? $mapeamentosDisciplinas : [],
+            $exigirConciliacao
         );
 
         return (new RelatorioImportadoResource([
@@ -65,6 +70,8 @@ class EspecialistaDashboardController extends Controller
             ],
             'ambiguidades' => $resultado['ambiguidades'] ?? [],
             'divergencias' => $resultado['divergencias'] ?? [],
+            'disciplinas_pendentes' => $resultado['disciplinas_pendentes'] ?? [],
+            'catalogo_disciplinas' => $resultado['catalogo_disciplinas'] ?? [],
             'dados' => $resultado,
         ]))->response()->setStatusCode(200);
     }

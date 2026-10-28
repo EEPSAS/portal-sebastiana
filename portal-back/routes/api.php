@@ -3,6 +3,7 @@
 use App\Http\Controllers\AlunoDashboardController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BibliotecaController;
+use App\Http\Controllers\CicloController;
 use App\Http\Controllers\DashboardGeralController;
 use App\Http\Controllers\DisciplinaController;
 use App\Http\Controllers\DonaNanaController;
@@ -114,7 +115,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/alunos/{aluno_id}/turmas/{turma_id}/comparativo-turma', [AlunoDashboardController::class, 'comparativoTurma']);
     Route::get('/alunos/{aluno_id}/turmas/{turma_id}/disciplinas/{disciplina_id}/desempenho', [AlunoDashboardController::class, 'desempenhoDisciplina']);
 
-    // Módulo Acadêmico: Disciplinas
+    // Módulo Acadêmico: Ciclos Escolares e Disciplinas (Diretriz 3)
+    Route::apiResource('ciclos', CicloController::class)->except(['show']);
     Route::post('/disciplinas/{disciplina}/vincular-professor', [DisciplinaController::class, 'vincularProfessor']);
     Route::apiResource('disciplinas', DisciplinaController::class);
 
@@ -171,7 +173,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/papeis', [UsuarioController::class, 'papeis']);
     Route::get('/permissoes', [UsuarioController::class, 'permissoes']);
 
-    // Gestão de Usuários e Foto de Perfil
+    // Gestão de Usuários, Aprovações de Login e Foto de Perfil
+    Route::get('/usuarios/pendentes-resumo', [UsuarioController::class, 'pendentesResumo']);
+    Route::patch('/usuarios/{usuario}/confirmar-vinculo-aluno', [UsuarioController::class, 'confirmarVinculoAluno']);
     Route::post('/usuarios/{usuario}/avatar', [UsuarioController::class, 'uploadAvatar'])->name('usuarios.avatar.upload');
     Route::delete('/usuarios/{usuario}/avatar', [UsuarioController::class, 'deleteAvatar'])->name('usuarios.avatar.delete');
     Route::patch('/usuarios/{usuario}/bloquear', [UsuarioController::class, 'bloquear']);

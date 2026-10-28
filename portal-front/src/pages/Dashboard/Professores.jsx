@@ -2,9 +2,10 @@
  * Professores.jsx - Painel de Controle de Professores (Especialista e Administrador)
  *
  * Papel Didático:
- * Atende às diretrizes do sistema:
- * 1. Confirmação do pertencimento escolar de professores que entram com e-mail institucional;
- * 2. Vínculo direto com disciplinas curriculares;
+ * Atende às diretrizes de 28/10/2026 (Item 2.3.2 e Item 3.2a):
+ * 1. Confirmação do pertencimento escolar de professores (@educacao) exigindo o vínculo
+ *    obrigatório a pelo menos uma Disciplina da escola;
+ * 2. Vínculo direto com disciplinas curriculares e exibição dos Ciclos associados;
  * 3. Acompanhamento dos docentes ativos na instituição.
  */
 
@@ -29,6 +30,9 @@ const ProfessoresPage = () => {
   const [disciplinasCatalogo, setDisciplinasCatalogo] = useState([]);
   const [pendentesCount, setPendentesCount] = useState(0);
 
+  // Mapa de disciplinas selecionadas para cada professor pendente: { [profId]: [id_disciplina, ...] }
+  const [disciplinasPendentesMap, setDisciplinasPendentesMap] = useState({});
+
   // Filtros, busca e gatilho de recarga
   const [busca, setBusca] = useState("");
   const [chaveRecarga, setChaveRecarga] = useState(0);
@@ -50,7 +54,6 @@ const ProfessoresPage = () => {
 
   /**
    * Efeito de carregamento assíncrono dos professores e disciplinas.
-   * Não executa setState síncrono no corpo do effect para prevenir cascading renders.
    */
   useEffect(() => {
     let ativo = true;
@@ -88,14 +91,37 @@ const ProfessoresPage = () => {
     (p) => p.status_confirmacao === "confirmado" || !p.status_confirmacao
   );
 
+  // Alterna seleção de uma disciplina para aprovação do professor pendente
+  const toggleDisciplinaPendente = (profId, idDisciplina) => {
+    setDisciplinasPendentesMap((prev) => {
+      const atuais = prev[profId] || [];
+      const jaTem = atuais.includes(idDisciplina);
+      const novos = jaTem
+        ? atuais.filter((id) => id !== idDisciplina)
+        : [...atuais, idDisciplina];
+      return { ...prev, [profId]: novos };
+    });
+  };
+
   /**
-   * Confirma o pertencimento do professor à instituição.
+   * Confirma o pertencimento do professor à instituição exigindo ao menos 1 disciplina (Item 2.3.2).
    */
-  const handleConfirmar = async (professorId) => {
-    setProcessandoId(professorId);
+  const handleConfirmar = async (prof) => {
+    const selecionadas = disciplinasPendentesMap[prof.id] || [];
+    const jaVinculadas = (prof.disciplinas || []).map((d) => d.id_disciplina);
+    const disciplinaIds = Array.from(new Set([...selecionadas, ...jaVinculadas]));
+
+    if (disciplinaIds.length === 0) {
+      exibirFeedback(
+        "Selecione ao menos uma disciplina abaixo para aprovar e vincular o professor."
+      );
+      return;
+    }
+
+    setProcessandoId(prof.id);
     try {
-      const res = await confirmarProfessor(professorId);
-      exibirFeedback(res.message || "Professor confirmado com sucesso!");
+      const res = await confirmarProfessor(prof.id, disciplinaIds);
+      exibirFeedback(res.message || "Professor aprovado e vinculado às disciplinas com sucesso!");
       setChaveRecarga((k) => k + 1);
     } catch (err) {
       exibirFeedback(err.message || "Erro ao confirmar professor.");
@@ -180,76 +206,126 @@ const ProfessoresPage = () => {
 
       return (
         <div className="row g-3">
-          {professoresPendentes.map((prof) => (
-            <div key={prof.id} className="col-12 col-lg-6">
-              <div className="card professor-card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
-                <div className="d-flex align-items-start gap-3">
-                  {/* Avatar do professor */}
-                  <div
-                    className="rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width: "52px", height: "52px", overflow: "hidden" }}
-                  >
-                    {prof.avatar ? (
-                      <img
-                        src={prof.avatar}
-                        alt={prof.name}
-                        className="w-100 h-100"
-                        style={{ objectFit: "cover" }}
-                      />
-                    ) : (
-                      <i className="bi bi-person-fill fs-3"></i>
-                    )}
-                  </div>
+          {professoresPendentes.map((prof) => {
+            const selecionadas = disciplinasPendentesMap[prof.id] || [];
 
-                  <div className="flex-grow-1">
-                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
-                      <h2 className="h6 fw-bold text-dark mb-0">{prof.name}</h2>
-                      <span className="badge badge-pendente px-2 py-1 rounded-pill small">
-                        Aguardando Validação
-                      </span>
+            return (
+              <div key={prof.id} className="col-12 col-lg-6">
+                <div className="card professor-card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                  <div className="d-flex align-items-start gap-3">
+                    {/* Avatar do professor */}
+                    <div
+                      className="rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center flex-shrink-0"
+                      style={{ width: "52px", height: "52px", overflow: "hidden" }}
+                    >
+                      {prof.avatar ? (
+                        <img
+                          src={prof.avatar}
+                          alt={prof.name}
+                          className="w-100 h-100"
+                          style={{ objectFit: "cover" }}
+                        />
+                      ) : (
+                        <i className="bi bi-person-fill fs-3"></i>
+                      )}
                     </div>
 
-                    <p className="text-muted small mb-2">
-                      <i className="bi bi-envelope me-1"></i>
-                      {prof.email}
-                    </p>
+                    <div className="flex-grow-1">
+                      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+                        <h2 className="h6 fw-bold text-dark mb-0">{prof.name}</h2>
+                        <span className="badge badge-pendente px-2 py-1 rounded-pill small">
+                          Aguardando Validação
+                        </span>
+                      </div>
 
-                    <div className="alert alert-light border rounded-3 p-2 small text-muted mb-3">
-                      <i className="bi bi-info-circle me-1 text-primary"></i>
-                      Este usuário acessou via e-mail institucional e aguarda liberação para visualizar
-                      turmas e notas.
-                    </div>
+                      <p className="text-muted small mb-2">
+                        <i className="bi bi-envelope me-1"></i>
+                        {prof.email}
+                      </p>
 
-                    {/* Botões de Ação */}
-                    <div className="d-flex gap-2">
-                      <button
-                        type="button"
-                        className="btn btn-success btn-sm px-3 fw-semibold rounded-3"
-                        onClick={() => handleConfirmar(prof.id)}
-                        disabled={processandoId === prof.id}
-                      >
-                        {processandoId === prof.id ? (
-                          <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                      {/* Seleção Obrigatória de Disciplinas para Aprovação (Diretriz 2.3.2) */}
+                      <div className="border rounded-3 p-3 bg-light mb-3">
+                        <label className="form-label small fw-bold text-dark mb-2 d-block">
+                          <i className="bi bi-journal-bookmark-fill text-primary me-1"></i>
+                          Vincular Disciplina(s) para Aprovar Acesso (Obrigatório):
+                        </label>
+                        {disciplinasCatalogo.length === 0 ? (
+                          <p className="text-muted small mb-0">
+                            Nenhuma disciplina cadastrada. Cadastre em Acadêmico &gt; Disciplinas.
+                          </p>
                         ) : (
-                          <i className="bi bi-check-lg me-1"></i>
-                        )}
-                        Confirmar Vínculo
-                      </button>
+                          <div
+                            className="d-flex flex-wrap gap-2"
+                            style={{ maxHeight: "140px", overflowY: "auto" }}
+                          >
+                            {disciplinasCatalogo.map((disc) => {
+                              const marcado = selecionadas.includes(disc.id_disciplina);
+                              const ciclosTexto = (disc.ciclos || [])
+                                .map((c) => c.nome)
+                                .join(", ");
 
-                      <button
-                        type="button"
-                        className="btn btn-outline-danger btn-sm px-3 fw-semibold rounded-3"
-                        onClick={() => handleRecusar(prof.id)}
-                        disabled={processandoId === prof.id}
-                      >
-                        Recusar
-                      </button>
+                              return (
+                                <button
+                                  key={disc.id_disciplina}
+                                  type="button"
+                                  onClick={() =>
+                                    toggleDisciplinaPendente(prof.id, disc.id_disciplina)
+                                  }
+                                  className={`btn btn-sm rounded-pill px-3 ${
+                                    marcado
+                                      ? "btn-primary fw-semibold"
+                                      : "btn-outline-secondary bg-white"
+                                  }`}
+                                >
+                                  <i
+                                    className={`bi ${
+                                      marcado ? "bi-check-circle-fill" : "bi-plus-circle"
+                                    } me-1`}
+                                  ></i>
+                                  {disc.nome}
+                                  {ciclosTexto && (
+                                    <span className="ms-1 opacity-75" style={{ fontSize: "0.72rem" }}>
+                                      ({ciclosTexto})
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Botões de Ação */}
+                      <div className="d-flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-success btn-sm px-3 fw-semibold rounded-3"
+                          onClick={() => handleConfirmar(prof)}
+                          disabled={processandoId === prof.id || selecionadas.length === 0}
+                        >
+                          {processandoId === prof.id ? (
+                            <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                          ) : (
+                            <i className="bi bi-check-lg me-1"></i>
+                          )}
+                          Aprovar e Vincular ({selecionadas.length})
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-sm px-3 fw-semibold rounded-3"
+                          onClick={() => handleRecusar(prof.id)}
+                          disabled={processandoId === prof.id}
+                        >
+                          Recusar
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       );
     }
@@ -380,7 +456,7 @@ const ProfessoresPage = () => {
         <div>
           <h1 className="h3 fw-bold text-dark mb-1">Gestão de Professores</h1>
           <p className="text-muted small mb-0">
-            Confirme o pertencimento institucional e gerencie as disciplinas curriculares dos docentes.
+            Confirme o pertencimento institucional vinculando disciplinas e acompanhe o quadro docente.
           </p>
         </div>
 

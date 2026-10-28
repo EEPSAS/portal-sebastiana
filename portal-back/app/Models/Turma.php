@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\TurmaFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -23,6 +24,7 @@ class Turma extends Model
     // Campos preenchíveis em massa
     protected $fillable = [
         'nome_identificador',
+        'ciclo_id',
         'turno',
         'ano_letivo',
         'capacidade_maxima',
@@ -38,9 +40,51 @@ class Turma extends Model
     protected function casts(): array
     {
         return [
+            'ciclo_id' => 'integer',
             'ano_letivo' => 'integer',
             'capacidade_maxima' => 'integer',
         ];
+    }
+
+    /**
+     * Relacionamento N:1: Ciclo Escolar ao qual esta turma pertence (ex: 1º Ano, 2º Ano).
+     */
+    public function ciclo(): BelongsTo
+    {
+        return $this->belongsTo(Ciclo::class, 'ciclo_id', 'id_ciclo');
+    }
+
+    /**
+     * Herda automaticamente todas as disciplinas (e professores titulares) do Ciclo da turma.
+     */
+    public function herdarDisciplinasDoCiclo(): void
+    {
+        if (! $this->ciclo_id) {
+            return;
+        }
+
+        $ciclo = $this->ciclo()->with('disciplinas.professores')->first();
+        if (! $ciclo) {
+            return;
+        }
+
+        foreach ($ciclo->disciplinas as $disciplina) {
+            $professorPadraoId = $disciplina->professores->first()?->id;
+
+            $alocacao = TurmaDisciplina::firstOrCreate(
+                [
+                    'turma_id' => $this->id_turma,
+                    'disciplina_id' => $disciplina->id_disciplina,
+                ],
+                [
+                    'professor_id' => $professorPadraoId,
+                ]
+            );
+
+            if ($alocacao->professor_id === null && $professorPadraoId !== null) {
+                $alocacao->update(['professor_id' => $professorPadraoId]);
+            }
+        }
     }
 
     /**

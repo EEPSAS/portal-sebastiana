@@ -322,10 +322,89 @@ button {
   padding: 0.65rem 1rem;
 }
 
-.dashboard-aside .nav-link.active {
+.dashboard-aside .nav-link.active,
+.dashboard-aside .dashboard-aside-link-active {
   background: #1e3d70 !important;
   color: #ffffff !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Botão de cabeçalho de grupo retrátil no Aside */
+.dashboard-aside-group-btn {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 12px;
+  padding: 0.65rem 1rem;
+  color: rgba(255, 255, 255, 0.82);
+  transition: color 0.15s ease, background-color 0.15s ease;
+  text-align: left;
+}
+
+.dashboard-aside-group-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-aside-group-btn.is-group-active {
+  color: #ffffff;
+  background-color: rgba(30, 61, 112, 0.55);
+}
+
+/* Sublista retrátil do grupo no Aside */
+.dashboard-aside-subnav {
+  list-style: none;
+  margin: 0.25rem 0 0.35rem 1.15rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.dashboard-aside-sublink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 10px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.9rem;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.75) !important;
+  transition: all 0.15s ease;
+}
+
+.dashboard-aside-sublink:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-aside-sublink.dashboard-aside-link-active {
+  background: #1e3d70 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-left: 3px solid #ffc107;
+}
+
+.dashboard-aside-active-arrow {
+  color: #ffc107;
+  font-size: 0.8rem;
+}
+
+/* Container acessível de tabelas de dados com foco de teclado e cabeçalho fixo */
+.dashboard-table-scroll {
+  overflow-x: auto;
+  max-height: 70vh;
+  border-radius: 12px;
+}
+
+.dashboard-table-scroll:focus-visible {
+  outline: 3px solid #0d6efd;
+  outline-offset: 2px;
+}
+
+.dashboard-table-scroll thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  background-color: #f8f9fa;
 }
 
 .dashboard-shell .form-control:focus,

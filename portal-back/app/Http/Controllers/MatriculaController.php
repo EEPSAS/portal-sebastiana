@@ -74,6 +74,12 @@ class MatriculaController extends Controller
                 'data_matricula' => $request->filled('data_matricula') ? $request->string('data_matricula')->toString() : now()->format('Y-m-d'),
             ]);
 
+            // Se o aluno estava aguardando aprovação de login, aprova-o automaticamente ao ser vinculado à turma (Item 2.3.1)
+            $alunoModel = User::find($request->integer('usuario_id'));
+            if ($alunoModel && $alunoModel->status_confirmacao !== 'confirmado') {
+                $alunoModel->registrarVinculoEscolar($request->user()->id, "Vinculado à turma {$turma->nome_identificador}");
+            }
+
             $matriculaExistente->load(['turma', 'aluno:id,name,email']);
 
             return response()->json(new MatriculaResource($matriculaExistente), 200);
@@ -85,6 +91,12 @@ class MatriculaController extends Controller
             'data_matricula' => $request->filled('data_matricula') ? $request->string('data_matricula')->toString() : now()->format('Y-m-d'),
             'status_matricula' => $request->filled('status_matricula') ? $request->string('status_matricula')->toString() : 'Ativo',
         ]);
+
+        // Ao vincular o aluno em uma turma ativa, aprova seu login pendente e registra quem autorizou (Item 2.3.1)
+        $alunoModel = User::find($request->integer('usuario_id'));
+        if ($alunoModel && $matricula->status_matricula === 'Ativo' && $alunoModel->status_confirmacao !== 'confirmado') {
+            $alunoModel->registrarVinculoEscolar($request->user()->id, "Vinculado à turma {$turma->nome_identificador}");
+        }
 
         $matricula->load(['turma', 'aluno:id,name,email']);
 

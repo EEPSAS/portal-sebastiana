@@ -39,9 +39,8 @@ export default function Biblioteca() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const [abaAtiva, setAbaAtiva] = useState(
-    ABAS.some((a) => a.id === tabParam) ? tabParam : 'acervo'
-  );
+  // Sincroniza a aba ativa diretamente com o query param (?tab=...) do Aside e da navegação interna
+  const abaAtiva = ABAS.some((a) => a.id === tabParam) ? tabParam : 'acervo';
   const [busca, setBusca] = useState('');
   const [itemParaExcluir, setItemParaExcluir] = useState(null);
   const [itemParaAdicionarAoPlano, setItemParaAdicionarAoPlano] = useState(null);
@@ -84,7 +83,6 @@ export default function Biblioteca() {
   };
 
   const handleSelecionarAba = (idAba) => {
-    setAbaAtiva(idAba);
     setBusca('');
     setSearchParams({ tab: idAba });
   };

@@ -34,7 +34,7 @@ class TurmaController extends Controller
     {
         Gate::authorize('viewAny', Turma::class);
 
-        $query = Turma::query()->withCount(['alunos', 'disciplinas']);
+        $query = Turma::query()->with('ciclo')->withCount(['alunos', 'disciplinas']);
 
         if ($request->filled('ano_letivo')) {
             $query->where('ano_letivo', $request->integer('ano_letivo'));
@@ -54,14 +54,17 @@ class TurmaController extends Controller
     }
 
     /**
-     * Cria e persiste uma nova turma escolar.
+     * Cria e persiste uma nova turma escolar, herdando disciplinas caso um Ciclo seja informado (Item 3.2a).
      */
     public function store(StoreTurmaRequest $request): JsonResponse
     {
         Gate::authorize('create', Turma::class);
 
         $turma = Turma::create($request->validated());
-        $turma->loadCount(['alunos', 'disciplinas']);
+
+        // Herda automaticamente as disciplinas e professores do Ciclo Escolar vinculado
+        $turma->herdarDisciplinasDoCiclo();
+        $turma->load('ciclo')->loadCount(['alunos', 'disciplinas']);
 
         return response()->json(new TurmaResource($turma), 201);
     }
@@ -73,7 +76,7 @@ class TurmaController extends Controller
     {
         Gate::authorize('view', $turma);
 
-        $turma->loadCount(['alunos', 'disciplinas']);
+        $turma->load('ciclo')->loadCount(['alunos', 'disciplinas']);
 
         return response()->json(new TurmaResource($turma), 200);
     }
@@ -88,7 +91,10 @@ class TurmaController extends Controller
         Gate::authorize('update', $turma);
 
         $turma->update($request->validated());
-        $turma->loadCount(['alunos', 'disciplinas']);
+
+        // Caso o Ciclo Escolar tenha sido atribuído ou alterado, sincroniza as disciplinas herdadas
+        $turma->herdarDisciplinasDoCiclo();
+        $turma->load('ciclo')->loadCount(['alunos', 'disciplinas']);
 
         return response()->json(new TurmaResource($turma), 200);
     }

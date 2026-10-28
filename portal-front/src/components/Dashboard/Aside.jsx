@@ -1,37 +1,37 @@
 /**
- * Aside.jsx - Barra Lateral de Navegação do Painel (Dashboard)
+ * Aside.jsx - Barra Lateral de Navegação Retrátil por Módulos do Painel (Dashboard)
  *
  * Papel Didático:
- * Centraliza a navegação de todas as roles de usuário em um único componente declarativo.
- * Em vez de criar múltiplos arquivos com código repetido (ex: AsideAluno, AsideProfessor),
- * definimos uma matriz de rotas (NAV_ITEMS) onde cada item lista quais perfis têm acesso.
- * O componente filtra os links com base no perfil ativo do usuário (`user?.role`).
+ * Centraliza a navegação de todas as roles de usuário em uma estrutura hierárquica retrátil
+ * (acordeão), agrupando os módulos conforme as diretrizes arquiteturais:
+ * - Geral (/dashboard/geral)
+ * - Acadêmico: Turmas, Boletim, Professores e Disciplinas
+ * - Agenda: Calendário, Sábados Letivos, Feriados e Recessos e Horário Escolar
+ * - Conteúdo: Biblioteca, Vídeo Aula, Busca Web e Plano de Estudos
+ * - Notícias (/dashboard/noticias)
+ * - Usuários (/dashboard/usuarios - exclusivo para Admin)
+ * - Rodapé fixo: Dona Nana e Configurações
  *
- * Diretrizes Visuais:
- * - O badge colorido do perfil no topo do Aside é visível exclusivamente para o Administrador.
- *   As demais roles acompanham sua identificação diretamente pelo cabeçalho superior (Navbar).
- * - Suporta identicamente as denominações 'bibliotecaria' e 'bibliotecario'.
- * - Inclui a área de gestão de "Professores" para Especialista e Administrador.
+ * Diretrizes Visuais e Semânticas:
+ * - Cada grupo retrátil usa <button type="button" aria-expanded={...}> acessível por teclado.
+ * - O item ou subitem ativo recebe destaque de cor (.dashboard-aside-link-active) e uma seta
+ *   indicadora (bi-caret-left-fill).
+ * - Exibe contadores numéricos (badges) de aprovações pendentes de Alunos e Professores.
  */
 
 import { useState, useEffect } from "react";
-import { NavLink, Link } from "react-router";
+import { NavLink, Link, useLocation } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
 import { listarProfessores } from "../../services/professoresService";
+import { obterPendentesResumo } from "../../services/usuarioService";
 
 /**
- * Matriz declarativa de navegação do Dashboard.
- * Permissões:
- * - Geral: aluno, professor, bibliotecaria, bibliotecario, especialista, adm
- * - Boletim: aluno, adm
- * - Biblioteca: aluno, professor, bibliotecaria, bibliotecario, especialista, adm
- * - Turmas: professor, especialista, adm
- * - Professores: especialista, adm
- * - Agenda: aluno, professor, bibliotecaria, bibliotecario, especialista, adm
- * - Notícias: especialista, adm
+ * Estrutura declarativa de módulos e subitens do menu Aside.
  */
-const NAV_ITEMS = [
+const NAV_STRUCTURE = [
   {
+    id: "geral",
+    type: "item",
     label: "Geral",
     path: "/dashboard/geral",
     icon: "bi-house-door-fill",
@@ -46,57 +46,213 @@ const NAV_ITEMS = [
     ],
   },
   {
-    label: "Boletim",
-    path: "/dashboard/boletim",
-    icon: "bi-journal-check",
-    roles: ["aluno", "adm", "padrao"],
-  },
-  {
-    label: "Biblioteca",
-    path: "/dashboard/biblioteca",
-    icon: "bi-book",
-    roles: [
-      "aluno",
-      "professor",
-      "bibliotecaria",
-      "bibliotecario",
-      "especialista",
-      "adm",
-      "padrao",
+    id: "academico",
+    type: "group",
+    label: "Acadêmico",
+    icon: "bi-mortarboard-fill",
+    children: [
+      {
+        id: "turmas",
+        label: "Turmas",
+        path: "/dashboard/turmas",
+        icon: "bi-people-fill",
+        roles: ["professor", "especialista", "adm"],
+        badgeKey: "alunosPendentes",
+      },
+      {
+        id: "boletim",
+        label: "Boletim",
+        path: "/dashboard/boletim",
+        icon: "bi-journal-check",
+        roles: ["aluno", "adm", "padrao"],
+      },
+      {
+        id: "professores",
+        label: "Professores",
+        path: "/dashboard/professores",
+        icon: "bi-person-badge",
+        roles: ["especialista", "adm"],
+        badgeKey: "professoresPendentes",
+      },
+      {
+        id: "disciplinas",
+        label: "Disciplinas",
+        path: "/dashboard/disciplinas",
+        icon: "bi-journal-bookmark-fill",
+        roles: ["aluno", "professor", "especialista", "adm", "padrao"],
+      },
     ],
   },
   {
-    label: "Turmas",
-    path: "/dashboard/turmas",
-    icon: "bi-people-fill",
-    roles: ["professor", "especialista", "adm"],
-  },
-  {
-    label: "Professores",
-    path: "/dashboard/professores",
-    icon: "bi-person-badge",
-    roles: ["especialista", "adm"],
-    badgeKey: "professoresPendentes",
-  },
-  {
+    id: "agenda",
+    type: "group",
     label: "Agenda",
-    path: "/dashboard/agenda",
     icon: "bi-calendar-event",
-    roles: [
-      "aluno",
-      "professor",
-      "bibliotecaria",
-      "bibliotecario",
-      "especialista",
-      "adm",
-      "padrao",
+    children: [
+      {
+        id: "agenda-calendario",
+        label: "Calendário",
+        path: "/dashboard/agenda?tab=calendario",
+        matchPath: "/dashboard/agenda",
+        matchTab: "calendario",
+        defaultTab: true,
+        icon: "bi-calendar3",
+        roles: [
+          "aluno",
+          "professor",
+          "bibliotecaria",
+          "bibliotecario",
+          "especialista",
+          "adm",
+          "padrao",
+        ],
+      },
+      {
+        id: "agenda-sabados",
+        label: "Sábados Letivos",
+        path: "/dashboard/agenda?tab=sabados",
+        matchPath: "/dashboard/agenda",
+        matchTab: "sabados",
+        icon: "bi-calendar2-check",
+        roles: [
+          "aluno",
+          "professor",
+          "bibliotecaria",
+          "bibliotecario",
+          "especialista",
+          "adm",
+          "padrao",
+        ],
+      },
+      {
+        id: "agenda-feriados",
+        label: "Feriados e Recessos",
+        path: "/dashboard/agenda?tab=feriados",
+        matchPath: "/dashboard/agenda",
+        matchTab: "feriados",
+        icon: "bi-calendar2-heart",
+        roles: [
+          "aluno",
+          "professor",
+          "bibliotecaria",
+          "bibliotecario",
+          "especialista",
+          "adm",
+          "padrao",
+        ],
+      },
+      {
+        id: "agenda-horarios",
+        label: "Horário Escolar",
+        path: "/dashboard/agenda?tab=horarios",
+        matchPath: "/dashboard/agenda",
+        matchTab: "horarios",
+        icon: "bi-clock-history",
+        roles: [
+          "aluno",
+          "professor",
+          "bibliotecaria",
+          "bibliotecario",
+          "especialista",
+          "adm",
+          "padrao",
+        ],
+      },
     ],
   },
   {
+    id: "conteudo",
+    type: "group",
+    label: "Conteúdo",
+    icon: "bi-collection-play-fill",
+    children: [
+      {
+        id: "conteudo-acervo",
+        label: "Biblioteca",
+        path: "/dashboard/biblioteca?tab=acervo",
+        matchPath: "/dashboard/biblioteca",
+        matchTab: "acervo",
+        defaultTab: true,
+        icon: "bi-book",
+        roles: [
+          "aluno",
+          "professor",
+          "bibliotecaria",
+          "bibliotecario",
+          "especialista",
+          "adm",
+          "padrao",
+        ],
+      },
+      {
+        id: "conteudo-videoaulas",
+        label: "Vídeo Aula",
+        path: "/dashboard/biblioteca?tab=videoaulas",
+        matchPath: "/dashboard/biblioteca",
+        matchTab: "videoaulas",
+        icon: "bi-play-btn",
+        roles: [
+          "aluno",
+          "professor",
+          "bibliotecaria",
+          "bibliotecario",
+          "especialista",
+          "adm",
+          "padrao",
+        ],
+      },
+      {
+        id: "conteudo-web",
+        label: "Busca Web",
+        path: "/dashboard/biblioteca?tab=conteudo-web",
+        matchPath: "/dashboard/biblioteca",
+        matchTab: "conteudo-web",
+        icon: "bi-globe2",
+        roles: [
+          "aluno",
+          "professor",
+          "bibliotecaria",
+          "bibliotecario",
+          "especialista",
+          "adm",
+          "padrao",
+        ],
+      },
+      {
+        id: "conteudo-planos",
+        label: "Plano de Estudos",
+        path: "/dashboard/biblioteca?tab=planos",
+        matchPath: "/dashboard/biblioteca",
+        matchTab: "planos",
+        icon: "bi-list-check",
+        roles: [
+          "aluno",
+          "professor",
+          "bibliotecaria",
+          "bibliotecario",
+          "especialista",
+          "adm",
+          "padrao",
+        ],
+      },
+    ],
+  },
+  {
+    id: "noticias",
+    type: "item",
     label: "Notícias",
     path: "/dashboard/noticias",
     icon: "bi-newspaper",
     roles: ["especialista", "adm"],
+  },
+  {
+    id: "usuarios",
+    type: "item",
+    label: "Usuários",
+    path: "/dashboard/usuarios",
+    icon: "bi-shield-lock-fill",
+    roles: ["adm"],
+    badgeKey: "totalPendentes",
   },
 ];
 
@@ -112,53 +268,111 @@ const ROLE_BADGES = {
 };
 
 /**
- * Função de estilo do NavLink.
- * O NavLink do React Router fornece a propriedade booleana `isActive`,
- * permitindo destacar visualmente qual página o usuário está navegando.
+ * Avalia se um item ou subitem de menu está ativo considerando pathname e query string (?tab=...).
  */
-const getLinkClass = ({ isActive }) =>
-  `nav-link d-flex align-items-center justify-content-between fw-semibold ${
-    isActive ? "active text-white" : "link-dark"
-  }`;
+const isChildActive = (child, location) => {
+  const currentPath = location.pathname;
+  const searchParams = new URLSearchParams(location.search);
+  const currentTab = searchParams.get("tab");
+
+  if (child.matchPath) {
+    if (currentPath !== child.matchPath) return false;
+    if (!currentTab && child.defaultTab) return true;
+    return currentTab === child.matchTab;
+  }
+
+  return currentPath === child.path || currentPath.startsWith(`${child.path}/`);
+};
 
 const Aside = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const userRole = user?.role || "aluno";
   const badgeInfo = ROLE_BADGES[userRole] || { label: "Usuário", cor: "bg-secondary" };
   const isAdmin = userRole === "adm" || user?.realRole === "adm";
-  const podeGerenciarProfessores = userRole === "especialista" || userRole === "adm";
+  const podeGerenciarAprovacoes = userRole === "especialista" || userRole === "adm";
 
-  const [pendentesCount, setPendentesCount] = useState(0);
+  const [pendentesResumo, setPendentesResumo] = useState({
+    alunosPendentes: 0,
+    professoresPendentes: 0,
+    totalPendentes: 0,
+  });
 
-  // Busca contagem de pendências de professores para Especialista e Adm
+  // Estado explícito de grupos abertos/fechados manualmente pelo usuário no acordeão
+  const [openGroups, setOpenGroups] = useState({});
+
+  // Busca contagens de aprovações pendentes (alunos e professores) para Especialista e Adm
   useEffect(() => {
-    if (!podeGerenciarProfessores) return;
+    if (!podeGerenciarAprovacoes) return;
 
     let ativo = true;
-    listarProfessores()
+
+    obterPendentesResumo()
       .then((res) => {
-        if (ativo && res?.meta?.pendentes_count !== undefined) {
-          setPendentesCount(res.meta.pendentes_count);
-        }
+        if (!ativo) return;
+        const dados = res?.data || res || {};
+        setPendentesResumo({
+          alunosPendentes: Number(dados.alunos_pendentes ?? 0),
+          professoresPendentes: Number(dados.professores_pendentes ?? 0),
+          totalPendentes: Number(dados.total_pendentes ?? 0),
+        });
       })
       .catch(() => {
-        // Falhas silenciosas para não interromper navegação do menu
+        // Fallback para contagem de professores caso o endpoint resumido falhe
+        listarProfessores()
+          .then((res) => {
+            if (ativo && res?.meta?.pendentes_count !== undefined) {
+              const profs = Number(res.meta.pendentes_count);
+              setPendentesResumo((atual) => ({
+                ...atual,
+                professoresPendentes: profs,
+                totalPendentes: atual.alunosPendentes + profs,
+              }));
+            }
+          })
+          .catch(() => {});
       });
 
     return () => {
       ativo = false;
     };
-  }, [podeGerenciarProfessores]);
+  }, [podeGerenciarAprovacoes, location.pathname]);
 
-  // Filtra apenas os itens de menu permitidos para o perfil ativo
-  const itensPermitidos = NAV_ITEMS.filter((item) =>
-    item.roles.includes(userRole)
-  );
+  const toggleGroup = (groupId, currentOpen) => {
+    setOpenGroups((prev) => ({
+      ...prev,
+      [groupId]: !currentOpen,
+    }));
+  };
+
+  const obterBadgeCount = (badgeKey) => {
+    if (!badgeKey) return 0;
+    return pendentesResumo[badgeKey] || 0;
+  };
+
+  // Filtra a árvore de navegação mantendo apenas itens e grupos acessíveis ao perfil ativo
+  const estruturaFiltrada = NAV_STRUCTURE.reduce((acc, entry) => {
+    if (entry.type === "item") {
+      if (entry.roles.includes(userRole)) {
+        acc.push(entry);
+      }
+      return acc;
+    }
+
+    if (entry.type === "group") {
+      const filhosPermitidos = entry.children.filter((child) =>
+        child.roles.includes(userRole)
+      );
+      if (filhosPermitidos.length > 0) {
+        acc.push({ ...entry, children: filhosPermitidos });
+      }
+    }
+
+    return acc;
+  }, []);
 
   return (
-    <aside
-      className="dashboard-aside d-flex flex-column flex-shrink-0 p-3 bg-white shadow-sm"
-    >
+    <aside className="dashboard-aside d-flex flex-column flex-shrink-0 p-3 bg-white shadow-sm">
       {/* Cabeçalho do Aside: Logotipo e Badge exclusivo do Admin */}
       <Link
         to="/dashboard"
@@ -175,23 +389,125 @@ const Aside = () => {
 
       <hr className="my-2" />
 
-      {/* Lista Principal de Navegação */}
-      <ul className="nav nav-pills flex-column mb-auto gap-2">
-        {itensPermitidos.map((item) => (
-          <li className="nav-item" key={item.path}>
-            <NavLink to={item.path} className={getLinkClass}>
-              <div className="d-flex align-items-center">
-                <i className={`bi ${item.icon} me-3 fs-5`}></i>
-                <span>{item.label}</span>
-              </div>
-              {item.badgeKey === "professoresPendentes" && pendentesCount > 0 && (
-                <span className="badge rounded-pill bg-danger ms-2">
-                  {pendentesCount}
-                </span>
+      {/* Lista Principal de Navegação Retrátil por Módulos */}
+      <ul className="nav nav-pills flex-column mb-auto gap-1">
+        {estruturaFiltrada.map((entry) => {
+          if (entry.type === "item") {
+            const ativo = isChildActive(entry, location);
+            const badgeCount = obterBadgeCount(entry.badgeKey);
+
+            return (
+              <li className="nav-item" key={entry.id}>
+                <Link
+                  to={entry.path}
+                  className={`nav-link d-flex align-items-center justify-content-between fw-semibold ${
+                    ativo ? "active dashboard-aside-link-active text-white" : "link-dark"
+                  }`}
+                >
+                  <div className="d-flex align-items-center">
+                    <i className={`bi ${entry.icon} me-3 fs-5`}></i>
+                    <span>{entry.label}</span>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    {badgeCount > 0 && (
+                      <span className="badge rounded-pill bg-danger">
+                        {badgeCount}
+                      </span>
+                    )}
+                    {ativo && (
+                      <i
+                        className="bi bi-caret-left-fill dashboard-aside-active-arrow"
+                        aria-hidden="true"
+                      ></i>
+                    )}
+                  </div>
+                </Link>
+              </li>
+            );
+          }
+
+          // Renderização de grupo retrátil (Acadêmico, Agenda, Conteúdo)
+          const groupHasActiveChild = entry.children.some((child) =>
+            isChildActive(child, location)
+          );
+          const isOpen =
+            openGroups[entry.id] !== undefined
+              ? Boolean(openGroups[entry.id])
+              : groupHasActiveChild || entry.id === "academico";
+          const groupBadgeTotal = entry.children.reduce(
+            (soma, child) => soma + obterBadgeCount(child.badgeKey),
+            0
+          );
+
+          return (
+            <li className="nav-item" key={entry.id}>
+              <button
+                type="button"
+                onClick={() => toggleGroup(entry.id, isOpen)}
+                aria-expanded={isOpen}
+                className={`dashboard-aside-group-btn d-flex align-items-center justify-content-between fw-semibold ${
+                  groupHasActiveChild ? "is-group-active" : ""
+                }`}
+              >
+                <div className="d-flex align-items-center">
+                  <i className={`bi ${entry.icon} me-3 fs-5`}></i>
+                  <span>{entry.label}</span>
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  {groupBadgeTotal > 0 && (
+                    <span className="badge rounded-pill bg-danger">
+                      {groupBadgeTotal}
+                    </span>
+                  )}
+                  <i
+                    className={`bi ${
+                      isOpen ? "bi-chevron-down" : "bi-chevron-right"
+                    } small`}
+                    aria-hidden="true"
+                  ></i>
+                </div>
+              </button>
+
+              {isOpen && (
+                <ul className="dashboard-aside-subnav">
+                  {entry.children.map((child) => {
+                    const subAtivo = isChildActive(child, location);
+                    const subBadge = obterBadgeCount(child.badgeKey);
+
+                    return (
+                      <li key={child.id} className="my-1">
+                        <Link
+                          to={child.path}
+                          className={`dashboard-aside-sublink ${
+                            subAtivo ? "dashboard-aside-link-active" : ""
+                          }`}
+                        >
+                          <div className="d-flex align-items-center">
+                            <i className={`bi ${child.icon} me-2`}></i>
+                            <span>{child.label}</span>
+                          </div>
+                          <div className="d-flex align-items-center gap-1">
+                            {subBadge > 0 && (
+                              <span className="badge rounded-pill bg-danger">
+                                {subBadge}
+                              </span>
+                            )}
+                            {subAtivo && (
+                              <i
+                                className="bi bi-caret-left-fill dashboard-aside-active-arrow"
+                                aria-hidden="true"
+                              ></i>
+                            )}
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
-            </NavLink>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
 
       <hr className="my-2" />
@@ -199,17 +515,53 @@ const Aside = () => {
       {/* Seção Inferior Fixa: Dona Nana (acima de Configurações) e Configurações */}
       <ul className="nav nav-pills flex-column gap-2 mb-2">
         <li className="nav-item">
-          <NavLink to="/dashboard/dona-nana" className={getLinkClass}>
-            <i className="bi bi-chat-heart-fill me-3 fs-5 text-warning"></i>
-            <span>Dona Nana</span>
+          <NavLink
+            to="/dashboard/dona-nana"
+            className={({ isActive }) =>
+              `nav-link d-flex align-items-center justify-content-between fw-semibold ${
+                isActive ? "active dashboard-aside-link-active text-white" : "link-dark"
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <div className="d-flex align-items-center">
+                  <i className="bi bi-chat-heart-fill me-3 fs-5 text-warning"></i>
+                  <span>Dona Nana</span>
+                </div>
+                {isActive && (
+                  <i
+                    className="bi bi-caret-left-fill dashboard-aside-active-arrow"
+                    aria-hidden="true"
+                  ></i>
+                )}
+              </>
+            )}
           </NavLink>
         </li>
         <li className="nav-item">
-          <NavLink to="/dashboard/configuracoes" className={getLinkClass}>
-            <div className="d-flex align-items-center">
-              <i className="bi bi-gear me-3 fs-5"></i>
-              <span>Configurações</span>
-            </div>
+          <NavLink
+            to="/dashboard/configuracoes"
+            className={({ isActive }) =>
+              `nav-link d-flex align-items-center justify-content-between fw-semibold ${
+                isActive ? "active dashboard-aside-link-active text-white" : "link-dark"
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <div className="d-flex align-items-center">
+                  <i className="bi bi-gear me-3 fs-5"></i>
+                  <span>Configurações</span>
+                </div>
+                {isActive && (
+                  <i
+                    className="bi bi-caret-left-fill dashboard-aside-active-arrow"
+                    aria-hidden="true"
+                  ></i>
+                )}
+              </>
+            )}
           </NavLink>
         </li>
       </ul>

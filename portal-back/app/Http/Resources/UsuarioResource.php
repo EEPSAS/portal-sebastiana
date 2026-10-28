@@ -34,6 +34,7 @@ class UsuarioResource extends JsonResource
         // Obtém o valor em string e o label amigável do papel
         $roleValue = $this->role instanceof UserRole ? $this->role->value : (string) $this->role;
         $roleLabel = $this->role instanceof UserRole ? $this->role->label() : ucfirst($roleValue);
+        $isAdmSolicitante = (bool) $request->user()?->isAdm();
 
         return [
             // Identificador e dados cadastrais
@@ -59,6 +60,23 @@ class UsuarioResource extends JsonResource
             'ativo' => (bool) $this->ativo,
             'status_confirmacao' => $this->status_confirmacao ?? 'confirmado',
             'confirmado_em' => $this->confirmado_em?->toISOString(),
+            // Metadados de vínculo e auditoria administrativa (Itens 1.3.4 a 1.3.8)
+            'autorizado_por_id' => $this->autorizado_por_id,
+            'autorizado_por_nome' => $this->relationLoaded('autorizadoPor')
+                ? ($this->autorizadoPor?->name ?? 'Sistema / Automático')
+                : null,
+            'data_vinculo' => ($this->confirmado_em ?? $this->created_at)?->toISOString(),
+            'created_at' => $this->created_at?->toISOString(),
+            'comentario_admin' => $isAdmSolicitante ? $this->comentario_admin : null,
+            'vinculos' => $this->whenLoaded('vinculos', fn () => $this->vinculos->map(fn ($v) => [
+                'id_vinculo' => $v->id_vinculo,
+                'role_no_vinculo' => $v->role_no_vinculo,
+                'autorizado_por_id' => $v->autorizado_por_id,
+                'autorizado_por_nome' => $v->relationLoaded('autorizadoPor') ? $v->autorizadoPor?->name : null,
+                'iniciado_em' => $v->iniciado_em?->toISOString(),
+                'encerrado_em' => $v->encerrado_em?->toISOString(),
+                'observacoes' => $v->observacoes,
+            ])->values()),
             'permissoes' => method_exists($this->resource, 'getPermissionsSlugs')
                 ? $this->getPermissionsSlugs()
                 : [],

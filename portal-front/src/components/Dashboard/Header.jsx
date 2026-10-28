@@ -204,7 +204,7 @@ const Header = ({
                 {userName}
               </span>
               <small className="text-muted d-block" style={{ fontSize: "0.75rem" }}>
-                {realRoleLabel}
+                {tipoLoginLabel}
               </small>
             </div>
           </div>

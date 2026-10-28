@@ -36,6 +36,8 @@ import NoticiasAdminPage from "./pages/Dashboard/Noticias";
 import ConfiguracoesPage from "./pages/Dashboard/Configuracoes";
 import DonaNanaPage from "./pages/Dashboard/DonaNana";
 import ConfiguracaoDonaNana from "./pages/Dashboard/ConfiguracaoDonaNana";
+import UsuariosPage from "./pages/Dashboard/Usuarios";
+import DisciplinasPage from "./pages/Dashboard/Disciplinas";
 
 const App = () => {
   return (
@@ -86,6 +88,16 @@ const App = () => {
             {/* Rota restrita: Gestão de Professores (especialistas e administradores) */}
             <Route element={<ProtectedRoute allowedRoles={["especialista", "adm"]} />}>
               <Route path="professores" element={<ProfessoresPage />} />
+            </Route>
+
+            {/* Rota restrita: Disciplinas por Ciclos (alunos, professores, especialistas e administradores) */}
+            <Route element={<ProtectedRoute allowedRoles={["aluno", "professor", "especialista", "adm", "padrao"]} />}>
+              <Route path="disciplinas" element={<DisciplinasPage />} />
+            </Route>
+
+            {/* Rota restrita: Controle de Usuários (exclusivo do Administrador) */}
+            <Route element={<ProtectedRoute allowedRoles={["adm"]} />}>
+              <Route path="usuarios" element={<UsuariosPage />} />
             </Route>
 
             {/* Rota restrita: Gestão de Notícias (especialistas e administradores) */}

@@ -44,7 +44,9 @@ class EspecialistaDashboardService
         ?string $periodoLetivo = null,
         ?string $dataAula = null,
         array $mapeamentosManuais = [],
-        ?string $decisaoDivergencias = null
+        ?string $decisaoDivergencias = null,
+        array $mapeamentosDisciplinas = [],
+        bool $exigirConciliacaoDisciplinas = false
     ): array {
         // Lê o conteúdo bruto do arquivo
         $conteudo = $arquivo instanceof UploadedFile
@@ -88,8 +90,47 @@ class EspecialistaDashboardService
 
         $data = $dataAula ?: ($dataExtracaoDetectada ?: $dataPadraoPeriodo);
 
-        // Extrai os dados estruturados de notas e faltas por aluno com suporte a múltiplos períodos e desambiguação
-        $dadosExtraidos = $this->extrairNotasEFaltasPorAluno($linhas, $turma, $mapeamentosManuais, $periodo);
+        // Extrai os dados estruturados de notas e faltas por aluno com suporte a múltiplos períodos, desambiguação e conciliação de disciplinas
+        $dadosExtraidos = $this->extrairNotasEFaltasPorAluno(
+            $linhas,
+            $turma,
+            $mapeamentosManuais,
+            $periodo,
+            $mapeamentosDisciplinas,
+            $exigirConciliacaoDisciplinas
+        );
+
+        // Diretriz 3.4d: Se houver disciplinas no CSV que não puderam ser conciliadas automaticamente,
+        // interrompe a gravação e solicita ao Especialista que faça a correlação manual ou aprove a criação.
+        if (! empty($dadosExtraidos['disciplinas_pendentes'])) {
+            $catalogoExistente = Disciplina::with('ciclos')
+                ->orderBy('nome')
+                ->get()
+                ->map(fn (Disciplina $d) => [
+                    'id_disciplina' => $d->id_disciplina,
+                    'nome' => $d->nome,
+                    'aulas_semanais' => $d->aulas_semanais,
+                    'carga_horaria_anual' => $d->carga_horaria_anual,
+                    'ciclos' => $d->ciclos->pluck('nome')->values()->all(),
+                ])->values()->all();
+
+            return [
+                'status' => 'pendente_confirmacao',
+                'tipo_pendencia' => 'conciliacao_disciplinas',
+                'message' => 'Identificamos disciplinas na planilha que precisam ser conciliadas com o catálogo escolar ou criadas no Ciclo da turma.',
+                'disciplinas_pendentes' => array_values($dadosExtraidos['disciplinas_pendentes']),
+                'catalogo_disciplinas' => $catalogoExistente,
+                'ambiguidades' => [],
+                'divergencias' => [],
+                'linhas_lidas' => count($linhas),
+                'alunos_identificados' => count($dadosExtraidos['alunos_dados']),
+                'alunos_ignorados' => $dadosExtraidos['alunos_ignorados'] ?? [],
+                'total_ignorados' => count($dadosExtraidos['alunos_ignorados'] ?? []),
+                'notas_sincronizadas' => 0,
+                'frequencias_sincronizadas' => 0,
+                'alertas' => $dadosExtraidos['alertas'],
+            ];
+        }
 
         // Se houver estudantes com homônimos que ainda não foram confirmados pelo especialista,
         // interrompemos a persistência para solicitar a confirmação manual sem corromper o banco.
@@ -350,12 +391,15 @@ class EspecialistaDashboardService
         array $linhas,
         Turma $turma,
         array $mapeamentosManuais = [],
-        ?string $periodoPadrao = null
+        ?string $periodoPadrao = null,
+        array $mapeamentosDisciplinas = [],
+        bool $exigirConciliacaoDisciplinas = false
     ): array {
         $alertas = [];
         $alunosDados = [];
         $ambiguidades = [];
         $alunosIgnorados = [];
+        $disciplinasPendentes = [];
 
         // 1. Detectar o delimitador predominante do arquivo (; ou , ou tab)
         $delimitador = ',';
@@ -416,8 +460,9 @@ class EspecialistaDashboardService
                 break;
             } else {
                 $naoVazias = array_filter(array_map('trim', $colunasTeste));
-                // Se possui poucas colunas preenchidas (ex: quebra de título como "SISTEMAS"), agrupa
-                if (count($naoVazias) > 0 && count($naoVazias) <= 8) {
+                $colunaAlunoVazia = trim($colunasTeste[$indiceAluno] ?? '') === '';
+                // Se a coluna do aluno está vazia e possui poucas colunas preenchidas (ex: quebra de título como "SISTEMAS"), agrupa
+                if ($colunaAlunoVazia && count($naoVazias) > 0 && count($naoVazias) <= 8) {
                     $linhasContinuacaoTitulos[] = $colunasTeste;
                 } elseif (count($naoVazias) === 0) {
                     continue;
@@ -473,21 +518,20 @@ class EspecialistaDashboardService
 
                 $isFalta = str_contains($subTexto, 'FALTA') || str_contains($subTexto, 'AUSENCIA');
 
-                // Garante que a disciplina existe no banco (busca insensível a acentos/caixa) e está vinculada à turma
-                $disciplinaModel = $todasDisciplinas->first(function (Disciplina $d) use ($disciplinaAtualNome) {
-                    return Str::ascii(mb_strtolower($d->nome)) === Str::ascii(mb_strtolower($disciplinaAtualNome));
-                });
+                // Sanitiza e concilia a disciplina do CSV com o catálogo escolar (Item 3.4d)
+                $disciplinaModel = $this->conciliarDisciplinaCsv(
+                    $disciplinaAtualNome,
+                    $turma,
+                    $todasDisciplinas,
+                    $mapeamentosDisciplinas,
+                    $exigirConciliacaoDisciplinas,
+                    $disciplinasPendentes
+                );
 
                 if (! $disciplinaModel) {
-                    $disciplinaModel = Disciplina::create([
-                        'nome' => $disciplinaAtualNome,
-                        'carga_horaria_anual' => 80,
-                    ]);
-                    $todasDisciplinas->push($disciplinaModel);
-                }
+                    $mapaColunas[$c] = ['tipo' => 'ignorar'];
 
-                if (! $turma->disciplinas()->where('disciplinas.id_disciplina', $disciplinaModel->id_disciplina)->exists()) {
-                    $turma->disciplinas()->syncWithoutDetaching([$disciplinaModel->id_disciplina]);
+                    continue;
                 }
 
                 $periodoDaColuna = $this->normalizarPeriodoLetivo($subTexto, $periodoPadrao ?: '1º Trimestre');
@@ -513,7 +557,7 @@ class EspecialistaDashboardService
                 }
 
                 $nomeUpper = Str::upper(trim($nomeColuna));
-                if ($nomeUpper === 'TOTAL' || str_contains($nomeUpper, 'TOTAL')) {
+                if ($nomeUpper === 'TOTAL' || str_contains($nomeUpper, 'TOTAL') || $nomeUpper === '') {
                     $mapaColunas[$colIdx] = ['tipo' => 'ignorar'];
 
                     continue;
@@ -522,21 +566,29 @@ class EspecialistaDashboardService
                 $nomeNorm = Str::lower(Str::ascii($nomeColuna));
                 $isFalta = str_contains($nomeNorm, 'falta') || str_contains($nomeNorm, 'ausencia');
 
-                foreach ($todasDisciplinas as $disc) {
-                    $discNorm = Str::lower(Str::ascii($disc->nome));
-                    if (str_contains($nomeNorm, $discNorm) || str_contains($discNorm, $nomeNorm)) {
-                        $periodoDaColuna = $this->normalizarPeriodoLetivo($nomeColuna, $periodoPadrao ?: '1º Trimestre');
-                        $isRecuperacao = str_contains($nomeUpper, 'EIR') || str_contains($nomeUpper, 'RECUPERA');
+                // Remove prefixos como "Faltas " para identificar o nome limpo da disciplina
+                $nomeLimpoDisciplina = trim((string) preg_replace('/^(faltas|falta|ausencias|ausencia)\s+/iu', '', trim($nomeColuna)));
 
-                        $mapaColunas[$colIdx] = [
-                            'tipo' => $isFalta ? 'falta' : 'nota',
-                            'disciplina_id' => $disc->id_disciplina,
-                            'nome_disciplina' => $disc->nome,
-                            'periodo_letivo' => $periodoDaColuna,
-                            'tipo_avaliacao' => $isRecuperacao ? 'Recuperação (EIR)' : 'Diário Consolidado',
-                        ];
-                        break;
-                    }
+                $disciplinaModel = $this->conciliarDisciplinaCsv(
+                    $nomeLimpoDisciplina ?: $nomeColuna,
+                    $turma,
+                    $todasDisciplinas,
+                    $mapeamentosDisciplinas,
+                    $exigirConciliacaoDisciplinas,
+                    $disciplinasPendentes
+                );
+
+                if ($disciplinaModel) {
+                    $periodoDaColuna = $this->normalizarPeriodoLetivo($nomeColuna, $periodoPadrao ?: '1º Trimestre');
+                    $isRecuperacao = str_contains($nomeUpper, 'EIR') || str_contains($nomeUpper, 'RECUPERA');
+
+                    $mapaColunas[$colIdx] = [
+                        'tipo' => $isFalta ? 'falta' : 'nota',
+                        'disciplina_id' => $disciplinaModel->id_disciplina,
+                        'nome_disciplina' => $disciplinaModel->nome,
+                        'periodo_letivo' => $periodoDaColuna,
+                        'tipo_avaliacao' => $isRecuperacao ? 'Recuperação (EIR)' : 'Diário Consolidado',
+                    ];
                 }
             }
 
@@ -672,9 +724,134 @@ class EspecialistaDashboardService
         return [
             'alunos_dados' => $alunosDados,
             'ambiguidades' => $ambiguidades,
+            'disciplinas_pendentes' => $disciplinasPendentes,
             'alertas' => $alertas,
             'alunos_ignorados' => $alunosIgnorados,
         ];
+    }
+
+    /**
+     * Sanitiza o cabeçalho de disciplina do CSV e realiza a conciliação automática ou manual
+     * com o módulo de Disciplinas e Ciclos Escolares (Item 3.4d).
+     */
+    private function conciliarDisciplinaCsv(
+        string $nomeBrutoCsv,
+        Turma $turma,
+        Collection $todasDisciplinas,
+        array $mapeamentosDisciplinas,
+        bool $exigirConciliacaoDisciplinas,
+        array &$disciplinasPendentes
+    ): ?Disciplina {
+        // Sanitiza espaços múltiplos e caracteres de controle
+        $nomeSanitizado = trim((string) preg_replace('/\s+/', ' ', $nomeBrutoCsv));
+        if ($nomeSanitizado === '') {
+            return null;
+        }
+
+        $normCsv = Str::lower(Str::ascii($nomeSanitizado));
+        $decisaoManual = $mapeamentosDisciplinas[$nomeBrutoCsv] ?? $mapeamentosDisciplinas[$nomeSanitizado] ?? null;
+
+        $disciplinaEscolhida = null;
+
+        // 1. Verifica se o Especialista já informou a decisão manual no modal de conciliação
+        if ($decisaoManual !== null) {
+            $acao = is_array($decisaoManual) ? ($decisaoManual['acao'] ?? '') : (string) $decisaoManual;
+
+            if ($acao === 'ignorar') {
+                return null;
+            }
+
+            if ($acao === 'criar_nova' || $acao === 'nova') {
+                $aulasSemanais = is_array($decisaoManual) && ! empty($decisaoManual['aulas_semanais'])
+                    ? max(1, (int) $decisaoManual['aulas_semanais'])
+                    : 2;
+                $nomeParaCriar = is_array($decisaoManual) && ! empty($decisaoManual['nome'])
+                    ? trim((string) $decisaoManual['nome'])
+                    : $nomeSanitizado;
+
+                $disciplinaEscolhida = $todasDisciplinas->first(
+                    fn (Disciplina $d) => Str::lower(Str::ascii($d->nome)) === Str::lower(Str::ascii($nomeParaCriar))
+                );
+
+                if (! $disciplinaEscolhida) {
+                    $disciplinaEscolhida = Disciplina::create([
+                        'nome' => $nomeParaCriar,
+                        'aulas_semanais' => $aulasSemanais,
+                        'carga_horaria_anual' => $aulasSemanais * 40,
+                    ]);
+                    $todasDisciplinas->push($disciplinaEscolhida);
+                }
+            } else {
+                $idManual = is_array($decisaoManual)
+                    ? (int) ($decisaoManual['disciplina_id'] ?? 0)
+                    : (int) $acao;
+
+                if ($idManual > 0) {
+                    $disciplinaEscolhida = $todasDisciplinas->firstWhere('id_disciplina', $idManual)
+                        ?? Disciplina::find($idManual);
+                }
+            }
+        }
+
+        // 2. Caso não haja mapeamento manual prévio, tenta conciliação automática exata
+        if (! $disciplinaEscolhida) {
+            $disciplinaEscolhida = $todasDisciplinas->first(function (Disciplina $d) use ($normCsv) {
+                return Str::lower(Str::ascii(trim($d->nome))) === $normCsv;
+            });
+        }
+
+        // 3. Caso não haja correspondência exata, busca sugestão por similaridade/contenção
+        $sugestaoSimilar = null;
+        if (! $disciplinaEscolhida) {
+            $sugestaoSimilar = $todasDisciplinas->first(function (Disciplina $d) use ($normCsv) {
+                $discNorm = Str::lower(Str::ascii(trim($d->nome)));
+
+                return $discNorm !== '' && (str_contains($normCsv, $discNorm) || str_contains($discNorm, $normCsv));
+            });
+
+            // No modo sem flag de conciliação explícita e sem ciclo vinculado, cria a disciplina com seu nome exato
+            if (! $exigirConciliacaoDisciplinas && $turma->ciclo_id === null) {
+                $disciplinaEscolhida = Disciplina::create([
+                    'nome' => $nomeSanitizado,
+                    'aulas_semanais' => 2,
+                    'carga_horaria_anual' => 80,
+                ]);
+                $todasDisciplinas->push($disciplinaEscolhida);
+            }
+        }
+
+        // 4. Se exigir conciliação e a disciplina não foi localizada automaticamente, registra pendência para o modal
+        if (! $disciplinaEscolhida) {
+            if (! isset($disciplinasPendentes[$nomeSanitizado])) {
+                $disciplinasPendentes[$nomeSanitizado] = [
+                    'nome_csv' => $nomeSanitizado,
+                    'sugestao_disciplina_id' => $sugestaoSimilar?->id_disciplina,
+                    'sugestao_disciplina_nome' => $sugestaoSimilar?->nome,
+                ];
+            }
+
+            return null;
+        }
+
+        // 5. Vincula a disciplina conciliada à Turma e ao Ciclo da Turma (quando houver)
+        if ($turma->ciclo_id !== null) {
+            $disciplinaEscolhida->ciclos()->syncWithoutDetaching([$turma->ciclo_id]);
+        }
+
+        if (! $turma->disciplinas()->where('disciplinas.id_disciplina', $disciplinaEscolhida->id_disciplina)->exists()) {
+            $professorPadraoId = $disciplinaEscolhida->professores()->first()?->id;
+            TurmaDisciplina::firstOrCreate(
+                [
+                    'turma_id' => $turma->id_turma,
+                    'disciplina_id' => $disciplinaEscolhida->id_disciplina,
+                ],
+                [
+                    'professor_id' => $professorPadraoId,
+                ]
+            );
+        }
+
+        return $disciplinaEscolhida;
     }
 
     /**
@@ -1277,10 +1454,20 @@ class EspecialistaDashboardService
         $isDocenteEstrito = $usuario->isProfessor() && ! $usuario->canManageAcademic();
 
         if ($isDocenteEstrito) {
+            // Diretriz 3.4a: Garante que as disciplinas vinculadas ao professor propaguem seus vínculos com os Ciclos e Turmas
+            $disciplinasDoProfessor = $usuario->disciplinasDocente()->with('ciclos.turmas')->get();
+            foreach ($disciplinasDoProfessor as $discDocente) {
+                $discDocente->sincronizarComTurmasDosCiclos();
+            }
+
             // Identifica as turmas e disciplinas onde o professor atua
             $vinculosDocente = TurmaDisciplina::where('professor_id', $usuario->id)->get();
             $turmasIds = $vinculosDocente->pluck('turma_id')->unique()->filter()->values();
-            $disciplinasIdsProf = $vinculosDocente->pluck('disciplina_id')->unique()->filter()->values();
+            $disciplinasIdsProf = $vinculosDocente->pluck('disciplina_id')
+                ->merge($disciplinasDoProfessor->pluck('id_disciplina'))
+                ->unique()
+                ->filter()
+                ->values();
 
             // Se o professor possui turmas atribuídas, filtra por elas; caso contrário, fallback para turmas ativas
             if ($turmasIds->isNotEmpty()) {
@@ -1290,7 +1477,6 @@ class EspecialistaDashboardService
                     ->get();
             } else {
                 $turmas = Turma::where('status', 'Ativa')->orderBy('nome_identificador')->get();
-                $disciplinasIdsProf = collect();
             }
         } else {
             // Especialistas e Administradores visualizam todas as turmas ativas da instituição
@@ -1426,10 +1612,26 @@ class EspecialistaDashboardService
             return $item;
         }, array_slice($atualizacoes, 0, 5));
 
-        // Nomes das disciplinas sob regência do docente
-        $disciplinasDocenteNomes = $isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()
-            ? Disciplina::whereIn('id_disciplina', $disciplinasIdsProf)->pluck('nome')->values()->toArray()
-            : [];
+        // Nomes e detalhes das disciplinas sob regência do docente (Item 3.4a)
+        $disciplinasDocenteColecao = $isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()
+            ? Disciplina::with(['ciclos', 'turmas' => fn ($q) => $q->withCount('alunos')])
+                ->whereIn('id_disciplina', $disciplinasIdsProf)
+                ->get()
+            : collect();
+
+        $disciplinasDocenteNomes = $disciplinasDocenteColecao->pluck('nome')->values()->toArray();
+        $disciplinasDetalhadas = $disciplinasDocenteColecao->map(fn (Disciplina $d) => [
+            'id_disciplina' => $d->id_disciplina,
+            'nome' => $d->nome,
+            'aulas_semanais' => $d->aulas_semanais,
+            'carga_horaria_anual' => $d->carga_horaria_anual,
+            'ciclos' => $d->ciclos->pluck('nome')->values()->all(),
+            'turmas' => $d->turmas->map(fn ($t) => [
+                'id_turma' => $t->id_turma,
+                'nome_identificador' => $t->nome_identificador,
+                'total_alunos' => $t->alunos_count ?? 0,
+            ])->values()->all(),
+        ])->values()->toArray();
 
         return [
             'kpis' => [
@@ -1444,6 +1646,7 @@ class EspecialistaDashboardService
                 'frequencias' => $frequenciasTurmas,
             ],
             'disciplinas_docente' => $disciplinasDocenteNomes,
+            'disciplinas_detalhadas' => $disciplinasDetalhadas,
             'ultimas_atualizacoes' => $ultimasAtualizacoes,
         ];
     }

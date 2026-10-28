@@ -9,6 +9,7 @@ use App\Http\Requests\AuthRegisterRequest;
 use App\Http\Resources\AuthUserResource;
 use App\Models\Matricula;
 use App\Models\User;
+use App\Services\NotificacaoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -149,9 +150,8 @@ class AuthController extends Controller
             ->first();
 
         if (! $user) {
-            // Professores recém-chegados entram como 'pendente' até validação do Especialista
-            $statusConfirmacao = $defaultRole === UserRole::PROFESSOR ? 'pendente' : 'confirmado';
-
+            // Diretriz 2.1: Por questões de segurança, TODO usuário institucional (Aluno ou Professor)
+            // que se cadastra pela primeira vez aguarda aprovação antes de acessar o dashboard.
             $user = User::create([
                 'google_id' => $googleId,
                 'name' => $name ?: 'Usuário Institucional',
@@ -159,20 +159,38 @@ class AuthController extends Controller
                 'avatar' => $picture,
                 'role' => $defaultRole,
                 'ativo' => true,
-                'status_confirmacao' => $statusConfirmacao,
+                'status_confirmacao' => 'pendente',
             ]);
+
+            // Emite notificação no sininho para Especialistas e Administradores (Item 2.4)
+            app(NotificacaoService::class)->notificarAprovacaoPendente($user);
         } else {
-            // Atualiza os dados sincronizados do Google, preservando o papel já cadastrado.
-            // A foto do Google só entra se o usuário ainda não tem avatar; assim, uma foto
-            // enviada por ele nunca é sobrescrita a cada novo login.
-            $user->update([
+            // Diretriz 1.3.6 e 1.3.7: Caso o usuário tenha sido excluído/desvinculado anteriormente
+            // (status_confirmacao === 'inativo'), aproveita-se o mesmo cadastro de usuário,
+            // reativando-o com status 'pendente' para aguardar aprovação de um novo vínculo escolar.
+            $estavaDesvinculado = ($user->status_confirmacao === 'inativo');
+
+            $dadosAtualizacao = [
                 'google_id' => $googleId,
                 'avatar' => $user->avatar ?: $picture,
                 'name' => $name ?: $user->name,
-            ]);
+            ];
+
+            if ($estavaDesvinculado) {
+                $dadosAtualizacao['ativo'] = true;
+                $dadosAtualizacao['status_confirmacao'] = 'pendente';
+                $dadosAtualizacao['confirmado_em'] = null;
+                $dadosAtualizacao['autorizado_por_id'] = null;
+            }
+
+            $user->update($dadosAtualizacao);
+
+            if ($estavaDesvinculado) {
+                app(NotificacaoService::class)->notificarAprovacaoPendente($user);
+            }
         }
 
-        // 6. Verifica se o usuário está desativado pelo administrador
+        // 6. Verifica se o usuário está bloqueado administrativamente
         if (isset($user->ativo) && ! $user->ativo) {
             return response()->json([
                 'message' => 'Usuário bloqueado pelo administrador. Acesso negado.',

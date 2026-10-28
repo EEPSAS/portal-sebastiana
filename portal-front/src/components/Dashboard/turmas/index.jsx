@@ -12,6 +12,7 @@ import {
   fetchTurmaNotas,
   fetchTurmas,
 } from "../../../services/turmasService";
+import { obterPendentesResumo } from "../../../services/usuarioService";
 import GeralAba from "./GeralAba";
 import ModalImportarNotas from "./ModalImportarNotas";
 import ModalTurma from "./ModalTurma";
@@ -61,6 +62,7 @@ const Turmas = () => {
   const [turmas, setTurmas] = useState([]);
   const [resumoGeral, setResumoGeral] = useState([]);
   const [matriculas, setMatriculas] = useState([]);
+  const [alunosPendentesCount, setAlunosPendentesCount] = useState(0);
 
   // Dados da aba de notas: seleção individual de aluno para não carregar todos de uma vez
   const [turmaSelecionadaId, setTurmaSelecionadaId] = useState("");
@@ -120,17 +122,22 @@ const Turmas = () => {
         console.warn("Falha ao buscar matrículas escolares:", err);
         return [];
       }),
+      podeGerenciar
+        ? obterPendentesResumo().catch(() => ({ data: { alunos_pendentes: 0 } }))
+        : Promise.resolve({ data: { alunos_pendentes: 0 } }),
     ])
-      .then(([dadosTurmas, dadosResumo, dadosMatriculas]) => {
+      .then(([dadosTurmas, dadosResumo, dadosMatriculas, resumoPendentes]) => {
         if (!cancelado) {
           // Extração padronizada e enxuta das listas via extrairLista()
           const listaTurmas = extrairLista(dadosTurmas);
           const listaResumo = extrairLista(dadosResumo);
           const listaMatriculas = extrairLista(dadosMatriculas);
+          const dadosPend = resumoPendentes?.data || resumoPendentes || {};
 
           setTurmas(listaTurmas);
           setResumoGeral(listaResumo);
           setMatriculas(listaMatriculas);
+          setAlunosPendentesCount(Number(dadosPend.alunos_pendentes ?? 0));
 
           // Seleciona a primeira turma se nenhuma estiver selecionada
           if (listaTurmas.length > 0) {
@@ -150,7 +157,7 @@ const Turmas = () => {
     return () => {
       cancelado = true;
     };
-  }, [recargaKey]);
+  }, [recargaKey, podeGerenciar]);
 
   /**
    * 2. Efeito de Alunos da Turma: Busca a relação de estudantes da turma ativa
@@ -408,6 +415,43 @@ const Turmas = () => {
 
       {/* Painel Central Branco com Cantos Arredondados */}
       <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
+        {/* Banner de Alunos Pendentes de Aprovação e Vínculo com Turma (Diretriz 2.3.1) */}
+        {podeGerenciar && alunosPendentesCount > 0 && (
+          <div
+            className="alert alert-info d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 rounded-4 border-0 shadow-sm"
+            role="status"
+          >
+            <div className="d-flex align-items-center gap-3">
+              <span className="badge bg-danger rounded-pill fs-6 px-3 py-2">
+                {alunosPendentesCount}
+              </span>
+              <div>
+                <strong className="d-block text-dark">
+                  Aprovação de Login Estudantil Pendente (@aluno)
+                </strong>
+                <span className="small text-muted">
+                  Há {alunosPendentesCount} estudante(s) aguardando vínculo com uma turma para acessar o painel escolar.
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm rounded-pill px-4 fw-bold text-nowrap"
+              onClick={() => {
+                const turmaAlvo = turmaAtivaParaCSV || turmas[0];
+                if (turmaAlvo) {
+                  handleAbrirVincularAluno(turmaAlvo);
+                } else {
+                  setAbaAtiva("turmas");
+                }
+              }}
+            >
+              <i className="bi bi-person-check-fill me-2"></i>
+              Aprovar e Vincular Aluno(s)
+            </button>
+          </div>
+        )}
+
         {/* Cabeçalho Central com Título e Menu de Abas */}
         <header className="mb-4">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">

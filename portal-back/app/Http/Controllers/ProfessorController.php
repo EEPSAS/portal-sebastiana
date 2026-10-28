@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
+use App\Http\Requests\ConfirmarProfessorRequest;
 use App\Http\Requests\VincularProfessorDisciplinaRequest;
 use App\Http\Resources\ProfessorResource;
 use App\Models\Disciplina;
@@ -73,8 +74,12 @@ class ProfessorController extends Controller
 
         $professores = $query->orderBy('name')->get();
 
-        // Contagem global de professores aguardando validação escolar
+        // Contagem global de professores e alunos aguardando validação escolar (Item 2.4)
         $pendentesCount = User::where('role', UserRole::PROFESSOR)
+            ->where('status_confirmacao', 'pendente')
+            ->count();
+
+        $alunosPendentesCount = User::where('role', UserRole::ALUNO)
             ->where('status_confirmacao', 'pendente')
             ->count();
 
@@ -83,6 +88,8 @@ class ProfessorController extends Controller
             'meta' => [
                 'total' => $professores->count(),
                 'pendentes_count' => $pendentesCount,
+                'alunos_pendentes_count' => $alunosPendentesCount,
+                'total_aprovacoes_pendentes' => $pendentesCount + $alunosPendentesCount,
             ],
         ], 200);
     }
@@ -106,11 +113,12 @@ class ProfessorController extends Controller
     }
 
     /**
-     * Confirma o pertencimento do professor à Escola Sebastiana.
+     * Confirma o pertencimento do professor à Escola Sebastiana e registra o vínculo
+     * com a(s) disciplina(s) selecionada(s) quando informadas (Itens 2.3.2 e 3.2a).
      *
      * PATCH /api/professores/{professor}/confirmar
      */
-    public function confirmar(Request $request, User $professor): JsonResponse
+    public function confirmar(ConfirmarProfessorRequest $request, User $professor): JsonResponse
     {
         $this->autorizarGestao($request);
 
@@ -118,10 +126,23 @@ class ProfessorController extends Controller
             abort(404, 'Usuário informado não é um professor.');
         }
 
-        $professor->update([
-            'status_confirmacao' => 'confirmado',
-            'confirmado_em' => now(),
-        ]);
+        // Registra formalmente o vínculo escolar e quem autorizou (Itens 1.3.4 e 2.3.2)
+        $professor->registrarVinculoEscolar(
+            $request->user()->id,
+            'Professor confirmado na instituição pelo Especialista/Admin.'
+        );
+
+        // Coleta as disciplinas informadas no ato da aprovação (Item 2.3.2)
+        $validated = $request->validated();
+        $disciplinaIds = collect($validated['disciplina_ids'] ?? [])
+            ->when(! empty($validated['disciplina_id']), fn ($c) => $c->push((int) $validated['disciplina_id']))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        foreach ($disciplinaIds as $disciplinaId) {
+            $this->aplicarVinculoDisciplina($professor, $disciplinaId);
+        }
 
         $professor->load(['disciplinasDocente', 'turmaDisciplinasDocente.turma']);
 
@@ -185,16 +206,38 @@ class ProfessorController extends Controller
         $disciplinaId = (int) $request->validated('disciplina_id');
         $disciplina = Disciplina::findOrFail($disciplinaId);
 
+        $this->aplicarVinculoDisciplina($professor, $disciplinaId);
+
+        $professor->load(['disciplinasDocente', 'turmaDisciplinasDocente.turma']);
+
+        return response()->json([
+            'message' => "Disciplina '{$disciplina->nome}' vinculada com sucesso ao professor {$professor->name}.",
+            'data' => new ProfessorResource($professor),
+        ], 200);
+    }
+
+    /**
+     * Aplica o vínculo do professor com a disciplina e propaga para as turmas dos Ciclos
+     * aos quais a disciplina pertence (ou turmas ativas se a disciplina ainda não tiver ciclo).
+     */
+    private function aplicarVinculoDisciplina(User $professor, int $disciplinaId): void
+    {
+        $disciplina = Disciplina::with('ciclos.turmas')->findOrFail($disciplinaId);
+
         // 1. Registra o vínculo direto em disciplina_professores
         $professor->disciplinasDocente()->syncWithoutDetaching([$disciplinaId]);
 
-        // 2. Propaga a regência docente para as turmas escolares onde a disciplina já existe
+        // 2. Propaga a regência docente para as turmas onde a disciplina já está alocada
         TurmaDisciplina::where('disciplina_id', $disciplinaId)
             ->update(['professor_id' => $professor->id]);
 
-        // 3. Para as turmas ativas que ainda não possuem registro nesta disciplina, cria a vinculação
-        $turmasAtivas = Turma::where('status', 'Ativa')->get();
-        foreach ($turmasAtivas as $turma) {
+        // 3. Se a disciplina pertence a Ciclos Escolares, propaga para as turmas desses Ciclos;
+        // caso contrário, propaga para todas as turmas ativas (comportamento compatível).
+        $turmasAlvo = $disciplina->ciclos->isNotEmpty()
+            ? $disciplina->ciclos->flatMap(fn ($ciclo) => $ciclo->turmas)->unique('id_turma')
+            : Turma::where('status', 'Ativa')->get();
+
+        foreach ($turmasAlvo as $turma) {
             TurmaDisciplina::firstOrCreate(
                 [
                     'turma_id' => $turma->id_turma,
@@ -205,13 +248,6 @@ class ProfessorController extends Controller
                 ]
             );
         }
-
-        $professor->load(['disciplinasDocente', 'turmaDisciplinasDocente.turma']);
-
-        return response()->json([
-            'message' => "Disciplina '{$disciplina->nome}' vinculada com sucesso ao professor {$professor->name}.",
-            'data' => new ProfessorResource($professor),
-        ], 200);
     }
 
     /**

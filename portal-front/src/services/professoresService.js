@@ -47,13 +47,19 @@ export const obterProfessor = async (professorId) => {
 };
 
 /**
- * Confirma o pertencimento do professor à Escola Sebastiana.
+ * Confirma o pertencimento do professor à Escola Sebastiana, vinculando-o às disciplinas selecionadas (Item 2.3.2).
  *
  * @param {number} professorId
+ * @param {Array<number>} disciplinaIds
  */
-export const confirmarProfessor = async (professorId) => {
+export const confirmarProfessor = async (professorId, disciplinaIds = []) => {
+  const body = Array.isArray(disciplinaIds) && disciplinaIds.length > 0
+    ? { disciplina_ids: disciplinaIds.map(Number) }
+    : undefined;
+
   const response = await api(`/professores/${professorId}/confirmar`, {
     method: "PATCH",
+    body,
   });
   const data = await response.json();
 

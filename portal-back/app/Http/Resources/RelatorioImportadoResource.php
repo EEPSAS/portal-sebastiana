@@ -42,6 +42,9 @@ class RelatorioImportadoResource extends JsonResource
             'ambiguidades' => $this->resource['ambiguidades'] ?? ($this->resource['dados']['ambiguidades'] ?? []),
             // Lista de notas divergentes detectadas em períodos anteriores
             'divergencias' => $this->resource['divergencias'] ?? ($this->resource['dados']['divergencias'] ?? []),
+            // Lista de disciplinas da planilha que requerem conciliação manual ou criação pelo Especialista (Item 3.4d)
+            'disciplinas_pendentes' => $this->resource['disciplinas_pendentes'] ?? ($this->resource['dados']['disciplinas_pendentes'] ?? []),
+            'catalogo_disciplinas' => $this->resource['catalogo_disciplinas'] ?? ($this->resource['dados']['catalogo_disciplinas'] ?? []),
             'dados' => $this->resource['dados'] ?? [],
         ];
     }

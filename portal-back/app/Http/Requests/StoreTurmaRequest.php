@@ -18,6 +18,7 @@ class StoreTurmaRequest extends FormRequest
     {
         return [
             'nome_identificador' => ['required', 'string', 'max:255'],
+            'ciclo_id' => ['nullable', 'integer', 'exists:ciclos,id_ciclo'],
             'turno' => ['required', 'string', 'in:Matutino,Vespertino,Noturno,Integral'],
             'ano_letivo' => ['required', 'integer', 'min:2000', 'max:2100'],
             'capacidade_maxima' => ['nullable', 'integer', 'min:1', 'max:100'],
@@ -34,6 +35,7 @@ class StoreTurmaRequest extends FormRequest
     {
         return [
             'nome_identificador.required' => 'O nome identificador da turma é obrigatório.',
+            'ciclo_id.exists' => 'O ciclo escolar selecionado é inválido.',
             'turno.required' => 'O turno da turma é obrigatório.',
             'turno.in' => 'O turno deve ser Matutino, Vespertino, Noturno ou Integral.',
             'ano_letivo.required' => 'O ano letivo é obrigatório.',
