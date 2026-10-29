@@ -26,8 +26,10 @@ class PlanoEstudo extends Model
     // Campos preenchíveis em massa
     protected $fillable = [
         'user_id',
+        'disciplina_id',
         'nome',
         'disciplina',
+        'conteudo',
         'descricao',
         'ativo',
     ];
@@ -50,6 +52,14 @@ class PlanoEstudo extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
+    }
+
+    /**
+     * Componente curricular oficial cadastrado no sistema vinculado a este plano.
+     */
+    public function disciplinaRelacionada(): BelongsTo
+    {
+        return $this->belongsTo(Disciplina::class, 'disciplina_id', 'id_disciplina');
     }
 
     /**

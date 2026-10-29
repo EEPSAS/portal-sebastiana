@@ -584,16 +584,22 @@ class AlunoDashboardService
      */
     protected function obterDisciplinasDaTurma(Turma $turma): array
     {
-        $disciplinasIds = Nota::where('turma_id', $turma->id_turma)
+        // Garante a herança das disciplinas do Ciclo Escolar da turma
+        $turma->herdarDisciplinasDoCiclo();
+
+        $disciplinasDaTurmaIds = $turma->disciplinas()->pluck('disciplinas.id_disciplina')->toArray();
+        $disciplinasComNotasIds = Nota::where('turma_id', $turma->id_turma)
             ->distinct()
             ->pluck('disciplina_id')
             ->toArray();
 
-        if (empty($disciplinasIds)) {
+        $todosIds = array_values(array_unique(array_merge($disciplinasDaTurmaIds, $disciplinasComNotasIds)));
+
+        if (empty($todosIds)) {
             return $turma->disciplinas()->get()->all();
         }
 
-        return Disciplina::whereIn('id_disciplina', $disciplinasIds)->get()->all();
+        return Disciplina::whereIn('id_disciplina', $todosIds)->orderBy('nome')->get()->all();
     }
 
     /**

@@ -27,7 +27,30 @@ class DisciplinaController extends Controller
     {
         Gate::authorize('viewAny', Disciplina::class);
 
+        $usuario = $request->user();
         $query = Disciplina::with(['ciclos', 'professores']);
+
+        // Isolamento de Acesso: O professor visualiza única e exclusivamente suas disciplinas lecionadas
+        if ($usuario && $usuario->isProfessor() && ! $usuario->isAdm()) {
+            $query->where(function ($q) use ($usuario) {
+                $q->whereHas('professores', fn ($sub) => $sub->where('users.id', $usuario->id))
+                    ->orWhereHas('turmaDisciplinas', fn ($sub) => $sub->where('professor_id', $usuario->id));
+            });
+        } elseif ($request->boolean('vinculadas') && $usuario && $usuario->isAluno()) {
+            // Filtro pedagógico para o estudante: disciplinas do seu ciclo ou turma ativa
+            $turmasAluno = $usuario->turmas()->wherePivot('status_matricula', 'Ativo')->get();
+            $cicloIds = $turmasAluno->pluck('ciclo_id')->filter()->unique()->all();
+            $turmaIds = $turmasAluno->pluck('id_turma')->all();
+
+            $query->where(function ($q) use ($cicloIds, $turmaIds) {
+                if (! empty($cicloIds)) {
+                    $q->whereHas('ciclos', fn ($sub) => $sub->whereIn('ciclos.id_ciclo', $cicloIds));
+                }
+                if (! empty($turmaIds)) {
+                    $q->orWhereHas('turmaDisciplinas', fn ($sub) => $sub->whereIn('turma_id', $turmaIds));
+                }
+            });
+        }
 
         // Filtra pelo nome da disciplina quando o parâmetro de busca 'q' é informado
         if ($request->filled('q')) {

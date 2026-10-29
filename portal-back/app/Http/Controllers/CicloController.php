@@ -24,19 +24,55 @@ class CicloController extends Controller
     {
         $user = $request->user();
 
-        $ciclos = Ciclo::with([
-            'disciplinas' => fn ($q) => $q->with(['ciclos', 'professores'])->orderBy('nome'),
-            'turmas' => fn ($q) => $q->orderBy('nome_identificador'),
-        ])
-            ->withCount(['disciplinas', 'turmas'])
-            ->orderBy('nome')
-            ->get();
+        // 1. Visão Isolada do Professor (Visualiza única e exclusivamente suas disciplinas e turmas vinculadas)
+        if ($user && $user->isProfessor() && ! $user->isAdm()) {
+            foreach ($user->disciplinasDocente as $discDocente) {
+                $discDocente->sincronizarComTurmasDosCiclos();
+            }
 
-        // Disciplinas que ainda não foram vinculadas a nenhum ciclo escolar
-        $disciplinasSemCiclo = Disciplina::doesntHave('ciclos')
-            ->with(['ciclos', 'professores'])
-            ->orderBy('nome')
-            ->get();
+            $disciplinaIds = $user->disciplinasDocente()->pluck('disciplinas.id_disciplina')
+                ->merge($user->turmaDisciplinasDocente()->pluck('disciplina_id'))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            $ciclos = Ciclo::whereHas('disciplinas', fn ($q) => $q->whereIn('disciplinas.id_disciplina', $disciplinaIds))
+                ->with([
+                    'disciplinas' => fn ($q) => $q->whereIn('disciplinas.id_disciplina', $disciplinaIds)
+                        ->with(['ciclos', 'professores'])
+                        ->orderBy('nome'),
+                    'turmas' => fn ($q) => $q->whereHas('turmaDisciplinas', fn ($td) => $td->where('professor_id', $user->id))
+                        ->orderBy('nome_identificador'),
+                ])
+                ->withCount([
+                    'disciplinas' => fn ($q) => $q->whereIn('disciplinas.id_disciplina', $disciplinaIds),
+                    'turmas' => fn ($q) => $q->whereHas('turmaDisciplinas', fn ($td) => $td->where('professor_id', $user->id)),
+                ])
+                ->orderBy('nome')
+                ->get();
+
+            $disciplinasSemCiclo = Disciplina::doesntHave('ciclos')
+                ->whereIn('id_disciplina', $disciplinaIds)
+                ->with(['ciclos', 'professores'])
+                ->orderBy('nome')
+                ->get();
+        } else {
+            // 2. Visão Global (Especialista e Administrador com acesso a todos os ciclos e catálogo)
+            $ciclos = Ciclo::with([
+                'disciplinas' => fn ($q) => $q->with(['ciclos', 'professores'])->orderBy('nome'),
+                'turmas' => fn ($q) => $q->orderBy('nome_identificador'),
+            ])
+                ->withCount(['disciplinas', 'turmas'])
+                ->orderBy('nome')
+                ->get();
+
+            // Disciplinas que ainda não foram vinculadas a nenhum ciclo escolar
+            $disciplinasSemCiclo = Disciplina::doesntHave('ciclos')
+                ->with(['ciclos', 'professores'])
+                ->orderBy('nome')
+                ->get();
+        }
 
         // Caso o usuário seja Aluno, identifica sua turma ativa e as disciplinas que ele cursa
         $minhaTurma = null;
@@ -117,4 +153,3 @@ class CicloController extends Controller
         return response()->json(null, 204);
     }
 }
-

@@ -23,6 +23,10 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'role' => UserRole::ALUNO,
             'role_id' => null,
+            'status_confirmacao' => 'confirmado',
+            'confirmado_em' => now(),
+            'autorizado_por_id' => null,
+            'comentario_admin' => 'Vínculo escolar canônico',
             'ativo' => true,
             'remember_token' => Str::random(10),
         ];
@@ -114,6 +118,36 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'ativo' => false,
+        ]);
+    }
+
+    // Alias semântico para usuário inativo
+    public function inativo(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'ativo' => false,
+        ]);
+    }
+
+    // Estado para usuário aguardando aprovação de login (Diretriz 2)
+    public function pendente(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status_confirmacao' => 'pendente',
+            'confirmado_em' => null,
+            'autorizado_por_id' => null,
+            'comentario_admin' => null,
+        ]);
+    }
+
+    // Estado para usuário formalmente homologado/vinculado
+    public function confirmado(?int $autorizadoPorId = null, ?string $comentario = 'Vínculo homologado'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status_confirmacao' => 'confirmado',
+            'confirmado_em' => now(),
+            'autorizado_por_id' => $autorizadoPorId,
+            'comentario_admin' => $comentario,
         ]);
     }
 }

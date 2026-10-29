@@ -131,9 +131,13 @@ const TurmasAba = ({
       {/* 1. Cabeçalho da Seção com Ação de Nova Turma */}
       <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-3">
         <div>
-          <h4 className="fw-bold mb-1 text-dark fs-5">Quadro de Turmas</h4>
+          <h4 className="fw-bold mb-1 text-dark fs-5">
+            {role === "professor" ? "Quadro de Alunos por Turma" : "Quadro de Turmas"}
+          </h4>
           <p className="text-muted mb-0 small">
-            Gerenciamento de turmas, edição cadastral e vinculação de estudantes.
+            {role === "professor"
+              ? "Consulte os estudantes matriculados e acompanhe a enturmação sob sua regência."
+              : "Gerenciamento de turmas, edição cadastral e vinculação de estudantes."}
           </p>
         </div>
 
@@ -227,11 +231,17 @@ const TurmasAba = ({
         <div className="text-center py-5 border rounded-4 bg-light mb-5">
           <i className="bi bi-collection fs-1 text-muted d-block mb-2"></i>
           <h6 className="fw-bold text-dark mb-1">
-            {turmas.length === 0 ? "Nenhuma turma cadastrada" : "Nenhuma turma corresponde aos filtros"}
+            {turmas.length === 0
+              ? role === "professor"
+                ? "Nenhuma turma vinculada"
+                : "Nenhuma turma cadastrada"
+              : "Nenhuma turma corresponde aos filtros"}
           </h6>
           <p className="text-muted small mb-3">
             {turmas.length === 0
-              ? "Comece cadastrando a primeira turma escolar para matricular estudantes e lançar notas."
+              ? role === "professor"
+                ? "Você ainda não possui turmas atribuídas ao seu perfil docente. Solicite ao Especialista a vinculação de suas disciplinas e turmas."
+                : "Comece cadastrando a primeira turma escolar para matricular estudantes e lançar notas."
               : "Tente redefinir os filtros de ano letivo ou turno para visualizar as turmas."}
           </p>
 

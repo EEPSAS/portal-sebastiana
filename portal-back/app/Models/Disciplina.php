@@ -42,15 +42,21 @@ class Disciplina extends Model
             $aulasInformadas = $disciplina->getAttribute('aulas_semanais');
             $cargaInformada = $disciplina->getAttribute('carga_horaria_anual');
 
-            if ($disciplina->isDirty('aulas_semanais') && $aulasInformadas !== null) {
+            if ($disciplina->isDirty('aulas_semanais') && ! $disciplina->isDirty('carga_horaria_anual') && $aulasInformadas !== null) {
                 $disciplina->aulas_semanais = max(1, (int) $aulasInformadas);
                 $disciplina->carga_horaria_anual = $disciplina->aulas_semanais * 40;
-            } elseif ($cargaInformada !== null && (! $disciplina->isDirty('aulas_semanais'))) {
-                $disciplina->carga_horaria_anual = max(40, (int) $cargaInformada);
+            } elseif ($disciplina->isDirty('carga_horaria_anual') && ! $disciplina->isDirty('aulas_semanais') && $cargaInformada !== null) {
+                $disciplina->carga_horaria_anual = (int) $cargaInformada;
                 $disciplina->aulas_semanais = max(1, (int) round($disciplina->carga_horaria_anual / 40));
+            } elseif ($aulasInformadas !== null && $cargaInformada !== null) {
+                $disciplina->aulas_semanais = max(1, (int) $aulasInformadas);
+                $disciplina->carga_horaria_anual = (int) $cargaInformada;
             } elseif ($aulasInformadas !== null) {
                 $disciplina->aulas_semanais = max(1, (int) $aulasInformadas);
                 $disciplina->carga_horaria_anual = $disciplina->aulas_semanais * 40;
+            } elseif ($cargaInformada !== null) {
+                $disciplina->carga_horaria_anual = (int) $cargaInformada;
+                $disciplina->aulas_semanais = max(1, (int) round($disciplina->carga_horaria_anual / 40));
             } else {
                 $disciplina->aulas_semanais = 2;
                 $disciplina->carga_horaria_anual = 80;

@@ -8,6 +8,7 @@
  */
 
 import { useState } from "react";
+import { formatarDisciplinaCiclo } from "../../../utils/formatters";
 
 const ModalVincularDisciplina = ({
   professor,
@@ -109,7 +110,7 @@ const ModalVincularDisciplina = ({
                     className="list-group-item d-flex align-items-center justify-content-between py-2 px-3"
                   >
                     <div>
-                      <span className="fw-semibold text-dark">{disc.nome}</span>
+                      <span className="fw-semibold text-dark">{formatarDisciplinaCiclo(disc)}</span>
                       {disc.carga_horaria_anual && (
                         <span className="text-muted small ms-2">
                           ({disc.carga_horaria_anual}h anuais)
@@ -156,7 +157,7 @@ const ModalVincularDisciplina = ({
                   </option>
                   {disciplinasDisponiveis.map((disc) => (
                     <option key={disc.id_disciplina} value={disc.id_disciplina}>
-                      {disc.nome}
+                      {formatarDisciplinaCiclo(disc)}
                     </option>
                   ))}
                 </select>

@@ -23,6 +23,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../../../hooks/useAuth';
 import { gerarHorario, listarHorarios, moverAula } from '../../../services/horariosService';
+import { formatarDisciplinaCiclo } from '../../../utils/formatters';
 import './HorariosEscolares.css';
 
 const DIAS = [
@@ -61,7 +62,7 @@ const AulaDraggableCard = ({ aula, habilitado }) => {
         habilitado ? 'horario-aula-draggable' : ''
       }`}
     >
-      <span className="d-block fw-semibold text-dark">{aula.disciplina?.nome}</span>
+      <span className="d-block fw-semibold text-dark">{formatarDisciplinaCiclo(aula.disciplina)}</span>
       <span className="d-block small text-muted">{aula.professor?.name}</span>
       {aulasSemanais && (
         <span
@@ -388,7 +389,7 @@ const HorariosEscolares = () => {
                   key={disc.id_disciplina}
                   className="badge bg-white text-dark border rounded-pill px-3 py-1 fw-normal"
                 >
-                  <strong className="text-primary">{disc.nome}:</strong> {disc.alocadas} aula(s)/sem
+                  <strong className="text-primary">{formatarDisciplinaCiclo(disc)}:</strong> {disc.alocadas} aula(s)/sem
                   {disc.carga_horaria_anual ? ` (${disc.carga_horaria_anual}h/ano)` : ''}
                 </span>
               ))}

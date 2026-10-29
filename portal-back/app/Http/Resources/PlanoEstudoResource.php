@@ -47,7 +47,9 @@ class PlanoEstudoResource extends JsonResource
             'eh_proprietario' => $ehProprietario,
             'compartilhado_por_professor' => $usuarioAtual ? ($this->user_id !== $usuarioAtual->id) : false,
             'nome' => $this->nome,
+            'disciplina_id' => $this->disciplina_id ? (int) $this->disciplina_id : null,
             'disciplina' => $this->disciplina,
+            'conteudo' => $this->conteudo,
             'descricao' => $this->descricao,
             'ativo' => (bool) $this->ativo,
             // Contadores reais exigidos no requisito da integração

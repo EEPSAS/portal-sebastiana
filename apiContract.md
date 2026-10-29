@@ -195,18 +195,18 @@ Enquanto a rota não estiver pronta, o frontend apresenta dados demonstrativos a
 * **Integração com Planos de Estudos**: Permite acessar cada resultado encontrado e salvá-lo no plano de estudos do usuário (`tipo: 'conteudo_web'`, `conteudo_id`, `titulo`, `url`, `fonte`, `descricao`, `thumbnail`).
 
 #### 3.4 Planos de Estudos (Integração da Biblioteca e Compartilhamento por Turma)
-*Trilhas de estudo personalizadas agrupando livros do acervo, videoaulas do YouTube e conteúdos didáticos web. O aluno visualiza apenas seus próprios planos e os planos compartilhados pelos professores para sua turma ativa; somente o professor (ou adm) pode compartilhar planos com turmas do 1º, 2º ou 3º ano.*
+*Trilhas de estudo personalizadas agrupando livros do acervo, videoaulas do YouTube e conteúdos didáticos web. O aluno visualiza apenas seus próprios planos e os planos compartilhados pelos professores para sua turma ativa; somente o professor (ou adm) pode compartilhar planos com turmas vinculadas às suas disciplinas.*
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front (`src/services/biblioteca/planosService.js`) | Descrição |
 |---|---|---|---|---|---|---|
 | `GET` | `/api/planos-estudos` | Logado | N/A | `PlanoEstudoResource` (Coleção) | `planosService.listar()` | Lista os planos do usuário (e planos compartilhados com a turma ativa do aluno) |
-| `POST` | `/api/planos-estudos` | Logado | `StorePlanoEstudoRequest` | `PlanoEstudoResource` | `planosService.criar()` | Cria um novo plano de estudos |
+| `POST` | `/api/planos-estudos` | Logado | `StorePlanoEstudoRequest` | `PlanoEstudoResource` | `planosService.criar()` | Cria um novo plano de estudos (`nome`, `disciplina_id`, `disciplina`, `conteudo`) |
 | `GET` | `/api/planos-estudos/{id}` | Logado (Dono / Aluno da Turma / Adm) | N/A | `PlanoEstudoResource` | `planosService.obterPorId()` | Detalhes do plano completo com itens aninhados |
 | `DELETE` | `/api/planos-estudos/{id}` | Logado (Dono/Adm) | N/A | Mensagem 200 | `planosService.excluir()` | Remove o plano (itens associados em cascata) |
 | `POST` | `/api/planos-estudos/{id}/itens` | Logado (Dono/Adm) | `StorePlanoEstudoItemRequest` | `PlanoEstudoItemResource` | `planosService.adicionarItem()` | Adiciona conteúdo ao plano (com prevenção de duplicata) |
 | `DELETE` | `/api/planos-estudos/{id}/itens/{item_id}` | Logado (Dono/Adm) | N/A | Mensagem 200 | `planosService.removerItem()` | Remove o conteúdo do plano (preserva fonte original) |
-| `GET` | `/api/me/turmas-lecionadas` | Professor / Adm | N/A | `TurmaResource` (Coleção) | `planosService.listarTurmasLecionadas()` | Lista turmas vinculadas ao professor (com suporte a busca `?q=`) |
-| `POST` | `/api/planos-estudos/{id}/compartilhar` | Professor (Dono) / Adm | `CompartilharPlanoEstudoRequest` | `PlanoEstudoResource` | `planosService.compartilhar()` | Compartilha (sincroniza) o plano com turmas de 1º, 2º ou 3º ano (`turma_ids`) |
+| `GET` | `/api/planos-estudos/turmas-lecionadas` | Professor / Adm | N/A | `TurmaResource` (Coleção) | `planosService.listarTurmasLecionadas()` | Lista turmas vinculadas ao professor (com suporte a busca `?q=` e filtro `?disciplina_id=`) |
+| `POST` / `PUT` | `/api/planos-estudos/{id}/compartilhar` | Professor (Dono) / Adm | `CompartilharPlanoEstudoRequest` | `PlanoEstudoResource` | `planosService.compartilhar()` | Compartilha o plano exclusivamente com as turmas lecionadas pelo professor (`turma_ids`) |
 
 ---
 
@@ -288,16 +288,16 @@ As respostas seguem a configuração global `JsonResource::withoutWrapping()`: o
 | `PATCH` | `/api/professores/{professor}/recusar` | Especialista / Adm | N/A | `UsuarioResource` | `professoresService.recusarProfessor()` | Recusa a solicitação docente, revertendo o papel para `aluno` |
 | `POST` | `/api/professores/{professor}/vincular-disciplina` | Especialista / Adm | `VincularProfessorDisciplinaRequest` | `ProfessorResource` | `professoresService.vincularDisciplinaProfessor()` | Vincula disciplina (existente ou recém-criada) ao professor confirmado |
 | `DELETE` | `/api/professores/{professor}/desvincular-disciplina/{disciplina}` | Especialista / Adm | N/A | `ProfessorResource` | `professoresService.desvincularDisciplinaProfessor()` | Remove o vínculo de regência entre o professor e a disciplina |
-| `GET` | `/api/ciclos` | Aluno / Prof / Esp / Adm | N/A | `CicloResource` (Coleção + `disciplinas_sem_ciclo`) | `disciplinasService.listarDisciplinasPorCiclo()` | Lista todos os Ciclos Escolares (`1º Ano`, `2º Ano`, `3º Ano`) com suas disciplinas agrupadas, professores e turmas |
+| `GET` | `/api/ciclos` | Aluno / Prof / Esp / Adm | N/A | `CicloResource` (Coleção + `disciplinas_sem_ciclo`) | `disciplinasService.listarDisciplinasPorCiclo()` | Especialista/Adm: lista todos os Ciclos Escolares com disciplinas e turmas completas. Professor: lista estritamente os ciclos, turmas e disciplinas sob sua regência docente. |
 | `POST` | `/api/ciclos` | Especialista / Adm | `StoreCicloRequest` | `CicloResource` | `disciplinasService.criarCiclo()` | Cria um novo Ciclo Escolar |
 | `PUT` | `/api/ciclos/{ciclo}` | Especialista / Adm | `StoreCicloRequest` | `CicloResource` | `disciplinasService.atualizarCiclo()` | Atualiza um Ciclo Escolar |
 | `DELETE` | `/api/ciclos/{ciclo}` | Especialista / Adm | N/A | Sem conteúdo (`204`) | `disciplinasService.excluirCiclo()` | Remove um Ciclo Escolar |
-| `GET` | `/api/disciplinas` | Aluno / Prof / Esp / Adm | N/A | `DisciplinaResource` (Coleção) | `disciplinasService.listarDisciplinas()` | Lista disciplinas com `aulas_semanais`, `carga_horaria_anual` (`aulas_semanais * 40`), `ementa`, `habilidades_bncc`, `objetivo_geral`, `objetivo_especifico` e `ciclos` |
+| `GET` | `/api/disciplinas` | Aluno / Prof / Esp / Adm | N/A | `DisciplinaResource` (Coleção) | `disciplinasService.listarDisciplinas()` | Lista disciplinas curriculares (para Professor: restrito às matérias sob sua regência; para Aluno: filtrado por ?vinculadas=1) |
 | `POST` | `/api/disciplinas` | Especialista / Adm | `StoreDisciplinaRequest` | `DisciplinaResource` | `disciplinasService.criarDisciplina()` | Cadastra disciplina vinculando a ciclos existentes (`ciclo_ids`) e/ou criando novo ciclo (`novo_ciclo_nome`) |
 | `PUT` | `/api/disciplinas/{disciplina}` | Especialista / Adm | `UpdateDisciplinaRequest` | `DisciplinaResource` | `disciplinasService.atualizarDisciplina()` | Atualiza disciplina, recalcula carga anual (40 semanas) e propaga herança para as turmas dos ciclos |
 | `DELETE` | `/api/disciplinas/{disciplina}` | Especialista / Adm | N/A | Sem conteúdo (`204`) | `disciplinasService.excluirDisciplina()` | Remove disciplina do catálogo |
 
-> **Regra de Escopo:** O Professor possui acesso **estritamente consultivo** aos dados da turma e dos alunos. Não há telas nem rotas para cadastro diário de tarefas ou chamada manual. A criação de turmas e a vinculação de alunos são privativas do Especialista e Administrador. A importação de CSV não realiza auto-cadastro de novos alunos nem cria matrículas avulsas.
+> **Regra de Escopo:** O Professor possui acesso **estritamente consultivo e isolado** aos dados das suas turmas e dos seus alunos (rotulada no frontend como **"Minhas Turmas"**). No módulo acadêmico, o professor visualiza única e exclusivamente as turmas e disciplinas a ele vinculadas, sem botões de criação, edição ou exclusão. Não há telas nem rotas para cadastro diário de tarefas ou chamada manual. A criação de turmas e a vinculação de alunos são privativas do Especialista e Administrador. A importação de CSV é privativa do Especialista. No frontend, as disciplinas exibem obrigatoriamente a concatenação **`NOME + CICLO`**.
 
 ---
 

@@ -55,8 +55,17 @@ const Turmas = () => {
   const podeGerenciar = role === "especialista" || role === "adm";
   const podeCriarNotificacao = ["professor", "especialista", "adm", "admin"].includes(role);
 
-  // Estados de navegação
-  const [abaAtiva, setAbaAtiva] = useState("geral");
+  // Abas dinâmicas conforme o perfil: o professor não precisa de 'Visão Geral' (já disponível no dashboard principal)
+  const abasDisponiveis =
+    role === "professor"
+      ? [
+          { id: "turmas", label: "Quadro de Turmas e Alunos" },
+          { id: "notas", label: "Notas e Diário Escolar" },
+        ]
+      : ABAS;
+
+  // Estados de navegação (inicia em 'turmas' para o professor e em 'geral' para gestão)
+  const [abaAtiva, setAbaAtiva] = useState(() => (role === "professor" ? "turmas" : "geral"));
 
   // Dados centrais
   const [turmas, setTurmas] = useState([]);
@@ -456,9 +465,13 @@ const Turmas = () => {
         <header className="mb-4">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
-              <h2 className="fw-bold mb-1 text-primary fs-4 turmas-header-titulo">Gestão de Turmas</h2>
+              <h2 className="fw-bold mb-1 text-primary fs-4 turmas-header-titulo">
+                {role === "professor" ? "Minhas Turmas" : "Gestão de Turmas"}
+              </h2>
               <p className="text-muted mb-0 small">
-                Acompanhamento analítico, enturmação de estudantes e diários escolares consolidados.
+                {role === "professor"
+                  ? "Consulte os alunos matriculados, frequências e notas das turmas sob sua regência."
+                  : "Acompanhamento analítico, enturmação de estudantes e diários escolares consolidados."}
               </p>
               {/* Linha divisória curta: só aparece no tema de gestão (CSS oculta nos demais) */}
               {podeGerenciar && <span className="turmas-header-divisor" aria-hidden="true" />}
@@ -487,7 +500,7 @@ const Turmas = () => {
 
           {/* Menu de Navegação em Abas (Idêntico ao da Biblioteca) */}
           <nav className="d-flex gap-4 border-bottom pb-2" aria-label="Abas de Turmas">
-            {ABAS.map((aba) => (
+            {abasDisponiveis.map((aba) => (
               <button
                 key={aba.id}
                 type="button"
@@ -501,7 +514,7 @@ const Turmas = () => {
         </header>
 
         {/* 1. Conteúdo da Aba Geral: Indicadores e Gráficos */}
-        {abaAtiva === "geral" && (
+        {abaAtiva === "geral" && role !== "professor" && (
           <GeralAba
             resumoGeral={resumoGeral}
             totalMatriculados={matriculas.length}

@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
+import { formatarDisciplinaCiclo } from "../../utils/formatters";
 import {
   listarDisciplinasPorCiclo,
   criarCiclo,
@@ -222,17 +223,18 @@ const DisciplinasPage = () => {
         String(d.habilidades_bncc || "").toLowerCase().includes(termoFiltro)
     );
 
-  // Renderizador de Card de Disciplina
-  const renderCardDisciplina = (disc) => {
+  // Renderizador de Card de Disciplina com rótulo no formato NOME + CICLO
+  const renderCardDisciplina = (disc, cicloContextual = null) => {
     const aulasSem = disc.aulas_semanais || Math.max(1, Math.round((disc.carga_horaria_anual || 160) / 40));
     const totalAulas = disc.total_aulas_anuais || disc.carga_horaria_anual || aulasSem * 40;
+    const nomeComCiclo = formatarDisciplinaCiclo(disc, cicloContextual);
 
     return (
       <div className="col-12 col-md-6 col-xl-4" key={disc.id_disciplina}>
         <div className="card h-100 border rounded-4 shadow-sm p-3 bg-white d-flex flex-column justify-content-between">
           <div>
             <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
-              <h3 className="h6 fw-bold text-dark mb-0">{disc.nome}</h3>
+              <h3 className="h6 fw-bold text-dark mb-0">{nomeComCiclo}</h3>
               <span className="badge bg-primary-subtle text-primary rounded-pill text-nowrap">
                 {aulasSem} aula(s)/sem • {totalAulas} aulas/ano
               </span>
@@ -338,6 +340,8 @@ const DisciplinasPage = () => {
             <p className="text-muted small mb-0">
               {podeGerenciar
                 ? "Organize as disciplinas por Ciclos (1º Ano, 2º Ano, 3º Ano), defina aulas semanais (base de 40 semanas letivas), ementa e BNCC."
+                : role === "professor"
+                ? "Consulte as disciplinas sob sua regência, carga horária anual, ementas, habilidades da BNCC e objetivos pedagógicos."
                 : "Consulte as disciplinas do seu ciclo escolar, carga horária anual, ementas, habilidades da BNCC e objetivos pedagógicos."}
             </p>
           </div>
@@ -459,7 +463,7 @@ const DisciplinasPage = () => {
                     </div>
                   ) : (
                     <div className="row g-3">
-                      {disciplinasFiltradas.map((disc) => renderCardDisciplina(disc))}
+                      {disciplinasFiltradas.map((disc) => renderCardDisciplina(disc, ciclo))}
                     </div>
                   )}
                 </section>
@@ -728,7 +732,7 @@ const DisciplinasPage = () => {
               <div className="modal-header border-bottom-0 pb-0">
                 <div>
                   <h2 className="modal-title h5 fw-bold text-primary mb-1">
-                    {disciplinaDetalhe.nome}
+                    {formatarDisciplinaCiclo(disciplinaDetalhe)}
                   </h2>
                   <span className="badge bg-primary-subtle text-primary rounded-pill">
                     {disciplinaDetalhe.aulas_semanais || 4} aulas semanais •{" "}

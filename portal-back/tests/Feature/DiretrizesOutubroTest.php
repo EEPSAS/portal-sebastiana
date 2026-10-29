@@ -232,3 +232,190 @@ test('diretriz 3: disciplinas por ciclos calculam carga anual (40 semanas), prop
         ->and($novaDisc->aulas_semanais)->toBe(2)
         ->and($novaDisc->carga_horaria_anual)->toBe(80);
 });
+
+test('integracao entre modulos: planos de estudos filtram disciplinas vinculadas, salvam conteudo e restringem compartilhamento por turmas do professor', function () {
+    $ciclo1 = Ciclo::create(['nome' => '1º Ano Médio']);
+    $ciclo2 = Ciclo::create(['nome' => '2º Ano Médio']);
+
+    $turma1 = Turma::create([
+        'nome_identificador' => 'Turma 101',
+        'ciclo_id' => $ciclo1->id_ciclo,
+        'turno' => 'Matutino',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+
+    $turma2 = Turma::create([
+        'nome_identificador' => 'Turma 201',
+        'ciclo_id' => $ciclo2->id_ciclo,
+        'turno' => 'Vespertino',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+
+    $discMat = Disciplina::create([
+        'nome' => 'Matemática Avançada',
+        'aulas_semanais' => 3,
+    ]);
+    $discMat->ciclos()->sync([$ciclo1->id_ciclo]);
+
+    $discHist = Disciplina::create([
+        'nome' => 'História Contemporânea',
+        'aulas_semanais' => 2,
+    ]);
+    $discHist->ciclos()->sync([$ciclo2->id_ciclo]);
+
+    $profCarlos = User::factory()->create([
+        'name' => 'Prof. Carlos',
+        'role' => UserRole::PROFESSOR,
+        'status_confirmacao' => 'confirmado',
+    ]);
+    $profCarlos->disciplinasDocente()->sync([$discMat->id_disciplina]);
+
+    $profMarina = User::factory()->create([
+        'name' => 'Profa. Marina',
+        'role' => UserRole::PROFESSOR,
+        'status_confirmacao' => 'confirmado',
+    ]);
+    $profMarina->disciplinasDocente()->sync([$discHist->id_disciplina]);
+
+    $discMat->sincronizarComTurmasDosCiclos();
+    $discHist->sincronizarComTurmasDosCiclos();
+
+    Sanctum::actingAs($profCarlos);
+
+    // 1. GET /api/disciplinas?vinculadas=1 retorna apenas as disciplinas do professor
+    $resDisc = $this->getJson('/api/disciplinas?vinculadas=1');
+    $resDisc->assertOk();
+    $ids = collect($resDisc->json())->pluck('id_disciplina')->all();
+    expect($ids)->toContain($discMat->id_disciplina)
+        ->and($ids)->not->toContain($discHist->id_disciplina);
+
+    // 2. POST /api/planos-estudos com disciplina_id e conteudo (upgrade)
+    $resPlano = $this->postJson('/api/planos-estudos', [
+        'nome' => 'Trilha Especial de Funções',
+        'disciplina_id' => $discMat->id_disciplina,
+        'conteudo' => 'Informática e Modelagem Matemática',
+        'descricao' => 'Plano focado em funções e algoritmos.',
+    ]);
+    $resPlano->assertCreated()
+        ->assertJsonPath('nome', 'Trilha Especial de Funções')
+        ->assertJsonPath('disciplina_id', $discMat->id_disciplina)
+        ->assertJsonPath('disciplina', 'Matemática Avançada')
+        ->assertJsonPath('conteudo', 'Informática e Modelagem Matemática');
+
+    $planoId = $resPlano->json('id');
+
+    // 3. GET /api/planos-estudos/turmas-lecionadas retorna apenas as turmas do professor Carlos (Turma 101)
+    $resTurmasProf = $this->getJson('/api/planos-estudos/turmas-lecionadas');
+    $resTurmasProf->assertOk();
+    $turmasArray = $resTurmasProf->json('data') ?? $resTurmasProf->json();
+    $turmaIdsProf = collect($turmasArray)->pluck('id_turma')->all();
+    expect($turmaIdsProf)->toContain($turma1->id_turma)
+        ->and($turmaIdsProf)->not->toContain($turma2->id_turma);
+
+    // 4. Compartilhar com turma onde o professor NÃO leciona deve ser rejeitado com 422
+    $resInvalido = $this->putJson("/api/planos-estudos/{$planoId}/compartilhar", [
+        'turma_ids' => [$turma2->id_turma],
+    ]);
+    $resInvalido->assertStatus(422)
+        ->assertJsonValidationErrors(['turma_ids']);
+
+    // 5. Compartilhar com sua turma vinculada (Turma 101) deve ser aprovado com 200
+    $resValido = $this->putJson("/api/planos-estudos/{$planoId}/compartilhar", [
+        'turma_ids' => [$turma1->id_turma],
+    ]);
+    $resValido->assertOk()
+        ->assertJsonPath('turma_ids.0', $turma1->id_turma);
+
+    // 6. GET /api/turmas na visão do professor retorna apenas a Turma 101
+    $resTurmas = $this->getJson('/api/turmas');
+    $resTurmas->assertOk();
+    $turmasVisiveis = collect($resTurmas->json())->pluck('id_turma')->all();
+    expect($turmasVisiveis)->toContain($turma1->id_turma)
+        ->and($turmasVisiveis)->not->toContain($turma2->id_turma);
+});
+
+test('separacao de jornadas e isolamento estrito entre especialista e professor', function () {
+    $ciclo1 = Ciclo::firstOrCreate(['nome' => '1º Ano EM']);
+    $ciclo2 = Ciclo::firstOrCreate(['nome' => '2º Ano EM']);
+
+    $turma1 = Turma::create([
+        'nome_identificador' => '1º Ano A',
+        'ciclo_id' => $ciclo1->id_ciclo,
+        'turno' => 'Matutino',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+
+    $turma2 = Turma::create([
+        'nome_identificador' => '2º Ano A',
+        'ciclo_id' => $ciclo2->id_ciclo,
+        'turno' => 'Matutino',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+
+    $discQuimica = Disciplina::create([
+        'nome' => 'Química Orgânica',
+        'aulas_semanais' => 2,
+    ]);
+    $discQuimica->ciclos()->sync([$ciclo1->id_ciclo]);
+
+    $discBiologia = Disciplina::create([
+        'nome' => 'Biologia Celular',
+        'aulas_semanais' => 2,
+    ]);
+    $discBiologia->ciclos()->sync([$ciclo2->id_ciclo]);
+
+    $profQuimica = User::factory()->create([
+        'name' => 'Prof. Walter',
+        'email' => 'walter.quimica@educacao.mg.gov.br',
+        'role' => UserRole::PROFESSOR,
+        'status_confirmacao' => 'confirmado',
+    ]);
+    $profQuimica->disciplinasDocente()->sync([$discQuimica->id_disciplina]);
+
+    $especialista = User::factory()->create([
+        'name' => 'Especialista Mariana',
+        'email' => 'mariana.esp@sebastiana.edu.br',
+        'role' => UserRole::ESPECIALISTA,
+        'status_confirmacao' => 'confirmado',
+    ]);
+
+    $discQuimica->sincronizarComTurmasDosCiclos();
+    $discBiologia->sincronizarComTurmasDosCiclos();
+
+    // 1. Visão do Professor: /api/ciclos retorna estritamente os ciclos e disciplinas sob sua regência
+    Sanctum::actingAs($profQuimica);
+    $resCiclosProf = $this->getJson('/api/ciclos');
+    $resCiclosProf->assertOk();
+    $ciclosData = $resCiclosProf->json('data') ?? [];
+    $cicloNomes = collect($ciclosData)->pluck('nome')->all();
+
+    expect($cicloNomes)->toContain('1º Ano EM')
+        ->and($cicloNomes)->not->toContain('2º Ano EM');
+
+    // 2. Visão do Professor: /api/disciplinas (sem parâmetros) retorna apenas Química Orgânica
+    $resDiscProf = $this->getJson('/api/disciplinas');
+    $resDiscProf->assertOk();
+    $discIdsProf = collect($resDiscProf->json())->pluck('id_disciplina')->all();
+    expect($discIdsProf)->toContain($discQuimica->id_disciplina)
+        ->and($discIdsProf)->not->toContain($discBiologia->id_disciplina);
+
+    // 3. Segurança de Turma: Professor não pode visualizar notas de turma que não leciona (Turma 2) -> 403 Forbidden
+    $resNotasProibidas = $this->getJson("/api/turmas/{$turma2->id_turma}/notas");
+    $resNotasProibidas->assertForbidden();
+
+    // 4. Segurança de Turma: Professor pode visualizar notas da turma onde leciona (Turma 1) -> 200 OK
+    $resNotasPermitidas = $this->getJson("/api/turmas/{$turma1->id_turma}/notas");
+    $resNotasPermitidas->assertOk();
+
+    // 5. Visão do Especialista: Acesso integral a todos os ciclos e disciplinas
+    Sanctum::actingAs($especialista);
+    $resCiclosEsp = $this->getJson('/api/ciclos');
+    $resCiclosEsp->assertOk();
+    $todosCiclosNomes = collect($resCiclosEsp->json('data'))->pluck('nome')->all();
+    expect($todosCiclosNomes)->toContain('1º Ano EM')
+        ->and($todosCiclosNomes)->toContain('2º Ano EM');
+});

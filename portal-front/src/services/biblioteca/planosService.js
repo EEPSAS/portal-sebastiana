@@ -101,12 +101,17 @@ export const planosService = {
 
   /**
    * Lista as turmas vinculadas ao professor autenticado (1º, 2º ou 3º ano),
-   * permitindo filtragem por termo de busca textual.
+   * permitindo filtragem por termo de busca textual e por disciplina_id.
    */
-  async listarTurmasLecionadas(termoBusca = '', signal) {
-    const query = termoBusca.trim()
-      ? `?q=${encodeURIComponent(termoBusca.trim())}`
-      : '';
+  async listarTurmasLecionadas(filtro = '', signal) {
+    const params = new URLSearchParams();
+    if (typeof filtro === 'string') {
+      if (filtro.trim()) params.set('q', filtro.trim());
+    } else if (typeof filtro === 'object' && filtro !== null) {
+      if (filtro.q?.trim()) params.set('q', filtro.q.trim());
+      if (filtro.disciplina_id) params.set('disciplina_id', filtro.disciplina_id);
+    }
+    const query = params.toString() ? `?${params.toString()}` : '';
     const res = await api(`/me/turmas-lecionadas${query}`, { signal });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

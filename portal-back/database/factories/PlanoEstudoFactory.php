@@ -25,8 +25,10 @@ class PlanoEstudoFactory extends Factory
         return [
             // Vincula o plano a um usuário criado via factory
             'user_id' => User::factory(),
+            'disciplina_id' => null,
             'nome' => 'Plano de Estudos '.fake()->words(2, true),
             'disciplina' => fake()->randomElement(['Matemática', 'Português', 'Física', 'História', 'Biologia']),
+            'conteudo' => fake()->randomElement(['Informática Básica', 'Inglês Instrumental', 'Álgebra e Funções', 'Gramática e Redação']),
             'descricao' => fake()->sentence(6),
             'ativo' => true,
         ];

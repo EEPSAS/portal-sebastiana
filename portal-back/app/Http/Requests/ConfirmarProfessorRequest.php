@@ -34,4 +34,3 @@ class ConfirmarProfessorRequest extends FormRequest
         ];
     }
 }
-

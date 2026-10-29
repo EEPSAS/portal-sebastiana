@@ -13,6 +13,7 @@
 
 import { useState } from "react";
 import { importarNotasCSV } from "../../../services/turmasService";
+import { formatarDisciplinaCiclo } from "../../../utils/formatters";
 
 const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
   const [arquivo, setArquivo] = useState(null);
@@ -611,7 +612,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                             <option value="">Selecione uma disciplina...</option>
                             {disciplinasCatalogo.map((d) => (
                               <option key={d.id_disciplina} value={d.id_disciplina}>
-                                {d.nome} ({d.aulas_semanais || 4} aulas/sem)
+                                {formatarDisciplinaCiclo(d)} ({d.aulas_semanais || 4} aulas/sem)
                               </option>
                             ))}
                           </select>

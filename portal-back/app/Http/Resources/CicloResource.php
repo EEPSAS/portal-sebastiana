@@ -52,4 +52,3 @@ class CicloResource extends JsonResource
         ];
     }
 }
-

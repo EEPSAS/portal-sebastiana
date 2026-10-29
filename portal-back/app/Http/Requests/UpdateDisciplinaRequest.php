@@ -42,4 +42,3 @@ class UpdateDisciplinaRequest extends FormRequest
         ];
     }
 }
-

@@ -28,7 +28,7 @@ class ProfessorResource extends JsonResource
 
         // Extrai as turmas onde as disciplinas atribuídas ao docente estão presentes
         $disciplinasIds = $disciplinas->pluck('id_disciplina');
-        
+
         $turmasDisciplinas = $this->relationLoaded('turmaDisciplinasDocente')
             ? $this->turmaDisciplinasDocente
             : $this->turmaDisciplinasDocente()->with('turma')->get();

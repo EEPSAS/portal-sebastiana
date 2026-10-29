@@ -1,3 +1,5 @@
+import { formatarDisciplinaCiclo } from "../../../utils/formatters";
+
 /**
  * NotasAba.jsx - Gestão e Consulta de Notas e Diário Escolar por Turma
  *
@@ -340,7 +342,7 @@ const NotasAba = ({
                       </td>
                       <td>
                         <span className="badge bg-light text-dark border fw-semibold">
-                          {nota.disciplina?.nome || "Geral"}
+                          {formatarDisciplinaCiclo(nota.disciplina, turmaSelecionada?.ciclo || turmaSelecionada?.ciclo_nome) || "Geral"}
                         </span>
                       </td>
                       <td>

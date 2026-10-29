@@ -3,8 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\Biblioteca;
+use App\Models\Disciplina;
 use App\Models\Emprestimo;
 use App\Models\Livro;
+use App\Models\PlanoEstudo;
+use App\Models\PlanoEstudoItem;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -206,6 +209,42 @@ class BibliotecaSeeder extends Seeder
                     'observacoes' => 'Solicitação via portal web.',
                 ]
             );
+        }
+
+        // Criar Planos de Estudos canônicos dos professores com disciplina_id e conteudo
+        $profCarlos = User::where('email', 'carlos.silva@sebastiana.edu.br')->first();
+        $discMat = Disciplina::where('nome', 'Matemática')->first();
+
+        if ($profCarlos) {
+            $planoMat = PlanoEstudo::updateOrCreate(
+                [
+                    'user_id' => $profCarlos->id,
+                    'nome' => 'Trilha de Matemática para o ENEM',
+                ],
+                [
+                    'disciplina_id' => $discMat?->id_disciplina,
+                    'disciplina' => 'Matemática',
+                    'conteudo' => 'Álgebra e Funções',
+                    'descricao' => 'Seleção de videoaulas, livros e exercícios sobre funções do 1º e 2º graus.',
+                    'ativo' => true,
+                ]
+            );
+
+            // Adiciona item de livro se existir
+            if (count($livrosCriados) > 4) {
+                PlanoEstudoItem::firstOrCreate(
+                    [
+                        'plano_estudo_id' => $planoMat->id,
+                        'tipo' => 'livro',
+                        'livro_id' => $livrosCriados[4]->id_livro,
+                    ],
+                    [
+                        'titulo' => $livrosCriados[4]->titulo,
+                        'descricao' => 'Capítulo 3: Funções polinomiais',
+                        'fonte' => 'Biblioteca Escolar EEPSAS',
+                    ]
+                );
+            }
         }
     }
 }

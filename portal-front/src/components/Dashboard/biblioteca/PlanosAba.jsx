@@ -3,12 +3,12 @@
  *
  * Papel Didático:
  * Centraliza as trilhas de estudo do estudante e do professor:
- * - Criação ágil de novos planos categorizados por disciplina;
- * - Listagem de cartões de planos próprios com contadores reais por tipo (livros, videoaulas e web);
- * - Para o Aluno: Visualização exclusiva dos próprios planos e seção dedicada somente-leitura
- *   com os planos compartilhados pelos professores para a sua turma (sem opção de compartilhar com outros alunos);
- * - Para o Professor (e Adm): Botão e modal para compartilhar planos de estudo criados por ele
- *   com suas turmas vinculadas (1º, 2º ou 3º ano) através de um campo de busca interativo;
+ * - Seleção de disciplinas DINÂMICA filtrada pelas disciplinas vinculadas ao usuário autenticado;
+ * - Novo campo de "Conteúdo" (com sugestões assistidas ou preenchimento livre);
+ * - Listagem de cartões de planos com contadores reais por tipo (livros, videoaulas e web);
+ * - Para o Aluno: Visualização dos próprios planos e seção dedicada somente-leitura
+ *   com planos compartilhados pelos professores para a sua turma;
+ * - Para o Professor (e Adm): Compartilhamento restrito estritamente às turmas vinculadas ao docente;
  * - Navegação direta para a visualização detalhada do plano ('/dashboard/biblioteca/planos/:id').
  */
 
@@ -16,20 +16,25 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../../hooks/useAuth';
 import { planosService } from '../../../services/biblioteca/planosService';
+import { listarDisciplinas } from '../../../services/disciplinasService';
+import { formatarDisciplinaCiclo } from '../../../utils/formatters';
 
-const MATERIAS_DISPONIVEIS = [
-  'Matemática',
-  'Português',
-  'Redação',
-  'Física',
-  'Química',
-  'Biologia',
-  'História',
-  'Geografia',
-  'Filosofia',
-  'Sociologia',
-  'Inglês',
-  'Espanhol',
+// Sugestões gerais básicas para o campo Conteúdo (o usuário pode escolher da lista ou digitar livremente)
+const SUGESTOES_CONTEUDO_PADRAO = [
+  'Informática e Tecnologias',
+  'Inglês Instrumental',
+  'Matemática e Raciocínio Lógico',
+  'Língua Portuguesa e Redação',
+  'Física e Mecânica Clássica',
+  'Química Geral e Orgânica',
+  'Biologia e Ecologia',
+  'História do Brasil e Contemporânea',
+  'Geografia Humana e Física',
+  'Filosofia e Ética',
+  'Sociologia e Cidadania',
+  'Educação Financeira',
+  'Robótica e Programação Web',
+  'Revisão para o ENEM',
 ];
 
 export default function PlanosAba({ onAviso }) {
@@ -44,9 +49,16 @@ export default function PlanosAba({ onAviso }) {
   const [carregando, setCarregando] = useState(true);
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState('');
+
+  // Disciplinas cadastradas no sistema filtradas pelo vínculo de acesso do usuário logado
+  const [disciplinasDisponiveis, setDisciplinasDisponiveis] = useState([]);
+  const [carregandoDisciplinas, setCarregandoDisciplinas] = useState(true);
+
   const [novoPlano, setNovoPlano] = useState({
     nome: '',
-    disciplina: 'Matemática',
+    disciplina_id: '',
+    disciplina: '',
+    conteudo: '',
   });
 
   // Estados do modal de compartilhamento exclusivo para Professores
@@ -72,10 +84,11 @@ export default function PlanosAba({ onAviso }) {
     }
   };
 
-  // Carrega os planos do usuário ao montar o componente
+  // Carrega os planos do usuário e as disciplinas vinculadas ao montar o componente
   useEffect(() => {
     let montado = true;
 
+    // 1. Carrega Planos de Estudos
     planosService
       .listar()
       .then((resposta) => {
@@ -92,26 +105,61 @@ export default function PlanosAba({ onAviso }) {
         setCarregando(false);
       });
 
+    // 2. Carrega Disciplinas do Sistema filtradas pelo perfil do usuário (vinculadas: 1)
+    listarDisciplinas({ vinculadas: 1 })
+      .then((lista) => {
+        if (!montado) return;
+        const arrayDisciplinas = Array.isArray(lista) ? lista : (lista?.data || []);
+        setDisciplinasDisponiveis(arrayDisciplinas);
+
+        if (arrayDisciplinas.length > 0) {
+          setNovoPlano((prev) => ({
+            ...prev,
+            disciplina_id: String(arrayDisciplinas[0].id_disciplina),
+            disciplina: arrayDisciplinas[0].nome,
+          }));
+        }
+      })
+      .catch(() => {
+        // Fallback gracioso se não conseguir filtrar por vínculo
+      })
+      .finally(() => {
+        if (!montado) return;
+        setCarregandoDisciplinas(false);
+      });
+
     return () => {
       montado = false;
     };
   }, []);
 
-  // Criação rápida de um novo plano
+  // Criação rápida de um novo plano com Disciplina do Sistema e Conteúdo customizado/sugerido
   const handleSubmitCriar = async (e) => {
     e.preventDefault();
     if (!novoPlano.nome.trim()) return;
+
+    if (!novoPlano.disciplina_id && !novoPlano.disciplina.trim()) {
+      setErro('Selecione ou informe a disciplina do plano de estudos.');
+      return;
+    }
 
     try {
       setCriando(true);
       setErro('');
       await planosService.criar({
         nome: novoPlano.nome.trim(),
-        disciplina: novoPlano.disciplina,
+        disciplina_id: novoPlano.disciplina_id ? Number(novoPlano.disciplina_id) : null,
+        disciplina: novoPlano.disciplina.trim(),
+        conteudo: novoPlano.conteudo.trim() || null,
       });
 
       onAviso?.('Plano de estudos criado com sucesso!');
-      setNovoPlano({ nome: '', disciplina: 'Matemática' });
+      setNovoPlano({
+        nome: '',
+        disciplina_id: disciplinasDisponiveis[0] ? String(disciplinasDisponiveis[0].id_disciplina) : '',
+        disciplina: disciplinasDisponiveis[0] ? disciplinasDisponiveis[0].nome : '',
+        conteudo: '',
+      });
       await recarregarPlanos();
     } catch (err) {
       setErro(err.message || 'Erro ao criar plano de estudos.');
@@ -148,7 +196,10 @@ export default function PlanosAba({ onAviso }) {
 
     try {
       setCarregandoTurmas(true);
-      const resposta = await planosService.listarTurmasLecionadas();
+      // Busca estritamente as turmas vinculadas ao professor (com prioridade para a disciplina do plano)
+      const resposta = await planosService.listarTurmasLecionadas({
+        disciplina_id: plano.disciplina_id || undefined,
+      });
       const lista = Array.isArray(resposta) ? resposta : (resposta?.data || []);
       setTurmasVinculadas(lista);
     } catch (err) {
@@ -164,7 +215,7 @@ export default function PlanosAba({ onAviso }) {
     setErroCompartilhamento('');
   };
 
-  // Alterna a seleção de uma turma (1º, 2º ou 3º ano) na lista de compartilhamento
+  // Alterna a seleção de uma turma na lista de compartilhamento
   const alternarSelecaoTurma = (idTurma) => {
     setTurmasSelecionadas((prev) =>
       prev.includes(idTurma)
@@ -205,7 +256,7 @@ export default function PlanosAba({ onAviso }) {
     }
   };
 
-  // Filtra em tempo real as turmas vinculadas ao professor com base no campo de busca (1º, 2º ou 3º ano)
+  // Filtra em tempo real as turmas vinculadas ao professor com base no campo de busca
   const turmasFiltradas = turmasVinculadas.filter((turma) => {
     const termo = buscaTurma.trim().toLowerCase();
     if (!termo) return true;
@@ -224,7 +275,7 @@ export default function PlanosAba({ onAviso }) {
         <h4 className="fw-bold mb-1 text-dark fs-6">Meus Planos de Estudos</h4>
         <p className="text-muted mb-0 small">
           {podeCompartilharComTurmas
-            ? 'Crie trilhas de estudo temáticas e compartilhe com suas turmas vinculadas (1º, 2º ou 3º ano).'
+            ? 'Crie trilhas de estudo temáticas e compartilhe exclusivamente com suas turmas vinculadas.'
             : 'Organize seus livros do acervo, videoaulas do YouTube e conteúdos pesquisados na web em trilhas pessoais.'}
         </p>
       </div>
@@ -235,19 +286,20 @@ export default function PlanosAba({ onAviso }) {
         className="p-3 rounded-4 mb-4 border bg-light"
       >
         <div className="row g-3 align-items-end">
-          <div className="col-12 col-md-5">
+          {/* Campo 1: Nome do Plano */}
+          <div className="col-12 col-md-4">
             <label
               htmlFor="nome-plano"
               className="form-label mb-1 text-secondary fw-bold"
               style={{ fontSize: '11px' }}
             >
-              NOME DO PLANO (Ex: Preparação ENEM)
+              NOME DO PLANO *
             </label>
             <input
               id="nome-plano"
               type="text"
               className="form-control form-control-sm"
-              placeholder="Nome do plano de estudos"
+              placeholder="Ex: Preparação ENEM"
               value={novoPlano.nome}
               onChange={(e) =>
                 setNovoPlano({ ...novoPlano, nome: e.target.value })
@@ -257,36 +309,79 @@ export default function PlanosAba({ onAviso }) {
             />
           </div>
 
-          <div className="col-12 col-md-4">
+          {/* Campo 2: Disciplina Cadastrada no Sistema (Filtrada pelas acessíveis ao usuário) */}
+          <div className="col-12 col-md-3">
             <label
               htmlFor="disciplina-plano"
               className="form-label mb-1 text-secondary fw-bold"
               style={{ fontSize: '11px' }}
             >
-              DISCIPLINA
+              DISCIPLINA *
             </label>
             <select
               id="disciplina-plano"
               className="form-select form-select-sm"
-              value={novoPlano.disciplina}
-              onChange={(e) =>
-                setNovoPlano({ ...novoPlano, disciplina: e.target.value })
-              }
-              disabled={criando}
+              value={novoPlano.disciplina_id || ''}
+              onChange={(e) => {
+                const discId = e.target.value;
+                const discObj = disciplinasDisponiveis.find((d) => String(d.id_disciplina) === String(discId));
+                setNovoPlano({
+                  ...novoPlano,
+                  disciplina_id: discId,
+                  disciplina: discObj ? discObj.nome : '',
+                });
+              }}
+              disabled={criando || carregandoDisciplinas}
+              required
             >
-              {MATERIAS_DISPONIVEIS.map((mat) => (
-                <option key={mat} value={mat}>
-                  {mat}
+              {disciplinasDisponiveis.length === 0 ? (
+                <option value="">
+                  {carregandoDisciplinas ? 'Carregando disciplinas...' : 'Nenhuma disciplina vinculada'}
                 </option>
-              ))}
+              ) : (
+                disciplinasDisponiveis.map((d) => (
+                  <option key={d.id_disciplina} value={String(d.id_disciplina)}>
+                    {formatarDisciplinaCiclo(d)}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
+          {/* Campo 3: Conteúdo (Upgrade: Lista de sugestões gerais ou preenchimento livre) */}
           <div className="col-12 col-md-3">
+            <label
+              htmlFor="conteudo-plano"
+              className="form-label mb-1 text-secondary fw-bold"
+              style={{ fontSize: '11px' }}
+            >
+              CONTEÚDO (OPCIONAL)
+            </label>
+            <input
+              id="conteudo-plano"
+              type="text"
+              list="sugestoes-conteudo-plano"
+              className="form-control form-control-sm"
+              placeholder="Escolha ou digite o tema..."
+              value={novoPlano.conteudo}
+              onChange={(e) =>
+                setNovoPlano({ ...novoPlano, conteudo: e.target.value })
+              }
+              disabled={criando}
+            />
+            <datalist id="sugestoes-conteudo-plano">
+              {SUGESTOES_CONTEUDO_PADRAO.map((sugestao) => (
+                <option key={sugestao} value={sugestao} />
+              ))}
+            </datalist>
+          </div>
+
+          {/* Botão de Ação */}
+          <div className="col-12 col-md-2">
             <button
               type="submit"
               className="btn btn-sm w-100 biblioteca-btn-primario py-2 rounded-3"
-              disabled={criando}
+              disabled={criando || (disciplinasDisponiveis.length === 0 && !carregandoDisciplinas)}
             >
               {criando ? (
                 <>
@@ -294,7 +389,7 @@ export default function PlanosAba({ onAviso }) {
                   Criando...
                 </>
               ) : (
-                '+ Confirmar Criação'
+                '+ Criar Plano'
               )}
             </button>
           </div>
@@ -346,6 +441,11 @@ export default function PlanosAba({ onAviso }) {
                       <span className="badge bg-secondary-subtle text-secondary-emphasis px-2 py-1 rounded">
                         {plano.disciplina}
                       </span>
+                      {plano.conteudo && (
+                        <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1 rounded" title="Conteúdo / Tema do plano">
+                          🏷️ {plano.conteudo}
+                        </span>
+                      )}
                       <span className="badge bg-primary-subtle text-primary px-2 py-1 rounded">
                         {plano.total_itens ?? (totalLivros + totalVideoaulas + totalWeb)} itens
                       </span>
@@ -401,7 +501,7 @@ export default function PlanosAba({ onAviso }) {
                         Ver Plano Completo →
                       </button>
 
-                      {/* Botão exclusivo do Professor para compartilhar o plano com turma do 1º, 2º ou 3º ano */}
+                      {/* Botão exclusivo do Professor para compartilhar o plano com turmas vinculadas */}
                       {podeCompartilharComTurmas && (
                         <button
                           type="button"
@@ -463,6 +563,11 @@ export default function PlanosAba({ onAviso }) {
                           <span className="badge bg-secondary-subtle text-secondary-emphasis px-2 py-1 rounded">
                             {plano.disciplina}
                           </span>
+                          {plano.conteudo && (
+                            <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1 rounded">
+                              🏷️ {plano.conteudo}
+                            </span>
+                          )}
                           <span className="badge bg-primary-subtle text-primary px-2 py-1 rounded">
                             {plano.total_itens ?? (totalLivros + totalVideoaulas + totalWeb)} itens
                           </span>
@@ -535,13 +640,13 @@ export default function PlanosAba({ onAviso }) {
               />
             </div>
 
-            {/* Campo de busca para filtrar as turmas em que o professor está vinculado (1º, 2º ou 3º ano) */}
+            {/* Campo de busca para filtrar as turmas em que o professor está vinculado */}
             <div className="mb-3">
               <label
                 htmlFor="input-busca-turma-professor"
                 className="form-label small fw-bold text-secondary mb-1"
               >
-                PESQUISAR TURMAS VINCULADAS (1º, 2º OU 3º ANO)
+                PESQUISAR TURMAS VINCULADAS
               </label>
               <div className="input-group input-group-sm">
                 <span className="input-group-text bg-light">🔍</span>
@@ -549,7 +654,7 @@ export default function PlanosAba({ onAviso }) {
                   id="input-busca-turma-professor"
                   type="search"
                   className="form-control"
-                  placeholder="Digite o ano ou nome da turma (ex: 1º Ano, 2º Ano, 3º Ano)..."
+                  placeholder="Digite o ano ou nome da turma..."
                   value={buscaTurma}
                   onChange={(e) => setBuscaTurma(e.target.value)}
                   disabled={carregandoTurmas || salvandoCompartilhamento}
@@ -591,7 +696,7 @@ export default function PlanosAba({ onAviso }) {
                   </div>
                 ) : turmasFiltradas.length === 0 ? (
                   <div className="py-3 text-center text-muted small">
-                    Nenhuma turma vinculada encontrada para o filtro informado.
+                    Nenhuma turma vinculada encontrada para este componente curricular.
                   </div>
                 ) : (
                   <div className="d-flex flex-column gap-2">

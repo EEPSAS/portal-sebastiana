@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\PlanoEstudo;
+use App\Models\TurmaDisciplina;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -53,6 +54,45 @@ class CompartilharPlanoEstudoRequest extends FormRequest
     }
 
     /**
+     * Validações adicionais para garantir que o professor só compartilhe com turmas em que leciona.
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $usuario = $this->user();
+            if (! $usuario || $usuario->isAdm()) {
+                return;
+            }
+
+            if ($usuario->isProfessor()) {
+                $turmaIds = $this->input('turma_ids', []);
+                if (empty($turmaIds)) {
+                    return;
+                }
+
+                // Sincroniza vínculos herdados de ciclos caso necessário
+                foreach ($usuario->disciplinasDocente as $discDocente) {
+                    $discDocente->sincronizarComTurmasDosCiclos();
+                }
+
+                $turmasPermitidas = TurmaDisciplina::where('professor_id', $usuario->id)
+                    ->pluck('turma_id')
+                    ->all();
+
+                foreach ($turmaIds as $turmaId) {
+                    if (! in_array((int) $turmaId, $turmasPermitidas, true)) {
+                        $validator->errors()->add(
+                            'turma_ids',
+                            'Você só pode compartilhar planos com turmas escolares às quais você está formalmente vinculado.'
+                        );
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
+    /**
      * Mensagens de validação amigáveis em pt-BR.
      *
      * @return array<string, string>
@@ -66,4 +106,3 @@ class CompartilharPlanoEstudoRequest extends FormRequest
         ];
     }
 }
-

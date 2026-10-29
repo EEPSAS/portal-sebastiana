@@ -161,10 +161,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Planos de Estudos (Trilhas Didáticas da Biblioteca)
     Route::get('/me/turmas-lecionadas', [PlanoEstudoController::class, 'turmasLecionadas']);
+    Route::get('/planos-estudos/turmas-lecionadas', [PlanoEstudoController::class, 'turmasLecionadas']);
     Route::get('/planos-estudos', [PlanoEstudoController::class, 'index']);
     Route::post('/planos-estudos', [PlanoEstudoController::class, 'store']);
     Route::get('/planos-estudos/{plano}', [PlanoEstudoController::class, 'show']);
-    Route::post('/planos-estudos/{plano}/compartilhar', [PlanoEstudoController::class, 'compartilhar']);
+    Route::match(['post', 'put'], '/planos-estudos/{plano}/compartilhar', [PlanoEstudoController::class, 'compartilhar']);
     Route::delete('/planos-estudos/{plano}', [PlanoEstudoController::class, 'destroy']);
     Route::post('/planos-estudos/{plano}/itens', [PlanoEstudoController::class, 'adicionarItem']);
     Route::delete('/planos-estudos/{plano}/itens/{item}', [PlanoEstudoController::class, 'removerItem']);

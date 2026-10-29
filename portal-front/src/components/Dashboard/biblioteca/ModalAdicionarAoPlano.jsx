@@ -13,11 +13,16 @@
 
 import { useState, useEffect } from 'react';
 import { planosService } from '../../../services/biblioteca/planosService';
+import { listarDisciplinas } from '../../../services/disciplinasService';
+import { formatarDisciplinaCiclo } from '../../../utils/formatters';
 
-const DISCIPLINAS = [
+// Sugestões predefinidas para o campo de upgrade 'conteúdo' (permite digitação livre também)
+const SUGESTOES_CONTEUDO_PADRAO = [
+  'Informática',
+  'Inglês',
   'Matemática',
-  'Português',
   'Redação',
+  'Robótica',
   'Física',
   'Química',
   'Biologia',
@@ -25,20 +30,25 @@ const DISCIPLINAS = [
   'Geografia',
   'Filosofia',
   'Sociologia',
-  'Inglês',
   'Espanhol',
+  'Educação Física',
+  'Arte',
 ];
 
 export default function ModalAdicionarAoPlano({ item, aoFechar, aoSucesso }) {
   const [planos, setPlanos] = useState([]);
   const [carregandoPlanos, setCarregandoPlanos] = useState(true);
+  const [disciplinasDisponiveis, setDisciplinasDisponiveis] = useState([]);
+  const [carregandoDisciplinas, setCarregandoDisciplinas] = useState(true);
   const [planoSelecionadoId, setPlanoSelecionadoId] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [modoCriarNovo, setModoCriarNovo] = useState(false);
   const [novoPlano, setNovoPlano] = useState({
     nome: '',
-    disciplina: 'Matemática',
+    disciplina_id: '',
+    disciplina: '',
+    conteudo: '',
   });
 
   // Estados editáveis para conteúdos web pesquisados
@@ -49,10 +59,11 @@ export default function ModalAdicionarAoPlano({ item, aoFechar, aoSucesso }) {
     fonte: item?.fonte || 'Pesquisa Google Web',
   });
 
-  // Carrega os planos próprios do usuário na abertura do modal
+  // Carrega os planos próprios do usuário e as disciplinas do sistema na abertura do modal
   useEffect(() => {
     let montado = true;
 
+    // 1. Carrega Planos Próprios do Usuário
     planosService
       .listar()
       .then((lista) => {
@@ -76,6 +87,28 @@ export default function ModalAdicionarAoPlano({ item, aoFechar, aoSucesso }) {
       .finally(() => {
         if (!montado) return;
         setCarregandoPlanos(false);
+      });
+
+    // 2. Carrega Disciplinas vinculadas ao perfil de acesso do usuário logado
+    listarDisciplinas({ vinculadas: 1 })
+      .then((lista) => {
+        if (!montado) return;
+        const arrayDisciplinas = Array.isArray(lista) ? lista : (lista?.data || []);
+        setDisciplinasDisponiveis(arrayDisciplinas);
+        if (arrayDisciplinas.length > 0) {
+          setNovoPlano((prev) => ({
+            ...prev,
+            disciplina_id: String(arrayDisciplinas[0].id_disciplina),
+            disciplina: arrayDisciplinas[0].nome,
+          }));
+        }
+      })
+      .catch((err) => {
+        console.error('Erro ao listar disciplinas vinculadas no modal:', err);
+      })
+      .finally(() => {
+        if (!montado) return;
+        setCarregandoDisciplinas(false);
       });
 
     return () => {
@@ -110,9 +143,15 @@ export default function ModalAdicionarAoPlano({ item, aoFechar, aoSucesso }) {
           return;
         }
 
+        const discSelecionada = disciplinasDisponiveis.find(
+          (d) => String(d.id_disciplina) === String(novoPlano.disciplina_id)
+        );
+
         const planoCriado = await planosService.criar({
           nome: novoPlano.nome.trim(),
-          disciplina: novoPlano.disciplina,
+          disciplina_id: novoPlano.disciplina_id ? Number(novoPlano.disciplina_id) : undefined,
+          disciplina: discSelecionada ? discSelecionada.nome : novoPlano.disciplina || undefined,
+          conteudo: novoPlano.conteudo?.trim() || null,
         });
         planoId = planoCriado.id;
       }
@@ -359,21 +398,57 @@ export default function ModalAdicionarAoPlano({ item, aoFechar, aoSucesso }) {
 
                 <div>
                   <label htmlFor="novo-plano-disciplina" className="form-label small fw-bold text-secondary mb-1">
-                    DISCIPLINA
+                    DISCIPLINA DO SISTEMA
                   </label>
                   <select
                     id="novo-plano-disciplina"
                     className="form-select form-select-sm"
-                    value={novoPlano.disciplina}
-                    onChange={(e) => setNovoPlano({ ...novoPlano, disciplina: e.target.value })}
-                    disabled={salvando}
+                    value={novoPlano.disciplina_id}
+                    onChange={(e) => {
+                      const discId = e.target.value;
+                      const discObj = disciplinasDisponiveis.find((d) => String(d.id_disciplina) === String(discId));
+                      setNovoPlano((prev) => ({
+                        ...prev,
+                        disciplina_id: discId,
+                        disciplina: discObj ? discObj.nome : prev.disciplina,
+                      }));
+                    }}
+                    disabled={salvando || carregandoDisciplinas}
                   >
-                    {DISCIPLINAS.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
+                    {disciplinasDisponiveis.length === 0 ? (
+                      <option value="">
+                        {carregandoDisciplinas ? 'Carregando disciplinas...' : 'Nenhuma disciplina vinculada'}
                       </option>
-                    ))}
+                    ) : (
+                      disciplinasDisponiveis.map((d) => (
+                        <option key={d.id_disciplina} value={d.id_disciplina}>
+                          {formatarDisciplinaCiclo(d)}
+                        </option>
+                      ))
+                    )}
                   </select>
+                </div>
+
+                <div>
+                  <label htmlFor="novo-plano-conteudo" className="form-label small fw-bold text-secondary mb-1">
+                    CONTEÚDO / ÁREA TEMÁTICA (UPGRADE)
+                  </label>
+                  <input
+                    id="novo-plano-conteudo"
+                    type="text"
+                    list="sugestoes-conteudo-inline"
+                    className="form-control form-control-sm"
+                    placeholder="Selecione ou digite (Ex: Informática, Redação...)"
+                    value={novoPlano.conteudo}
+                    onChange={(e) => setNovoPlano({ ...novoPlano, conteudo: e.target.value })}
+                    maxLength={150}
+                    disabled={salvando}
+                  />
+                  <datalist id="sugestoes-conteudo-inline">
+                    {SUGESTOES_CONTEUDO_PADRAO.map((item) => (
+                      <option key={item} value={item} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
             )}

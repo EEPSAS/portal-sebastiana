@@ -25,8 +25,12 @@ class DisciplinaFactory extends Factory
                 'História', 'Geografia', 'Filosofia', 'Sociologia', 'Inglês', 'Artes',
                 'Educação Física', 'Robótica', 'Programação Web', 'Literatura',
             ]).' '.fake()->unique()->numberBetween(1, 9999),
-            'carga_horaria_anual' => fake()->randomElement([80, 100, 120, 160]),
+            'carga_horaria_anual' => 80,
             'descricao' => fake()->sentence(),
+            'ementa' => fake()->paragraph(),
+            'habilidades_bncc' => 'EM13MAT'.fake()->numerify('###'),
+            'objetivo_geral' => fake()->sentence(),
+            'objetivo_especifico' => fake()->sentence(),
         ];
     }
 }

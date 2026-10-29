@@ -24,4 +24,3 @@ class DesvincularUsuarioRequest extends FormRequest
         ];
     }
 }
-

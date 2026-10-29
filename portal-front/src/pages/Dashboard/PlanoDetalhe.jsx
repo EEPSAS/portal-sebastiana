@@ -14,6 +14,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { planosService } from '../../services/biblioteca/planosService';
+import { formatarDisciplinaCiclo } from '../../utils/formatters';
 import '../../components/Dashboard/biblioteca/Biblioteca.css';
 
 export default function PlanoDetalhe() {
@@ -143,8 +144,13 @@ export default function PlanoDetalhe() {
                 ← Voltar para a Biblioteca
               </Link>
               <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill">
-                {plano.disciplina}
+                {plano.disciplina_relacionada ? formatarDisciplinaCiclo(plano.disciplina_relacionada) : plano.disciplina}
               </span>
+              {plano.conteudo && (
+                <span className="badge bg-secondary-subtle text-secondary-emphasis border px-3 py-1 rounded-pill">
+                  🏷️ {plano.conteudo}
+                </span>
+              )}
               {plano.compartilhado_por_professor && (
                 <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-1 rounded-pill">
                   🎓 Compartilhado por Prof. {plano.autor_nome || 'Docente'}

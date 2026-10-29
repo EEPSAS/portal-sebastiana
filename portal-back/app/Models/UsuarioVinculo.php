@@ -69,4 +69,3 @@ class UsuarioVinculo extends Model
         return $this->belongsTo(User::class, 'encerrado_por_id', 'id');
     }
 }
-

@@ -34,7 +34,18 @@ class TurmaController extends Controller
     {
         Gate::authorize('viewAny', Turma::class);
 
+        $user = $request->user();
         $query = Turma::query()->with('ciclo')->withCount(['alunos', 'disciplinas']);
+
+        // Se o usuário for Professor, filtra estritamente as turmas em que ele leciona
+        if ($user && $user->isProfessor() && ! $user->isAdm()) {
+            foreach ($user->disciplinasDocente as $discDocente) {
+                $discDocente->sincronizarComTurmasDosCiclos();
+            }
+            $query->whereHas('turmaDisciplinas', function ($q) use ($user) {
+                $q->where('professor_id', $user->id);
+            });
+        }
 
         if ($request->filled('ano_letivo')) {
             $query->where('ano_letivo', $request->integer('ano_letivo'));
@@ -131,7 +142,19 @@ class TurmaController extends Controller
             abort(403, 'Acesso restrito ao corpo docente e pedagógico.');
         }
 
-        $turmas = Turma::query()->orderBy('nome_identificador')->get();
+        $query = Turma::query()->orderBy('nome_identificador');
+
+        // Se o usuário for Professor, filtra estritamente suas turmas vinculadas no resumo gerencial
+        if ($user->isProfessor() && ! $user->isAdm()) {
+            foreach ($user->disciplinasDocente as $discDocente) {
+                $discDocente->sincronizarComTurmasDosCiclos();
+            }
+            $query->whereHas('turmaDisciplinas', function ($q) use ($user) {
+                $q->where('professor_id', $user->id);
+            });
+        }
+
+        $turmas = $query->get();
         $resultado = [];
 
         foreach ($turmas as $turma) {

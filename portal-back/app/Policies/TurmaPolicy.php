@@ -14,11 +14,17 @@ class TurmaPolicy
         return $user->canManageAcademic() || $user->isProfessor();
     }
 
-    // Permite visualizar detalhes da turma ao corpo docente/pedagógico ou ao aluno matriculado ativamente nela
+    // Permite visualizar detalhes da turma ao Especialista/Adm, ao Professor (se lecionar na turma) ou ao Aluno matriculado
     public function view(User $user, Turma $turma): bool
     {
-        if ($user->canManageAcademic() || $user->isProfessor()) {
+        if ($user->canManageAcademic()) {
             return true;
+        }
+
+        // Isolamento docente: professor só visualiza turmas onde leciona diretamente
+        if ($user->isProfessor()) {
+            return $turma->turmaDisciplinas()->where('professor_id', $user->id)->exists()
+                || $user->disciplinasDocente()->whereHas('turmas', fn ($q) => $q->where('turmas.id_turma', $turma->id_turma))->exists();
         }
 
         // Verifica se o estudante possui matrícula ativa na turma consultada

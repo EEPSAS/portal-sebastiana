@@ -42,4 +42,3 @@ class StoreCicloRequest extends FormRequest
         ];
     }
 }
-

@@ -347,6 +347,8 @@ const Aside = () => {
 
   const obterBadgeCount = (badgeKey) => {
     if (!badgeKey) return 0;
+    // Aprovação de alunos pendentes é de responsabilidade única do Especialista/Adm
+    if (badgeKey === "alunosPendentes" && userRole === "professor") return 0;
     return pendentesResumo[badgeKey] || 0;
   };
 
@@ -473,6 +475,11 @@ const Aside = () => {
                   {entry.children.map((child) => {
                     const subAtivo = isChildActive(child, location);
                     const subBadge = obterBadgeCount(child.badgeKey);
+                    // Rótulo específico para o professor: 'Minhas Turmas'
+                    const rotuloExibido =
+                      child.id === "turmas" && userRole === "professor"
+                        ? "Minhas Turmas"
+                        : child.label;
 
                     return (
                       <li key={child.id} className="my-1">
@@ -484,7 +491,7 @@ const Aside = () => {
                         >
                           <div className="d-flex align-items-center">
                             <i className={`bi ${child.icon} me-2`}></i>
-                            <span>{child.label}</span>
+                            <span>{rotuloExibido}</span>
                           </div>
                           <div className="d-flex align-items-center gap-1">
                             {subBadge > 0 && (

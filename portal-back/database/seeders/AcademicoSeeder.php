@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Ciclo;
 use App\Models\Disciplina;
 use App\Models\Frequencia;
 use App\Models\Matricula;
@@ -12,13 +13,14 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 
 /**
- * AcademicoSeeder - Povoamento enxuto do ambiente acadêmico.
+ * AcademicoSeeder - Povoamento enxuto do ambiente acadêmico estruturado por Ciclos.
  *
- * Estrutura:
- * - 3 Turmas ativas com exatamente 1 aluno canônico em cada.
- * - Disciplinas fundamentais vinculadas ao professor.
- * - Exatamente 3 registros de frequência por disciplina (1 por período).
- * - Exatamente 3 registros de notas cumulativas por disciplina (1º, 2º e 3º Trimestres).
+ * Papel Didático:
+ * - Cria os 3 Ciclos Escolares fundamentais do Ensino Médio;
+ * - Associa as turmas aos respectivos ciclos para herança automática de disciplinas;
+ * - Cadastra disciplinas com aulas semanais (base 40 semanas) e campos pedagógicos (BNCC, ementa);
+ * - Vincula as disciplinas aos Ciclos e aos Professores canônicos (Carlos Silva e Marina Souza);
+ * - Sincroniza os vínculos em turma_disciplinas e matricular os alunos canônicos.
  */
 class AcademicoSeeder extends Seeder
 {
@@ -27,10 +29,16 @@ class AcademicoSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. As 3 Turmas Escolares Ativas
+        // 1. Ciclos Escolares Canônicos (Diretriz 3.1)
+        $ciclo1 = Ciclo::firstOrCreate(['nome' => '1º Ano - Ensino Médio']);
+        $ciclo2 = Ciclo::firstOrCreate(['nome' => '2º Ano - Ensino Médio']);
+        $ciclo3 = Ciclo::firstOrCreate(['nome' => '3º Ano - Ensino Médio']);
+
+        // 2. As 3 Turmas Escolares Ativas com Ciclos Atribuídos
         $turma1A = Turma::updateOrCreate(
             ['nome_identificador' => '1º Ano A - Ensino Médio'],
             [
+                'ciclo_id' => $ciclo1->id_ciclo,
                 'turno' => 'Matutino',
                 'ano_letivo' => 2026,
                 'capacidade_maxima' => 40,
@@ -41,6 +49,7 @@ class AcademicoSeeder extends Seeder
         $turma2B = Turma::updateOrCreate(
             ['nome_identificador' => '2º Ano B - Ensino Médio'],
             [
+                'ciclo_id' => $ciclo2->id_ciclo,
                 'turno' => 'Vespertino',
                 'ano_letivo' => 2026,
                 'capacidade_maxima' => 35,
@@ -51,6 +60,7 @@ class AcademicoSeeder extends Seeder
         $turma3A = Turma::updateOrCreate(
             ['nome_identificador' => '3º Ano A - Informática Integrado'],
             [
+                'ciclo_id' => $ciclo3->id_ciclo,
                 'turno' => 'Integral',
                 'ano_letivo' => 2026,
                 'capacidade_maxima' => 35,
@@ -58,72 +68,134 @@ class AcademicoSeeder extends Seeder
             ]
         );
 
-        // 2. Componentes Curriculares (Disciplinas)
+        // 3. Componentes Curriculares (Disciplinas) com Aulas Semanais e Campos BNCC
         $discMat = Disciplina::updateOrCreate(
             ['nome' => 'Matemática'],
             [
+                'aulas_semanais' => 3,
                 'carga_horaria_anual' => 120,
                 'descricao' => 'Álgebra, geometria analítica, trigonometria e funções matemáticas.',
+                'ementa' => 'Estudo de funções afim, quadrática, exponencial e logarítmica; matrizes, determinantes e sistemas lineares; geometria espacial e estatística básica.',
+                'habilidades_bncc' => 'EM13MAT101, EM13MAT201, EM13MAT301',
+                'objetivo_geral' => 'Desenvolver o raciocínio lógico-matemático e a resolução de problemas cotidianos.',
+                'objetivo_especifico' => 'Dominar cálculos algébricos, interpretar gráficos e modelar fenômenos reais.',
             ]
         );
 
         $discPort = Disciplina::updateOrCreate(
             ['nome' => 'Língua Portuguesa e Literatura'],
             [
+                'aulas_semanais' => 3,
                 'carga_horaria_anual' => 120,
                 'descricao' => 'Interpretação textual, produção dissertativa e análise de obras literárias.',
+                'ementa' => 'Leitura crítica, produção textual dissertativo-argumentativa padrão ENEM, análise estilística e movimentos literários brasileiros.',
+                'habilidades_bncc' => 'EM13LP01, EM13LP05, EM13LP12',
+                'objetivo_geral' => 'Aprimorar a competência comunicativa oral e escrita e a fruição literária.',
+                'objetivo_especifico' => 'Redigir textos dissertativos coesos e interpretar textos verbais e não-verbais.',
             ]
         );
 
         $discFis = Disciplina::updateOrCreate(
             ['nome' => 'Física'],
             [
+                'aulas_semanais' => 2,
                 'carga_horaria_anual' => 80,
                 'descricao' => 'Mecânica clássica, leis de Newton, óptica geométrica e termodinâmica.',
+                'ementa' => 'Cinemática escalar e vetorial, dinâmica newtoniana, trabalho e energia, calorimetria e óptica.',
+                'habilidades_bncc' => 'EM13CNT101, EM13CNT204',
+                'objetivo_geral' => 'Compreender os fenômenos físicos e as leis que regem o universo material.',
+                'objetivo_especifico' => 'Aplicar conceitos de mecânica e termodinâmica em situações práticas.',
             ]
         );
 
         $discHist = Disciplina::updateOrCreate(
             ['nome' => 'História Geral e do Brasil'],
             [
+                'aulas_semanais' => 2,
                 'carga_horaria_anual' => 80,
                 'descricao' => 'História contemporânea, formação social e econômica do Brasil.',
+                'ementa' => 'Colonização, Império e República no Brasil; Guerras Mundiais e Guerra Fria; Cidadania e Direitos Humanos.',
+                'habilidades_bncc' => 'EM13CHS102, EM13CHS203',
+                'objetivo_geral' => 'Construir a consciência histórica crítica e a identidade cidadã.',
+                'objetivo_especifico' => 'Analisar processos históricos e suas continuidades na sociedade atual.',
             ]
         );
 
         $discDev = Disciplina::updateOrCreate(
             ['nome' => 'Desenvolvimento de Aplicações Web'],
             [
-                'carga_horaria_anual' => 100,
+                'aulas_semanais' => 3,
+                'carga_horaria_anual' => 120,
                 'descricao' => 'Arquitetura MVC, REST APIs em Laravel, bancos relacionais e interfaces modernas.',
+                'ementa' => 'Desenvolvimento full-stack: rotas, controladores e ORM Eloquent em Laravel; SPA com React e Vite; integração RESTful e autenticação Sanctum.',
+                'habilidades_bncc' => 'EM13TEC01, EM13TEC04',
+                'objetivo_geral' => 'Capacitar o estudante na construção de sistemas web profissionais.',
+                'objetivo_especifico' => 'Construir APIs robustas e interfaces reativas integradas.',
             ]
         );
 
-        // 3. Vínculo de Professores às Turmas (Carlos Silva leciona nas turmas)
+        // 4. Vínculo das Disciplinas aos Ciclos Escolares (Diretriz 3.2)
+        // Matemática, Português, Física e História pertencem aos 3 ciclos
+        $discMat->ciclos()->sync([$ciclo1->id_ciclo, $ciclo2->id_ciclo, $ciclo3->id_ciclo]);
+        $discPort->ciclos()->sync([$ciclo1->id_ciclo, $ciclo2->id_ciclo, $ciclo3->id_ciclo]);
+        $discFis->ciclos()->sync([$ciclo1->id_ciclo, $ciclo2->id_ciclo, $ciclo3->id_ciclo]);
+        $discHist->ciclos()->sync([$ciclo1->id_ciclo, $ciclo2->id_ciclo, $ciclo3->id_ciclo]);
+        // Desenvolvimento Web é componente específico do 3º ciclo (Ensino Médio Integrado)
+        $discDev->ciclos()->sync([$ciclo3->id_ciclo]);
+
+        // 5. Vínculo dos Professores Canônicos às Disciplinas
         $profCarlos = User::where('email', 'carlos.silva@sebastiana.edu.br')->first();
-        $profId = $profCarlos?->id;
+        $profaMarina = User::where('email', 'marina.souza@sebastiana.edu.br')->first();
 
-        $disciplinasPorTurma = [
-            $turma1A->id_turma => [$discMat, $discPort, $discFis, $discHist],
-            $turma2B->id_turma => [$discMat, $discPort, $discFis, $discHist],
-            $turma3A->id_turma => [$discDev, $discMat, $discPort, $discHist],
-        ];
+        if ($profCarlos) {
+            $profCarlos->disciplinasDocente()->syncWithoutDetaching([
+                $discMat->id_disciplina,
+                $discFis->id_disciplina,
+                $discDev->id_disciplina,
+            ]);
+        }
 
-        foreach ($disciplinasPorTurma as $turmaId => $disciplinas) {
-            foreach ($disciplinas as $disc) {
-                TurmaDisciplina::firstOrCreate(
-                    [
-                        'turma_id' => $turmaId,
-                        'disciplina_id' => $disc->id_disciplina,
-                    ],
-                    [
-                        'professor_id' => $profId,
-                    ]
-                );
+        if ($profaMarina) {
+            $profaMarina->disciplinasDocente()->syncWithoutDetaching([
+                $discPort->id_disciplina,
+                $discHist->id_disciplina,
+            ]);
+        }
+
+        // 6. Sincronização da Herança de Turmas e Professores via Ciclos
+        $discMat->sincronizarComTurmasDosCiclos();
+        $discPort->sincronizarComTurmasDosCiclos();
+        $discFis->sincronizarComTurmasDosCiclos();
+        $discHist->sincronizarComTurmasDosCiclos();
+        $discDev->sincronizarComTurmasDosCiclos();
+
+        // Reforça explicitamente os vínculos em turma_disciplinas
+        $profCarlosId = $profCarlos?->id;
+        $profaMarinaId = $profaMarina?->id;
+
+        $disciplinasCarlos = [$discMat, $discFis, $discDev];
+        $disciplinasMarina = [$discPort, $discHist];
+
+        foreach ([$turma1A, $turma2B, $turma3A] as $turma) {
+            foreach ($disciplinasCarlos as $disc) {
+                if ($disc->ciclos()->where('ciclos.id_ciclo', $turma->ciclo_id)->exists()) {
+                    TurmaDisciplina::updateOrCreate(
+                        ['turma_id' => $turma->id_turma, 'disciplina_id' => $disc->id_disciplina],
+                        ['professor_id' => $profCarlosId]
+                    );
+                }
+            }
+            foreach ($disciplinasMarina as $disc) {
+                if ($disc->ciclos()->where('ciclos.id_ciclo', $turma->ciclo_id)->exists()) {
+                    TurmaDisciplina::updateOrCreate(
+                        ['turma_id' => $turma->id_turma, 'disciplina_id' => $disc->id_disciplina],
+                        ['professor_id' => $profaMarinaId]
+                    );
+                }
             }
         }
 
-        // 4. Matrícula: Exatamente 1 Aluno Canônico por Turma
+        // 7. Matrícula: Exatamente 1 Aluno Canônico por Turma
         $distribuicaoCanonica = [
             'yasmin.teixeira@aluno.mg.gov.br' => $turma1A,
             'pedro.santos@aluno.mg.gov.br' => $turma2B,
@@ -146,7 +218,7 @@ class AcademicoSeeder extends Seeder
             }
         }
 
-        // 5. Frequências: Exatamente 3 registros por matéria (1 aula por trimestre)
+        // 8. Frequências: 3 registros por matéria (1 aula por trimestre)
         $datasAulas = [
             '2026-03-10', // 1º Trimestre
             '2026-06-10', // 2º Trimestre
@@ -159,9 +231,9 @@ class AcademicoSeeder extends Seeder
                 continue;
             }
 
-            $disciplinas = $disciplinasPorTurma[$turma->id_turma] ?? [];
+            $disciplinasTurma = $turma->disciplinas()->get();
 
-            foreach ($disciplinas as $disc) {
+            foreach ($disciplinasTurma as $disc) {
                 foreach ($datasAulas as $dataAula) {
                     Frequencia::updateOrCreate(
                         [
@@ -180,7 +252,7 @@ class AcademicoSeeder extends Seeder
             }
         }
 
-        // 6. Notas: Exatamente 3 registros por matéria (1º, 2º e 3º Trimestres da rede estadual MG)
+        // 9. Notas: 3 registros por matéria (1º, 2º e 3º Trimestres da rede estadual MG)
         $trimestresConfig = [
             '1º Trimestre' => [
                 'valor_maximo' => 30.00,
@@ -189,14 +261,14 @@ class AcademicoSeeder extends Seeder
                 'tipo_avaliacao' => 'Avaliação Trimestral Consolidada',
             ],
             '2º Trimestre' => [
-                'valor_maximo' => 35.00,
-                'nota_padrao' => 33.5,
+                'valor_maximo' => 30.00,
+                'nota_padrao' => 28.0,
                 'data_registro' => '2026-08-25',
                 'tipo_avaliacao' => 'Avaliação Trimestral Consolidada',
             ],
             '3º Trimestre' => [
-                'valor_maximo' => 35.00,
-                'nota_padrao' => 34.0,
+                'valor_maximo' => 40.00,
+                'nota_padrao' => 38.0,
                 'data_registro' => '2026-11-20',
                 'tipo_avaliacao' => 'Avaliação Trimestral Consolidada',
             ],
@@ -208,9 +280,9 @@ class AcademicoSeeder extends Seeder
                 continue;
             }
 
-            $disciplinas = $disciplinasPorTurma[$turma->id_turma] ?? [];
+            $disciplinasTurma = $turma->disciplinas()->get();
 
-            foreach ($disciplinas as $disc) {
+            foreach ($disciplinasTurma as $disc) {
                 foreach ($trimestresConfig as $periodo => $cfg) {
                     Nota::updateOrCreate(
                         [

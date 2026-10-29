@@ -24,15 +24,27 @@ class MatriculaController extends Controller
      *
      * @return JsonResponse Coleção de matrículas formatadas via MatriculaResource
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', Turma::class);
 
-        $matriculas = Matricula::query()
+        $user = $request->user();
+        $query = Matricula::query()
             ->where('status_matricula', 'Ativo')
             ->with(['turma', 'aluno:id,name,email'])
-            ->orderBy('id_matricula', 'desc')
-            ->get();
+            ->orderBy('id_matricula', 'desc');
+
+        // Se o usuário for Professor, visualiza estritamente os alunos das turmas onde leciona
+        if ($user && $user->isProfessor() && ! $user->isAdm()) {
+            foreach ($user->disciplinasDocente as $discDocente) {
+                $discDocente->sincronizarComTurmasDosCiclos();
+            }
+            $query->whereHas('turma.turmaDisciplinas', function ($q) use ($user) {
+                $q->where('professor_id', $user->id);
+            });
+        }
+
+        $matriculas = $query->get();
 
         return response()->json(MatriculaResource::collection($matriculas), 200);
     }

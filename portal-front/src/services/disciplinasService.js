@@ -107,6 +107,7 @@ export const listarDisciplinas = async (filtros = {}, { signal } = {}) => {
   const params = new URLSearchParams();
   if (filtros.q) params.set("q", filtros.q);
   if (filtros.ciclo_id) params.set("ciclo_id", String(filtros.ciclo_id));
+  if (filtros.vinculadas) params.set("vinculadas", "1");
 
   const query = params.toString() ? `?${params.toString()}` : "";
   const response = await api(`/disciplinas${query}`, { signal });

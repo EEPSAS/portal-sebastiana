@@ -353,11 +353,17 @@ class NotificacaoService
             ]);
         }
 
-        if ($autor->isProfessor() && ! TurmaDisciplina::query()
-            ->whereIn('turma_id', $turmasAtivas)
-            ->where('professor_id', $autor->id)
-            ->exists()) {
-            abort(403, 'Você só pode notificar estudantes de turmas em que leciona.');
+        if ($autor->isProfessor()) {
+            foreach ($autor->disciplinasDocente as $discDocente) {
+                $discDocente->sincronizarComTurmasDosCiclos();
+            }
+
+            if (! TurmaDisciplina::query()
+                ->whereIn('turma_id', $turmasAtivas)
+                ->where('professor_id', $autor->id)
+                ->exists()) {
+                abort(403, 'Você só pode notificar estudantes de turmas em que leciona.');
+            }
         }
 
         return new EloquentCollection([$aluno]);
@@ -365,11 +371,17 @@ class NotificacaoService
 
     private function autorizarTurmaDoProfessor(User $autor, int|string $turmaId): void
     {
-        if ($autor->isProfessor() && ! TurmaDisciplina::query()
-            ->where('turma_id', $turmaId)
-            ->where('professor_id', $autor->id)
-            ->exists()) {
-            abort(403, 'Você só pode notificar alunos de turmas em que leciona.');
+        if ($autor->isProfessor()) {
+            foreach ($autor->disciplinasDocente as $discDocente) {
+                $discDocente->sincronizarComTurmasDosCiclos();
+            }
+
+            if (! TurmaDisciplina::query()
+                ->where('turma_id', $turmaId)
+                ->where('professor_id', $autor->id)
+                ->exists()) {
+                abort(403, 'Você só pode notificar alunos de turmas em que leciona.');
+            }
         }
     }
 

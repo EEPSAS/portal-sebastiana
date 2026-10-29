@@ -31,7 +31,9 @@ class StorePlanoEstudoRequest extends FormRequest
     {
         return [
             'nome' => ['required', 'string', 'min:2', 'max:255'],
-            'disciplina' => ['required', 'string', 'max:100'],
+            'disciplina_id' => ['nullable', 'integer', 'exists:disciplinas,id_disciplina'],
+            'disciplina' => ['required_without:disciplina_id', 'nullable', 'string', 'max:100'],
+            'conteudo' => ['nullable', 'string', 'max:150'],
             'descricao' => ['nullable', 'string', 'max:1000'],
             'ativo' => ['nullable', 'boolean'],
         ];
@@ -47,7 +49,9 @@ class StorePlanoEstudoRequest extends FormRequest
         return [
             'nome.required' => 'O nome do plano de estudos é obrigatório.',
             'nome.min' => 'O nome do plano deve ter no mínimo 2 caracteres.',
-            'disciplina.required' => 'A disciplina do plano de estudos é obrigatória.',
+            'disciplina_id.exists' => 'A disciplina selecionada não foi encontrada no catálogo da escola.',
+            'disciplina.required_without' => 'Informe a disciplina do plano de estudos.',
+            'conteudo.max' => 'O conteúdo ou ementa temática deve ter no máximo 150 caracteres.',
         ];
     }
 }

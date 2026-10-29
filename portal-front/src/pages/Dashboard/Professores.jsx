@@ -18,6 +18,7 @@ import {
   vincularDisciplina,
   desvincularDisciplina,
 } from "../../services/professoresService";
+import { formatarDisciplinaCiclo } from "../../utils/formatters";
 import ModalVincularDisciplina from "../../components/Dashboard/professores/ModalVincularDisciplina";
 import "../../components/Dashboard/professores/Professores.css";
 
@@ -260,9 +261,6 @@ const ProfessoresPage = () => {
                           >
                             {disciplinasCatalogo.map((disc) => {
                               const marcado = selecionadas.includes(disc.id_disciplina);
-                              const ciclosTexto = (disc.ciclos || [])
-                                .map((c) => c.nome)
-                                .join(", ");
 
                               return (
                                 <button
@@ -282,12 +280,7 @@ const ProfessoresPage = () => {
                                       marcado ? "bi-check-circle-fill" : "bi-plus-circle"
                                     } me-1`}
                                   ></i>
-                                  {disc.nome}
-                                  {ciclosTexto && (
-                                    <span className="ms-1 opacity-75" style={{ fontSize: "0.72rem" }}>
-                                      ({ciclosTexto})
-                                    </span>
-                                  )}
+                                  {formatarDisciplinaCiclo(disc)}
                                 </button>
                               );
                             })}
@@ -394,7 +387,7 @@ const ProfessoresPage = () => {
                       {prof.disciplinas.map((disc) => (
                         <span key={disc.id_disciplina} className="disciplina-tag">
                           <i className="bi bi-journal-bookmark text-primary"></i>
-                          {disc.nome}
+                          {formatarDisciplinaCiclo(disc)}
                         </span>
                       ))}
                     </div>

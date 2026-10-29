@@ -8,11 +8,11 @@ use App\Http\Requests\StorePlanoEstudoRequest;
 use App\Http\Resources\PlanoEstudoItemResource;
 use App\Http\Resources\PlanoEstudoResource;
 use App\Http\Resources\TurmaResource;
+use App\Models\Disciplina;
 use App\Models\Livro;
 use App\Models\PlanoEstudo;
 use App\Models\PlanoEstudoItem;
 use App\Models\Turma;
-use App\Models\TurmaDisciplina;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -79,6 +79,14 @@ class PlanoEstudoController extends Controller
     {
         $dados = $request->validated();
         $dados['user_id'] = $request->user()->id;
+
+        // Se o id da disciplina foi informado e a string não, preenche com o nome oficial da disciplina
+        if (! empty($dados['disciplina_id']) && empty($dados['disciplina'])) {
+            $disciplinaModel = Disciplina::find($dados['disciplina_id']);
+            if ($disciplinaModel) {
+                $dados['disciplina'] = $disciplinaModel->nome;
+            }
+        }
 
         $plano = PlanoEstudo::create($dados);
         $plano->load(['user:id,name', 'turmas']);
@@ -164,14 +172,22 @@ class PlanoEstudoController extends Controller
             ->withCount(['alunos', 'disciplinas'])
             ->where('status', 'Ativa');
 
-        // Filtra estritamente pelas turmas vinculadas ao professor na tabela turma_disciplinas
+        // Filtra estritamente pelas turmas vinculadas ao professor
         if ($usuario->isProfessor() && ! $usuario->isAdm()) {
-            $possuiVinculoDocente = TurmaDisciplina::where('professor_id', $usuario->id)->exists();
-            if ($possuiVinculoDocente) {
-                $query->whereHas('turmaDisciplinas', function ($q) use ($usuario) {
-                    $q->where('professor_id', $usuario->id);
-                });
+            foreach ($usuario->disciplinasDocente as $discDocente) {
+                $discDocente->sincronizarComTurmasDosCiclos();
             }
+
+            $query->whereHas('turmaDisciplinas', function ($q) use ($usuario, $request) {
+                $q->where('professor_id', $usuario->id);
+                if ($request->filled('disciplina_id')) {
+                    $q->where('disciplina_id', $request->integer('disciplina_id'));
+                }
+            });
+        } elseif ($request->filled('disciplina_id')) {
+            $query->whereHas('turmaDisciplinas', function ($q) use ($request) {
+                $q->where('disciplina_id', $request->integer('disciplina_id'));
+            });
         }
 
         // Filtro opcional de busca por nome/série da turma (ex: 1º, 2º, 3º ano)
