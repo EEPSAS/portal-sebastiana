@@ -397,33 +397,6 @@ const Turmas = () => {
   const turmaAtivaParaCSV =
     turmas.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) || turmas[0] || null;
 
-  const acoesTurmas = (
-    <div className="d-flex align-items-center gap-2">
-      {podeGerenciar && abaAtiva === "turmas" && (
-        <button
-          type="button"
-          className="btn btn-sm btn-primary rounded-pill px-3 fw-bold text-nowrap"
-          onClick={handleAbrirCriarTurma}
-          title="Cadastrar nova turma escolar"
-        >
-          <i className="bi bi-plus-lg me-1"></i>
-          Nova Turma
-        </button>
-      )}
-      {podeGerenciar && abaAtiva === "notas" && (
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold text-nowrap"
-          onClick={() => handleAbrirImportarNotas(turmaAtivaParaCSV)}
-          title="Importar diário de notas via CSV para esta turma"
-        >
-          <i className="bi bi-file-earmark-arrow-up me-1"></i>
-          Importar Notas (CSV)
-        </button>
-      )}
-    </div>
-  );
-
   return (
     <div className="position-relative">
       {/* Toast Flutuante no padrão da Biblioteca */}
@@ -450,7 +423,7 @@ const Turmas = () => {
       )}
 
       {/* Envelope de Superfície Branca */}
-      <PainelModulo acoes={acoesTurmas}>
+      <PainelModulo>
         {/* Banner de Alunos Pendentes de Aprovação e Vínculo com Turma (Diretriz 2.3.1) */}
         {podeGerenciar && alunosPendentesCount > 0 && (
           <div
@@ -489,22 +462,35 @@ const Turmas = () => {
         )}
 
         {/* Sub-abas de 2º Nível: Segmentadas e Compactas */}
-        <div className="d-flex flex-wrap align-items-center gap-1 p-1 bg-light rounded-pill border mb-4 d-inline-flex">
-          {abasDisponiveis.map((aba) => {
-            const ativa = abaAtiva === aba.id;
-            return (
-              <button
-                key={aba.id}
-                type="button"
-                onClick={() => setAbaAtiva(aba.id)}
-                className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 transition-all ${
-                  ativa ? "btn-primary text-white shadow-sm" : "btn-light text-muted"
-                }`}
-              >
-                {aba.label}
-              </button>
-            );
-          })}
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 p-1 bg-light rounded-4 border mb-4">
+          <div className="d-flex flex-wrap align-items-center gap-1">
+            {abasDisponiveis.map((aba) => {
+              const ativa = abaAtiva === aba.id;
+              return (
+                <button
+                  key={aba.id}
+                  type="button"
+                  onClick={() => setAbaAtiva(aba.id)}
+                  className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 transition-all ${
+                    ativa ? "btn-primary text-white shadow-sm" : "btn-light text-muted"
+                  }`}
+                >
+                  {aba.label}
+                </button>
+              );
+            })}
+          </div>
+          {podeGerenciar && abaAtiva === "turmas" && (
+            <button
+              type="button"
+              className="btn btn-sm btn-primary rounded-pill px-3 fw-bold text-nowrap me-1"
+              onClick={handleAbrirCriarTurma}
+              title="Cadastrar nova turma escolar"
+            >
+              <i className="bi bi-plus-lg me-1"></i>
+              Nova Turma
+            </button>
+          )}
         </div>
 
         {/* 1. Conteúdo da Aba Geral: Indicadores e Gráficos */}

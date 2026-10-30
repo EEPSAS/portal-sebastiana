@@ -109,6 +109,8 @@ const Aside = () => {
 
   // Filtra a árvore de navegação mantendo apenas itens e grupos acessíveis ao perfil ativo
   const estruturaFiltrada = NAV_STRUCTURE.reduce((acc, entry) => {
+    if (entry.footerOnly) return acc;
+
     if (entry.type === "item") {
       if (entry.roles.includes(userRole)) {
         acc.push(entry);

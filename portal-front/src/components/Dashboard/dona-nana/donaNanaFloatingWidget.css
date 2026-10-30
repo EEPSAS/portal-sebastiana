@@ -10,6 +10,17 @@
   font-family: inherit;
 }
 
+.dona-nana-widget-container.is-dragging {
+  user-select: none;
+}
+
+.dona-nana-widget-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 24px);
+}
+
 /* Botão de Disparo Flutuante */
 .dona-nana-trigger-btn {
   background: #ffffff;
@@ -20,8 +31,19 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+}
+
+.dona-nana-widget-container.is-dragging .dona-nana-trigger-btn,
+.dona-nana-chat-drag-handle:active {
+  cursor: grabbing;
+}
+
+.dona-nana-widget-container.is-pinned .dona-nana-trigger-btn,
+.dona-nana-widget-container.is-pinned .dona-nana-chat-drag-handle {
+  cursor: default;
 }
 
 .dona-nana-trigger-btn:hover {
@@ -51,10 +73,12 @@
   font-size: 0.82rem;
   padding: 8px 14px;
   border-radius: 14px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
   max-width: 250px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-  position: relative;
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
   animation: fadeInGreeting 0.4s ease;
 }
 
@@ -70,6 +94,9 @@
 
 /* Painel de Conversa Rápida Expandido */
 .dona-nana-chat-card {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 12px);
   width: 360px;
   max-width: calc(100vw - 36px);
   height: 520px;
@@ -82,7 +109,12 @@
   overflow: hidden;
   border: 1px solid #e9ecef;
   animation: slideUpChat 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  margin-bottom: 12px;
+  margin-bottom: 0;
+}
+
+.dona-nana-chat-card.is-below {
+  top: calc(100% + 12px);
+  bottom: auto;
 }
 
 /* Cabeçalho do Card */
@@ -93,6 +125,52 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.dona-nana-chat-drag-handle {
+  flex: 1 1 auto;
+  min-width: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.dona-nana-pin-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid #f6c343;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #0d2346;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.dona-nana-pin-btn:hover,
+.dona-nana-pin-btn[aria-pressed='true'] {
+  background: #f6c343;
+  color: #212529;
+}
+
+.dona-nana-pin-btn-compacto {
+  width: 32px;
+  height: 32px;
+  border-color: transparent;
+  background: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.dona-nana-pin-btn-compacto:hover,
+.dona-nana-pin-btn-compacto[aria-pressed='true'] {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
 }
 
 .dona-nana-chat-title h6 {
@@ -211,6 +289,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+@media (max-width: 575.98px) {
+  .dona-nana-widget-controls {
+    gap: 5px;
+  }
+
+  .dona-nana-trigger-btn {
+    max-width: calc(100vw - 72px);
+    gap: 6px;
+    padding-right: 10px;
+  }
+
+  .dona-nana-trigger-label {
+    font-size: 0.82rem;
+  }
+
+  .dona-nana-chat-card {
+    width: min(360px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+  }
 }
 
 /* Animações */

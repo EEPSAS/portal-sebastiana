@@ -6,7 +6,7 @@
  * - Carrega o script cse.js como singleton em modo explícito (parsetags: 'explicit');
  * - Renderiza o widget com overlayResults=false para exibir os resultados diretamente
  *   dentro da própria página (sem abrir modal sobreposto externo);
- * - Acopla botões de "Acessar conteúdo ↗" e "+ Adicionar aos planos" diretamente nos
+ * - Acopla botões de acesso e inclusão nos planos aos próprios resultados renderizados
  *   resultados renderizados pelo Google (via MutationObserver) e oferece sugestões rápidas.
  */
 
@@ -255,29 +255,11 @@ const ConteudoWebAba = ({ onAdicionarAoPlano }) => {
     }
   };
 
-  // Abre o modal permitindo salvar manualmente um conteúdo ou link pesquisado no plano de estudos
-  const handleAbrirAdicaoManual = () => {
-    const inputGoogle = containerRef.current?.querySelector('input.gsc-input');
-    const termoDigitado = inputGoogle?.value?.trim() || termoSugeridoAtivo || '';
-
-    onAdicionarAoPlano?.({
-      tipo: 'conteudo_web',
-      conteudo_id: null,
-      titulo: termoDigitado,
-      descricao: '',
-      url: '',
-      thumbnail: null,
-      fonte: 'Pesquisa Google Web',
-      duracao: null,
-      editavel: true,
-    });
-  };
-
   return (
     <section aria-label="Pesquisa de Conteúdo Web no Google">
-      {/* Cabeçalho de Orientação e Atalho para Salvar Conteúdo no Plano de Estudos */}
+      {/* Cabeçalho de Orientação da Pesquisa Web */}
       <div className="bg-light p-3 p-md-4 rounded-4 mb-4 border border-light-subtle">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+        <div className="mb-3">
           <div>
             <h5 className="fw-bold text-dark mb-1 fs-6">
               Pesquisa Acadêmica Integrada (Google)
@@ -286,14 +268,6 @@ const ConteudoWebAba = ({ onAdicionarAoPlano }) => {
               Pesquise artigos, resumos e materiais didáticos na web. Os resultados aparecem abaixo nesta mesma página.
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={handleAbrirAdicaoManual}
-            className="btn btn-sm btn-outline-success rounded-pill px-3 py-2 fw-semibold flex-shrink-0"
-          >
-            + Salvar conteúdo pesquisado no plano
-          </button>
         </div>
 
         {/* Sugestões Rápidas para Pesquisa Imediata Dentro da Aba */}

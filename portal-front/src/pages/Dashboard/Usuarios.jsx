@@ -63,6 +63,7 @@ const formatarDataVinculo = (valorIso) => {
 const UsuariosPage = () => {
   const [usuarios, setUsuarios] = useState([]);
   const [meta, setMeta] = useState(null);
+  const [pagina, setPagina] = useState(1);
   const [filtroRole, setFiltroRole] = useState("");
   const [buscaNome, setBuscaNome] = useState("");
   const [recargaKey, setRecargaKey] = useState(0);
@@ -92,7 +93,7 @@ const UsuariosPage = () => {
     setTimeout(() => setFeedback(""), 4500);
   };
 
-  // Busca os 15 últimos usuários cadastrados com filtro por Role e Nome
+  // Mantém a paginação no servidor para continuar carregando somente 15 usuários por requisição
   useEffect(() => {
     let ativo = true;
 
@@ -103,12 +104,15 @@ const UsuariosPage = () => {
       listarUsuarios({
         role: filtroRole || undefined,
         busca: buscaNome.trim() || undefined,
+        page: pagina,
         per_page: 15,
       })
         .then((res) => {
           if (!ativo) return;
           setUsuarios(res?.data || []);
           setMeta(res?.meta || null);
+          const ultimaPagina = Math.max(1, Number(res?.meta?.last_page || 1));
+          if (pagina > ultimaPagina) setPagina(ultimaPagina);
         })
         .catch((err) => {
           if (!ativo) return;
@@ -123,7 +127,7 @@ const UsuariosPage = () => {
       ativo = false;
       clearTimeout(timer);
     };
-  }, [filtroRole, buscaNome, recargaKey]);
+  }, [filtroRole, buscaNome, pagina, recargaKey]);
 
   // Abre o modal de edição populando os campos atuais do usuário
   const handleAbrirEditar = (u) => {
@@ -206,13 +210,16 @@ const UsuariosPage = () => {
   };
 
   const acoesUsuarios = (
-    <div className="d-flex align-items-center gap-2 flex-wrap">
+    <div className="usuarios-nav-filtros d-flex align-items-center gap-2">
       <div style={{ minWidth: "150px" }}>
         <select
           id="filtro-role-usuarios"
           className="form-select form-select-sm rounded-pill shadow-none"
           value={filtroRole}
-          onChange={(e) => setFiltroRole(e.target.value)}
+          onChange={(e) => {
+            setFiltroRole(e.target.value);
+            setPagina(1);
+          }}
           aria-label="Filtrar por papel"
         >
           {ROLES_OPCOES.map((op) => (
@@ -233,7 +240,10 @@ const UsuariosPage = () => {
           className="form-control form-control-sm border-start-0 ps-0 shadow-none"
           placeholder="Buscar usuário..."
           value={buscaNome}
-          onChange={(e) => setBuscaNome(e.target.value)}
+          onChange={(e) => {
+            setBuscaNome(e.target.value);
+            setPagina(1);
+          }}
         />
       </div>
     </div>
@@ -283,7 +293,7 @@ const UsuariosPage = () => {
                 <tr>
                   <td colSpan={5} className="text-center py-5 text-muted">
                     <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                    Carregando os 15 últimos usuários cadastrados...
+                    Carregando usuários...
                   </td>
                 </tr>
               ) : usuarios.length === 0 ? (
@@ -375,10 +385,33 @@ const UsuariosPage = () => {
         </div>
 
         {meta && (
-          <div className="d-flex justify-content-between align-items-center mt-3 small text-muted">
+          <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mt-3 small text-muted">
             <span>
-              Exibindo <strong>{usuarios.length}</strong> de <strong>{meta.total ?? usuarios.length}</strong> registro(s) (limite padrão: 15 últimos cadastros).
+              Exibindo <strong>{usuarios.length}</strong> de{" "}
+              <strong>{meta.total ?? usuarios.length}</strong> usuário(s) · Página{" "}
+              <strong>{meta.current_page ?? pagina}</strong> de{" "}
+              <strong>{meta.last_page ?? 1}</strong>
             </span>
+            <nav className="d-flex align-items-center gap-2" aria-label="Paginação de usuários">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary rounded-pill px-3"
+                onClick={() => setPagina((atual) => Math.max(1, atual - 1))}
+                disabled={loading || pagina <= 1}
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary rounded-pill px-3"
+                onClick={() =>
+                  setPagina((atual) => Math.min(Number(meta.last_page || 1), atual + 1))
+                }
+                disabled={loading || pagina >= Number(meta.last_page || 1)}
+              >
+                Próxima
+              </button>
+            </nav>
           </div>
         )}
       </PainelModulo>
@@ -633,4 +666,3 @@ const UsuariosPage = () => {
 };
 
 export default UsuariosPage;
-

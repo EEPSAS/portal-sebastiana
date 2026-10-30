@@ -131,7 +131,7 @@ const CelulaHorarioDroppable = ({
   );
 };
 
-const HorariosEscolares = () => {
+const HorariosEscolares = ({ onRegistrarAcoes }) => {
   const { user } = useAuth();
   const role = String(user?.role || '').toLowerCase();
   const podeEditar = ['especialista', 'adm'].includes(role);
@@ -216,20 +216,106 @@ const HorariosEscolares = () => {
     );
   };
 
-  const handleGerar = async () => {
-    if (!turmaSelecionada) return;
+  useEffect(() => {
+    if (!onRegistrarAcoes) return;
 
-    setErro('');
-    setGerando(true);
-    try {
-      const resultado = await gerarHorario(turmaSelecionadaId);
-      atualizarHorarioSelecionado(resultado);
-    } catch (error) {
-      setErro(error.message);
-    } finally {
-      setGerando(false);
-    }
-  };
+    const acoes = turmas.length > 0 && (
+      <div className="horarios-nav-acoes d-flex align-items-center gap-2">
+        <label htmlFor="horario-turma" className="form-label small mb-0">
+          Turma
+        </label>
+        <select
+          id="horario-turma"
+          className="form-select form-select-sm horario-turma-seletor"
+          value={turmaSelecionadaId}
+          onChange={(event) => {
+            setTurmaSelecionadaId(event.target.value);
+            setErro('');
+            setAulaArrastada(null);
+            setEditando(false);
+          }}
+          disabled={carregando}
+        >
+          {turmas.map(({ turma }) => (
+            <option key={turma.id_turma} value={turma.id_turma}>
+              {turma.nome_identificador} — {turma.ano_letivo}
+              {turma.ciclo_nome ? ` (${turma.ciclo_nome})` : ''}
+            </option>
+          ))}
+        </select>
+        {podeEditar && horario && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+            onClick={() => setEditando((atual) => !atual)}
+            disabled={gerando || salvandoAula || carregando}
+            aria-pressed={editando}
+          >
+            {editando ? 'Concluir edição' : 'Editar'}
+          </button>
+        )}
+        {podeEditar && (
+          <button
+            type="button"
+            className="btn btn-sm btn-primary rounded-pill px-3"
+            onClick={async () => {
+              if (!turmaSelecionada) return;
+
+              setErro('');
+              setGerando(true);
+              try {
+                const resultado = await gerarHorario(turmaSelecionadaId);
+                setTurmas((atuais) =>
+                  atuais.map((item) =>
+                    String(item.turma.id_turma) === turmaSelecionadaId
+                      ? { ...item, horario: resultado }
+                      : item
+                  )
+                );
+              } catch (error) {
+                setErro(error.message);
+              } finally {
+                setGerando(false);
+              }
+            }}
+            disabled={gerando || salvandoAula || carregando || editando || !turmaSelecionada}
+          >
+            {gerando ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />
+                Em montagem
+              </>
+            ) : (
+              <>
+                <i className="bi bi-shuffle me-1" aria-hidden="true" />
+                Gerar
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    );
+
+    onRegistrarAcoes(acoes || null);
+  }, [
+    onRegistrarAcoes,
+    turmas,
+    turmaSelecionadaId,
+    carregando,
+    podeEditar,
+    horario,
+    turmaSelecionada,
+    gerando,
+    salvandoAula,
+    editando,
+  ]);
+
+  useEffect(
+    () => () => {
+      onRegistrarAcoes?.(null);
+    },
+    [onRegistrarAcoes]
+  );
 
   const handleMoverAula = async (aula, dia, periodo) => {
     if (!horario || !aula || salvandoAula) return;
@@ -267,7 +353,7 @@ const HorariosEscolares = () => {
 
   return (
     <section className="horarios-escolares mt-2" aria-labelledby="horarios-escolares-titulo">
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+      <div className="mb-3">
         <div>
           <h3 id="horarios-escolares-titulo" className="h5 fw-bold mb-1">
             Horários das Turmas
@@ -276,63 +362,6 @@ const HorariosEscolares = () => {
             Grade semanal integrada às Disciplinas do Ciclo e carga horária semanal (arraste e solte com dnd-kit).
           </p>
         </div>
-
-        {turmas.length > 0 && (
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            <label htmlFor="horario-turma" className="form-label small mb-0">
-              Turma
-            </label>
-            <select
-              id="horario-turma"
-              className="form-select form-select-sm horario-turma-seletor"
-              value={turmaSelecionadaId}
-              onChange={(event) => {
-                setTurmaSelecionadaId(event.target.value);
-                setErro('');
-                setAulaArrastada(null);
-                setEditando(false);
-              }}
-            >
-              {turmas.map(({ turma }) => (
-                <option key={turma.id_turma} value={turma.id_turma}>
-                  {turma.nome_identificador} — {turma.ano_letivo}
-                  {turma.ciclo_nome ? ` (${turma.ciclo_nome})` : ''}
-                </option>
-              ))}
-            </select>
-            {podeEditar && horario && (
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary rounded-pill px-3"
-                onClick={() => setEditando((atual) => !atual)}
-                disabled={gerando || salvandoAula || carregando}
-                aria-pressed={editando}
-              >
-                {editando ? 'Concluir edição' : 'Editar'}
-              </button>
-            )}
-            {podeEditar && (
-              <button
-                type="button"
-                className="btn btn-sm btn-primary rounded-pill px-3"
-                onClick={handleGerar}
-                disabled={gerando || salvandoAula || carregando || editando}
-              >
-                {gerando ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />
-                    Em montagem
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-shuffle me-1" aria-hidden="true" />
-                    Gerar
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       {erro && (

@@ -18,6 +18,7 @@ export default function ModuloNav({
   abas: abasProps,
   abaAtivaId: abaAtivaIdProp,
   onSelecionarAba,
+  acoes,
   className = "",
 }) {
   const location = useLocation();
@@ -27,54 +28,62 @@ export default function ModuloNav({
   const contexto = obterContextoModulo(location.pathname, location.search, role);
   const listaAbas = abasProps ?? contexto.abas;
 
-  // Se o módulo não possui múltiplas abas filhas, não renderiza nada
-  if (!listaAbas || listaAbas.length <= 1) {
+  const possuiAbas = listaAbas && listaAbas.length > 1;
+
+  // Mantém a faixa visível quando houver ações mesmo em módulos com uma única aba
+  if (!possuiAbas && !acoes) {
     return null;
   }
 
   return (
     <nav
-      className={`modulo-nav d-flex gap-3 gap-md-4 border-bottom pb-1 flex-wrap ${className}`.trim()}
+      className={`modulo-nav d-flex border-bottom pb-1 ${className}`.trim()}
       aria-label="Navegação do módulo"
     >
-      {listaAbas.map((aba) => {
-        const ativa = abaAtivaIdProp
-          ? abaAtivaIdProp === aba.id
-          : isChildActive(aba, location.pathname, location.search);
+      {possuiAbas && (
+        <div className="modulo-nav-abas">
+          {listaAbas.map((aba) => {
+            const ativa = abaAtivaIdProp
+              ? abaAtivaIdProp === aba.id
+              : isChildActive(aba, location.pathname, location.search);
 
-        const rotulo = aba.labelExibicao || aba.label;
+            const rotulo = aba.labelExibicao || aba.label;
 
-        // Se houver callback customizado de seleção de aba
-        if (onSelecionarAba) {
-          return (
-            <button
-              key={aba.id}
-              type="button"
-              onClick={() => onSelecionarAba(aba.id)}
-              className={`modulo-nav-item btn btn-link p-0 text-decoration-none d-flex align-items-center ${
-                ativa ? "is-active fw-bold" : "text-muted fw-semibold"
-              }`}
-            >
-              {aba.icon && <i className={`bi ${aba.icon} me-2 fs-6`}></i>}
-              <span>{rotulo}</span>
-            </button>
-          );
-        }
+            // Se houver callback customizado de seleção de aba
+            if (onSelecionarAba) {
+              return (
+                <button
+                  key={aba.id}
+                  type="button"
+                  onClick={() => onSelecionarAba(aba.id)}
+                  className={`modulo-nav-item btn btn-link p-0 text-decoration-none d-flex align-items-center ${
+                    ativa ? "is-active fw-bold" : "text-muted fw-semibold"
+                  }`}
+                >
+                  {aba.icon && <i className={`bi ${aba.icon} me-2 fs-6`}></i>}
+                  <span>{rotulo}</span>
+                </button>
+              );
+            }
 
-        // Navegação declarativa padrão via Link do React Router
-        return (
-          <Link
-            key={aba.id}
-            to={aba.path}
-            className={`modulo-nav-item text-decoration-none d-flex align-items-center ${
-              ativa ? "is-active fw-bold" : "text-muted fw-semibold"
-            }`}
-          >
-            {aba.icon && <i className={`bi ${aba.icon} me-2 fs-6`}></i>}
-            <span>{rotulo}</span>
-          </Link>
-        );
-      })}
+            // Navegação declarativa padrão via Link do React Router
+            return (
+              <Link
+                key={aba.id}
+                to={aba.path}
+                className={`modulo-nav-item text-decoration-none d-flex align-items-center ${
+                  ativa ? "is-active fw-bold" : "text-muted fw-semibold"
+                }`}
+              >
+                {aba.icon && <i className={`bi ${aba.icon} me-2 fs-6`}></i>}
+                <span>{rotulo}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {acoes && <div className="modulo-nav-acoes">{acoes}</div>}
     </nav>
   );
 }

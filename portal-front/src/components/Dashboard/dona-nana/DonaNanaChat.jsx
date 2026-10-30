@@ -13,6 +13,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import DonaNanaAvatar from './DonaNanaAvatar';
 import BoasVindasCard from '../common/BoasVindasCard';
+import ModuloNav from '../common/ModuloNav';
 import { useAuth } from '../../../hooks/useAuth';
 import { enviarMensagem } from '../../../services/donaNanaService';
 import './donaNana.css';
@@ -206,7 +207,8 @@ const DonaNanaChat = () => {
     <div className="dona-nana-page-container">
       {/* Banner Superior com BoasVindasCard Padronizado */}
       <div className="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-3">
-        <BoasVindasCard
+        <BoasVindasCard />
+        <ModuloNav
           acoes={
             podeConfigurar && (
               <button

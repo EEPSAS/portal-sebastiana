@@ -3,7 +3,7 @@
  *
  * Papel Didático:
  * Oferece suporte rápido e contextual acessível em qualquer página do Dashboard:
- * 1. Posição fixa no canto inferior direito (`bottom: 24px; right: 24px;`);
+ * 1. Posição flutuante reposicionável pelo usuário e persistida no navegador;
  * 2. Persistência da conversa rápida em `localStorage` para não perder o diálogo ao mudar de tela;
  * 3. Chips de perguntas frequentes para facilitação do aluno/professor;
  * 4. Botão de expansão para navegar diretamente para a aba dedicada `/dashboard/dona-nana`.
@@ -16,6 +16,7 @@ import { enviarMensagem } from '../../../services/donaNanaService';
 import './donaNanaFloatingWidget.css';
 
 const LOCAL_STORAGE_KEY = 'portal_dona_nana_balao_historico';
+const POSITION_STORAGE_KEY = 'portal_dona_nana_balao_posicao';
 
 let messageCounter = 0;
 const createMessageId = (prefix) => `${prefix}-${++messageCounter}`;
@@ -33,10 +34,42 @@ const MENSAGEM_INICIAL_PADRAO = {
   text: 'Olá, meu querido(a)! Sou a Dona Nana. Em que posso te orientar hoje sobre nossa escola ou sobre o portal?',
 };
 
+const carregarPreferenciasPosicao = () => {
+  try {
+    const preferencias = JSON.parse(localStorage.getItem(POSITION_STORAGE_KEY) || 'null');
+    const posicao = preferencias?.posicao;
+
+    return {
+      posicao:
+        Number.isFinite(posicao?.left) && Number.isFinite(posicao?.top)
+          ? posicao
+          : null,
+      fixado: Boolean(preferencias?.fixado),
+    };
+  } catch {
+    return { posicao: null, fixado: false };
+  }
+};
+
+const salvarPreferenciasPosicao = (posicao, fixado) => {
+  try {
+    localStorage.setItem(
+      POSITION_STORAGE_KEY,
+      JSON.stringify({ posicao, fixado })
+    );
+  } catch {
+    // O widget continua funcional mesmo quando o navegador bloqueia armazenamento local.
+  }
+};
+
 const DonaNanaFloatingWidget = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [showGreeting, setShowGreeting] = useState(true);
+  const [preferenciasIniciais] = useState(carregarPreferenciasPosicao);
+  const [posicao, setPosicao] = useState(preferenciasIniciais.posicao);
+  const [fixado, setFixado] = useState(preferenciasIniciais.fixado);
+  const [arrastando, setArrastando] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState(() => {
@@ -55,6 +88,109 @@ const DonaNanaFloatingWidget = () => {
   });
 
   const messagesEndRef = useRef(null);
+  const widgetRef = useRef(null);
+  const arrasteRef = useRef(null);
+  const ultimoArrasteRef = useRef(0);
+
+  // Reajusta a posição quando a janela muda para evitar que o widget fique fora da tela.
+  useEffect(() => {
+    if (!posicao || !widgetRef.current) return undefined;
+
+    const limitarPosicao = () => {
+      const limites = widgetRef.current?.getBoundingClientRect();
+      if (!limites) return;
+
+      const proxima = {
+        left: Math.max(0, Math.min(posicao.left, window.innerWidth - limites.width)),
+        top: Math.max(0, Math.min(posicao.top, window.innerHeight - limites.height)),
+      };
+      if (proxima.left === posicao.left && proxima.top === posicao.top) return;
+
+      setPosicao(proxima);
+      salvarPreferenciasPosicao(proxima, fixado);
+    };
+
+    limitarPosicao();
+    window.addEventListener('resize', limitarPosicao);
+    return () => window.removeEventListener('resize', limitarPosicao);
+  }, [posicao, fixado]);
+
+  const iniciarArraste = (event) => {
+    if (fixado || event.button !== 0 || !widgetRef.current) return;
+
+    const limites = widgetRef.current.getBoundingClientRect();
+    const posicaoInicial = posicao || { left: limites.left, top: limites.top };
+    arrasteRef.current = {
+      pointerId: event.pointerId,
+      inicioX: event.clientX,
+      inicioY: event.clientY,
+      deslocamentoX: event.clientX - limites.left,
+      deslocamentoY: event.clientY - limites.top,
+      posicao: posicaoInicial,
+      moveu: false,
+    };
+    setPosicao(posicaoInicial);
+    setArrastando(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const moverWidget = (event) => {
+    const arraste = arrasteRef.current;
+    if (!arraste || arraste.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - arraste.inicioX;
+    const deltaY = event.clientY - arraste.inicioY;
+    if (!arraste.moveu && Math.hypot(deltaX, deltaY) < 4) return;
+
+    arraste.moveu = true;
+    const limites = widgetRef.current?.getBoundingClientRect();
+    if (!limites) return;
+
+    arraste.posicao = {
+      left: Math.max(0, Math.min(event.clientX - arraste.deslocamentoX, window.innerWidth - limites.width)),
+      top: Math.max(0, Math.min(event.clientY - arraste.deslocamentoY, window.innerHeight - limites.height)),
+    };
+    setPosicao(arraste.posicao);
+  };
+
+  const finalizarArraste = (event) => {
+    const arraste = arrasteRef.current;
+    if (!arraste || arraste.pointerId !== event.pointerId) return;
+
+    if (arraste.moveu) {
+      ultimoArrasteRef.current = Date.now();
+      setPosicao(arraste.posicao);
+      salvarPreferenciasPosicao(arraste.posicao, fixado);
+    }
+    arrasteRef.current = null;
+    setArrastando(false);
+  };
+
+  const alternarPino = () => {
+    const novoEstadoFixado = !fixado;
+    setFixado(novoEstadoFixado);
+    salvarPreferenciasPosicao(posicao, novoEstadoFixado);
+  };
+
+  const ignorarCliqueAposArraste = (event) => {
+    if (Date.now() - ultimoArrasteRef.current < 250) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
+  const botaoPino = (compacto = false) => (
+    <button
+      type="button"
+      className={`dona-nana-pin-btn ${compacto ? 'dona-nana-pin-btn-compacto' : ''}`}
+      onClick={alternarPino}
+      aria-pressed={fixado}
+      aria-label={fixado ? 'Desafixar Dona Nana para permitir arraste' : 'Fixar Dona Nana para impedir arraste'}
+      title={fixado ? 'Desafixar balão' : 'Fixar balão'}
+    >
+      <i className={`bi ${fixado ? 'bi-pin-angle-fill' : 'bi-pin-angle'}`} aria-hidden="true" />
+    </button>
+  );
 
   // Salva no localStorage sempre que o array de mensagens mudar
   useEffect(() => {
@@ -147,8 +283,31 @@ const DonaNanaFloatingWidget = () => {
     navigate('/dashboard/dona-nana');
   };
 
+  const espacoChatAcima = posicao ? posicao.top - 12 : 0;
+  const espacoChatAbaixo = posicao
+    ? window.innerHeight - posicao.top - 64 - 24
+    : 0;
+  const chatAbaixo = Boolean(posicao && espacoChatAbaixo > espacoChatAcima);
+  const alturaMaximaChat = posicao
+    ? `${Math.max(120, Math.min(520, Math.max(espacoChatAcima, espacoChatAbaixo)))}px`
+    : undefined;
+
   return (
-    <div className="dona-nana-widget-container" aria-label="Assistente Virtual Dona Nana">
+    <div
+      ref={widgetRef}
+      className={`dona-nana-widget-container ${arrastando ? 'is-dragging' : ''} ${fixado ? 'is-pinned' : ''}`}
+      style={
+        posicao
+          ? {
+              left: `${posicao.left}px`,
+              top: `${posicao.top}px`,
+              right: 'auto',
+              bottom: 'auto',
+            }
+          : undefined
+      }
+      aria-label="Assistente Virtual Dona Nana"
+    >
       {/* Balãozinho prévio de saudação (apenas se fechado) */}
       {!isOpen && showGreeting && (
         <div className="dona-nana-greeting-bubble" onClick={handleToggleOpen} role="button" tabIndex={0}>
@@ -171,10 +330,20 @@ const DonaNanaFloatingWidget = () => {
 
       {/* Card Flutuante de Conversa Rápida */}
       {isOpen && (
-        <section className="dona-nana-chat-card" aria-label="Diálogo rápido com a Dona Nana">
+        <section
+          className={`dona-nana-chat-card ${chatAbaixo ? 'is-below' : ''}`}
+          style={alturaMaximaChat ? { maxHeight: alturaMaximaChat } : undefined}
+          aria-label="Diálogo rápido com a Dona Nana"
+        >
           {/* Cabeçalho */}
           <header className="dona-nana-chat-header">
-            <div className="d-flex align-items-center gap-2">
+            <div
+              className="dona-nana-chat-drag-handle d-flex align-items-center gap-2"
+              onPointerDown={iniciarArraste}
+              onPointerMove={moverWidget}
+              onPointerUp={finalizarArraste}
+              onPointerCancel={finalizarArraste}
+            >
               <DonaNanaAvatar size="sm" showBadge />
               <div className="dona-nana-chat-title">
                 <h6>Dona Nana</h6>
@@ -186,6 +355,7 @@ const DonaNanaFloatingWidget = () => {
             </div>
 
             <div className="d-flex align-items-center gap-1">
+              {botaoPino(true)}
               <button
                 type="button"
                 className="btn btn-sm btn-outline-light border-0"
@@ -287,17 +457,27 @@ const DonaNanaFloatingWidget = () => {
       )}
 
       {/* Botão de Disparo Flutuante */}
-      <button
-        type="button"
-        className="dona-nana-trigger-btn"
-        onClick={handleToggleOpen}
-        aria-expanded={isOpen}
-        aria-label="Abrir assistente virtual Dona Nana"
-      >
-        <DonaNanaAvatar size="md" showBadge />
-        <span className="dona-nana-trigger-label">Dona Nana</span>
-        <span className="dona-nana-trigger-badge">Ajuda</span>
-      </button>
+      <div className="dona-nana-widget-controls">
+        <button
+          type="button"
+          className="dona-nana-trigger-btn"
+          onPointerDown={iniciarArraste}
+          onPointerMove={moverWidget}
+          onPointerUp={finalizarArraste}
+          onPointerCancel={finalizarArraste}
+          onClick={(event) => {
+            ignorarCliqueAposArraste(event);
+            if (Date.now() - ultimoArrasteRef.current >= 250) handleToggleOpen();
+          }}
+          aria-expanded={isOpen}
+          aria-label="Abrir assistente virtual Dona Nana"
+        >
+          <DonaNanaAvatar size="md" showBadge />
+          <span className="dona-nana-trigger-label">Dona Nana</span>
+          <span className="dona-nana-trigger-badge">Ajuda</span>
+        </button>
+        {botaoPino()}
+      </div>
     </div>
   );
 };

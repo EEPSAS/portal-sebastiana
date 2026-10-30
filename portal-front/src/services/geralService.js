@@ -55,8 +55,9 @@ export function montarCardsKpis(kpis = {}) {
  * Busca em uma única requisição os KPIs, médias/frequências por turma e últimas atualizações
  * para os perfis de Especialista, Professor e Administrador.
  */
-export async function fetchDashboardGeral() {
-  const response = await api('/dashboard/geral');
+export async function fetchDashboardGeral({ divisao } = {}) {
+  const query = divisao ? `?divisao=${encodeURIComponent(divisao)}` : '';
+  const response = await api(`/dashboard/geral${query}`);
 
   if (!response.ok) {
     const errData = await response.json().catch(() => null);

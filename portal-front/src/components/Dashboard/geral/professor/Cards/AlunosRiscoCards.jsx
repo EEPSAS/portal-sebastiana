@@ -28,7 +28,7 @@ const CARDS_RISCO = [
 ];
 
 /** Exibe os totais demonstrativos com a linguagem visual dos cards bibliotecários. */
-export default function AlunosRiscoCards({ dados, periodo }) {
+export default function AlunosRiscoCards({ dados, periodo, metaPontos = null, isReal = false }) {
   return (
     <>
       {CARDS_RISCO.map((card) => (
@@ -60,7 +60,7 @@ export default function AlunosRiscoCards({ dados, periodo }) {
                     {card.titulo}
                   </h2>
                   <p className="small mb-0" style={{ color: "#687386" }}>
-                    {card.descricao}
+                    {card.id === "notas" && metaPontos ? `Abaixo de 60% (${metaPontos} pts)` : card.descricao}
                   </p>
                 </div>
               </div>
@@ -72,7 +72,7 @@ export default function AlunosRiscoCards({ dados, periodo }) {
                   border: `1px solid ${card.cor}25`,
                 }}
               >
-                Demonstrativo
+                {isReal ? "Monitoramento Ativo" : "Demonstrativo"}
               </span>
             </div>
 

@@ -17,6 +17,7 @@ use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\NotaController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\NotificacaoController;
+use App\Http\Controllers\PeriodoLetivoController;
 use App\Http\Controllers\PlanoEstudoController;
 use App\Http\Controllers\ProfessorController;
 use App\Http\Controllers\RadioatividadeController;
@@ -98,6 +99,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/turmas/{turma}/disciplinas', [TurmaController::class, 'vincularDisciplina']);
     Route::delete('/turmas/{turma}/disciplinas/{disciplina}', [TurmaController::class, 'desvincularDisciplina']);
     Route::apiResource('turmas', TurmaController::class);
+
+    // Módulo Acadêmico: Período Letivo (Bimestres, Trimestres, Semestres e Marcos)
+    Route::get('/periodos-letivos', [PeriodoLetivoController::class, 'index']);
+    Route::get('/periodos-letivos/ativo', [PeriodoLetivoController::class, 'ativo']);
+    Route::get('/periodos-letivos/{periodo}', [PeriodoLetivoController::class, 'show']);
+    Route::post('/periodos-letivos', [PeriodoLetivoController::class, 'store']);
+    Route::put('/periodos-letivos/{periodo}', [PeriodoLetivoController::class, 'update']);
+    Route::patch('/periodos-letivos/{periodo}/ativar', [PeriodoLetivoController::class, 'ativar']);
+    Route::delete('/periodos-letivos/{periodo}', [PeriodoLetivoController::class, 'destroy']);
+    Route::post('/periodos-letivos/{periodo}/sincronizar-agenda', [PeriodoLetivoController::class, 'sincronizarAgenda']);
 
     // Dashboard Geral Consolidado (Visão Docente e Especialista)
     Route::get('/dashboard/geral', [DashboardGeralController::class, 'geral']);

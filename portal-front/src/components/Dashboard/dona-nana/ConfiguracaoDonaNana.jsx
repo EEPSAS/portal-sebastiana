@@ -18,6 +18,7 @@ import DonaNanaAvatar from './DonaNanaAvatar';
 import { obterConfiguracao, salvarConfiguracao } from '../../../services/donaNanaService';
 import './configuracaoDonaNana.css';
 import BoasVindasCard from '../common/BoasVindasCard';
+import ModuloNav from '../common/ModuloNav';
 
 const ConfiguracaoDonaNana = () => {
   const navigate = useNavigate();
@@ -120,7 +121,8 @@ const ConfiguracaoDonaNana = () => {
     <div className="dona-nana-config-container">
       {/* Cabeçalho Institucional com BoasVindasCard Padronizado */}
       <div className="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-3">
-        <BoasVindasCard
+        <BoasVindasCard />
+        <ModuloNav
           acoes={
             <div className="d-flex align-items-center gap-2">
               <button

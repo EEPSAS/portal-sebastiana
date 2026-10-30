@@ -68,6 +68,7 @@ const AgendaPage = () => {
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit'
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [notificacao, setNotificacao] = useState(null);
+  const [acoesHorarios, setAcoesHorarios] = useState(null);
 
   const exibirNotificacao = (mensagem) => {
     setNotificacao(mensagem);
@@ -188,7 +189,7 @@ const AgendaPage = () => {
         </div>
       )}
 
-      <PainelModulo acoes={acoesAgenda}>
+      <PainelModulo acoes={abaAtiva === 'horarios' ? acoesHorarios : acoesAgenda}>
         {/* Aba 1: Calendário Completo (Embedded remove fundo cinza e barra vertical - Item 1) */}
         {abaAtiva === 'calendario' && (
           <div className="portal-scope portal-scope--embedded w-100">
@@ -327,7 +328,9 @@ const AgendaPage = () => {
         )}
 
         {/* Aba 4: Horário Escolar */}
-        {abaAtiva === 'horarios' && <HorariosEscolares />}
+        {abaAtiva === 'horarios' && (
+          <HorariosEscolares onRegistrarAcoes={setAcoesHorarios} />
+        )}
       </PainelModulo>
 
       {/* Diálogo Modal de Cadastro e Edição Unitária */}

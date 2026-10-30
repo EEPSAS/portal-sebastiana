@@ -2,11 +2,11 @@
  * GeralProfessor (index.jsx) - Painel Analítico do Professor Conectado às Disciplinas e Ciclos
  *
  * Papel Didático:
- * Atende à Diretriz 3.4a (28/10/2026):
- * Consome o endpoint `/api/dashboard/geral` (`fetchDashboardGeral`) para exibir o contexto
- * real da role `professor` baseado nas Disciplinas às quais ele está vinculado, seus Ciclos
- * e as Turmas/Alunos herdados. Caso ainda não existam dados reais na API, mantém fallback
- * seguro para os dados demonstrativos (`materiasProfessorMock`).
+ * Atende ao Upgrade do Módulo Acadêmico e à Diretriz 3.4a:
+ * 1. Consome `/api/dashboard/geral` com suporte ao parâmetro `divisao` (1º Trimestre, 2º Trimestre, etc.);
+ * 2. Disponibiliza seletor em pills para alternar entre as etapas cadastradas do Período Letivo ou Consolidado Geral;
+ * 3. Alimenta os 2 componentes principais (AlunosRiscoCards e ResumoTurmasCard) com dados dinâmicos
+ *    e réguas de avaliação proporcionais à pontuação da etapa (ex: 60% de 30 pts = 18 pts).
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -20,13 +20,18 @@ const GeralProfessor = () => {
   const [dadosApi, setDadosApi] = useState(null);
   const [loading, setLoading] = useState(true);
   const [materiaSelecionadaId, setMateriaSelecionadaId] = useState("");
+  const [divisaoSelecionada, setDivisaoSelecionada] = useState("");
 
   useEffect(() => {
     let ativo = true;
-    fetchDashboardGeral()
+
+    fetchDashboardGeral({ divisao: divisaoSelecionada })
       .then((payload) => {
         if (ativo) {
           setDadosApi(payload || null);
+          if (!divisaoSelecionada && payload?.periodo_contexto?.divisao_selecionada) {
+            setDivisaoSelecionada(payload.periodo_contexto.divisao_selecionada);
+          }
         }
       })
       .catch(() => {})
@@ -37,7 +42,11 @@ const GeralProfessor = () => {
     return () => {
       ativo = false;
     };
-  }, []);
+  }, [divisaoSelecionada]);
+
+  const periodoContexto = dadosApi?.periodo_contexto;
+  const divisoesDisponiveis = periodoContexto?.divisoes_disponiveis || [];
+  const pontosDivisaoAtual = periodoContexto?.pontos_divisao || 30.0;
 
   // Constrói a lista de matérias do professor a partir de `disciplinas_detalhadas` da API
   // ou utiliza o fallback demonstrativo caso o professor ainda não tenha disciplinas com dados
@@ -69,7 +78,7 @@ const GeralProfessor = () => {
             ciclos: disc.ciclos || [],
             turmas: disc.turmas || [],
             origemReal: true,
-            risco: {
+            risco: disc.risco || {
               alunosAbaixoDaMedia: 0,
               alunosComFrequenciaInsuficiente: 0,
               alunosPorNota: [],
@@ -94,11 +103,11 @@ const GeralProfessor = () => {
     materiasDisponiveis.find((m) => m.id === materiaSelecionadaId) ??
     materiasDisponiveis[0];
 
-  if (loading) {
+  if (loading && !dadosApi) {
     return (
       <div className="text-center py-4">
         <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-        <span className="text-muted small">Carregando disciplinas e turmas vinculadas...</span>
+        <span className="text-muted small">Carregando disciplinas e indicadores do período letivo...</span>
       </div>
     );
   }
@@ -113,7 +122,54 @@ const GeralProfessor = () => {
 
   return (
     <div className="teacher-overview">
-      {/* Seletor de Disciplinas Vinculadas ao Professor */}
+      {/* 1. Barra de Seleção da Etapa do Período Letivo (Trimestres / Bimestres) */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 p-3 bg-white rounded-4 border shadow-xs">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <span className="small fw-bold text-dark text-uppercase d-flex align-items-center gap-1 me-2" style={{ letterSpacing: "0.5px" }}>
+            <i className="bi bi-calendar-range text-primary"></i>
+            Etapa Avaliativa:
+          </span>
+          <div className="btn-group btn-group-sm flex-wrap p-1 bg-light rounded-pill border" role="group" aria-label="Filtrar por etapa do período letivo">
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 fw-semibold transition ${
+                divisaoSelecionada === "todos"
+                  ? "btn-primary shadow-sm text-white"
+                  : "text-secondary border-0"
+              }`}
+              onClick={() => setDivisaoSelecionada("todos")}
+            >
+              Consolidado Geral
+            </button>
+            {divisoesDisponiveis.map((div) => {
+              const isAtiva = divisaoSelecionada === div.nome;
+              return (
+                <button
+                  type="button"
+                  key={div.id_divisao || div.nome}
+                  className={`btn btn-sm rounded-pill px-3 fw-semibold transition ${
+                    isAtiva
+                      ? "btn-primary shadow-sm text-white"
+                      : "text-secondary border-0"
+                  }`}
+                  onClick={() => setDivisaoSelecionada(div.nome)}
+                >
+                  {div.nome} ({div.pontos} pts)
+                  {div.is_atual ? " • Atual" : ""}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {periodoContexto && (
+          <span className="badge bg-light text-secondary border rounded-pill px-3 py-2 small">
+            Ano Letivo {periodoContexto.ano} • {pontosDivisaoAtual} pts na etapa
+          </span>
+        )}
+      </div>
+
+      {/* 2. Seletor de Disciplinas Vinculadas ao Professor */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div
           className="btn-group flex-wrap p-1 bg-light rounded-pill border"
@@ -156,14 +212,21 @@ const GeralProfessor = () => {
         )}
       </div>
 
+      {/* 3. Componente Impactado 1: Alunos em Risco */}
       <div className="row g-3 mb-3">
         <AlunosRiscoCards
           dados={materiaSelecionada.risco}
           periodo={
-            materiaSelecionada.origemReal
-              ? "Monitoramento ativo das turmas vinculadas"
-              : "Período trimestral demonstrativo"
+            divisaoSelecionada && divisaoSelecionada !== "todos"
+              ? `${divisaoSelecionada} (${pontosDivisaoAtual} pts)`
+              : "Ano Letivo Consolidado"
           }
+          metaPontos={
+            divisaoSelecionada && divisaoSelecionada !== "todos"
+              ? (pontosDivisaoAtual * 0.6).toFixed(1)
+              : "60.0"
+          }
+          isReal={materiaSelecionada.origemReal}
         />
       </div>
 
@@ -173,12 +236,17 @@ const GeralProfessor = () => {
         </p>
       )}
 
+      {/* 4. Componente Impactado 2: Resumo Gráfico Médias e Frequências por Turma */}
       <GeralMediumCards
         medias={materiaSelecionada.medias}
         frequencias={materiaSelecionada.frequencias}
         escalaNotaMaxima={100}
         mostrarLinhasReferencia={false}
-        badgeMedia="Meta mín. 60%"
+        badgeMedia={
+          divisaoSelecionada && divisaoSelecionada !== "todos"
+            ? `Meta mín. 60% (${(pontosDivisaoAtual * 0.6).toFixed(1)} pts)`
+            : "Meta mín. 60%"
+        }
       />
     </div>
   );

@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { formatarDisciplinaCiclo } from "../../../utils/formatters";
+import { obterPeriodoLetivoAtivo } from "../../../services/periodosLetivosService";
 
 /**
  * NotasAba.jsx - Gestão e Consulta de Notas e Diário Escolar por Turma
@@ -27,7 +29,26 @@ const NotasAba = ({
   alunoFiltroId = "",
   onAlunoFiltroChange,
   onAbrirBoletimAluno,
+  divisoesPeriodo = [],
 }) => {
+  const [periodoAtivoLocal, setPeriodoAtivoLocal] = useState(null);
+
+  useEffect(() => {
+    let ativo = true;
+    obterPeriodoLetivoAtivo()
+      .then((p) => {
+        if (ativo && p) setPeriodoAtivoLocal(p);
+      })
+      .catch(() => {});
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  const divisoesParaExibir =
+    divisoesPeriodo.length > 0
+      ? divisoesPeriodo
+      : periodoAtivoLocal?.divisoes || [];
   // Localiza o objeto da turma atualmente ativa nos cards
   const turmaSelecionada =
     resumoGeral.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) || null;
@@ -201,7 +222,7 @@ const NotasAba = ({
               </select>
             </div>
 
-            {/* Filtro de Período Letivo */}
+            {/* Filtro de Período Letivo Dinâmico */}
             <select
               className="form-select form-select-sm"
               style={{ width: "auto" }}
@@ -210,19 +231,19 @@ const NotasAba = ({
               aria-label="Filtrar por período letivo"
             >
               <option value="">Todos os Períodos</option>
-              <option value="1º Trimestre">
-                1º Trimestre{trimestreAtual === "1º Trimestre" ? " (Atual)" : ""}
-              </option>
-              <option value="2º Trimestre">
-                2º Trimestre{trimestreAtual === "2º Trimestre" ? " (Atual)" : ""}
-              </option>
-              <option value="3º Trimestre">
-                3º Trimestre{trimestreAtual === "3º Trimestre" ? " (Atual)" : ""}
-              </option>
-              <option value="1º Bimestre">1º Bimestre</option>
-              <option value="2º Bimestre">2º Bimestre</option>
-              <option value="3º Bimestre">3º Bimestre</option>
-              <option value="4º Bimestre">4º Bimestre</option>
+              {divisoesParaExibir.length > 0 ? (
+                divisoesParaExibir.map((div) => (
+                  <option key={div.id_divisao || div.nome} value={div.nome}>
+                    {div.nome} ({div.pontos} pts){div.is_atual || div.nome === trimestreAtual ? " (Atual)" : ""}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="1º Trimestre">1º Trimestre (Atual)</option>
+                  <option value="2º Trimestre">2º Trimestre</option>
+                  <option value="3º Trimestre">3º Trimestre</option>
+                </>
+              )}
             </select>
 
             {/* Campo de Pesquisa Textual */}

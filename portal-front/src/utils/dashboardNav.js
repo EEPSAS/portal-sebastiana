@@ -100,6 +100,15 @@ export const NAV_STRUCTURE = [
         descricao:
           "Matriz curricular organizada por ciclos, carga horária anual e habilidades da BNCC.",
       },
+      {
+        id: "periodo-letivo",
+        label: "Período Letivo",
+        path: "/dashboard/periodos-letivos",
+        icon: "bi-calendar-range",
+        roles: ["especialista", "adm"],
+        descricao:
+          "Configuração do ano letivo, ciclos de divisão (bimestres/trimestres), pontuações e marcos escolares.",
+      },
     ],
   },
   {
@@ -296,6 +305,7 @@ export const NAV_STRUCTURE = [
   {
     id: "dona-nana",
     type: "item",
+    footerOnly: true,
     label: "Dona Nana",
     path: "/dashboard/dona-nana",
     icon: "bi-chat-heart-fill",
@@ -314,6 +324,7 @@ export const NAV_STRUCTURE = [
   {
     id: "configuracoes",
     type: "item",
+    footerOnly: true,
     label: "Configurações",
     path: "/dashboard/configuracoes",
     icon: "bi-gear",

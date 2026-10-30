@@ -46,6 +46,9 @@ class DashboardGeralResource extends JsonResource
 
             // Seção inferior: Feed dinâmico de últimas atualizações escolares
             'ultimas_atualizacoes' => $this->resource['ultimas_atualizacoes'] ?? [],
+
+            // Contexto do Período Letivo e divisão avaliativa selecionada
+            'periodo_contexto' => $this->resource['periodo_contexto'] ?? null,
         ];
     }
 }

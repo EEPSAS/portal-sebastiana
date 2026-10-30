@@ -38,6 +38,7 @@ import DonaNanaPage from "./pages/Dashboard/DonaNana";
 import ConfiguracaoDonaNana from "./pages/Dashboard/ConfiguracaoDonaNana";
 import UsuariosPage from "./pages/Dashboard/Usuarios";
 import DisciplinasPage from "./pages/Dashboard/Disciplinas";
+import PeriodoLetivoPage from "./pages/Dashboard/PeriodoLetivo";
 
 const App = () => {
   return (
@@ -88,6 +89,11 @@ const App = () => {
             {/* Rota restrita: Gestão de Professores (especialistas e administradores) */}
             <Route element={<ProtectedRoute allowedRoles={["especialista", "adm"]} />}>
               <Route path="professores" element={<ProfessoresPage />} />
+            </Route>
+
+            {/* Rota restrita: Gestão de Período Letivo (especialistas e administradores) */}
+            <Route element={<ProtectedRoute allowedRoles={["especialista", "adm"]} />}>
+              <Route path="periodos-letivos" element={<PeriodoLetivoPage />} />
             </Route>
 
             {/* Rota restrita: Disciplinas por Ciclos (alunos, professores, especialistas e administradores) */}

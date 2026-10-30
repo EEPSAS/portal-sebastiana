@@ -39,7 +39,8 @@ class DashboardGeralController extends Controller
             abort(403, 'Acesso restrito ao corpo docente e pedagógico.');
         }
 
-        $dados = $this->dashboardService->obterVisaoGeral($user);
+        $divisao = $request->query('divisao');
+        $dados = $this->dashboardService->obterVisaoGeral($user, $divisao);
 
         return (new DashboardGeralResource($dados))->response()->setStatusCode(200);
     }
