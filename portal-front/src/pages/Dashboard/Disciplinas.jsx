@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Disciplinas.jsx - Módulo Acadêmico de Gestão e Consulta de Disciplinas por Ciclos
  *
  * Papel Didático:
@@ -21,6 +21,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { formatarDisciplinaCiclo } from "../../utils/formatters";
 import ModalCiclo from "../../components/Dashboard/disciplinas/ModalCiclo";
+import PainelModulo from "../../components/Dashboard/common/PainelModulo";
 import {
   listarDisciplinasPorCiclo,
   excluirCiclo,
@@ -336,6 +337,46 @@ const DisciplinasPage = () => {
     );
   };
 
+  const acoesDisciplinas = (
+    <div className="d-flex align-items-center gap-2 flex-wrap">
+      <div className="input-group" style={{ minWidth: "200px", maxWidth: "280px" }}>
+        <span className="input-group-text bg-white border-end-0 text-muted">
+          <i className="bi bi-search"></i>
+        </span>
+        <input
+          id="busca-disciplinas"
+          type="search"
+          className="form-control form-control-sm border-start-0 ps-0 shadow-none"
+          placeholder="Buscar disciplina ou BNCC..."
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+        />
+      </div>
+
+      {podeGerenciar && (
+        <>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold text-nowrap"
+            onClick={() => handleAbrirModalCiclo()}
+            title="Criar novo ciclo escolar (ex: 1º Ano, 2º Ano...)"
+          >
+            + Criar Ciclo
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-primary rounded-pill px-3 fw-bold text-nowrap"
+            onClick={() => handleAbrirNovaDisciplina()}
+            title="Cadastrar nova disciplina na matriz curricular"
+          >
+            <i className="bi bi-plus-lg me-1"></i>
+            Nova Disciplina
+          </button>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div className="position-relative">
       {feedback && (
@@ -347,71 +388,7 @@ const DisciplinasPage = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
-        {/* Cabeçalho */}
-        <header className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 pb-3 mb-4 border-bottom">
-          <div>
-            <h1 className="h4 fw-bold text-primary mb-1">
-              Matriz Curricular e Disciplinas por Ciclos
-            </h1>
-            <p className="text-muted small mb-0">
-              {podeGerenciar
-                ? "Organize as disciplinas por Ciclos (1º Ano, 2º Ano, 3º Ano), defina aulas semanais (base de 40 semanas letivas), ementa e BNCC."
-                : role === "professor"
-                ? "Consulte as disciplinas sob sua regência, carga horária anual, ementas, habilidades da BNCC e objetivos pedagógicos."
-                : "Consulte as disciplinas do seu ciclo escolar, carga horária anual, ementas, habilidades da BNCC e objetivos pedagógicos."}
-            </p>
-          </div>
-
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            {podeGerenciar && (
-              <button
-                type="button"
-                className="btn btn-primary btn-sm rounded-pill px-3 fw-bold"
-                onClick={() => handleAbrirNovaDisciplina()}
-              >
-                <i className="bi bi-plus-lg me-1"></i>
-                Nova Disciplina
-              </button>
-            )}
-          </div>
-        </header>
-
-        {/* Barra de Busca + Criação Rápida de Ciclo (Especialista/Admin) */}
-        <div className="row g-3 align-items-end mb-4">
-          <div className={podeGerenciar ? "col-12 col-lg" : "col-12"}>
-            <label htmlFor="busca-disciplinas" className="form-label small fw-bold text-dark mb-1">
-              Pesquisar Disciplina, Ementa ou Código BNCC:
-            </label>
-            <div className="input-group">
-              <span className="input-group-text bg-white text-muted">
-                <i className="bi bi-search"></i>
-              </span>
-              <input
-                id="busca-disciplinas"
-                type="search"
-                className="form-control"
-                placeholder="Ex: Língua Portuguesa, Matemática, EM13LGG..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {podeGerenciar && (
-            <div className="col-12 col-lg-auto">
-              {/* Abre o modal de cadastro de ciclo (mesmo formulário do modo editar) */}
-              <button
-                type="button"
-                className="btn btn-outline-primary fw-semibold w-100"
-                onClick={() => handleAbrirModalCiclo()}
-              >
-                + Criar Ciclo
-              </button>
-            </div>
-          )}
-        </div>
-
+      <PainelModulo acoes={acoesDisciplinas}>
         {erro && (
           <div className="alert alert-danger rounded-3 small mb-4" role="alert">
             {erro}
@@ -525,7 +502,7 @@ const DisciplinasPage = () => {
             )}
           </div>
         )}
-      </div>
+      </PainelModulo>
 
       {/* Modal de Criação / Edição de Disciplina (Itens 3.1, 3.2, 3.3) */}
       {modalAberto && (

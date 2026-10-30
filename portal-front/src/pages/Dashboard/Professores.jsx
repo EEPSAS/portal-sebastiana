@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Professores.jsx - Painel de Controle de Professores (Especialista e Administrador)
  *
  * Papel Didático:
@@ -20,6 +20,7 @@ import {
 } from "../../services/professoresService";
 import { formatarDisciplinaCiclo } from "../../utils/formatters";
 import ModalVincularDisciplina from "../../components/Dashboard/professores/ModalVincularDisciplina";
+import PainelModulo from "../../components/Dashboard/common/PainelModulo";
 import "../../components/Dashboard/professores/Professores.css";
 
 const ProfessoresPage = () => {
@@ -418,6 +419,21 @@ const ProfessoresPage = () => {
     );
   };
 
+    const acoesProfessores = (
+    <div className="input-group" style={{ minWidth: "220px", maxWidth: "320px" }}>
+      <span className="input-group-text bg-white border-end-0 text-muted">
+        <i className="bi bi-search"></i>
+      </span>
+      <input
+        type="search"
+        className="form-control form-control-sm border-start-0 ps-0 shadow-none"
+        placeholder="Buscar por nome ou e-mail..."
+        value={busca}
+        onChange={(e) => setBusca(e.target.value)}
+      />
+    </div>
+  );
+
   return (
     <div className="professores-page container-fluid px-0">
       {/* Toast flutuante de notificação */}
@@ -444,75 +460,50 @@ const ProfessoresPage = () => {
         </div>
       )}
 
-      {/* Cabeçalho da página */}
-      <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
-        <div>
-          <h1 className="h3 fw-bold text-dark mb-1">Gestão de Professores</h1>
-          <p className="text-muted small mb-0">
-            Confirme o pertencimento institucional vinculando disciplinas e acompanhe o quadro docente.
-          </p>
-        </div>
-
-        {/* Campo de pesquisa rápida */}
-        <div className="input-group" style={{ maxWidth: "320px" }}>
-          <span className="input-group-text bg-white border-end-0 text-muted">
-            <i className="bi bi-search"></i>
-          </span>
-          <input
-            type="text"
-            className="form-control border-start-0 ps-0 shadow-none"
-            placeholder="Buscar por nome ou e-mail..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-          />
-        </div>
-      </div>
-
+      <PainelModulo acoes={acoesProfessores}>
       {erro && (
         <div className="alert alert-danger rounded-3 shadow-sm mb-4" role="alert">
           {erro}
         </div>
       )}
 
-      {/* Navegação por Abas */}
-      <ul className="nav nav-pills gap-2 mb-4 bg-white p-2 rounded-3 shadow-sm border">
-        <li className="nav-item">
-          <button
-            type="button"
-            className={`nav-link d-flex align-items-center gap-2 ${
-              abaAtiva === "pendentes" ? "active" : ""
-            }`}
-            onClick={() => setAbaAtiva("pendentes")}
-          >
-            <i className="bi bi-hourglass-split"></i>
-            <span>Pendentes de Confirmação</span>
-            {pendentesCount > 0 && (
-              <span className="badge rounded-pill bg-danger ms-1">
-                {pendentesCount}
-              </span>
-            )}
-          </button>
-        </li>
-
-        <li className="nav-item">
-          <button
-            type="button"
-            className={`nav-link d-flex align-items-center gap-2 ${
-              abaAtiva === "confirmados" ? "active" : ""
-            }`}
-            onClick={() => setAbaAtiva("confirmados")}
-          >
-            <i className="bi bi-person-check-fill"></i>
-            <span>Professores Confirmados</span>
-            <span className="badge rounded-pill bg-secondary ms-1">
-              {professoresConfirmados.length}
+      {/* Sub-abas de 2º Nível: Segmentadas e Compactas */}
+      <div className="d-flex flex-wrap align-items-center gap-1 p-1 bg-light rounded-pill border mb-4 d-inline-flex">
+        <button
+          type="button"
+          className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 d-flex align-items-center gap-2 ${
+            abaAtiva === "pendentes" ? "btn-primary text-white shadow-sm" : "btn-light text-muted"
+          }`}
+          onClick={() => setAbaAtiva("pendentes")}
+        >
+          <i className="bi bi-hourglass-split"></i>
+          <span>Pendentes de Confirmação</span>
+          {pendentesCount > 0 && (
+            <span className="badge rounded-pill bg-danger ms-1">
+              {pendentesCount}
             </span>
-          </button>
-        </li>
-      </ul>
+          )}
+        </button>
+
+        <button
+          type="button"
+          className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 d-flex align-items-center gap-2 ${
+            abaAtiva === "confirmados" ? "btn-primary text-white shadow-sm" : "btn-light text-muted"
+          }`}
+          onClick={() => setAbaAtiva("confirmados")}
+        >
+          <i className="bi bi-person-check-fill"></i>
+          <span>Professores Confirmados</span>
+          <span className="badge rounded-pill bg-secondary ms-1">
+            {professoresConfirmados.length}
+          </span>
+        </button>
+      </div>
 
       {/* Renderização do conteúdo */}
       {renderConteudo()}
+
+      </PainelModulo>
 
       {/* Modal de Gestão de Vínculos Docentes */}
       {professorSelecionado && (

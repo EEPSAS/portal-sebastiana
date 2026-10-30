@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Agenda.css - Estilização Modular da Agenda do Painel (Dashboard)
  *
  * Conceito Didático:
@@ -785,72 +785,3 @@
     overflow: visible;
   }
 }
-
-/* ==========================================================================
-   Tema Gestão (Especialista e Adm) — Escopado em .dashboard-tema-gestao
-   ========================================================================== */
-
-/* Layout da Agenda: gradiente azul-claro suave, cantos de 16px e sombra suave */
-.dashboard-tema-gestao .agenda-especialista-layout {
-  background: linear-gradient(180deg, #eaf2fd 0%, #f4f8fe 100%) !important;
-  border: 1px solid rgba(30, 61, 112, 0.12) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 8px 28px rgba(var(--dashboard-navy-rgb), 0.06) !important;
-}
-
-/* Título do mês no calendário com a nobreza de Cormorant Garamond */
-.dashboard-tema-gestao .agenda-calendar-month-title {
-  font-family: 'Cormorant Garamond', Georgia, "Times New Roman", serif !important;
-  font-size: 28px !important;
-  font-weight: 700 !important;
-  color: var(--dashboard-navy) !important;
-  letter-spacing: -0.01em;
-}
-
-/* Divisórias das colunas */
-.dashboard-tema-gestao .agenda-especialista-calendar {
-  border-right-color: rgba(30, 61, 112, 0.12) !important;
-  border-left-color: rgba(30, 61, 112, 0.12) !important;
-}
-
-/* Botões de controle de mês e 'Hoje' preservando o rosa institucional */
-.dashboard-tema-gestao .agenda-calendar-month-controls button {
-  background: rgba(226, 42, 113, 0.08) !important;
-  color: var(--dashboard-pink) !important;
-  font-weight: 700;
-  transition: all 0.2s ease;
-}
-
-.dashboard-tema-gestao .agenda-calendar-month-controls button:hover {
-  background: var(--dashboard-pink) !important;
-  color: #ffffff !important;
-}
-
-.dashboard-tema-gestao .agenda-calendar-today button {
-  color: var(--dashboard-navy) !important;
-  font-weight: 600;
-}
-
-/* Cards e listas de eventos com transparência elegante */
-.dashboard-tema-gestao .agenda-event-card {
-  background-color: rgba(255, 255, 255, 0.75) !important;
-  border: 1px solid rgba(30, 61, 112, 0.12) !important;
-  border-radius: 12px !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.dashboard-tema-gestao .agenda-event-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(var(--dashboard-navy-rgb), 0.08) !important;
-}
-
-/* Botão de adicionar evento em rosa institucional */
-.dashboard-tema-gestao .agenda-btn-novo-evento {
-  background-color: var(--dashboard-pink) !important;
-  border-color: var(--dashboard-pink) !important;
-  color: #ffffff !important;
-  border-radius: 9999px !important;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(var(--dashboard-pink-rgb), 0.25) !important;
-}
-

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PlanoDetalhe.jsx - Visualização Completa de Trilha / Plano de Estudos
  *
  * Papel Didático:
@@ -16,6 +16,7 @@ import { useParams, useNavigate, Link } from 'react-router';
 import { planosService } from '../../services/biblioteca/planosService';
 import { formatarDisciplinaCiclo } from '../../utils/formatters';
 import '../../components/Dashboard/biblioteca/Biblioteca.css';
+import PainelModulo from '../../components/Dashboard/common/PainelModulo';
 
 export default function PlanoDetalhe() {
   const { id } = useParams();
@@ -122,6 +123,21 @@ export default function PlanoDetalhe() {
   // Apenas o proprietário do plano pode desvincular materiais
   const podeEditarItens = plano.eh_proprietario !== false;
 
+  const acoesPlano = (
+    <div className="d-flex align-items-center gap-2 flex-wrap">
+      <Link
+        to="/dashboard/biblioteca?tab=planos"
+        className="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold text-nowrap"
+      >
+        ← Voltar aos Planos
+      </Link>
+      <div className="d-flex align-items-center gap-1 bg-light px-3 py-1 rounded-pill border small">
+        <span className="text-secondary fw-semibold">Total:</span>
+        <span className="badge bg-primary rounded-pill">{itens.length}</span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="position-relative">
       {/* Toast Flutuante de Confirmação */}
@@ -131,44 +147,26 @@ export default function PlanoDetalhe() {
         </div>
       )}
 
-      {/* Cartão Central Principal */}
-      <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
-        {/* Cabeçalho da Trilha de Estudos */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pb-3 border-bottom">
-          <div>
-            <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
-              <Link
-                to="/dashboard/biblioteca"
-                className="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold"
-              >
-                ← Voltar para a Biblioteca
-              </Link>
-              <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill">
-                {plano.disciplina_relacionada ? formatarDisciplinaCiclo(plano.disciplina_relacionada) : plano.disciplina}
-              </span>
-              {plano.conteudo && (
-                <span className="badge bg-secondary-subtle text-secondary-emphasis border px-3 py-1 rounded-pill">
-                  🏷️ {plano.conteudo}
-                </span>
-              )}
-              {plano.compartilhado_por_professor && (
-                <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-1 rounded-pill">
-                  🎓 Compartilhado por Prof. {plano.autor_nome || 'Docente'}
-                </span>
-              )}
-            </div>
-            <h2 className="fw-bold mb-1 text-dark fs-4">{plano.nome}</h2>
-            {plano.descricao && (
-              <p className="text-muted small mb-0">{plano.descricao}</p>
-            )}
-          </div>
-
-          <div className="d-flex align-items-center gap-2 bg-light px-3 py-2 rounded-3 border">
-            <span className="fw-semibold text-secondary small">Total de Materiais:</span>
-            <span className="badge bg-success rounded-pill fs-6 px-3">
-              {itens.length}
+      <PainelModulo
+        titulo="Conteúdo - Plano de Estudos"
+        subtitulo={plano.nome ? `${plano.nome}${plano.descricao ? ` · ${plano.descricao}` : ''}` : "Trilha de aprendizagem e materiais pedagógicos."}
+        icone="bi-list-check"
+        acoes={acoesPlano}
+      >
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-4">
+          <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill">
+            {plano.disciplina_relacionada ? formatarDisciplinaCiclo(plano.disciplina_relacionada) : plano.disciplina}
+          </span>
+          {plano.conteudo && (
+            <span className="badge bg-secondary-subtle text-secondary-emphasis border px-3 py-1 rounded-pill">
+              🏷️ {plano.conteudo}
             </span>
-          </div>
+          )}
+          {plano.compartilhado_por_professor && (
+            <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-1 rounded-pill">
+              🎓 Compartilhado por Prof. {plano.autor_nome || 'Docente'}
+            </span>
+          )}
         </div>
 
         {/* Resumo de Contadores */}
@@ -427,7 +425,7 @@ export default function PlanoDetalhe() {
             </div>
           )}
         </section>
-      </div>
+      </PainelModulo>
     </div>
   );
 }

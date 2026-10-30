@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Header.jsx - Barra Superior do Painel Administrativo (Navbar)
  *
  * Funcionalidades Didáticas:
@@ -102,30 +102,14 @@ const Header = ({
     <>
       <header className="dashboard-header d-flex align-items-center justify-content-between px-4 py-3" style={{ background: "transparent" }}>
         <div className="d-flex align-items-center gap-3">
-          {/* Botão de menu/hamburguer sutil */}
-          <button
-            type="button"
-            className="btn btn-link text-dark p-0 d-flex align-items-center text-decoration-none"
-            aria-label="Menu"
-            style={{ fontSize: "1.4rem" }}
-          >
-            <i className="bi bi-list"></i>
-          </button>
-
-          <span className="fs-5 fw-bold text-dark me-2">Painel de Controle</span>
-
-          {/* Barra de Pesquisa Oval como no protótipo */}
-          <div className="d-none d-md-flex align-items-center position-relative" style={{ width: "260px" }}>
-            <i
-              className="bi bi-search position-absolute text-muted"
-              style={{ left: "12px", fontSize: "0.85rem" }}
-            ></i>
-            <input
-              type="text"
-              className="form-control form-control-sm rounded-pill ps-4 bg-white border"
-              placeholder="Buscar no portal..."
-              style={{ fontSize: "0.85rem", borderColor: "#d0ddef" }}
-            />
+          {/* Saudação amigável e acolhedora pelo apelido */}
+          <div className="d-flex flex-column text-start">
+            <span className="fs-5 fw-bold text-dark lh-sm">
+              Olá, {userName}!
+            </span>
+            <span className="text-secondary small">
+              Bem-vindo(a) ao Portal Sebastiana
+            </span>
           </div>
 
           {/* Menu Suspenso de Alternância de Visão exclusivo para o Administrador */}

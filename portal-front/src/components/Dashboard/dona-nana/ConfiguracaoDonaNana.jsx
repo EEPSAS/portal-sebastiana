@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ConfiguracaoDonaNana.jsx - Painel de Gestão da Persona e do Prompt da Dona Nana
  *
  * Papel Didático:
@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router';
 import DonaNanaAvatar from './DonaNanaAvatar';
 import { obterConfiguracao, salvarConfiguracao } from '../../../services/donaNanaService';
 import './configuracaoDonaNana.css';
+import BoasVindasCard from '../common/BoasVindasCard';
 
 const ConfiguracaoDonaNana = () => {
   const navigate = useNavigate();
@@ -117,33 +118,30 @@ const ConfiguracaoDonaNana = () => {
 
   return (
     <div className="dona-nana-config-container">
-      {/* Cabeçalho de Navegação e Título */}
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-        <div className="d-flex align-items-center gap-3">
-          <button
-            type="button"
-            className="btn btn-outline-secondary btn-sm rounded-circle p-2"
-            onClick={() => navigate('/dashboard/dona-nana')}
-            title="Voltar para a conversa"
-          >
-            <i className="bi bi-arrow-left fs-5"></i>
-          </button>
-          <div>
-            <h1 className="h4 fw-bold mb-1 text-dark">Configuração da Assistente Dona Nana</h1>
-            <p className="text-muted small mb-0">
-              Personalize a identidade, o conhecimento do portal e as diretrizes pedagógicas enviadas ao Gemini 3.8 Flash.
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="btn btn-outline-primary btn-sm d-flex align-items-center gap-2"
-          onClick={() => setShowLivePreview((prev) => !prev)}
-        >
-          <i className="bi bi-code-square"></i>
-          <span>{showLivePreview ? 'Ocultar System Prompt' : 'Ver System Prompt Montado'}</span>
-        </button>
+      {/* Cabeçalho Institucional com BoasVindasCard Padronizado */}
+      <div className="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-3">
+        <BoasVindasCard
+          acoes={
+            <div className="d-flex align-items-center gap-2">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                onClick={() => navigate('/dashboard/dona-nana')}
+                title="Voltar para a conversa"
+              >
+                <i className="bi bi-arrow-left me-1"></i> Voltar
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary rounded-pill px-3 d-flex align-items-center gap-2"
+                onClick={() => setShowLivePreview((prev) => !prev)}
+              >
+                <i className="bi bi-code-square"></i>
+                <span>{showLivePreview ? 'Ocultar System Prompt' : 'Ver System Prompt Montado'}</span>
+              </button>
+            </div>
+          }
+        />
       </div>
 
       {/* Alertas de Feedback */}

@@ -50,14 +50,6 @@ const GeralAdm = () => {
 
   return (
     <div className="geral-adm-page">
-      {/* Cabeçalho exclusivo da role com título e contextualização gerencial */}
-      <div className="mb-4">
-        <h1 className="h3 fw-bold text-dark mb-1">Painel Geral do Administrador</h1>
-        <p className="text-muted small mb-0">
-          Visão consolidada de toda a escola, turmas e indicadores gerais em tempo real.
-        </p>
-      </div>
-
       {/* Linha superior: Small Cards de KPIs globais da instituição */}
       <div className="row g-3">
         {cards.map((card) => (

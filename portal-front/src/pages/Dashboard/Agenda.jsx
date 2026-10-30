@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Agenda.jsx - Página de Calendário, Sábados Letivos, Feriados e Horário Escolar (Módulo 4)
  *
  * Papel Didático:
@@ -19,6 +19,7 @@ import Calendario from '../../components/Portal/calendario/Calendario';
 import CadastroEventoModal from '../../components/Portal/calendario/CadastroEventoModal';
 import ModalCadastroEmMassa from '../../components/Dashboard/agenda/ModalCadastroEmMassa';
 import HorariosEscolares from '../../components/Dashboard/agenda/HorariosEscolares';
+import PainelModulo from '../../components/Dashboard/common/PainelModulo';
 import { createImportantDates } from '../../utils/agendaUtils';
 import '../../pages/Portal/portal.css';
 
@@ -39,15 +40,13 @@ const AgendaPage = () => {
   const podeCriarEvento = Boolean(user?.id);
 
   // Sincronização de aba via URL (?tab=...) para integração direta com o Aside
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const abaAtiva = ABAS_AGENDA.some((aba) => aba.id === tabParam)
     ? tabParam
     : 'calendario';
 
-  const handleSelecionarAba = (idAba) => {
-    setSearchParams({ tab: idAba });
-  };
+  
 
   // Hook central de leitura e mutação na API /api/eventos
   const {
@@ -61,8 +60,7 @@ const AgendaPage = () => {
     saving,
     mutationError,
     clearMutationError,
-    refresh,
-  } = useEventos({ publico: false });
+    } = useEventos({ publico: false });
 
   // Estados locais do diálogo modal unitário, em massa e notificações
   const [modalOpen, setModalOpen] = useState(false);
@@ -148,6 +146,36 @@ const AgendaPage = () => {
     return mesclados.sort((a, b) => String(a.date).localeCompare(String(b.date)));
   }, [eventos]);
 
+  const acoesAgenda = (
+    <>
+      {podeGerenciar && abaAtiva !== 'horarios' && (
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold"
+          onClick={() => {
+            clearMutationError();
+            setModalEmMassaOpen(true);
+          }}
+          title="Cadastrar múltiplos sábados letivos e feriados em tabela"
+        >
+          <i className="bi bi-table me-1"></i>
+          Cadastro em Massa
+        </button>
+      )}
+
+      {podeCriarEvento && abaAtiva !== 'horarios' && (
+        <button
+          type="button"
+          className="btn btn-sm btn-primary rounded-pill px-3 fw-bold"
+          onClick={handleOpenCreate}
+        >
+          <i className="bi bi-plus-lg me-1"></i>
+          Novo Evento
+        </button>
+      )}
+    </>
+  );
+
   return (
     <div className="position-relative">
       {/* Toast Flutuante de Confirmação */}
@@ -160,83 +188,7 @@ const AgendaPage = () => {
         </div>
       )}
 
-      {/* Painel Central Branco com Cantos Arredondados */}
-      <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
-        {/* Subbarra Superior e Navegação Interna do Módulo Agenda */}
-        <header className="mb-4">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 pb-3 border-bottom">
-            <div>
-              <h2 className="fw-bold mb-1 text-primary fs-4">Agenda Escolar</h2>
-              <p className="text-muted mb-0 small">
-                Planejamento de eventos institucionais, sábados letivos, feriados e horário escolar.
-              </p>
-            </div>
-
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary rounded-pill px-3"
-                onClick={refresh}
-                disabled={loading}
-                title="Atualizar eventos"
-              >
-                <i className={`bi bi-arrow-clockwise me-1 ${loading ? 'spinner-border spinner-border-sm' : ''}`}></i>
-                Atualizar
-              </button>
-
-              {/* Botão Cadastro em Massa: exclusivo para gestores (Item 5.6) */}
-              {podeGerenciar && abaAtiva !== 'horarios' && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold"
-                  onClick={() => {
-                    clearMutationError();
-                    setModalEmMassaOpen(true);
-                  }}
-                  title="Cadastrar múltiplos sábados letivos e feriados em tabela"
-                >
-                  <i className="bi bi-table me-1"></i>
-                  Cadastro em Massa
-                </button>
-              )}
-
-              {podeCriarEvento && abaAtiva !== 'horarios' && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary rounded-pill px-3 fw-bold"
-                  onClick={handleOpenCreate}
-                >
-                  <i className="bi bi-plus-lg me-1"></i>
-                  Novo Evento
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Barra de Abas Internas sincronizada com o Aside */}
-          <ul className="nav nav-pills gap-2 mt-3 flex-wrap" role="tablist">
-            {ABAS_AGENDA.map((aba) => {
-              const ativa = abaAtiva === aba.id;
-              return (
-                <li className="nav-item" key={aba.id} role="presentation">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={ativa}
-                    className={`btn btn-sm rounded-pill px-3 fw-semibold ${
-                      ativa ? 'btn-primary' : 'btn-outline-secondary'
-                    }`}
-                    onClick={() => handleSelecionarAba(aba.id)}
-                  >
-                    <i className={`bi ${aba.icon} me-2`}></i>
-                    {aba.label}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </header>
-
+      <PainelModulo acoes={acoesAgenda}>
         {/* Aba 1: Calendário Completo (Embedded remove fundo cinza e barra vertical - Item 1) */}
         {abaAtiva === 'calendario' && (
           <div className="portal-scope portal-scope--embedded w-100">
@@ -376,7 +328,7 @@ const AgendaPage = () => {
 
         {/* Aba 4: Horário Escolar */}
         {abaAtiva === 'horarios' && <HorariosEscolares />}
-      </div>
+      </PainelModulo>
 
       {/* Diálogo Modal de Cadastro e Edição Unitária */}
       <CadastroEventoModal

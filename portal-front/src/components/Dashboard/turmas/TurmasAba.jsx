@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import ModalDetalhesAluno from "./ModalDetalhesAluno";
 import ModalCriarNotificacao from "./ModalCriarNotificacao";
 
@@ -141,16 +141,7 @@ const TurmasAba = ({
           </p>
         </div>
 
-        {podeGerenciar && (
-          <button
-            type="button"
-            className="btn btn-sm turmas-btn-primario px-3 py-2 rounded-pill d-flex align-items-center gap-2"
-            onClick={onCriarTurma}
-          >
-            <i className="bi bi-plus-lg"></i>
-            <span>Nova Turma</span>
-          </button>
-        )}
+
       </div>
 
       {/* 2. Barra de Filtros de Ano Letivo e Período/Turno */}

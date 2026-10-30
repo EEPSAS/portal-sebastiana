@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../../hooks/useAuth";
 import {
@@ -20,6 +20,7 @@ import ModalVincularAluno from "./ModalVincularAluno";
 import NotasAba from "./NotasAba";
 import "./Turmas.css";
 import TurmasAba from "./TurmasAba";
+import PainelModulo from "../common/PainelModulo";
 
 /**
  * Determina o trimestre escolar corrente com base no mês do calendário (padrão rede estadual de MG):
@@ -396,9 +397,35 @@ const Turmas = () => {
   const turmaAtivaParaCSV =
     turmas.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) || turmas[0] || null;
 
+  const acoesTurmas = (
+    <div className="d-flex align-items-center gap-2">
+      {podeGerenciar && abaAtiva === "turmas" && (
+        <button
+          type="button"
+          className="btn btn-sm btn-primary rounded-pill px-3 fw-bold text-nowrap"
+          onClick={handleAbrirCriarTurma}
+          title="Cadastrar nova turma escolar"
+        >
+          <i className="bi bi-plus-lg me-1"></i>
+          Nova Turma
+        </button>
+      )}
+      {podeGerenciar && abaAtiva === "notas" && (
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold text-nowrap"
+          onClick={() => handleAbrirImportarNotas(turmaAtivaParaCSV)}
+          title="Importar diário de notas via CSV para esta turma"
+        >
+          <i className="bi bi-file-earmark-arrow-up me-1"></i>
+          Importar Notas (CSV)
+        </button>
+      )}
+    </div>
+  );
+
   return (
-    // `turmas-tema-gestao` ativa o novo visual escopado no Turmas.css (somente especialista e adm)
-    <div className={`position-relative ${podeGerenciar ? "turmas-tema-gestao" : ""}`.trim()}>
+    <div className="position-relative">
       {/* Toast Flutuante no padrão da Biblioteca */}
       {notificacao && <div className="turmas-toast">✓ {notificacao}</div>}
 
@@ -422,8 +449,8 @@ const Turmas = () => {
         </div>
       )}
 
-      {/* Painel Central Branco com Cantos Arredondados */}
-      <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
+      {/* Envelope de Superfície Branca */}
+      <PainelModulo acoes={acoesTurmas}>
         {/* Banner de Alunos Pendentes de Aprovação e Vínculo com Turma (Diretriz 2.3.1) */}
         {podeGerenciar && alunosPendentesCount > 0 && (
           <div
@@ -461,57 +488,24 @@ const Turmas = () => {
           </div>
         )}
 
-        {/* Cabeçalho Central com Título e Menu de Abas */}
-        <header className="mb-4">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-            <div>
-              <h2 className="fw-bold mb-1 text-primary fs-4 turmas-header-titulo">
-                {role === "professor" ? "Minhas Turmas" : "Gestão de Turmas"}
-              </h2>
-              <p className="text-muted mb-0 small">
-                {role === "professor"
-                  ? "Consulte os alunos matriculados, frequências e notas das turmas sob sua regência."
-                  : "Acompanhamento analítico, enturmação de estudantes e diários escolares consolidados."}
-              </p>
-              {/* Linha divisória curta: só aparece no tema de gestão (CSS oculta nos demais) */}
-              {podeGerenciar && <span className="turmas-header-divisor" aria-hidden="true" />}
-            </div>
-
-            {/* Frase institucional (sem ilustração), exclusiva de especialista e adm */}
-            {podeGerenciar && (
-              <p className="turmas-header-frase mb-0">
-                Cada turma, um futuro em construção.
-              </p>
-            )}
-
-            <div className="d-flex align-items-center gap-2">
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary rounded-pill px-3"
-                onClick={() => setRecargaKey((prev) => prev + 1)}
-                title="Atualizar dados"
-                disabled={loadingGeral}
-              >
-                <i className={`bi bi-arrow-clockwise me-1 ${loadingGeral ? "spinner-border spinner-border-sm" : ""}`}></i>
-                Atualizar
-              </button>
-            </div>
-          </div>
-
-          {/* Menu de Navegação em Abas (Idêntico ao da Biblioteca) */}
-          <nav className="d-flex gap-4 border-bottom pb-2" aria-label="Abas de Turmas">
-            {abasDisponiveis.map((aba) => (
+        {/* Sub-abas de 2º Nível: Segmentadas e Compactas */}
+        <div className="d-flex flex-wrap align-items-center gap-1 p-1 bg-light rounded-pill border mb-4 d-inline-flex">
+          {abasDisponiveis.map((aba) => {
+            const ativa = abaAtiva === aba.id;
+            return (
               <button
                 key={aba.id}
                 type="button"
                 onClick={() => setAbaAtiva(aba.id)}
-                className={`turmas-tab-btn ${abaAtiva === aba.id ? "is-active" : ""}`}
+                className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 transition-all ${
+                  ativa ? "btn-primary text-white shadow-sm" : "btn-light text-muted"
+                }`}
               >
                 {aba.label}
               </button>
-            ))}
-          </nav>
-        </header>
+            );
+          })}
+        </div>
 
         {/* 1. Conteúdo da Aba Geral: Indicadores e Gráficos */}
         {abaAtiva === "geral" && role !== "professor" && (
@@ -566,7 +560,7 @@ const Turmas = () => {
             onAbrirBoletimAluno={handleAbrirBoletimAluno}
           />
         )}
-      </div>
+      </PainelModulo>
 
       {/* Modal 1: Criar / Editar Turma */}
       <ModalTurma

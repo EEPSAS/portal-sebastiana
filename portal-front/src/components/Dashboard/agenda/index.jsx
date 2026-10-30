@@ -1,4 +1,4 @@
-/**
+﻿/**
  * index.jsx - Componente Raiz da Agenda do Especialista / Painel
  *
  * Papel Didático:
@@ -21,7 +21,7 @@ import { categoryOptions } from './agendaConfig';
 import { useEventoModal } from '../../../hooks/useEventoModal';
 import { useEventoMutations } from '../../../hooks/useEventoMutations';
 import { useEventos } from '../../../hooks/useEventos';
-import { useAuth } from '../../../hooks/useAuth';
+// useAuth
 import {
   createImportantDates,
   formatDateKey,
@@ -51,8 +51,8 @@ const getStoredTasks = () => {
 };
 
 const AgendaEspecialista = () => {
-  const { user } = useAuth();
-  const podeGerenciar = user?.role === 'especialista' || user?.role === 'adm';
+  // useAuth unificado
+  // podeGerenciar unificado
 
   const { eventos: apiEvents, loading: eventsLoading, error: eventsError, refresh } = useEventos();
   const eventModal = useEventoModal();
@@ -179,7 +179,7 @@ const AgendaEspecialista = () => {
   const selectedTasks = tasks.filter((task) => task.date === selectedDate);
 
   return (
-    <section className={`agenda-especialista-page position-relative ${podeGerenciar ? 'dashboard-tema-gestao' : ''}`.trim()}>
+    <section className="agenda-especialista-page position-relative">
       <div className="agenda-especialista-layout">
         <Categorias
           categories={categoryOptions}

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AcervoAba.jsx - Aba de Gestão e Consulta do Acervo de Livros Físicos
  *
  * Papel Didático:
@@ -11,7 +11,7 @@
  * - Modal de solicitação de retirada de exemplares físicos.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { searchGoogleBooks } from '../../../services/biblioteca/googleBooksService';
 
@@ -37,6 +37,7 @@ const AcervoAba = ({
   onSolicitarEmprestimo,
   onAviso,
   onAdicionarAoPlano,
+  onRegistrarAcoes,
 }) => {
   // Obtém o usuário autenticado (ou perfil simulado pelo Adm) para aplicar o RBAC na interface
   const { user } = useAuth();
@@ -204,10 +205,22 @@ const AcervoAba = ({
     }
   };
 
+    useEffect(() => {
+    if (onRegistrarAcoes) {
+      onRegistrarAcoes({
+        abrirNovoLivro,
+        abrirImportarCsv: () => {
+          setArquivoCsv(null);
+          setModalCsvAberto(true);
+        },
+      });
+    }
+  }, [onRegistrarAcoes]);
+
   return (
     <section aria-label="Acervo de Livros">
-      {/* Barra Superior de Ações */}
-      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+      {/* Barra Informativa de Contagem de Livros */}
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div>
           <span className="text-muted small">
             {buscaAtiva
@@ -215,29 +228,6 @@ const AcervoAba = ({
               : `Exibindo os ${livros.length} último(s) livro(s) cadastrado(s) no acervo`}
           </span>
         </div>
-
-        {/* Botões de Gestão (Restritos a Bibliotecária, Especialista e Adm) */}
-        {podeGerenciarAcervo && (
-          <div className="d-flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setArquivoCsv(null);
-                setModalCsvAberto(true);
-              }}
-              className="btn btn-outline-primary rounded-pill px-3 py-2 shadow-sm small fw-semibold"
-            >
-              📥 Importar CSV
-            </button>
-            <button
-              type="button"
-              onClick={abrirNovoLivro}
-              className="btn rounded-pill px-4 py-2 biblioteca-btn-primario shadow-sm small fw-semibold"
-            >
-              + Cadastrar Exemplar
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Grade de Livros Redimensionada para 5 Cards em Uma Linha no Desktop (row-cols-xl-5) */}

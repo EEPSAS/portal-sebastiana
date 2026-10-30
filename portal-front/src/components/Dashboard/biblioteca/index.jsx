@@ -1,18 +1,18 @@
 /**
- * index.jsx - Orquestrador Central da Biblioteca Escolar
+ * index.jsx - Orquestrador Central da Biblioteca Escolar / Módulo Conteúdo
  *
  * Papel Didático:
  * Container de alto nível da rota `/dashboard/biblioteca`.
- * Conecta o hook de regras de negócio (`useBiblioteca`) com as 3 abas oficiais do contrato:
- * 1. `AcervoAba`: Acervo bibliográfico físico e controle de empréstimos;
- * 2. `VideoaulasAba`: Curadoria e pesquisa integrada ao YouTube Data API;
- * 3. `ConteudoWebAba`: Pesquisa de livros, apostilas e referências didáticas no Google Books API.
+ * Integra-se ao novo `PainelModulo`, unificando a identidade visual,
+ * elevando a busca e os botões de ação para o cabeçalho institucional (BoasVindasCard)
+ * e coordenando as 4 abas oficiais alinhadas ao menu lateral (Aside).
  */
 
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useAuth } from '../../../hooks/useAuth';
 import { useBiblioteca } from '../../../hooks/biblioteca/useBiblioteca';
+import PainelModulo from '../common/PainelModulo';
 import AcervoAba from './AcervoAba';
 import VideoaulasAba from './VideoaulasAba';
 import ConteudoWebAba from './ConteudoWebAba';
@@ -21,10 +21,10 @@ import ModalAdicionarAoPlano from './ModalAdicionarAoPlano';
 import './Biblioteca.css';
 
 const ABAS = [
-  { id: 'acervo', label: 'Acervo de Livros' },
-  { id: 'videoaulas', label: 'Videoaulas' },
-  { id: 'conteudo-web', label: 'Conteúdo Web' },
-  { id: 'planos', label: 'Planos de Estudos' },
+  { id: 'acervo', label: 'Biblioteca' },
+  { id: 'videoaulas', label: 'Vídeo Aula' },
+  { id: 'conteudo-web', label: 'Busca Web' },
+  { id: 'planos', label: 'Plano de Estudos' },
 ];
 
 const normalizarTexto = (valor) =>
@@ -35,15 +35,19 @@ const normalizarTexto = (valor) =>
 
 export default function Biblioteca() {
   const { user } = useAuth();
-  const podeGerenciar = user?.role === 'especialista' || user?.role === 'adm';
+  const role = user?.role || 'aluno';
+  const podeGerenciarAcervo = ['bibliotecaria', 'bibliotecario', 'especialista', 'adm', 'admin'].includes(role);
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  // Sincroniza a aba ativa diretamente com o query param (?tab=...) do Aside e da navegação interna
+  // Sincroniza a aba ativa diretamente com o query param (?tab=...) do Aside
   const abaAtiva = ABAS.some((a) => a.id === tabParam) ? tabParam : 'acervo';
   const [busca, setBusca] = useState('');
   const [itemParaExcluir, setItemParaExcluir] = useState(null);
   const [itemParaAdicionarAoPlano, setItemParaAdicionarAoPlano] = useState(null);
+
+  // Ações de cadastro e importação elevadas do AcervoAba
+  const [acoesAcervo, setAcoesAcervo] = useState(null);
 
   const {
     livros,
@@ -61,7 +65,7 @@ export default function Biblioteca() {
     removerVideoaula,
   } = useBiblioteca(busca);
 
-  // Filtro complementar local blindado contra campos nulos (além da busca no servidor)
+  // Filtro complementar local blindado contra campos nulos
   const termoBusca = normalizarTexto(busca.trim());
   const listaSeguraLivros = Array.isArray(livros) ? livros : [];
   const livrosFiltrados = listaSeguraLivros.filter((livro) =>
@@ -82,13 +86,54 @@ export default function Biblioteca() {
     setItemParaExcluir(null);
   };
 
-  const handleSelecionarAba = (idAba) => {
-    setBusca('');
-    setSearchParams({ tab: idAba });
-  };
+  // Ações do cabeçalho institucional (busca e botões elevados ao BoasVindasCard)
+  const acoesBiblioteca = (
+    <>
+      {abaAtiva === 'acervo' && (
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <div className="biblioteca-search-wrapper" style={{ minWidth: '220px' }}>
+            <span className="biblioteca-search-icon" aria-hidden="true">
+              🔍
+            </span>
+            <input
+              type="text"
+              className="form-control form-control-sm rounded-pill ps-5 biblioteca-search-input"
+              placeholder="Pesquisar no acervo..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              aria-label="Pesquisar livros no acervo escolar"
+            />
+          </div>
+
+          {podeGerenciarAcervo && acoesAcervo && (
+            <div className="d-flex align-items-center gap-2">
+              <button
+                type="button"
+                onClick={acoesAcervo.abrirImportarCsv}
+                className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold text-nowrap"
+                title="Importar lista de exemplares em lote via CSV"
+              >
+                <i className="bi bi-file-earmark-arrow-up me-1"></i>
+                Importar CSV
+              </button>
+              <button
+                type="button"
+                onClick={acoesAcervo.abrirNovoLivro}
+                className="btn btn-sm btn-primary rounded-pill px-3 fw-bold text-nowrap"
+                title="Cadastrar novo livro no acervo físico da escola"
+              >
+                <i className="bi bi-plus-lg me-1"></i>
+                Cadastrar Exemplar
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
 
   return (
-    <div className={`position-relative ${podeGerenciar ? 'dashboard-tema-gestao' : ''}`.trim()}>
+    <div className="position-relative">
       {/* Alerta de Falha de Conexão com o Back-end */}
       {erroCarregamento && (
         <div
@@ -127,86 +172,42 @@ export default function Biblioteca() {
           </p>
         </div>
       ) : (
-        /* Painel Central Branco */
-        <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
-        {/* Cabeçalho com Busca e Abas */}
-        <header className="mb-4">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-            <div>
-              <h2 className="fw-bold mb-1 text-primary fs-4 dashboard-header-titulo">Biblioteca Escolar</h2>
-              <p className="text-muted small mb-0">
-                Consulte o acervo físico, assista a videoaulas e pesquise conteúdos pedagógicos.
-              </p>
-              {/* Linha divisória de 48px navy */}
-              {podeGerenciar && <span className="dashboard-header-divisor" aria-hidden="true" />}
-            </div>
+        /* Envelope de Superfície Branca Unificada */
+        <PainelModulo acoes={acoesBiblioteca}>
+          {/* Conteúdo Dinâmico da Aba Selecionada */}
+          {abaAtiva === 'acervo' && (
+            <AcervoAba
+              livros={livrosFiltrados}
+              buscaAtiva={Boolean(termoBusca)}
+              onSalvarLivro={salvarLivro}
+              onImportarCsv={importarCsvLivros}
+              onExcluirLivro={setItemParaExcluir}
+              onSolicitarEmprestimo={solicitarEmprestimoLivro}
+              onAviso={dispararAviso}
+              onAdicionarAoPlano={setItemParaAdicionarAoPlano}
+              onRegistrarAcoes={setAcoesAcervo}
+            />
+          )}
 
-            {abaAtiva === 'acervo' && (
-              <div className="biblioteca-search-wrapper">
-                <span className="biblioteca-search-icon" aria-hidden="true">
-                  🔍
-                </span>
-                <input
-                  type="text"
-                  className="form-control rounded-pill ps-5 py-2 biblioteca-search-input"
-                  placeholder="Pesquisar código, título, autor ou gênero..."
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  aria-label="Pesquisar livros no acervo escolar"
-                />
-              </div>
-            )}
-          </div>
+          {abaAtiva === 'videoaulas' && (
+            <VideoaulasAba
+              videoaulas={videoaulas}
+              onAdicionarVideoaula={adicionarVideoaula}
+              onAdicionarAoPlano={setItemParaAdicionarAoPlano}
+            />
+          )}
 
-          <nav className="d-flex gap-4 border-bottom pb-2" aria-label="Abas da Biblioteca">
-            {ABAS.map((aba) => (
-              <button
-                key={aba.id}
-                type="button"
-                onClick={() => handleSelecionarAba(aba.id)}
-                className={`biblioteca-tab-btn ${
-                  abaAtiva === aba.id ? 'is-active' : ''
-                }`}
-              >
-                {aba.label}
-              </button>
-            ))}
-          </nav>
-        </header>
+          {abaAtiva === 'conteudo-web' && (
+            <ConteudoWebAba
+              onAviso={dispararAviso}
+              onAdicionarAoPlano={setItemParaAdicionarAoPlano}
+            />
+          )}
 
-        {/* Conteúdo Dinâmico da Aba Selecionada */}
-        {abaAtiva === 'acervo' && (
-          <AcervoAba
-            livros={livrosFiltrados}
-            buscaAtiva={Boolean(termoBusca)}
-            onSalvarLivro={salvarLivro}
-            onImportarCsv={importarCsvLivros}
-            onExcluirLivro={setItemParaExcluir}
-            onSolicitarEmprestimo={solicitarEmprestimoLivro}
-            onAviso={dispararAviso}
-            onAdicionarAoPlano={setItemParaAdicionarAoPlano}
-          />
-        )}
-
-        {abaAtiva === 'videoaulas' && (
-          <VideoaulasAba
-            videoaulas={videoaulas}
-            onAdicionarVideoaula={adicionarVideoaula}
-            onAdicionarAoPlano={setItemParaAdicionarAoPlano}
-          />
-        )}
-
-        {abaAtiva === 'conteudo-web' && (
-          <ConteudoWebAba
-            onAviso={dispararAviso}
-            onAdicionarAoPlano={setItemParaAdicionarAoPlano}
-          />
-        )}
-
-        {abaAtiva === 'planos' && (
-          <PlanosAba onAviso={dispararAviso} />
-        )}
-      </div>
+          {abaAtiva === 'planos' && (
+            <PlanosAba onAviso={dispararAviso} />
+          )}
+        </PainelModulo>
       )}
 
       {/* Modal Genérico de Confirmação de Exclusão */}

@@ -8,6 +8,7 @@
  */
 
 import { useAuth } from "../../hooks/useAuth";
+import BoasVindasCard from "../../components/Dashboard/common/BoasVindasCard";
 import AvatarCard from "../../components/Dashboard/configuracoes/AvatarCard";
 import DadosPessoaisCard from "../../components/Dashboard/configuracoes/DadosPessoaisCard";
 import SegurancaCard from "../../components/Dashboard/configuracoes/SegurancaCard";
@@ -35,12 +36,9 @@ const ConfiguracoesPage = () => {
 
   return (
     <div className="configuracoes-page container-fluid px-0">
-      {/* Cabeçalho da Página */}
-      <div className="mb-4">
-        <h3 className="fw-bold text-dark mb-1">Configurações de Conta</h3>
-        <p className="text-muted mb-0">
-          Personalize sua foto, dados de contato e preferências no Portal Sebastiana.
-        </p>
+      {/* Cabeçalho Institucional Padronizado */}
+      <div className="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4">
+        <BoasVindasCard />
       </div>
 
       {/* Grid de Cartões Modulares */}

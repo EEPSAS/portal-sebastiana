@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Usuarios.jsx - Painel Administrativo de Controle de Usuários (Role: Admin)
  *
  * Papel Didático:
@@ -27,6 +27,7 @@ import {
   atualizarUsuario,
   desvincularUsuario,
 } from "../../services/usuarioService";
+import PainelModulo from "../../components/Dashboard/common/PainelModulo";
 
 const ROLES_OPCOES = [
   { value: "", label: "Todas as Roles" },
@@ -204,6 +205,40 @@ const UsuariosPage = () => {
     }
   };
 
+  const acoesUsuarios = (
+    <div className="d-flex align-items-center gap-2 flex-wrap">
+      <div style={{ minWidth: "150px" }}>
+        <select
+          id="filtro-role-usuarios"
+          className="form-select form-select-sm rounded-pill shadow-none"
+          value={filtroRole}
+          onChange={(e) => setFiltroRole(e.target.value)}
+          aria-label="Filtrar por papel"
+        >
+          {ROLES_OPCOES.map((op) => (
+            <option key={op.value} value={op.value}>
+              {op.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="input-group" style={{ minWidth: "180px", maxWidth: "260px" }}>
+        <span className="input-group-text bg-white border-end-0 text-muted">
+          <i className="bi bi-search"></i>
+        </span>
+        <input
+          id="busca-nome-usuarios"
+          type="search"
+          className="form-control form-control-sm border-start-0 ps-0 shadow-none"
+          placeholder="Buscar usuário..."
+          value={buscaNome}
+          onChange={(e) => setBuscaNome(e.target.value)}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="position-relative">
       {/* Toast flutuante de confirmação */}
@@ -216,73 +251,7 @@ const UsuariosPage = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-4 shadow-sm p-4 p-lg-5">
-        {/* Cabeçalho do módulo */}
-        <header className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 pb-3 mb-4 border-bottom">
-          <div>
-            <h1 id="titulo-controle-usuarios" className="h4 fw-bold text-primary mb-1">
-              Controle de Usuários
-            </h1>
-            <p className="text-muted small mb-0">
-              Exibindo os 15 últimos usuários cadastrados no sistema, histórico de autorização e gestão de vínculos.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-secondary rounded-pill px-3 align-self-start align-self-md-center"
-            onClick={() => setRecargaKey((k) => k + 1)}
-            disabled={loading}
-          >
-            <i
-              className={`bi bi-arrow-clockwise me-1 ${
-                loading ? "spinner-border spinner-border-sm" : ""
-              }`}
-            ></i>
-            Atualizar
-          </button>
-        </header>
-
-        {/* Barra de Filtros: Role + Busca por Nome (Item 1.3.2) */}
-        <div className="row g-3 align-items-end mb-4">
-          <div className="col-12 col-md-4">
-            <label htmlFor="filtro-role-usuarios" className="form-label small fw-bold text-dark mb-1">
-              Filtrar por Role:
-            </label>
-            <select
-              id="filtro-role-usuarios"
-              className="form-select"
-              value={filtroRole}
-              onChange={(e) => setFiltroRole(e.target.value)}
-            >
-              {ROLES_OPCOES.map((op) => (
-                <option key={op.value} value={op.value}>
-                  {op.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="col-12 col-md-8">
-            <label htmlFor="busca-nome-usuarios" className="form-label small fw-bold text-dark mb-1">
-              Buscar Usuário pelo Nome:
-            </label>
-            <div className="input-group">
-              <span className="input-group-text bg-white text-muted">
-                <i className="bi bi-search"></i>
-              </span>
-              <input
-                id="busca-nome-usuarios"
-                type="search"
-                className="form-control"
-                placeholder="Digite o nome do usuário..."
-                value={buscaNome}
-                onChange={(e) => setBuscaNome(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-
+      <PainelModulo acoes={acoesUsuarios}>
         {erro && (
           <div className="alert alert-danger rounded-3 small mb-4" role="alert">
             <i className="bi bi-exclamation-triangle-fill me-2"></i>
@@ -412,7 +381,7 @@ const UsuariosPage = () => {
             </span>
           </div>
         )}
-      </div>
+      </PainelModulo>
 
       {/* Modal 1: Editar Usuário (Role + Comentário + Notificação Direta) - Item 1.3.8 */}
       {usuarioEmEdicao && (

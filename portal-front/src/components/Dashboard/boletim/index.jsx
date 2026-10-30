@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { useAuth } from "../../../hooks/useAuth";
 import { useBoletim } from "../../../hooks/Boletim/useBoletim";
+import PainelModulo from "../common/PainelModulo";
 import ComparativoTurmaAba from "./ComparativoTurmaAba";
 import FrequenciaDetalhadaAba from "./FrequenciaDetalhadaAba";
 import NotasDetalhadasAba from "./NotasDetalhadasAba";
@@ -23,9 +23,6 @@ const ABAS = [
 ];
 
 export default function Boletim({ turmaId, alunoId }) {
-  const { user } = useAuth();
-  const podeGerenciar = user?.role === "especialista" || user?.role === "adm";
-
   const [abaAtiva, setAbaAtiva] = useState("resumo");
   const referenciasAbas = useRef([]);
   const {
@@ -37,7 +34,7 @@ export default function Boletim({ turmaId, alunoId }) {
     tentarNovamente,
   } = useBoletim(turmaId, alunoId);
 
-  // As setas permitem trocar de aba sem exigir que o estudante use o mouse.
+  // As setas permitem trocar de aba sem exigir que o estudante use o mouse
   const navegarAbas = (evento, indiceAtual) => {
     let proximoIndice;
     if (evento.key === "ArrowRight") {
@@ -77,49 +74,47 @@ export default function Boletim({ turmaId, alunoId }) {
     }
   };
 
-  return (
-    <main className={`boletim-page container-fluid px-0 ${podeGerenciar ? 'dashboard-tema-gestao' : ''}`.trim()}>
-      <header className="boletim-page__header">
-        <div>
-          <p className="boletim-page__eyebrow mb-1">Área do estudante</p>
-          <h1 className="h3 mb-0 dashboard-header-titulo">Boletim Escolar</h1>
-          {/* Linha divisória de 48px: visível exclusivamente para Especialista e Adm */}
-          {podeGerenciar && <span className="dashboard-header-divisor" aria-hidden="true" />}
-        </div>
-        <span className="boletim__badge rounded-pill">
-          <i className="bi bi-calendar3 me-2" aria-hidden="true" />
-          Ano letivo · 3 trimestres
-        </span>
-      </header>
+  const acoesBoletim = (
+    <span className="badge bg-light text-secondary border px-3 py-2 rounded-pill fw-semibold small">
+      <i className="bi bi-calendar3 me-1 text-primary" aria-hidden="true" />
+      Ano letivo · 3 trimestres
+    </span>
+  );
 
+  return (
+    <PainelModulo acoes={acoesBoletim}>
       <div className="boletim__shell">
+        {/* Sub-abas de 2º Nível: Segmentadas e Elegantes */}
         <div
-          className="boletim__tabs"
+          className="d-flex flex-wrap align-items-center gap-1 p-1 bg-light rounded-pill border mb-4 d-inline-flex"
           role="tablist"
           aria-label="Seções do boletim escolar"
         >
-          {ABAS.map((aba, indice) => (
-            <button
-              key={aba.id}
-              ref={(elemento) => {
-                referenciasAbas.current[indice] = elemento;
-              }}
-              type="button"
-              id={`boletim-aba-${aba.id}`}
-              role="tab"
-              aria-selected={abaAtiva === aba.id}
-              aria-controls={`boletim-painel-${aba.id}`}
-              tabIndex={abaAtiva === aba.id ? 0 : -1}
-              className={`boletim__tab ${
-                abaAtiva === aba.id ? "is-active" : ""
-              }`}
-              onClick={() => setAbaAtiva(aba.id)}
-              onKeyDown={(evento) => navegarAbas(evento, indice)}
-            >
-              <i className={`bi ${aba.icone}`} aria-hidden="true" />
-              <span>{aba.label}</span>
-            </button>
-          ))}
+          {ABAS.map((aba, indice) => {
+            const ativa = abaAtiva === aba.id;
+            return (
+              <button
+                key={aba.id}
+                ref={(elemento) => {
+                  referenciasAbas.current[indice] = elemento;
+                }}
+                type="button"
+                id={`boletim-aba-${aba.id}`}
+                role="tab"
+                aria-selected={ativa}
+                aria-controls={`boletim-painel-${aba.id}`}
+                tabIndex={ativa ? 0 : -1}
+                className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 d-flex align-items-center gap-2 ${
+                  ativa ? "btn-primary text-white shadow-sm" : "btn-light text-muted"
+                }`}
+                onClick={() => setAbaAtiva(aba.id)}
+                onKeyDown={(evento) => navegarAbas(evento, indice)}
+              >
+                <i className={`bi ${aba.icone}`} aria-hidden="true" />
+                <span>{aba.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="boletim__content">
@@ -135,7 +130,7 @@ export default function Boletim({ turmaId, alunoId }) {
               {abaAtiva === aba.id && carregando && (
                 <div className="boletim__state" role="status">
                   <span
-                    className="spinner-border spinner-border-sm"
+                    className="spinner-border spinner-border-sm me-2 text-primary"
                     aria-hidden="true"
                   />
                   Carregando as informações do seu boletim...
@@ -161,7 +156,7 @@ export default function Boletim({ turmaId, alunoId }) {
                     <div className="pt-1">
                       <button
                         type="button"
-                        className="btn btn-sm boletim__btn-primary rounded-pill px-3"
+                        className="btn btn-sm btn-outline-primary rounded-pill px-3"
                         onClick={tentarNovamente}
                       >
                         Tentar novamente
@@ -178,6 +173,6 @@ export default function Boletim({ turmaId, alunoId }) {
           ))}
         </div>
       </div>
-    </main>
+    </PainelModulo>
   );
 }

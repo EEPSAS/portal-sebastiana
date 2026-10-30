@@ -1,0 +1,50 @@
+/**
+ * PainelModulo.css - Estilos da Superfície Branca e Navegação Unificada
+ */
+
+.painel-modulo-container {
+  background-color: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(13, 35, 70, 0.05);
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+  transition: box-shadow 0.2s ease;
+}
+
+@media (max-width: 575.98px) {
+  .painel-modulo-container {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+}
+
+/* Itens da Navegação de Módulo */
+.modulo-nav {
+  margin-top: 0.25rem;
+  border-bottom: 1.5px solid #e5eaf2 !important;
+}
+
+.modulo-nav-item {
+  color: #64748b !important;
+  font-size: 0.95rem;
+  padding: 0.5rem 0.25rem 0.65rem 0.25rem;
+  border-bottom: 2.5px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  margin-bottom: -1.5px;
+  white-space: nowrap;
+}
+
+.modulo-nav-item:hover {
+  color: var(--dashboard-navy, #0d2346) !important;
+}
+
+.modulo-nav-item.is-active {
+  color: var(--dashboard-navy, #0d2346) !important;
+  font-weight: 700 !important;
+  border-bottom-color: var(--dashboard-navy, #0d2346) !important;
+}
+
+/* Área de Conteúdo dentro do Painel */
+.painel-modulo-conteudo {
+  padding-top: 1.5rem;
+}

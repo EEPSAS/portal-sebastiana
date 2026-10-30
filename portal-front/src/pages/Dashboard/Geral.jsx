@@ -17,7 +17,7 @@ import GeralProfessor from "../../components/Dashboard/geral/professor";
 import GeralBibliotecario from "../../components/Dashboard/geral/bibliotecario";
 import GeralEspecialista from "../../components/Dashboard/geral/especialista";
 import GeralAdm from "../../components/Dashboard/geral/adm";
-import BoasVindasCard from "../../components/Dashboard/geral/common/BoasVindasCard";
+import BoasVindasCard from "../../components/Dashboard/common/BoasVindasCard";
 import { useAuth } from "../../hooks/useAuth";
 import { normalizarRole } from "../../utils/rolesRoutes";
 
@@ -39,7 +39,9 @@ const GeralPage = () => {
 
   return (
     <>
-      <BoasVindasCard />
+      <div className="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-3">
+        <BoasVindasCard />
+      </div>
       <GeralDaRole />
     </>
   );

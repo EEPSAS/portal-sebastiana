@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Noticias.jsx - Gestão Completa de Notícias Escolares (Especialista e Administrador)
  *
  * Papel Didático:
@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../hooks/useAuth';
+// useAuth
 import {
   atualizarNoticia,
   criarNoticia,
@@ -20,6 +20,7 @@ import {
   listarNoticias,
 } from '../../services/noticiasService';
 import './Noticias.css';
+import PainelModulo from '../../components/Dashboard/common/PainelModulo';
 
 // Categorias oficiais padronizadas do ambiente escolar
 const CATEGORIAS_SUGERIDAS = [
@@ -46,9 +47,9 @@ const FORMULARIO_INICIAL = {
 };
 
 const DashboardNoticias = () => {
-  const { user } = useAuth();
+  // useAuth não utilizado
   // Ativa o tema institucional exclusivamente para Especialista e Administrador
-  const podeGerenciar = user?.role === 'especialista' || user?.role === 'adm';
+  // Tema de gestao unificado no PainelModulo
 
   // Estado da listagem e paginação
   const [noticias, setNoticias] = useState([]);
@@ -271,32 +272,22 @@ const DashboardNoticias = () => {
     }
   };
 
-  return (
-    <div className={`container-fluid py-3 position-relative ${podeGerenciar ? 'dashboard-tema-gestao' : ''}`.trim()}>
-      {/* Cabeçalho da Página */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-        <div>
-          <h2 className="h4 fw-bold text-dark mb-1 dashboard-header-titulo">
-            <i className="bi bi-newspaper text-primary me-2"></i>
-            Gestão de Notícias
-          </h2>
-          <p className="text-muted small mb-0">
-            Publique, edite e gerencie informativos e comunicados da comunidade escolar.
-          </p>
-          {/* Linha divisória clássica de 48px: visível apenas no tema de gestão */}
-          {podeGerenciar && <span className="dashboard-header-divisor" aria-hidden="true" />}
-        </div>
-        <button
-          type="button"
-          className="btn btn-primary fw-semibold d-flex align-items-center gap-2 shadow-sm"
-          onClick={handleAbrirCriacao}
-        >
-          <i className="bi bi-plus-lg"></i>
-          <span>Nova Notícia</span>
-        </button>
-      </div>
+  const acoesNoticias = (
+    <button
+      type="button"
+      className="btn btn-sm btn-primary rounded-pill px-3 fw-bold d-flex align-items-center gap-2"
+      onClick={handleAbrirCriacao}
+      title="Cadastrar nova notícia ou comunicado escolar"
+    >
+      <i className="bi bi-plus-lg"></i>
+      <span>Nova Notícia</span>
+    </button>
+  );
 
-      {/* Alerta de Sucesso Temporário */}
+  return (
+    <div className="position-relative">
+      <PainelModulo acoes={acoesNoticias}>
+        {/* Alerta de Sucesso Temporário */}
       {mensagemSucesso && (
         <div className="alert alert-success alert-dismissible fade show d-flex align-items-center shadow-sm rounded-3 mb-4" role="alert">
           <i className="bi bi-check-circle-fill me-2 fs-5"></i>
@@ -506,6 +497,8 @@ const DashboardNoticias = () => {
 
       {/* ========================================================================= */}
       {/* MODAL 1: Criação e Edição de Notícia                                     */}
+      </PainelModulo>
+
       {/* ========================================================================= */}
       {modalFormularioAberto && (
         <div

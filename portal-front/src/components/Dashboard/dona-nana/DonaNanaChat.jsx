@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DonaNanaChat.jsx - Componente Central da Aba de Conversação com a Dona Nana
  *
  * Papel Didático:
@@ -12,6 +12,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import DonaNanaAvatar from './DonaNanaAvatar';
+import BoasVindasCard from '../common/BoasVindasCard';
 import { useAuth } from '../../../hooks/useAuth';
 import { enviarMensagem } from '../../../services/donaNanaService';
 import './donaNana.css';
@@ -203,36 +204,24 @@ const DonaNanaChat = () => {
 
   return (
     <div className="dona-nana-page-container">
-      {/* Banner Superior de Boas-Vindas */}
-      <section className="dona-nana-hero-card d-flex flex-wrap align-items-center justify-content-between gap-3">
-        <div className="d-flex align-items-center gap-3">
-          <DonaNanaAvatar size="lg" showBadge />
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-1">
-              <h1 className="h5 fw-bold mb-0 text-dark">
-                Professora Sebastiana de Almeida e Silva
-              </h1>
-              <span className="dona-nana-hero-badge">Dona Nana</span>
-            </div>
-            <p className="text-muted small mb-0">
-              Patrona da escola e mentora pedagógica virtual — sempre com uma palavra de apoio,
-              orientações do portal e causos afetuosos de Jaguaraçu.
-            </p>
-          </div>
-        </div>
-
-        {podeConfigurar && (
-          <button
-            type="button"
-            className="btn btn-outline-warning text-dark fw-semibold d-flex align-items-center gap-2 shadow-sm"
-            onClick={() => navigate('/dashboard/dona-nana/configuracao')}
-            title="Ajustar a persona e os campos instrucionais do System Prompt"
-          >
-            <i className="bi bi-sliders text-warning"></i>
-            <span>Configurar Persona</span>
-          </button>
-        )}
-      </section>
+      {/* Banner Superior com BoasVindasCard Padronizado */}
+      <div className="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-3">
+        <BoasVindasCard
+          acoes={
+            podeConfigurar && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold d-flex align-items-center gap-2"
+                onClick={() => navigate('/dashboard/dona-nana/configuracao')}
+                title="Ajustar a persona e os campos instrucionais do System Prompt"
+              >
+                <i className="bi bi-sliders"></i>
+                <span>Configurar Persona</span>
+              </button>
+            )
+          }
+        />
+      </div>
 
       {/* Layout Principal: Histórico à Esquerda e Chat à Direita */}
       <div className="dona-nana-main-layout">
