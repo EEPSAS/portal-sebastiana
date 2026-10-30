@@ -11,7 +11,9 @@
  * 4. Resolução de divergências de notas em períodos letivos anteriores.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { listarCiclos } from "../../../services/disciplinasService";
+import ModalCiclo from "../disciplinas/ModalCiclo";
 import { importarNotasCSV } from "../../../services/turmasService";
 import { formatarDisciplinaCiclo } from "../../../utils/formatters";
 
@@ -30,11 +32,79 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
   const [disciplinasPendentes, setDisciplinasPendentes] = useState([]);
   const [disciplinasCatalogo, setDisciplinasCatalogo] = useState([]);
   const [mapeamentosDisciplinas, setMapeamentosDisciplinas] = useState({});
+  // Estados dos Ciclos Escolares para conciliação e criação dinâmica (+)
+  const [ciclos, setCiclos] = useState([]);
+  const [modalCicloAberto, setModalCicloAberto] = useState(false);
+  const [disciplinaChaveParaNovoCiclo, setDisciplinaChaveParaNovoCiclo] = useState(null);
 
   // Estados de resolução de homônimos e divergências de notas
   const [ambiguidades, setAmbiguidades] = useState([]);
   const [mapeamentos, setMapeamentos] = useState({});
   const [divergencias, setDivergencias] = useState([]);
+
+  // Carrega a listagem de ciclos escolares para alimentar os seletores de conciliação
+  useEffect(() => {
+    let ativo = true;
+    if (isOpen) {
+      listarCiclos()
+        .then((dados) => {
+          if (ativo && Array.isArray(dados)) {
+            setCiclos(dados);
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      ativo = false;
+    };
+  }, [isOpen]);
+
+  // Abre o modal de criação rápida de Ciclo vinculado opcionalmente a uma linha de disciplina
+  const handleAbrirCriarCiclo = (chaveDisciplina = null) => {
+    setDisciplinaChaveParaNovoCiclo(chaveDisciplina);
+    setModalCicloAberto(true);
+  };
+
+  // Callback chamado pelo ModalCiclo após persistir com sucesso no banco de dados
+  const handleNovoCicloSalvo = (cicloSalvo) => {
+    if (cicloSalvo?.id_ciclo) {
+      const novoId = Number(cicloSalvo.id_ciclo);
+      const novoCiclo = {
+        id_ciclo: novoId,
+        nome: cicloSalvo.nome,
+        descricao: cicloSalvo.descricao || "",
+      };
+
+      // 1. Atualiza a lista forçando re-renderização do select com o novo ciclo
+      setCiclos((prev) => {
+        const existe = prev.some((c) => Number(c.id_ciclo) === novoId);
+        return existe ? prev : [...prev, novoCiclo];
+      });
+
+      // 2. Preenche automaticamente o novo ciclo como selecionado por padrão
+      if (disciplinaChaveParaNovoCiclo) {
+        setMapeamentosDisciplinas((prev) => ({
+          ...prev,
+          [disciplinaChaveParaNovoCiclo]: {
+            ...prev[disciplinaChaveParaNovoCiclo],
+            ciclo_id: novoId,
+          },
+        }));
+      } else {
+        setMapeamentosDisciplinas((prev) => {
+          const atualizado = { ...prev };
+          Object.keys(atualizado).forEach((k) => {
+            if (atualizado[k]?.acao === "criar_nova") {
+              atualizado[k] = { ...atualizado[k], ciclo_id: novoId };
+            }
+          });
+          return atualizado;
+        });
+      }
+    }
+    setModalCicloAberto(false);
+    setDisciplinaChaveParaNovoCiclo(null);
+  };
 
   if (!isOpen) return null;
 
@@ -44,6 +114,8 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     setDisciplinasPendentes([]);
     setDisciplinasCatalogo([]);
     setMapeamentosDisciplinas({});
+    setModalCicloAberto(false);
+    setDisciplinaChaveParaNovoCiclo(null);
     setAmbiguidades([]);
     setMapeamentos({});
     setDivergencias([]);
@@ -62,8 +134,13 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
       ) {
         const listaPend = resposta.disciplinas_pendentes || [];
         const catalogo = resposta.catalogo_disciplinas || resposta.disciplinas_catalogo || [];
+        if (Array.isArray(resposta.catalogo_ciclos) && resposta.catalogo_ciclos.length > 0) {
+          setCiclos(resposta.catalogo_ciclos);
+        }
         setDisciplinasPendentes(listaPend);
         setDisciplinasCatalogo(catalogo);
+
+        const cicloPadraoId = turma?.ciclo_id || (resposta.catalogo_ciclos?.[0]?.id_ciclo ?? "");
 
         const mapaInicial = {};
         listaPend.forEach((item) => {
@@ -74,6 +151,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
               id_disciplina: Number(item.sugestao_id),
               nome_nova: item.nome_sanitizado || item.nome_csv,
               aulas_semanais: 4,
+              ciclo_id: cicloPadraoId,
             };
           } else {
             mapaInicial[chave] = {
@@ -81,6 +159,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
               id_disciplina: catalogo[0]?.id_disciplina || "",
               nome_nova: item.nome_sanitizado || item.nome_csv,
               aulas_semanais: 4,
+              ciclo_id: cicloPadraoId,
             };
           }
         });
@@ -306,7 +385,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
         style={{
           width:
             etapa === "divergencias" || etapa === "disciplinas"
-              ? "min(780px, 100%)"
+              ? "min(860px, 100%)"
               : "min(680px, 100%)",
         }}
         onClick={(e) => e.stopPropagation()}
@@ -571,7 +650,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
 
                     {/* Escolha de Ação */}
                     <div className="row g-2 align-items-end">
-                      <div className="col-12 col-md-5">
+                      <div className={decisao.acao === "criar_nova" ? "col-12 col-md-4" : "col-12 col-md-5"}>
                         <label className="form-label small fw-bold text-dark mb-1">
                           Ação de Conciliação:
                         </label>
@@ -621,9 +700,9 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
 
                       {decisao.acao === "criar_nova" && (
                         <>
-                          <div className="col-8 col-md-5">
+                          <div className="col-12 col-md-3">
                             <label className="form-label small fw-bold text-dark mb-1">
-                              Nome da Nova Disciplina:
+                              Nome da Disciplina:
                             </label>
                             <input
                               type="text"
@@ -656,6 +735,40 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                               disabled={loading}
                               required
                             />
+                          </div>
+                          <div className="col-8 col-md-3">
+                            <label className="form-label small fw-bold text-dark mb-1">
+                              Ciclo Escolar:
+                            </label>
+                            <div className="input-group input-group-sm">
+                              <select
+                                className="form-select form-select-sm"
+                                value={decisao.ciclo_id || ""}
+                                onChange={(e) =>
+                                  atualizarDecisaoDisciplina(chave, {
+                                    ciclo_id: Number(e.target.value),
+                                  })
+                                }
+                                disabled={loading}
+                                required
+                              >
+                                <option value="">Selecione o Ciclo...</option>
+                                {ciclos.map((c) => (
+                                  <option key={c.id_ciclo} value={c.id_ciclo}>
+                                    {c.nome}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                title="Cadastrar novo ciclo"
+                                onClick={() => handleAbrirCriarCiclo(chave)}
+                                disabled={loading}
+                              >
+                                <i className="bi bi-plus-lg"></i>
+                              </button>
+                            </div>
                           </div>
                         </>
                       )}
@@ -969,6 +1082,20 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
           </div>
         )}
       </div>
+
+      {/* Modal Sobreposto para Criação Instantânea de Ciclo (+) */}
+      {modalCicloAberto && (
+        <div style={{ position: "relative", zIndex: 1065 }}>
+          <ModalCiclo
+            ciclo={null}
+            onFechar={() => {
+              setModalCicloAberto(false);
+              setDisciplinaChaveParaNovoCiclo(null);
+            }}
+            onSalvo={handleNovoCicloSalvo}
+          />
+        </div>
+      )}
     </div>
   );
 };

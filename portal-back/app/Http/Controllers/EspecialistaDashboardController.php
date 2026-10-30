@@ -72,6 +72,7 @@ class EspecialistaDashboardController extends Controller
             'divergencias' => $resultado['divergencias'] ?? [],
             'disciplinas_pendentes' => $resultado['disciplinas_pendentes'] ?? [],
             'catalogo_disciplinas' => $resultado['catalogo_disciplinas'] ?? [],
+            'catalogo_ciclos' => $resultado['catalogo_ciclos'] ?? [],
             'dados' => $resultado,
         ]))->response()->setStatusCode(200);
     }

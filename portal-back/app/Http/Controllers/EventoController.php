@@ -4,13 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Enums\TipoEvento;
 use App\Enums\UserRole;
+use App\Http\Requests\StoreEventoEmMassaRequest;
 use App\Http\Requests\StoreEventoRequest;
 use App\Http\Requests\UpdateEventoRequest;
 use App\Http\Resources\EventoResource;
 use App\Models\Evento;
+use App\Services\NotificacaoService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -24,6 +27,13 @@ use Illuminate\Support\Facades\Gate;
  */
 class EventoController extends Controller
 {
+    /**
+     * Injeta o serviço de notificações para comunicação integrada de eventos importantes.
+     */
+    public function __construct(
+        private readonly NotificacaoService $notificacaoService
+    ) {}
+
     /**
      * Aplica as regras de visibilidade pública, compartilhada e pessoal dos eventos.
      */
@@ -154,7 +164,38 @@ class EventoController extends Controller
         $evento = Evento::create($data);
         $evento->load('criador:id,name');
 
+        // Item 5.3: Dispara notificação super-importante quando marcado como data importante
+        if ($evento->importante) {
+            $this->notificacaoService->notificarEventoImportante($evento, $request->user());
+        }
+
         return response()->json(new EventoResource($evento), 201);
+    }
+
+    /**
+     * Persiste múltiplos eventos em lote no calendário escolar (Item 5.6).
+     */
+    public function storeEmMassa(StoreEventoEmMassaRequest $request): JsonResponse
+    {
+        Gate::authorize('create', Evento::class);
+
+        $dadosValidados = $request->validated();
+        $criadorId = $request->user()->id;
+
+        $eventosCriados = DB::transaction(function () use ($dadosValidados, $criadorId) {
+            $lista = collect();
+
+            foreach ($dadosValidados['eventos'] as $item) {
+                $item['criador_id'] = $criadorId;
+                $evento = Evento::create($item);
+                $evento->load('criador:id,name');
+                $lista->push($evento);
+            }
+
+            return $lista;
+        });
+
+        return response()->json(EventoResource::collection($eventosCriados), 201);
     }
 
     /**
@@ -176,8 +217,15 @@ class EventoController extends Controller
     {
         Gate::authorize('update', $evento);
 
+        $estavaImportante = (bool) $evento->importante;
+
         $evento->update($request->validated());
         $evento->load('criador');
+
+        // Item 5.3: Dispara notificação se foi alterado para importante
+        if (! $estavaImportante && $evento->importante && $request->user()?->canManageEvents()) {
+            $this->notificacaoService->notificarEventoImportante($evento, $request->user());
+        }
 
         // Se for evento de aniversário, sincroniza a nova data com o perfil do usuário
         if ($evento->is_aniversario && $evento->criador && $evento->data_inicio) {

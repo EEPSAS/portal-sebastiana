@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\UserRole;
 use App\Models\Disciplina;
+use App\Models\Evento;
 use App\Models\Frequencia;
 use App\Models\Matricula;
 use App\Models\Nota;
@@ -51,6 +52,33 @@ class NotificacaoService
         Notification::send($destinatarios, new NotificacaoPortal($payload));
 
         return $this->buscarNotificacoesDoEvento($destinatarios, $eventKey);
+    }
+
+    /**
+     * Emite uma notificação super-importante para todos os usuários ativos quando um evento
+     * institucional é marcado como Data Importante (Item 5.3 da Agenda Escolar).
+     */
+    public function notificarEventoImportante(Evento $evento, User $autor): void
+    {
+        $eventKey = "evento_importante:{$evento->id}:".Str::uuid();
+        $payload = [
+            'titulo' => "Data Importante: {$evento->titulo}",
+            'assunto' => $evento->descricao ?: "O evento '{$evento->titulo}' foi marcado como data importante no calendário escolar.",
+            'tipo' => 'evento',
+            'origem' => 'sistema',
+            'prioridade' => 'super_importante',
+            'criador_id' => $autor->id,
+            'criador_nome' => $autor->name,
+            'event_key' => $eventKey,
+        ];
+
+        $destinatarios = User::query()
+            ->where('ativo', true)
+            ->get();
+
+        if ($destinatarios->isNotEmpty()) {
+            Notification::send($destinatarios, new NotificacaoPortal($payload));
+        }
     }
 
     /**

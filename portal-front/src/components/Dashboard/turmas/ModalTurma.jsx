@@ -149,7 +149,7 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
             >
               <option value="">Sem ciclo específico (personalizado)</option>
               {ciclosDisponiveis.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={c.id_ciclo} value={c.id_ciclo}>
                   {c.nome}
                 </option>
               ))}

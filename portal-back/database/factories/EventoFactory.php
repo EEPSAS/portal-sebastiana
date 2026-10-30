@@ -27,12 +27,9 @@ class EventoFactory extends Factory
             'data_inicio' => fake()->dateTimeBetween('now', '+1 month')->format('Y-m-d'),
             'data_fim' => null,
             'hora_inicio' => '08:00',
-            'hora_fim' => '12:00',
-            'dia_inteiro' => false,
             'tipo' => fake()->randomElement(TipoEvento::cases()),
             'importante' => false,
             'local' => fake()->word(),
-            'cor' => '#e6007e',
             'criador_id' => User::factory()->especialista(),
         ];
     }
@@ -41,16 +38,7 @@ class EventoFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'importante' => true,
-            'tipo' => TipoEvento::DATAS_COMEMORATIVAS,
-        ]);
-    }
-
-    public function diaInteiro(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'dia_inteiro' => true,
-            'hora_inicio' => null,
-            'hora_fim' => null,
+            'tipo' => TipoEvento::EVENTOS,
         ]);
     }
 }

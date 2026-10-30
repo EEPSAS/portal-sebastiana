@@ -14,6 +14,29 @@
   border: 0;
 }
 
+/* Modo embutido (ex: Dashboard da Agenda) remove área cinza vazia e imagem de fundo (Item 1) */
+.portal-scope .portal-calendar-section.portal-calendar-section--embedded {
+  padding: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.portal-scope .portal-calendar-section.portal-calendar-section--embedded::before {
+  display: none !important;
+}
+
+.portal-scope .portal-calendar-section.portal-calendar-section--embedded > .container {
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.portal-scope .portal-calendar-section.portal-calendar-section--embedded .portal-calendar__grid {
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
 .portal-scope .portal-calendar-section::before {
   content: "";
 
@@ -207,6 +230,11 @@
 }
 
 .portal-scope .portal-calendar__month-title {
+  /* Largura fixa: as setas nao mudam de lugar quando o nome do mes muda */
+  width: 230px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  text-align: left;
   font-size: 1.5rem;
   font-weight: 800;
   color: var(--color-primary);
@@ -631,4 +659,12 @@
   font-size: 1.25rem;
   font-weight: 700;
   color: #172642;
+}
+
+/* Modificador do wrapper .portal-scope quando embutido no Dashboard: remove altura minima e fundo da pagina publica */
+.portal-scope.portal-scope--embedded {
+  min-height: 0;
+  display: block;
+  background: transparent;
+  overflow: visible;
 }

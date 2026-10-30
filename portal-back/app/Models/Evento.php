@@ -27,13 +27,10 @@ class Evento extends Model
         'data_inicio',
         'data_fim',
         'hora_inicio',
-        'hora_fim',
-        'dia_inteiro',
         'tipo',
         'importante',
         'is_aniversario',
         'local',
-        'cor',
         'criador_id',
     ];
 
@@ -43,7 +40,6 @@ class Evento extends Model
         return [
             'data_inicio' => 'date:Y-m-d',
             'data_fim' => 'date:Y-m-d',
-            'dia_inteiro' => 'boolean',
             'importante' => 'boolean',
             'is_aniversario' => 'boolean',
         ];

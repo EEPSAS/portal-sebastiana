@@ -79,7 +79,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/biblioteca', [BibliotecaController::class, 'show'])->name('biblioteca.show');
     Route::put('/biblioteca', [BibliotecaController::class, 'update'])->middleware('throttle:60,1')->name('biblioteca.update');
 
-    // Operações autenticadas de Eventos (detalhe individual, criação, edição e exclusão)
+    // Operações autenticadas de Eventos (detalhe individual, criação em massa, criação, edição e exclusão)
+    Route::post('/eventos/em-massa', [EventoController::class, 'storeEmMassa']);
     Route::apiResource('eventos', EventoController::class)->except(['index']);
 
     // Horários escolares: leitura por perfil, gestão restrita a Especialista e Adm.

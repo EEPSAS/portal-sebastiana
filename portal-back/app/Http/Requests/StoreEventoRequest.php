@@ -6,6 +6,7 @@ use App\Enums\TipoEvento;
 use Illuminate\Contracts\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Enum;
+use Illuminate\Validation\Validator;
 
 // Validação para cadastro de novos eventos no calendário escolar.
 class StoreEventoRequest extends FormRequest
@@ -37,12 +38,34 @@ class StoreEventoRequest extends FormRequest
             'data_inicio' => ['required', 'date_format:Y-m-d'],
             'data_fim' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:data_inicio'],
             'hora_inicio' => ['nullable', 'date_format:H:i'],
-            'hora_fim' => ['nullable', 'date_format:H:i'],
-            'dia_inteiro' => ['sometimes', 'boolean'],
             'tipo' => ['sometimes', 'required', new Enum(TipoEvento::class)],
             'importante' => ['sometimes', 'boolean'],
             'local' => ['nullable', 'string', 'max:255'],
-            'cor' => ['nullable', 'string', 'max:30'],
+        ];
+    }
+
+    /**
+     * Validações contextuais adicionais de permissão por tipo de evento.
+     *
+     * @return array<int, \Closure>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $tipoInformado = $this->input('tipo');
+                if (! $tipoInformado) {
+                    return;
+                }
+
+                $tipoEnum = TipoEvento::tryFromLoose($tipoInformado);
+                if ($tipoEnum && $tipoEnum->isRestrito() && ! $this->user()?->canManageEvents()) {
+                    $validator->errors()->add(
+                        'tipo',
+                        'Apenas Especialistas e Administradores possuem permissão para cadastrar Provas, Sábados Letivos ou Feriados e Recessos.'
+                    );
+                }
+            },
         ];
     }
 
@@ -56,8 +79,6 @@ class StoreEventoRequest extends FormRequest
             'data_fim.date_format' => 'A data de término deve estar no formato AAAA-MM-DD.',
             'data_fim.after_or_equal' => 'A data de término deve ser igual ou posterior à data de início.',
             'hora_inicio.date_format' => 'O formato da hora de início deve ser HH:MM (ex: 08:00).',
-            'hora_fim.date_format' => 'O formato da hora de término deve ser HH:MM (ex: 12:00).',
-            'dia_inteiro.boolean' => 'O campo dia inteiro deve ser verdadeiro ou falso.',
             'importante.boolean' => 'O campo importante deve ser verdadeiro ou falso.',
             'tipo.required' => 'O tipo do evento não pode ser vazio.',
         ];

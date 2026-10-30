@@ -51,12 +51,9 @@ export const mapEvento = (evento) => ({
   date: String(evento.data_inicio).slice(0, 10),
   endDate: evento.data_fim || '',
   startTime: evento.hora_inicio?.slice(0, 5) || '',
-  endTime: evento.hora_fim?.slice(0, 5) || '',
-  allDay: evento.dia_inteiro,
   category: getCategoryFromApiType(evento.tipo),
-  important: evento.importante,
+  important: Boolean(evento.importante),
   location: evento.local || '',
-  color: evento.cor || '',
   creatorId: evento.criador_id,
   createdAt: evento.created_at,
   updatedAt: evento.updated_at,
@@ -69,11 +66,8 @@ const eventFields = {
   date: 'data_inicio',
   endDate: 'data_fim',
   startTime: 'hora_inicio',
-  endTime: 'hora_fim',
-  allDay: 'dia_inteiro',
   important: 'importante',
   location: 'local',
-  color: 'cor',
 };
 
 /**
@@ -127,6 +121,29 @@ export const createEvento = async (evento, { token } = {}) => {
 };
 
 /**
+ * Cria múltiplos eventos em lote no calendário (Cadastro em Massa - Item 5.6).
+ */
+export const createEventosEmMassa = async (eventos, { token } = {}) => {
+  const payload = {
+    eventos: eventos.map((ev) => ({
+      data: ev.data || ev.date,
+      titulo: ev.titulo || ev.title,
+      // Converte a chave interna do front (ex.: 'sabados') para o rótulo oficial aceito pela API
+      categoria: getApiTypeFromCategory(ev.categoria || ev.category),
+      descricao: ev.descricao || ev.description,
+    })),
+  };
+
+  const response = await request('/eventos/em-massa', {
+    method: 'POST',
+    body: payload,
+    token,
+  });
+
+  return Array.isArray(response) ? response.map(mapEvento) : [];
+};
+
+/**
  * Atualiza um evento existente.
  */
 export const updateEvento = async (evento, { token } = {}) => {
@@ -149,6 +166,7 @@ export const deleteEvento = async (id, { token } = {}) => {
 // Aliases semânticos em português para paridade 1:1 com apiContract.md
 export const listar = listEventos;
 export const criar = createEvento;
+export const criarEmMassa = createEventosEmMassa;
 export const atualizar = updateEvento;
 export const excluir = deleteEvento;
 
@@ -156,7 +174,7 @@ export const eventosService = {
   listar,
   datasImportantes,
   criar,
+  criarEmMassa,
   atualizar,
   excluir,
 };
-

@@ -61,7 +61,7 @@ export const criarCiclo = async (dados) => {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(data?.message || data?.errors?.nome?.[0] || "Não foi possível criar o ciclo escolar.");
+    throw new Error((data?.errors ? Object.values(data.errors).flat()[0] : null) || data?.message || "Não foi possível criar o ciclo escolar.");
   }
 
   return data;
@@ -78,7 +78,8 @@ export const atualizarCiclo = async (idCiclo, dados) => {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(data?.message || "Não foi possível atualizar o ciclo escolar.");
+    // Prioriza a primeira mensagem de validação (ex: "máx. 256 caracteres")
+    throw new Error((data?.errors ? Object.values(data.errors).flat()[0] : null) || data?.message || "Não foi possível atualizar o ciclo escolar.");
   }
 
   return data;

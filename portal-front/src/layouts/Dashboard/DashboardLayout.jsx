@@ -38,7 +38,7 @@ const DashboardLayout = () => {
   const userPhoto = user?.avatar || null;
 
   return (
-    <div className="dashboard-shell d-flex min-vh-100 bg-light">
+    <div className="dashboard-shell d-flex vh-100 overflow-hidden bg-light">
       {/* Barra de Navegação Lateral Unificada */}
       <Aside />
 

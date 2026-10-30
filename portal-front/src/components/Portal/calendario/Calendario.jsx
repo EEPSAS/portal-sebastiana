@@ -1,18 +1,24 @@
 /**
- * Calendario.jsx - Calendário Escolar Institucional do Portal Público (Módulo 4)
+ * Calendario.jsx - Calendário Escolar Institucional do Portal e Painel (Módulo 4)
  *
  * Papel Didático:
- * Representa a visão pública (somente leitura / 'read') do mesmo calendário
- * gerenciado pelo Especialista no Dashboard:
- * 1. Consome `useEventos({ token: null })` para buscar na API (`GET /api/eventos`)
- *    todos os eventos escolares institucionais cadastrados pelo Especialista/Adm;
- * 2. Combina esses eventos oficiais com os feriados nacionais calculados pelo
- *    utilitário compartilhado `src/utils/agendaUtils.js`;
- * 3. Trata os 3 estados assíncronos obrigatórios (Carregando, Erro Amigável e Vazio).
+ * Atua como o componente visual unificado do Calendário:
+ * 1. Exibe a grade de dias e eventos escolares com diferenciação visual nítida por categoria;
+ * 2. Mantém as Datas Comemorativas sempre visíveis;
+ * 3. Suporta filtros por: Eventos, Provas, Sábados Letivos e Feriados e Recessos;
+ * 4. Aplica estilização refinada conforme solicitado:
+ *    - Provas: tracejado vermelho ao redor do dia + bolinha colorida;
+ *    - Sábados Letivos: fundo amarelado/bege (~50% opacidade) + bolinha colorida;
+ *    - Feriados e Recessos: número do dia em vermelho + bolinha colorida;
+ *    - Eventos: bolinha colorida.
  */
 
 import { useState } from 'react';
 import { useEventos } from '../../../hooks/useEventos';
+import {
+  categoryOptions,
+  getCategoryDetails,
+} from '../../../utils/agendaConfig';
 import {
   createImportantDates,
   formatDateKey,
@@ -25,19 +31,13 @@ import './calendario.css';
 
 const daysOfWeek = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
-const categoryOptions = [
-  { key: 'eventos', label: 'Eventos', description: 'Palestras, feiras, reuniões', eventLabel: 'Evento', icon: '📅', color: '#0777D9' },
-  { key: 'provas', label: 'Provas e trabalhos', description: 'Matemática, Português, Biologia, História, Geografia, Química, Física e Artes', eventLabel: 'Avaliação', icon: '📄', color: '#F24405' },
-  { key: 'comemorativas', label: 'Datas comemorativas', description: 'Datas especiais e celebrações', eventLabel: 'Data comemorativa', icon: '⭐', color: '#04328C' },
-  { key: 'feriados', label: 'Feriados e recessos', description: 'Feriados e períodos de recesso', eventLabel: 'Feriado', icon: '📖', color: '#282E46' },
-];
-
-// Feriados e datas comemorativas nacionais fixas e móveis
+// Feriados e datas comemorativas nacionais fixas e móveis calculadas
 const holidayEvents = createImportantDates();
 const initialMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
 const CalendarioSection = ({
   showHero = true,
+  embedded = false,
   publico = true,
   eventos: customEvents,
   loading: customLoading,
@@ -45,7 +45,6 @@ const CalendarioSection = ({
   onEditEvent,
   onDeleteEvent,
 }) => {
-  // Se eventos customizados forem informados pelo container pai, usa-os; caso contrário busca na API
   const internalHook = useEventos({ publico });
   const apiEvents = customEvents ?? internalHook.eventos;
   const loading = customLoading ?? internalHook.loading;
@@ -58,7 +57,7 @@ const CalendarioSection = ({
   );
   const [showAllEvents, setShowAllEvents] = useState(false);
 
-  // Mescla os eventos institucionais da escola (Especialista) com os feriados nacionais sem duplicar
+  // Mescla eventos da API com feriados/datas nacionais sem duplicidade
   const uniqueApiEvents = apiEvents.filter(
     (apiEvent) =>
       !holidayEvents.some(
@@ -68,9 +67,11 @@ const CalendarioSection = ({
       )
   );
 
-  const visibleEvents = [...holidayEvents, ...uniqueApiEvents].filter(({ category }) =>
-    activeCategories.has(category)
+  // Item 2.1: As datas comemorativas devem ser SEMPRE mostradas, independente do filtro de categorias
+  const visibleEvents = [...holidayEvents, ...uniqueApiEvents].filter(
+    ({ category }) => category === 'comemorativas' || activeCategories.has(category)
   );
+
   const monthStart = `${getMonthKey(visibleMonth)}-01`;
   const monthEnd = formatDateKey(
     new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0)
@@ -82,9 +83,6 @@ const CalendarioSection = ({
   const listedEvents = (showAllEvents ? visibleEvents : monthEvents)
     .slice()
     .sort((first, second) => first.date.localeCompare(second.date));
-
-  const getCategory = (categoryKey) =>
-    categoryOptions.find(({ key }) => key === categoryKey) || categoryOptions[0];
 
   const changeMonth = (amount) => {
     setVisibleMonth(
@@ -136,13 +134,17 @@ const CalendarioSection = ({
     : 'Nenhum dia selecionado';
   const selectedDateRelativeLabel = formatRelativeDate(selectedDate);
 
-  // Eventos específicos do dia selecionado na grade
   const selectedDayEvents = visibleEvents.filter(
     (event) => event.date <= selectedDate && (event.endDate || event.date) >= selectedDate
   );
 
+  const isEmbedded = embedded || !showHero;
+
   return (
-    <section id="calendario" className="portal-calendar-section">
+    <section
+      id="calendario"
+      className={`portal-calendar-section ${isEmbedded ? 'portal-calendar-section--embedded' : ''}`}
+    >
       <div className="container">
         {showHero && (
           <div className="portal-calendar__hero">
@@ -155,7 +157,7 @@ const CalendarioSection = ({
         )}
 
         <div className="portal-calendar__grid">
-          {/* Coluna 1: Categorias e Filtros */}
+          {/* Coluna 1: Categorias e Filtros Compactos (Item 2) */}
           <div className="portal-calendar__col-categories">
             <h3 className="portal-calendar__col-title">Categorias</h3>
             <div className="portal-calendar__categories-list">
@@ -164,8 +166,7 @@ const CalendarioSection = ({
                 return (
                   <label
                     key={category.key}
-                    className="portal-calendar__category-item"
-                    style={{ opacity: isActive ? 1 : 0.6 }}
+                    className={`portal-calendar__category-item ${isActive ? '' : 'is-inactive'}`}
                   >
                     <span className="portal-calendar__category-info">
                       <span
@@ -200,7 +201,7 @@ const CalendarioSection = ({
             </button>
           </div>
 
-          {/* Coluna 2: Visão do Mês e Grid de Dias (Somente Leitura Institucional) */}
+          {/* Coluna 2: Visão do Mês e Grid de Dias com Estilização Refinada (Item 2.3) */}
           <div className="portal-calendar__col-main">
             <div className="portal-calendar__month-header">
               <div className="portal-calendar__month-nav-group">
@@ -249,6 +250,12 @@ const CalendarioSection = ({
                     event.date <= dateKey && (event.endDate || event.date) >= dateKey
                 );
                 const isSelected = selectedDate === dateKey;
+
+                // Identificadores visuais da proposta (Item 2.3)
+                const hasProva = dayEvents.some((ev) => ev.category === 'provas');
+                const hasSabadoLetivo = dayEvents.some((ev) => ev.category === 'sabados');
+                const hasFeriado = dayEvents.some((ev) => ev.category === 'feriados');
+
                 return (
                   <button
                     type="button"
@@ -256,28 +263,32 @@ const CalendarioSection = ({
                     onClick={() => selectCalendarDay(calendarDay)}
                     aria-label={`Consultar ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(calendarDay.date)}`}
                     aria-pressed={isSelected}
-                    className={`portal-calendar__day-cell ${isSelected ? 'is-selected' : ''}`}
+                    className={`portal-calendar__day-cell ${isSelected ? 'is-selected' : ''} ${hasProva ? 'has-prova' : ''} ${hasSabadoLetivo ? 'has-sabado-letivo' : ''}`}
                   >
                     <span
-                      className="portal-calendar__day-number"
+                      className={`portal-calendar__day-number ${hasFeriado ? 'has-feriado-number' : ''}`}
                       style={{
                         color: isSelected
                           ? '#ffffff'
-                          : calendarDay.currentMonth
-                            ? 'var(--color-navy-dark)'
-                            : '#94a3b8',
-                        fontWeight: isSelected || calendarDay.currentMonth ? '600' : '400',
+                          : hasFeriado
+                            ? '#dc2626'
+                            : calendarDay.currentMonth
+                              ? 'var(--color-navy-dark)'
+                              : '#94a3b8',
+                        fontWeight: isSelected || calendarDay.currentMonth || hasFeriado ? '600' : '400',
                       }}
                     >
                       {calendarDay.day}
                     </span>
+
+                    {/* Marcadores de bolinhas coloridas mantidos para todos os eventos (Item 2.3.1) */}
                     {dayEvents.length > 0 && (
                       <span className="portal-calendar__day-dots">
                         {dayEvents.slice(0, 3).map((event) => (
                           <span
                             key={event.id}
                             className="portal-calendar__day-dot"
-                            style={{ background: getCategory(event.category).color }}
+                            style={{ background: getCategoryDetails(event.category).color }}
                           />
                         ))}
                       </span>
@@ -296,7 +307,7 @@ const CalendarioSection = ({
               )}
             </p>
 
-            {/* Exibe os eventos institucionais do dia selecionado */}
+            {/* Programação do dia selecionado */}
             {selectedDayEvents.length > 0 && (
               <div className="portal-calendar__tasks-box">
                 <strong>Programação do dia selecionado</strong>
@@ -309,14 +320,10 @@ const CalendarioSection = ({
               </div>
             )}
 
-            {monthEvents.length === 0 && (
-              <p className="portal-calendar__empty-month">
-                Nenhum evento escolar visível neste mês.
-              </p>
-            )}
+
           </div>
 
-          {/* Coluna 3: Próximos Eventos Institucionais (3 Estados Assíncronos) */}
+          {/* Coluna 3: Próximos Eventos */}
           <div className="portal-calendar__col-sidebar">
             <div className="portal-calendar__sidebar-header">
               <h3 className="portal-calendar__sidebar-title">Próximos eventos</h3>
@@ -329,24 +336,21 @@ const CalendarioSection = ({
               </button>
             </div>
             <div className="portal-calendar__events-list">
-              {/* Estado 1: Carregando */}
               {loading && (
                 <p role="status" className="portal-calendar__empty-events">
                   Carregando programação oficial da escola...
                 </p>
               )}
 
-              {/* Estado 2: Erro Amigável */}
               {!loading && error && (
                 <p role="alert" className="portal-calendar__empty-events">
                   Não foi possível carregar os eventos institucionais no momento. Exibindo feriados nacionais.
                 </p>
               )}
 
-              {/* Estado 3: Lista ou Vazio */}
               {listedEvents.length > 0 ? (
                 listedEvents.map((event) => {
-                  const category = getCategory(event.category);
+                  const category = getCategoryDetails(event.category);
                   const isSelected =
                     selectedDate >= event.date &&
                     selectedDate <= (event.endDate || event.date);
@@ -438,4 +442,3 @@ const CalendarioSection = ({
 };
 
 export default CalendarioSection;
-

@@ -81,6 +81,9 @@ button {
 }
 
 .dashboard-shell {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   --dashboard-navy: #0d2346;
   --dashboard-navy-rgb: 13, 35, 70;
   --dashboard-blue-accent: #1e3d70;
@@ -366,8 +369,12 @@ button {
   border-radius: 10px;
   padding: 0.45rem 0.75rem;
   font-size: 0.9rem;
+  font-weight: 600;
   text-decoration: none;
   color: rgba(255, 255, 255, 0.75) !important;
+  border-left: 3px solid transparent;
+  box-sizing: border-box;
+  white-space: nowrap;
   transition: all 0.15s ease;
 }
 
@@ -379,7 +386,7 @@ button {
 .dashboard-aside-sublink.dashboard-aside-link-active {
   background: #1e3d70 !important;
   color: #ffffff !important;
-  font-weight: 700;
+  font-weight: 600;
   border-left: 3px solid #ffc107;
 }
 
@@ -425,8 +432,12 @@ button {
 
 .dashboard-content {
   min-width: 0;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   margin-left: 250px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .dashboard-header {
@@ -440,11 +451,36 @@ button {
 }
 
 .dashboard-panel {
-  /* A altura cresce com o conteúdo, evitando rolagem artificial em telas que cabem. */
-  flex: 1 0 auto;
+  /* Confinamento do scroll vertical exclusivamente no painel de conteúdo */
+  flex: 1 1 0%;
+  min-height: 0;
   min-width: 0;
   padding: 1.25rem clamp(1rem, 2vw, 1.75rem);
+  overflow-y: auto;
   overflow-x: hidden;
+  position: relative;
+}
+
+/* Notificação/Toast de Sucesso: fixado abaixo do Header (em top: 80px) sem sobrepor botões */
+.dashboard-toast {
+  position: fixed;
+  top: 80px;
+  right: 1.5rem;
+  z-index: 1040;
+  max-width: min(460px, calc(100vw - 280px));
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  animation: dashboardFadeIn 0.25s ease-out;
+}
+
+@keyframes dashboardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .student-overview__metrics > [class*="col-"] {
@@ -480,6 +516,9 @@ button {
 @media (max-width: 767.98px) {
   .dashboard-shell {
     flex-direction: column;
+    height: auto;
+    max-height: none;
+    overflow: visible;
   }
 
   .dashboard-aside {
@@ -507,7 +546,10 @@ button {
     width: 100%;
     min-width: 0;
     min-height: 0;
+    height: auto;
+    max-height: none;
     margin-left: 0;
+    overflow: visible;
   }
 
   .dashboard-header > .d-flex:first-child {
@@ -518,6 +560,13 @@ button {
   .dashboard-panel {
     min-width: 0;
     padding: 1rem !important;
+    overflow: visible;
+  }
+
+  .dashboard-toast {
+    right: 1rem;
+    left: 1rem;
+    max-width: none;
   }
 
   .dashboard-header {

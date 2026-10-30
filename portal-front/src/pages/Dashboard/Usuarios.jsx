@@ -209,7 +209,7 @@ const UsuariosPage = () => {
       {/* Toast flutuante de confirmação */}
       {feedback && (
         <div
-          className="alert alert-success position-fixed top-0 end-0 m-3 shadow-sm py-2 px-3 small z-3"
+          className="alert alert-success dashboard-toast py-2 px-3 small z-3"
           role="status"
         >
           ✓ {feedback}

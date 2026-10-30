@@ -233,6 +233,50 @@ test('diretriz 3: disciplinas por ciclos calculam carga anual (40 semanas), prop
         ->and($novaDisc->carga_horaria_anual)->toBe(80);
 });
 
+test('conciliacao csv de disciplinas vincula a nova disciplina ao ciclo_id e atualiza a turma', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA->value]);
+    Sanctum::actingAs($especialista);
+
+    $ciclo = Ciclo::create(['nome' => 'Ensino Fundamental II']);
+
+    // Turma sem ciclo inicial
+    $turma = Turma::create([
+        'nome_identificador' => 'Turma 701 Teste',
+        'turno' => 'Vespertino',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+        'ciclo_id' => null,
+    ]);
+
+    $csvConteudo = "Aluno;Programacao Web\nCarlos Drummond;8,5";
+    $arquivo = UploadedFile::fake()->createWithContent('notas_ciclo.csv', $csvConteudo);
+
+    $res = $this->post("/api/turmas/{$turma->id_turma}/importar-relatorio", [
+        'arquivo' => $arquivo,
+        'periodo_letivo' => '1º Trimestre',
+        'exigir_conciliacao_disciplinas' => '1',
+        'mapeamentos_disciplinas' => json_encode([
+            'Programacao Web' => [
+                'acao' => 'criar_nova',
+                'nome_nova' => 'Programação Web',
+                'aulas_semanais' => 3,
+                'ciclo_id' => $ciclo->id_ciclo,
+            ],
+        ]),
+    ], ['Accept' => 'application/json']);
+
+    $res->assertOk()->assertJsonPath('status', 'sucesso');
+
+    $disciplina = Disciplina::where('nome', 'Programação Web')->first();
+    expect($disciplina)->not->toBeNull()
+        ->and($disciplina->aulas_semanais)->toBe(3)
+        ->and($disciplina->ciclos->pluck('id_ciclo')->all())->toContain($ciclo->id_ciclo);
+
+    // Turma agora deve ter o ciclo vinculado
+    $turma->refresh();
+    expect($turma->ciclo_id)->toBe($ciclo->id_ciclo);
+});
+
 test('integracao entre modulos: planos de estudos filtram disciplinas vinculadas, salvam conteudo e restringem compartilhamento por turmas do professor', function () {
     $ciclo1 = Ciclo::create(['nome' => '1º Ano Médio']);
     $ciclo2 = Ciclo::create(['nome' => '2º Ano Médio']);

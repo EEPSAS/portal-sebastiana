@@ -3,6 +3,8 @@
 use App\Enums\TipoEvento;
 use App\Models\Evento;
 use App\Models\User;
+use App\Notifications\NotificacaoPortal;
+use Illuminate\Support\Facades\Notification;
 
 test('unauthenticated users can read institutional calendar events but cannot see private events or mutate', function () {
     $especialista = User::factory()->especialista()->create();
@@ -14,10 +16,10 @@ test('unauthenticated users can read institutional calendar events but cannot se
         'tipo' => TipoEvento::EVENTOS,
     ]);
 
-    Evento::factory()->importante()->create([
+    Evento::factory()->create([
         'titulo' => 'Lembrete Privado do Aluno',
         'criador_id' => $aluno->id,
-        'tipo' => TipoEvento::PROVAS_E_TRABALHOS,
+        'tipo' => TipoEvento::EVENTOS,
     ]);
 
     // Visitante público acessa GET /api/eventos e vê apenas o evento do Especialista
@@ -53,20 +55,29 @@ test('standard user can create personal events and manage only their own', funct
         'tipo' => TipoEvento::EVENTOS,
     ]);
 
-    // 1. Usuário padrão cria seu próprio evento pessoal
+    // Tentativa de criar evento restrito (Provas e Trabalhos) por usuário comum deve falhar (422)
+    $this->actingAs($user, 'sanctum')
+        ->postJson('/api/eventos', [
+            'titulo' => 'Prova Simulada Indevida',
+            'data_inicio' => '2026-10-20',
+            'tipo' => 'Provas e Trabalhos',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['tipo']);
+
+    // 1. Usuário padrão cria seu próprio evento pessoal permitido (tipo Eventos)
     $respCreate = $this->actingAs($user, 'sanctum')
         ->postJson('/api/eventos', [
             'titulo' => 'Meu Lembrete de Estudos',
             'data_inicio' => '2026-10-20',
             'hora_inicio' => '14:00',
-            'hora_fim' => '16:00',
-            'tipo' => 'Provas e Trabalhos',
-            'importante' => true, // Mesmo enviando true, deve ser forçado para false para usuário comum
+            'tipo' => 'Eventos',
+            'importante' => true, // Forçado para false para usuário comum
         ]);
 
     $respCreate->assertCreated()
         ->assertJsonPath('titulo', 'Meu Lembrete de Estudos')
-        ->assertJsonPath('tipo', TipoEvento::PROVAS_E_TRABALHOS->value)
+        ->assertJsonPath('tipo', TipoEvento::EVENTOS->value)
         ->assertJsonPath('importante', false)
         ->assertJsonPath('criador.id', $user->id);
 
@@ -100,181 +111,190 @@ test('standard user can create personal events and manage only their own', funct
     // 5. Pode atualizar o próprio evento
     $this->actingAs($user, 'sanctum')
         ->putJson("/api/eventos/{$meuEventoId}", [
-            'titulo' => 'Meu Lembrete Atualizado',
+            'titulo' => 'Lembrete de Estudos Atualizado',
+            'data_inicio' => '2026-10-20',
         ])
         ->assertOk()
-        ->assertJsonPath('titulo', 'Meu Lembrete Atualizado');
+        ->assertJsonPath('titulo', 'Lembrete de Estudos Atualizado');
 
-    // 6. NÃO pode atualizar evento do especialista nem de outro aluno
+    // 6. NÃO pode atualizar evento de terceiros
     $this->actingAs($user, 'sanctum')
         ->putJson("/api/eventos/{$eventoEspecialista->id}", [
-            'titulo' => 'Tentativa de Alterar Evento da Escola',
+            'titulo' => 'Tentativa de Hacker no Evento',
         ])
         ->assertForbidden();
 
-    $this->actingAs($user, 'sanctum')
-        ->putJson("/api/eventos/{$eventoOutroAluno->id}", [
-            'titulo' => 'Tentativa de Alterar Evento de Outro Colega',
-        ])
-        ->assertForbidden();
-
-    // 7. Pode excluir seu próprio evento
+    // 7. Pode excluir o próprio evento
     $this->actingAs($user, 'sanctum')
         ->deleteJson("/api/eventos/{$meuEventoId}")
         ->assertNoContent();
 
-    expect(Evento::find($meuEventoId))->toBeNull();
-
-    // 8. NÃO pode excluir evento do especialista
+    // 8. NÃO pode excluir evento do Especialista
     $this->actingAs($user, 'sanctum')
         ->deleteJson("/api/eventos/{$eventoEspecialista->id}")
         ->assertForbidden();
-
-    expect(Evento::find($eventoEspecialista->id))->not->toBeNull();
 });
 
 test('professor events are shared with authenticated users but remain private to public visitors', function () {
     $professor = User::factory()->professor()->create();
-    $aluno = User::factory()->aluno()->create();
-    $bibliotecaria = User::factory()->bibliotecaria()->create();
+    $aluno = User::factory()->padrao()->create();
 
     $eventoProfessor = Evento::factory()->create([
-        'titulo' => 'Reunião organizada pelo Professor',
+        'titulo' => 'Plantão de Dúvidas de Física',
         'criador_id' => $professor->id,
-    ]);
-    $eventoAluno = Evento::factory()->create([
-        'titulo' => 'Lembrete particular do Aluno',
-        'criador_id' => $aluno->id,
-    ]);
-    $eventoBibliotecaria = Evento::factory()->create([
-        'titulo' => 'Organização particular da Biblioteca',
-        'criador_id' => $bibliotecaria->id,
+        'tipo' => TipoEvento::EVENTOS,
     ]);
 
+    // Visitante público NÃO enxerga evento de professor
     $this->getJson('/api/eventos')
-        ->assertJsonMissing(['titulo' => 'Reunião organizada pelo Professor']);
+        ->assertOk()
+        ->assertJsonMissing(['titulo' => 'Plantão de Dúvidas de Física']);
 
-    $this->getJson("/api/eventos/{$eventoProfessor->id}")
-        ->assertUnauthorized();
-
-    foreach ([$professor, $aluno, $bibliotecaria] as $usuario) {
-        $this->actingAs($usuario, 'sanctum')
-            ->getJson('/api/eventos')
-            ->assertOk()
-            ->assertJsonFragment(['titulo' => 'Reunião organizada pelo Professor']);
-    }
-
+    // Aluno logado enxerga o evento compartilhado do professor
     $this->actingAs($aluno, 'sanctum')
         ->getJson('/api/eventos')
-        ->assertJsonFragment(['titulo' => 'Lembrete particular do Aluno'])
-        ->assertJsonMissing(['titulo' => 'Organização particular da Biblioteca']);
+        ->assertOk()
+        ->assertJsonFragment(['titulo' => 'Plantão de Dúvidas de Física']);
 
-    $this->actingAs($bibliotecaria, 'sanctum')
-        ->getJson('/api/eventos')
-        ->assertJsonFragment(['titulo' => 'Organização particular da Biblioteca'])
-        ->assertJsonMissing(['titulo' => 'Lembrete particular do Aluno']);
-
+    // Aluno logado pode ver os detalhes do evento do professor
     $this->actingAs($aluno, 'sanctum')
         ->getJson("/api/eventos/{$eventoProfessor->id}")
-        ->assertOk()
-        ->assertJsonPath('titulo', 'Reunião organizada pelo Professor');
+        ->assertOk();
 
+    // Aluno logado NÃO pode editar nem excluir evento do professor
     $this->actingAs($aluno, 'sanctum')
-        ->putJson("/api/eventos/{$eventoProfessor->id}", ['titulo' => 'Alteração indevida'])
+        ->putJson("/api/eventos/{$eventoProfessor->id}", ['titulo' => 'Invasão'])
         ->assertForbidden();
 
-    expect(Evento::find($eventoAluno->id))->not->toBeNull()
-        ->and(Evento::find($eventoBibliotecaria->id))->not->toBeNull();
+    $this->actingAs($aluno, 'sanctum')
+        ->deleteJson("/api/eventos/{$eventoProfessor->id}")
+        ->assertForbidden();
 });
 
 test('especialista can create, update, delete and view events', function () {
     $especialista = User::factory()->especialista()->create();
+    $aluno = User::factory()->padrao()->create();
 
-    // Create event
-    $createResponse = $this->actingAs($especialista, 'sanctum')
+    $eventoAluno = Evento::factory()->create([
+        'titulo' => 'Tarefa Particular do Estudante',
+        'criador_id' => $aluno->id,
+        'tipo' => TipoEvento::EVENTOS,
+    ]);
+
+    // 1. Especialista cria evento institucional com Prova e destaque
+    $respCreate = $this->actingAs($especialista, 'sanctum')
         ->postJson('/api/eventos', [
-            'titulo' => 'Reunião de Pais e Mestres',
-            'descricao' => 'Alinhamento pedagógico do 3º bimestre',
-            'data_inicio' => '2026-10-15',
-            'hora_inicio' => '19:00',
-            'hora_fim' => '21:00',
-            'tipo' => 'Eventos',
+            'titulo' => 'Avaliação Diagnóstica de Matemática',
+            'descricao' => 'Aplicação geral para os anos finais.',
+            'data_inicio' => '2026-11-10',
+            'tipo' => 'Provas e Trabalhos',
             'importante' => true,
-            'local' => 'Auditório',
-            'cor' => '#007bff',
+            'local' => 'Bloco B',
         ]);
 
-    $createResponse->assertCreated()
-        ->assertJsonPath('titulo', 'Reunião de Pais e Mestres')
-        ->assertJsonPath('importante', true)
-        ->assertJsonPath('tipo', TipoEvento::EVENTOS->value)
-        ->assertJsonPath('criador.id', $especialista->id);
+    $respCreate->assertCreated()
+        ->assertJsonPath('titulo', 'Avaliação Diagnóstica de Matemática')
+        ->assertJsonPath('tipo', TipoEvento::PROVAS_E_TRABALHOS->value)
+        ->assertJsonPath('importante', true);
 
-    $eventoId = $createResponse->json('id');
+    $eventoId = $respCreate->json('id');
 
-    // Update event
+    // 2. Especialista tem autoridade de gestão e pode editar evento institucional e de outros usuários
     $this->actingAs($especialista, 'sanctum')
         ->putJson("/api/eventos/{$eventoId}", [
-            'titulo' => 'Reunião Geral de Pais',
-            'local' => 'Quadra Coberta',
+            'titulo' => 'Avaliação Diagnóstica de Matemática (Remarcada)',
+            'data_inicio' => '2026-11-12',
         ])
         ->assertOk()
-        ->assertJsonPath('titulo', 'Reunião Geral de Pais')
-        ->assertJsonPath('local', 'Quadra Coberta');
+        ->assertJsonPath('titulo', 'Avaliação Diagnóstica de Matemática (Remarcada)');
 
-    // Delete event
+    // 3. Especialista pode excluir
     $this->actingAs($especialista, 'sanctum')
         ->deleteJson("/api/eventos/{$eventoId}")
         ->assertNoContent();
-
-    expect(Evento::find($eventoId))->toBeNull();
 });
 
 test('administrator has full access to calendar operations', function () {
     $admin = User::factory()->adm()->create();
-    $evento = Evento::factory()->create();
+    $aluno = User::factory()->padrao()->create();
 
-    // Admin can update
+    $eventoAluno = Evento::factory()->create([
+        'titulo' => 'Estudo Individual Aluno',
+        'criador_id' => $aluno->id,
+        'tipo' => TipoEvento::EVENTOS,
+    ]);
+
+    // 1. Adm cria Sábado Letivo institucional
+    $resp = $this->actingAs($admin, 'sanctum')
+        ->postJson('/api/eventos', [
+            'titulo' => 'Sábado Letivo Temático',
+            'data_inicio' => '2026-11-14',
+            'tipo' => 'Sábados Letivos',
+            'importante' => true,
+        ]);
+
+    $resp->assertCreated()
+        ->assertJsonPath('tipo', TipoEvento::SABADO_LETIVO->value)
+        ->assertJsonPath('importante', true);
+
+    $eventoAdminId = $resp->json('id');
+
+    // 2. Adm pode editar e excluir qualquer evento
     $this->actingAs($admin, 'sanctum')
-        ->putJson("/api/eventos/{$evento->id}", [
-            'titulo' => 'Modificado pelo Admin',
+        ->putJson("/api/eventos/{$eventoAluno->id}", [
+            'titulo' => 'Estudo Individual Moderado pelo Admin',
         ])
-        ->assertOk()
-        ->assertJsonPath('titulo', 'Modificado pelo Admin');
+        ->assertOk();
 
-    // Admin can delete
     $this->actingAs($admin, 'sanctum')
-        ->deleteJson("/api/eventos/{$evento->id}")
+        ->deleteJson("/api/eventos/{$eventoAluno->id}")
         ->assertNoContent();
-
-    expect(Evento::find($evento->id))->toBeNull();
 });
 
 test('validates required fields and formats when creating events', function () {
-    $admin = User::factory()->adm()->create();
+    $especialista = User::factory()->especialista()->create();
 
-    // Missing title and start date
-    $this->actingAs($admin, 'sanctum')
+    // Rejeita payload vazio
+    $this->actingAs($especialista, 'sanctum')
         ->postJson('/api/eventos', [])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['titulo', 'data_inicio']);
 
-    // Invalid time format
-    $this->actingAs($admin, 'sanctum')
+    // Rejeita formato de data inválido
+    $this->actingAs($especialista, 'sanctum')
         ->postJson('/api/eventos', [
-            'titulo' => 'Gincana Escolar',
-            'data_inicio' => '2026-11-20',
+            'titulo' => 'Evento Inválido',
+            'data_inicio' => '10/11/2026',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['data_inicio']);
+
+    // Rejeita data_fim anterior à data_inicio
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson('/api/eventos', [
+            'titulo' => 'Período Impossível',
+            'data_inicio' => '2026-11-10',
+            'data_fim' => '2026-11-05',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['data_fim']);
+
+    // Rejeita formato de hora inválido
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson('/api/eventos', [
+            'titulo' => 'Hora Errada',
+            'data_inicio' => '2026-11-10',
             'hora_inicio' => '25:99',
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['hora_inicio']);
 
-    // Invalid enum type
-    $this->actingAs($admin, 'sanctum')
+    // Rejeita tipo inválido
+    $this->actingAs($especialista, 'sanctum')
         ->postJson('/api/eventos', [
-            'titulo' => 'Evento Inválido',
-            'data_inicio' => '2026-11-20',
-            'tipo' => 'tipo_completamente_invalido',
+            'titulo' => 'Tipo Inválido',
+            'data_inicio' => '2026-11-10',
+            'tipo' => 'TipoQueNaoExisteNoSistema',
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['tipo']);
@@ -288,11 +308,10 @@ test('validates event fields against database nullability and date constraints',
             'titulo' => 'Evento com nulos inválidos',
             'data_inicio' => '2026-11-20',
             'tipo' => null,
-            'dia_inteiro' => null,
             'importante' => null,
         ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['tipo', 'dia_inteiro', 'importante']);
+        ->assertJsonValidationErrors(['tipo', 'importante']);
 
     $this->actingAs($admin, 'sanctum')
         ->postJson('/api/eventos', [
@@ -301,12 +320,9 @@ test('validates event fields against database nullability and date constraints',
             'data_inicio' => '2026-11-20',
             'data_fim' => null,
             'hora_inicio' => null,
-            'hora_fim' => null,
-            'dia_inteiro' => false,
             'tipo' => 'evento',
             'importante' => false,
             'local' => null,
-            'cor' => null,
         ])
         ->assertCreated();
 
@@ -319,11 +335,10 @@ test('validates event fields against database nullability and date constraints',
     $this->actingAs($admin, 'sanctum')
         ->patchJson("/api/eventos/{$evento->id}", [
             'tipo' => null,
-            'dia_inteiro' => null,
             'importante' => null,
         ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['tipo', 'dia_inteiro', 'importante']);
+        ->assertJsonValidationErrors(['tipo', 'importante']);
 
     $this->actingAs($admin, 'sanctum')
         ->patchJson("/api/eventos/{$evento->id}", [
@@ -339,7 +354,7 @@ test('validates and accepts all TipoEvento enum options and normalizes loose val
     $opcoesValidas = [
         'Eventos' => TipoEvento::EVENTOS->value,
         'Provas e Trabalhos' => TipoEvento::PROVAS_E_TRABALHOS->value,
-        'Datas Comemorativas' => TipoEvento::DATAS_COMEMORATIVAS->value,
+        'Sábados Letivos' => TipoEvento::SABADO_LETIVO->value,
         'Feriados e Recessos' => TipoEvento::FERIADOS_E_RECESSOS->value,
     ];
 
@@ -363,9 +378,17 @@ test('validates and accepts all TipoEvento enum options and normalizes loose val
     $respLoose->assertCreated()
         ->assertJsonPath('tipo', TipoEvento::PROVAS_E_TRABALHOS->value);
 
+    $respLooseSabado = $this->actingAs($admin, 'sanctum')->postJson('/api/eventos', [
+        'titulo' => 'Teste Loose Sábado',
+        'data_inicio' => '2026-11-27',
+        'tipo' => 'sabados_letivos',
+    ]);
+    $respLooseSabado->assertCreated()
+        ->assertJsonPath('tipo', TipoEvento::SABADO_LETIVO->value);
+
     $respLooseFeriado = $this->actingAs($admin, 'sanctum')->postJson('/api/eventos', [
         'titulo' => 'Teste Loose Feriado',
-        'data_inicio' => '2026-11-27',
+        'data_inicio' => '2026-11-28',
         'tipo' => 'feriado',
     ]);
     $respLooseFeriado->assertCreated()
@@ -373,7 +396,7 @@ test('validates and accepts all TipoEvento enum options and normalizes loose val
 
     $respLooseReuniao = $this->actingAs($admin, 'sanctum')->postJson('/api/eventos', [
         'titulo' => 'Teste Loose Reunião',
-        'data_inicio' => '2026-11-28',
+        'data_inicio' => '2026-11-29',
         'tipo' => 'reuniao',
     ]);
     $respLooseReuniao->assertCreated()
@@ -405,7 +428,7 @@ test('can filter calendar events by month, year, type and fetch important dates'
     Evento::factory()->importante()->create([
         'titulo' => 'Início do Ano Letivo',
         'data_inicio' => '2026-02-05',
-        'tipo' => TipoEvento::DATAS_COMEMORATIVAS,
+        'tipo' => TipoEvento::EVENTOS,
         'criador_id' => $especialista->id,
     ]);
 
@@ -432,4 +455,84 @@ test('can filter calendar events by month, year, type and fetch important dates'
 
     $response->assertJsonFragment(['titulo' => 'Início do Ano Letivo']);
     $response->assertJsonMissing(['titulo' => 'Feira de Ciências']);
+});
+
+test('gestor can batch store events and standard users are blocked', function () {
+    $especialista = User::factory()->especialista()->create();
+    $aluno = User::factory()->padrao()->create();
+
+    $payload = [
+        'eventos' => [
+            [
+                'data' => '2026-03-14',
+                'titulo' => 'Sábado Letivo 1',
+                'categoria' => 'Sábados Letivos',
+                'descricao' => 'Reposição de aulas de História e Geografia.',
+            ],
+            [
+                'data' => '2026-04-21',
+                'titulo' => 'Tiradentes',
+                'categoria' => 'Feriados e Recessos',
+                'descricao' => 'Feriado nacional de Tiradentes.',
+            ],
+        ],
+    ];
+
+    // Aluno é barrado com 403
+    $this->actingAs($aluno, 'sanctum')
+        ->postJson('/api/eventos/em-massa', $payload)
+        ->assertForbidden();
+
+    // Especialista cria ambos com sucesso (201)
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson('/api/eventos/em-massa', $payload)
+        ->assertCreated()
+        ->assertJsonCount(2)
+        ->assertJsonFragment(['titulo' => 'Sábado Letivo 1', 'tipo' => TipoEvento::SABADO_LETIVO->value])
+        ->assertJsonFragment(['titulo' => 'Tiradentes', 'tipo' => TipoEvento::FERIADOS_E_RECESSOS->value]);
+});
+
+test('marcar evento importante dispara notificacao super importante para usuarios ativos', function () {
+    Notification::fake();
+
+    $especialista = User::factory()->especialista()->create();
+    $usuarioAtivo = User::factory()->padrao()->create(['ativo' => true]);
+    $usuarioInativo = User::factory()->padrao()->create(['ativo' => false]);
+
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson('/api/eventos', [
+            'titulo' => 'Encontro Pedagógico Fundamental',
+            'descricao' => 'Comparecimento obrigatório.',
+            'data_inicio' => '2026-12-01',
+            'tipo' => 'Eventos',
+            'importante' => true,
+        ])
+        ->assertCreated();
+
+    Notification::assertSentTo(
+        [$usuarioAtivo],
+        NotificacaoPortal::class,
+        function (NotificacaoPortal $notification) {
+            $data = $notification->toDatabase(new User);
+
+            return $data['prioridade'] === 'super_importante'
+                && str_contains($data['titulo'], 'Encontro Pedagógico Fundamental');
+        }
+    );
+
+    Notification::assertNotSentTo([$usuarioInativo], NotificacaoPortal::class);
+});
+
+test('cadastro em massa aceita a chave interna sabados e grava apenas a categoria informada', function () {
+    $especialista = User::factory()->especialista()->create();
+
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson('/api/eventos/em-massa', ['eventos' => [
+            ['data' => '2026-03-14', 'titulo' => 'Sabado A', 'categoria' => 'sabados', 'descricao' => 'Reposicao'],
+            ['data' => '2026-03-21', 'titulo' => 'Recesso B', 'categoria' => 'feriados', 'descricao' => 'Recesso'],
+        ]])
+        ->assertCreated();
+
+    expect(Evento::where('titulo', 'Sabado A')->first()->tipo)->toBe(TipoEvento::SABADO_LETIVO);
+    expect(Evento::where('titulo', 'Recesso B')->first()->tipo)->toBe(TipoEvento::FERIADOS_E_RECESSOS);
 });

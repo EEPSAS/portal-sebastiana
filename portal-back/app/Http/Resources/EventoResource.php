@@ -22,18 +22,15 @@ class EventoResource extends JsonResource
             'id' => $this->id,
             'titulo' => $this->titulo,
             'descricao' => $this->descricao,
-            // Datas e horários
+            // Datas e horário de início
             'data_inicio' => $this->data_inicio?->format('Y-m-d') ?? $this->data_inicio,
             'data_fim' => $this->data_fim?->format('Y-m-d') ?? $this->data_fim,
             'hora_inicio' => $this->hora_inicio,
-            'hora_fim' => $this->hora_fim,
-            'dia_inteiro' => (bool) $this->dia_inteiro,
-            // Categoria e sinalizadores visuais
+            // Categoria e sinalizador de destaque
             'tipo' => $this->tipo,
             'importante' => (bool) $this->importante,
             'is_aniversario' => (bool) $this->is_aniversario,
             'local' => $this->local,
-            'cor' => $this->cor,
             // Autor do cadastro
             'criador' => [
                 'id' => $this->criador?->id,

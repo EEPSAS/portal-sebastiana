@@ -200,7 +200,7 @@ test('aluno e todos os usuarios podem criar noticias e seus proprios eventos no 
     $respEvento = $this->actingAs($aluno, 'sanctum')->postJson('/api/eventos', [
         'titulo' => 'Apresentação de Seminário Pessoal',
         'data_inicio' => '2026-11-10',
-        'tipo' => 'Provas e Trabalhos',
+        'tipo' => 'Eventos',
     ]);
     $respEvento->assertCreated()
         ->assertJsonPath('criador.id', $aluno->id);

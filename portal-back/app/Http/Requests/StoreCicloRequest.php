@@ -29,7 +29,8 @@ class StoreCicloRequest extends FormRequest
                 'max:100',
                 Rule::unique('ciclos', 'nome')->ignore($cicloId, 'id_ciclo'),
             ],
-            'descricao' => ['nullable', 'string', 'max:1000'],
+            // Comentário curto exibido abaixo do rótulo do ciclo (limite de 256 caracteres)
+            'descricao' => ['nullable', 'string', 'max:256'],
         ];
     }
 
@@ -39,6 +40,7 @@ class StoreCicloRequest extends FormRequest
         return [
             'nome.required' => 'O nome do ciclo escolar (ex: 1º Ano) é obrigatório.',
             'nome.unique' => 'Já existe um ciclo escolar cadastrado com este nome.',
+            'descricao.max' => 'O comentário do ciclo deve ter no máximo 256 caracteres.',
         ];
     }
 }

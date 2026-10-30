@@ -489,11 +489,11 @@ const Aside = () => {
                             subAtivo ? "dashboard-aside-link-active" : ""
                           }`}
                         >
-                          <div className="d-flex align-items-center">
-                            <i className={`bi ${child.icon} me-2`}></i>
-                            <span>{rotuloExibido}</span>
+                          <div className="d-flex align-items-center text-truncate me-1" style={{ minWidth: 0 }}>
+                            <i className={`bi ${child.icon} me-2 flex-shrink-0`}></i>
+                            <span className="text-truncate">{rotuloExibido}</span>
                           </div>
-                          <div className="d-flex align-items-center gap-1">
+                          <div className="d-flex align-items-center gap-1 flex-shrink-0">
                             {subBadge > 0 && (
                               <span className="badge rounded-pill bg-danger">
                                 {subBadge}

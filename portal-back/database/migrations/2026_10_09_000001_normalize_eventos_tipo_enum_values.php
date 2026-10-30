@@ -22,7 +22,7 @@ return new class extends Migration
 
         DB::table('eventos')
             ->whereIn(DB::raw('LOWER(tipo)'), ['data_importante', 'data comemorativa', 'datas comemorativas', 'datas_comemorativas'])
-            ->update(['tipo' => TipoEvento::DATAS_COMEMORATIVAS->value]);
+            ->update(['tipo' => TipoEvento::EVENTOS->value]);
 
         DB::table('eventos')
             ->whereIn(DB::raw('LOWER(tipo)'), ['feriado', 'feriados', 'feriados e recessos', 'feriados_e_recessos'])

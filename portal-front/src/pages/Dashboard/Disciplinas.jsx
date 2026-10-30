@@ -5,8 +5,10 @@
  * Implementa integralmente a Diretriz 3 (28/10/2026):
  * 1. Visão Especialista / Admin:
  *    - Lista todas as disciplinas agrupadas por "Ciclos" (ex: 1º Ano, 2º Ano, 3º Ano);
- *    - Permite criar ciclos avulsos ou criar/editar disciplinas selecionando múltiplos ciclos
- *      existentes E/OU criando um novo ciclo diretamente no ato do cadastro;
+ *    - Permite criar, editar (nome + comentário de até 256 caracteres) e excluir ciclos
+ *      (a exclusão NÃO apaga as disciplinas: elas vão para "Disciplinas Não Vinculadas");
+ *    - Permite criar/editar disciplinas selecionando múltiplos ciclos existentes e, pelo botão "+",
+ *      abrir o modal de novo ciclo sem sair do cadastro da disciplina;
  *    - Campos obrigatórios: Nome e Qtd. de Aulas Semanais (calcula e exibe automaticamente
  *      a Qtd. Total de Aulas Anuais = Aulas Semanais * 40 semanas letivas);
  *    - Campos opcionais: Ementa, Habilidades BNCC, Objetivo Geral e Objetivo Específico.
@@ -18,9 +20,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { formatarDisciplinaCiclo } from "../../utils/formatters";
+import ModalCiclo from "../../components/Dashboard/disciplinas/ModalCiclo";
 import {
   listarDisciplinasPorCiclo,
-  criarCiclo,
+  excluirCiclo,
   criarDisciplina,
   atualizarDisciplina,
   excluirDisciplina,
@@ -47,7 +50,6 @@ const DisciplinasPage = () => {
   const [nome, setNome] = useState("");
   const [aulasSemanais, setAulasSemanais] = useState(4);
   const [ciclosSelecionados, setCiclosSelecionados] = useState([]);
-  const [novoCicloNome, setNovoCicloNome] = useState("");
   const [ementa, setEmenta] = useState("");
   const [habilidadesBncc, setHabilidadesBncc] = useState("");
   const [objetivoGeral, setObjetivoGeral] = useState("");
@@ -58,9 +60,12 @@ const DisciplinasPage = () => {
   // Modal de Detalhes Pedagógicos (Ementa / BNCC / Objetivos)
   const [disciplinaDetalhe, setDisciplinaDetalhe] = useState(null);
 
-  // Criação rápida de Ciclo na barra superior
-  const [nomeCicloRapido, setNomeCicloRapido] = useState("");
-  const [criandoCiclo, setCriandoCiclo] = useState(false);
+  // Modal de Ciclo (criar/editar). `origem` indica quem abriu: a página ou o modal de disciplina
+  const [modalCiclo, setModalCiclo] = useState({ aberto: false, ciclo: null, origem: "pagina" });
+
+  // Ciclo aguardando confirmação de exclusão
+  const [cicloParaExcluir, setCicloParaExcluir] = useState(null);
+  const [excluindoCiclo, setExcluindoCiclo] = useState(false);
 
   const exibirFeedback = (msg) => {
     setFeedback(msg);
@@ -98,7 +103,6 @@ const DisciplinasPage = () => {
     setNome("");
     setAulasSemanais(4);
     setCiclosSelecionados(cicloPreSelecionadoId ? [Number(cicloPreSelecionadoId)] : []);
-    setNovoCicloNome("");
     setEmenta("");
     setHabilidadesBncc("");
     setObjetivoGeral("");
@@ -111,8 +115,8 @@ const DisciplinasPage = () => {
     setDisciplinaEmEdicao(disc);
     setNome(disc.nome || "");
     setAulasSemanais(disc.aulas_semanais || Math.max(1, Math.round((disc.carga_horaria_anual || 160) / 40)));
-    setCiclosSelecionados((disc.ciclos || []).map((c) => Number(c.id)));
-    setNovoCicloNome("");
+    // A API devolve o identificador do ciclo como `id_ciclo` (e não `id`)
+    setCiclosSelecionados((disc.ciclos || []).map((c) => Number(c.id_ciclo)));
     setEmenta(disc.ementa || "");
     setHabilidadesBncc(disc.habilidades_bncc || "");
     setObjetivoGeral(disc.objetivo_geral || "");
@@ -142,8 +146,8 @@ const DisciplinasPage = () => {
       return;
     }
 
-    if (ciclosSelecionados.length === 0 && !novoCicloNome.trim()) {
-      setErroModal("Selecione ao menos um Ciclo existente ou informe o nome de um novo Ciclo.");
+    if (ciclosSelecionados.length === 0) {
+      setErroModal("Selecione ao menos um Ciclo (ou use o botão + para criar um novo).");
       return;
     }
 
@@ -153,7 +157,6 @@ const DisciplinasPage = () => {
         nome: nome.trim(),
         aulas_semanais: Number(aulasSemanais),
         ciclo_ids: ciclosSelecionados,
-        novo_ciclo_nome: novoCicloNome.trim() || null,
         ementa: ementa.trim() || null,
         habilidades_bncc: habilidadesBncc.trim() || null,
         objetivo_geral: objetivoGeral.trim() || null,
@@ -177,20 +180,34 @@ const DisciplinasPage = () => {
     }
   };
 
-  const handleCriarCicloRapido = async (e) => {
-    e.preventDefault();
-    if (!nomeCicloRapido.trim()) return;
+  const handleAbrirModalCiclo = (ciclo = null, origem = "pagina") => {
+    setModalCiclo({ aberto: true, ciclo, origem });
+  };
 
-    setCriandoCiclo(true);
+  // Chamado pelo ModalCiclo após criar/editar com sucesso
+  const handleCicloSalvo = (cicloSalvo, mensagem) => {
+    // Se veio do modal de disciplina, o novo ciclo já retorna marcado
+    if (modalCiclo.origem === "disciplina" && !modalCiclo.ciclo && cicloSalvo?.id_ciclo) {
+      setCiclosSelecionados((prev) => [...prev, Number(cicloSalvo.id_ciclo)]);
+    }
+
+    setModalCiclo({ aberto: false, ciclo: null, origem: "pagina" });
+    exibirFeedback(mensagem || "Ciclo salvo com sucesso!");
+    // Recarrega a listagem para exibir o ciclo novo/alterado em toda a interface
+    setRecargaKey((k) => k + 1);
+  };
+
+  const handleConfirmarExcluirCiclo = async () => {
+    setExcluindoCiclo(true);
     try {
-      await criarCiclo({ nome: nomeCicloRapido.trim() });
-      exibirFeedback(`Ciclo "${nomeCicloRapido.trim()}" criado com sucesso!`);
-      setNomeCicloRapido("");
+      await excluirCiclo(cicloParaExcluir.id_ciclo);
+      exibirFeedback(`Ciclo "${cicloParaExcluir.nome}" excluído. As disciplinas foram mantidas.`);
+      setCicloParaExcluir(null);
       setRecargaKey((k) => k + 1);
     } catch (err) {
-      alert(err.message || "Erro ao criar ciclo.");
+      alert(err.message || "Não foi possível excluir o ciclo.");
     } finally {
-      setCriandoCiclo(false);
+      setExcluindoCiclo(false);
     }
   };
 
@@ -245,7 +262,7 @@ const DisciplinasPage = () => {
               <div className="d-flex flex-wrap gap-1 mb-2">
                 {disc.ciclos.map((c) => (
                   <span
-                    key={c.id}
+                    key={c.id_ciclo}
                     className="badge bg-secondary-subtle text-dark rounded-pill"
                     style={{ fontSize: "0.72rem" }}
                   >
@@ -323,7 +340,7 @@ const DisciplinasPage = () => {
     <div className="position-relative">
       {feedback && (
         <div
-          className="alert alert-success position-fixed top-0 end-0 m-3 shadow-sm py-2 px-3 small z-3"
+          className="alert alert-success dashboard-toast py-2 px-3 small z-3"
           role="status"
         >
           ✓ {feedback}
@@ -362,7 +379,7 @@ const DisciplinasPage = () => {
 
         {/* Barra de Busca + Criação Rápida de Ciclo (Especialista/Admin) */}
         <div className="row g-3 align-items-end mb-4">
-          <div className={podeGerenciar ? "col-12 col-lg-7" : "col-12"}>
+          <div className={podeGerenciar ? "col-12 col-lg" : "col-12"}>
             <label htmlFor="busca-disciplinas" className="form-label small fw-bold text-dark mb-1">
               Pesquisar Disciplina, Ementa ou Código BNCC:
             </label>
@@ -382,30 +399,15 @@ const DisciplinasPage = () => {
           </div>
 
           {podeGerenciar && (
-            <div className="col-12 col-lg-5">
-              <form onSubmit={handleCriarCicloRapido}>
-                <label htmlFor="novo-ciclo-rapido" className="form-label small fw-bold text-dark mb-1">
-                  Criar Novo Ciclo Escolar:
-                </label>
-                <div className="input-group">
-                  <input
-                    id="novo-ciclo-rapido"
-                    type="text"
-                    className="form-control"
-                    placeholder="Ex: 1º Ano, 2º Ano, 3º Ano..."
-                    value={nomeCicloRapido}
-                    onChange={(e) => setNomeCicloRapido(e.target.value)}
-                    disabled={criandoCiclo}
-                  />
-                  <button
-                    type="submit"
-                    className="btn btn-outline-primary fw-semibold"
-                    disabled={criandoCiclo || !nomeCicloRapido.trim()}
-                  >
-                    {criandoCiclo ? "Criando..." : "+ Criar Ciclo"}
-                  </button>
-                </div>
-              </form>
+            <div className="col-12 col-lg-auto">
+              {/* Abre o modal de cadastro de ciclo (mesmo formulário do modo editar) */}
+              <button
+                type="button"
+                className="btn btn-outline-primary fw-semibold w-100"
+                onClick={() => handleAbrirModalCiclo()}
+              >
+                + Criar Ciclo
+              </button>
             </div>
           )}
         </div>
@@ -423,6 +425,24 @@ const DisciplinasPage = () => {
           </div>
         ) : (
           <div className="d-flex flex-column gap-4">
+            {/* Disciplinas sem ciclo (ex: ciclo excluído): exibidas ANTES dos ciclos */}
+            {filtrarLista(disciplinasSemCiclo).length > 0 && (
+              <section className="p-4 rounded-4 border border-warning bg-light" aria-labelledby="titulo-nao-vinculadas">
+                <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                  <h2 id="titulo-nao-vinculadas" className="h6 fw-bold text-secondary mb-0">
+                    <i className="bi bi-journal-bookmark me-2"></i>
+                    Disciplinas Não Vinculadas
+                  </h2>
+                  <span className="badge bg-secondary rounded-pill">
+                    {filtrarLista(disciplinasSemCiclo).length}
+                  </span>
+                </div>
+                <div className="row g-3">
+                  {filtrarLista(disciplinasSemCiclo).map((disc) => renderCardDisciplina(disc))}
+                </div>
+              </section>
+            )}
+
             {/* Listagem agrupada por Ciclos */}
             {ciclos.map((ciclo) => {
               const disciplinasFiltradas = filtrarLista(ciclo.disciplinas || []);
@@ -430,30 +450,54 @@ const DisciplinasPage = () => {
 
               return (
                 <section
-                  key={ciclo.id}
+                  key={ciclo.id_ciclo}
                   className="p-4 rounded-4 border bg-light"
-                  aria-labelledby={`titulo-ciclo-${ciclo.id}`}
+                  aria-labelledby={`titulo-ciclo-${ciclo.id_ciclo}`}
                 >
                   <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
-                    <div className="d-flex align-items-center gap-2">
-                      <span className="badge bg-primary rounded-pill px-3 py-2 fs-6">
-                        <i className="bi bi-layers-fill me-1"></i>
-                        {ciclo.nome}
-                      </span>
-                      <span id={`titulo-ciclo-${ciclo.id}`} className="text-muted small fw-semibold">
-                        {disciplinasFiltradas.length} disciplina(s) vinculada(s)
-                      </span>
+                    <div>
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="badge bg-primary rounded-pill px-3 py-2 fs-6">
+                          <i className="bi bi-layers-fill me-1"></i>
+                          {ciclo.nome}
+                        </span>
+                        <span id={`titulo-ciclo-${ciclo.id_ciclo}`} className="text-muted small fw-semibold">
+                          {disciplinasFiltradas.length} disciplina(s) vinculada(s)
+                        </span>
+                      </div>
+                      {/* Comentário do ciclo, exibido abaixo do rótulo */}
+                      {ciclo.descricao && (
+                        <p className="text-muted small mb-0 mt-2">{ciclo.descricao}</p>
+                      )}
                     </div>
 
                     {podeGerenciar && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold"
-                        onClick={() => handleAbrirNovaDisciplina(ciclo.id)}
-                      >
-                        <i className="bi bi-plus-circle me-1"></i>
-                        Adicionar Disciplina ao {ciclo.nome}
-                      </button>
+                      <div className="d-flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold"
+                          onClick={() => handleAbrirNovaDisciplina(ciclo.id_ciclo)}
+                        >
+                          <i className="bi bi-plus-circle me-1"></i>
+                          Adicionar Disciplina ao {ciclo.nome}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold"
+                          onClick={() => handleAbrirModalCiclo(ciclo)}
+                        >
+                          <i className="bi bi-pencil me-1"></i>
+                          Editar Ciclo
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold"
+                          onClick={() => setCicloParaExcluir(ciclo)}
+                        >
+                          <i className="bi bi-trash me-1"></i>
+                          Excluir Ciclo
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -469,24 +513,6 @@ const DisciplinasPage = () => {
                 </section>
               );
             })}
-
-            {/* Disciplinas ainda sem ciclo atribuído (ou visão geral de aluno sem ciclo fixo) */}
-            {filtrarLista(disciplinasSemCiclo).length > 0 && (
-              <section className="p-4 rounded-4 border bg-light">
-                <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                  <h2 className="h6 fw-bold text-secondary mb-0">
-                    <i className="bi bi-journal-bookmark me-2"></i>
-                    Disciplinas Gerais / Aguardando Atribuição de Ciclo
-                  </h2>
-                  <span className="badge bg-secondary rounded-pill">
-                    {filtrarLista(disciplinasSemCiclo).length}
-                  </span>
-                </div>
-                <div className="row g-3">
-                  {filtrarLista(disciplinasSemCiclo).map((disc) => renderCardDisciplina(disc))}
-                </div>
-              </section>
-            )}
 
             {ciclos.length === 0 && todasDisciplinas.length === 0 && (
               <div className="text-center py-5 border rounded-4 bg-light">
@@ -590,45 +616,47 @@ const DisciplinasPage = () => {
                       Ciclos Escolares da Disciplina (Pode pertencer a vários ciclos, ex: 1º, 2º e 3º Ano):
                     </label>
 
-                    {ciclos.length > 0 && (
-                      <div className="d-flex flex-wrap gap-2 mb-3">
-                        {ciclos.map((c) => {
-                          const ativo = ciclosSelecionados.includes(Number(c.id));
-                          return (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => toggleCicloNoModal(c.id)}
-                              className={`btn btn-sm rounded-pill px-3 ${
-                                ativo ? "btn-primary fw-bold" : "btn-outline-secondary bg-white"
-                              }`}
-                            >
-                              <i
-                                className={`bi ${
-                                  ativo ? "bi-check-circle-fill" : "bi-circle"
-                                } me-1`}
-                              ></i>
-                              {c.nome}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <div className="d-flex flex-wrap align-items-center gap-2">
+                      {ciclos.map((c) => {
+                        const ativo = ciclosSelecionados.includes(Number(c.id_ciclo));
+                        return (
+                          <button
+                            key={c.id_ciclo}
+                            type="button"
+                            onClick={() => toggleCicloNoModal(c.id_ciclo)}
+                            className={`btn btn-sm rounded-pill px-3 ${
+                              ativo ? "btn-primary fw-bold" : "btn-outline-secondary bg-white"
+                            }`}
+                          >
+                            <i
+                              className={`bi ${
+                                ativo ? "bi-check-circle-fill" : "bi-circle"
+                              } me-1`}
+                            ></i>
+                            {c.nome}
+                          </button>
+                        );
+                      })}
 
-                    <div>
-                      <label htmlFor="disc-novo-ciclo" className="form-label small text-muted mb-1">
-                        E/OU criar um novo Ciclo agora e vincular esta disciplina a ele:
-                      </label>
-                      <input
-                        id="disc-novo-ciclo"
-                        type="text"
-                        className="form-control form-control-sm"
-                        placeholder="Digite o nome de um novo Ciclo (ex: 1º Ano, 2º Ano, 3º Ano)..."
-                        value={novoCicloNome}
-                        onChange={(e) => setNovoCicloNome(e.target.value)}
+                      {/* Botão "+": abre o modal de novo ciclo sem perder o que já foi digitado */}
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary rounded-circle d-inline-flex align-items-center justify-content-center"
+                        style={{ width: "2rem", height: "2rem" }}
+                        onClick={() => handleAbrirModalCiclo(null, "disciplina")}
                         disabled={salvando}
-                      />
+                        title="Criar novo ciclo e vincular a esta disciplina"
+                        aria-label="Criar novo ciclo"
+                      >
+                        <i className="bi bi-plus-lg"></i>
+                      </button>
                     </div>
+
+                    {ciclos.length === 0 && (
+                      <p className="text-muted small mb-0 mt-2">
+                        Nenhum ciclo cadastrado. Use o botão + para criar o primeiro.
+                      </p>
+                    )}
                   </div>
 
                   {/* Linha 3: Campos Pedagógicos Opcionais (Item 3.3) */}
@@ -781,6 +809,72 @@ const DisciplinasPage = () => {
                   onClick={() => setDisciplinaDetalhe(null)}
                 >
                   Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Criar/Editar Ciclo. Fica depois do modal de disciplina para empilhar por cima dele */}
+      {modalCiclo.aberto && (
+        <ModalCiclo
+          ciclo={modalCiclo.ciclo}
+          onFechar={() => setModalCiclo({ aberto: false, ciclo: null, origem: "pagina" })}
+          onSalvo={handleCicloSalvo}
+        />
+      )}
+
+      {/* Confirmação de exclusão do Ciclo (disciplinas NÃO são excluídas) */}
+      {cicloParaExcluir && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-excluir-ciclo-titulo"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header border-bottom-0 pb-0">
+                <h2 id="modal-excluir-ciclo-titulo" className="modal-title h5 fw-bold text-danger mb-0">
+                  Excluir Ciclo
+                </h2>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label="Fechar"
+                  onClick={() => setCicloParaExcluir(null)}
+                  disabled={excluindoCiclo}
+                ></button>
+              </div>
+              <div className="modal-body small">
+                <p className="mb-2">
+                  Deseja realmente excluir o ciclo <strong>{cicloParaExcluir.nome}</strong>?
+                </p>
+                <p className="text-muted mb-0">
+                  As {(cicloParaExcluir.disciplinas || []).length} disciplina(s) deste ciclo{" "}
+                  <strong>não serão excluídas</strong>: ficarão em &ldquo;Disciplinas Não
+                  Vinculadas&rdquo;. As turmas do ciclo permanecem, apenas sem ciclo.
+                </p>
+              </div>
+              <div className="modal-footer border-top-0 pt-0">
+                <button
+                  type="button"
+                  className="btn btn-light rounded-pill px-3"
+                  onClick={() => setCicloParaExcluir(null)}
+                  disabled={excluindoCiclo}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger rounded-pill px-4 fw-bold"
+                  onClick={handleConfirmarExcluirCiclo}
+                  disabled={excluindoCiclo}
+                >
+                  {excluindoCiclo ? "Excluindo..." : "Excluir Ciclo"}
                 </button>
               </div>
             </div>

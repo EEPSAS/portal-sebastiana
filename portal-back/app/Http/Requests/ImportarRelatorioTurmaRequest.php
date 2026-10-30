@@ -57,6 +57,8 @@ class ImportarRelatorioTurmaRequest extends FormRequest
             'mapeamentos_alunos' => ['nullable', 'array'],
             // Mapeamento/conciliação de disciplinas do CSV com o catálogo escolar (Item 3.4d)
             'mapeamentos_disciplinas' => ['nullable', 'array'],
+            // Ciclo escolar opcional associado à conciliação da turma e disciplinas
+            'ciclo_id' => ['nullable', 'integer', 'exists:ciclos,id_ciclo'],
             // Decisão sobre notas divergentes de períodos já cadastrados ('atualizar' ou 'manter')
             'decisao_divergencias' => ['nullable', 'string', 'in:atualizar,manter'],
         ];

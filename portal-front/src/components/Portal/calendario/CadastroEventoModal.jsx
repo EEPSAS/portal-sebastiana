@@ -3,12 +3,17 @@
  *
  * Papel Didático:
  * Atua como componente híbrido de visualização e mutação da Agenda Escolar:
- * - Modo 'view': Exibe os detalhes completos de um evento (leitura/consulta com ícone de olho);
+ * - Modo 'view': Exibe os detalhes completos de um evento (leitura/consulta);
  * - Modos 'create' e 'edit': Formulário controlado que sanitiza e envia os dados para a API Laravel.
+ *
+ * Regras de Negócio (Atualização Módulo 4):
+ * - Horário de término, dia inteiro e cor customizada foram removidos;
+ * - Categorias restritas: Apenas Especialistas e Administradores podem cadastrar Provas,
+ *   Sábados Letivos e Feriados/Recessos. Usuários comuns cadastram apenas eventos comuns.
  */
 
 import { useState } from 'react';
-import { categoryOptions } from '../../../utils/agendaConfig';
+import { categoryOptions, getCategoryDetails } from '../../../utils/agendaConfig';
 
 const CadastroEventoModal = ({
   isOpen,
@@ -17,7 +22,7 @@ const CadastroEventoModal = ({
   initialDate = '',
   saving = false,
   error = null,
-  canEdit = false,
+  canEdit = false, // Especialista ou Administrador
   onClose,
   onSave,
   onSwitchToEdit,
@@ -29,15 +34,12 @@ const CadastroEventoModal = ({
   const [description, setDescription] = useState(() => event?.description || '');
   const [location, setLocation] = useState(() => event?.location || '');
   const [startTime, setStartTime] = useState(() => event?.startTime || '');
-  const [endTime, setEndTime] = useState(() => event?.endTime || '');
-  const [allDay, setAllDay] = useState(() => Boolean(event?.allDay));
   const [important, setImportant] = useState(() => Boolean(event?.important));
-  const [color, setColor] = useState(() => event?.color || '');
 
   if (!isOpen) return null;
 
   const isViewMode = mode === 'view';
-  const selectedCategoryObj = categoryOptions.find((c) => c.key === category) || categoryOptions[0];
+  const selectedCategoryObj = getCategoryDetails(category);
 
   const handleSubmit = (submitEvent) => {
     submitEvent.preventDefault();
@@ -50,13 +52,10 @@ const CadastroEventoModal = ({
       description: description.trim() || null,
       date,
       endDate: endDate || null,
-      startTime: allDay ? null : startTime || null,
-      endTime: allDay ? null : endTime || null,
-      allDay,
+      startTime: startTime || null,
       category,
-      important,
+      important: canEdit ? important : false,
       location: location.trim() || null,
-      color: color.trim() || null,
     });
   };
 
@@ -98,7 +97,7 @@ const CadastroEventoModal = ({
         )}
 
         {isViewMode ? (
-          /* Modo Visualização (Consulta Completa com o Olho) */
+          /* Modo Visualização */
           <div className="agenda-view-details">
             <div className="mb-3 d-flex align-items-center gap-2">
               <span
@@ -107,8 +106,7 @@ const CadastroEventoModal = ({
               >
                 {selectedCategoryObj.icon} {selectedCategoryObj.label}
               </span>
-              {important && <span className="badge bg-danger">Importante</span>}
-              {allDay && <span className="badge bg-secondary">Dia Inteiro</span>}
+              {important && <span className="badge bg-danger">Data Importante</span>}
             </div>
 
             <h3 className="fs-5 fw-bold text-dark mb-2">{title}</h3>
@@ -129,9 +127,9 @@ const CadastroEventoModal = ({
                 )}
               </div>
 
-              {!allDay && (startTime || endTime) && (
+              {startTime && (
                 <div className="mt-1">
-                  <strong>⏰ Horário:</strong> {startTime || '--:--'} às {endTime || '--:--'}
+                  <strong>⏰ Horário de início:</strong> {startTime}
                 </div>
               )}
 
@@ -218,12 +216,26 @@ const CadastroEventoModal = ({
                   onChange={(e) => setCategory(e.target.value)}
                   className="form-select form-select-sm"
                 >
-                  {categoryOptions.map((opt) => (
-                    <option key={opt.key} value={opt.key}>
-                      {opt.icon} {opt.label}
-                    </option>
-                  ))}
+                  {categoryOptions.map((opt) => {
+                    const isRestrita = opt.key !== 'eventos';
+                    const desabilitada = isRestrita && !canEdit;
+
+                    return (
+                      <option
+                        key={opt.key}
+                        value={opt.key}
+                        disabled={desabilitada}
+                      >
+                        {opt.icon} {opt.label} {desabilitada ? '(Apenas Especialista/Adm)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
+                {!canEdit && (
+                  <small className="text-muted d-block mt-1" style={{ fontSize: '11px' }}>
+                    * Provas, Sábados Letivos e Feriados requerem perfil de Especialista ou Administrador.
+                  </small>
+                )}
               </div>
               <div className="col-12 col-md-6">
                 <label className="form-label small fw-bold">Local</label>
@@ -238,74 +250,41 @@ const CadastroEventoModal = ({
             </div>
 
             <div className="row g-2 mb-3">
-              <div className="col-6">
+              <div className="col-12 col-md-6">
                 <label className="form-label small fw-bold">Horário de Início</label>
                 <input
                   type="time"
-                  disabled={allDay}
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
                   className="form-control form-control-sm"
                 />
               </div>
-              <div className="col-6">
-                <label className="form-label small fw-bold">Horário de Término</label>
-                <input
-                  type="time"
-                  disabled={allDay}
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="form-control form-control-sm"
-                />
-              </div>
+              {canEdit && (
+                <div className="col-12 col-md-6 d-flex align-items-center pt-3">
+                  <div className="form-check">
+                    <input
+                      type="checkbox"
+                      id="importantCheck"
+                      checked={important}
+                      onChange={(e) => setImportant(e.target.checked)}
+                      className="form-check-input"
+                    />
+                    <label htmlFor="importantCheck" className="form-check-label small fw-semibold text-danger">
+                      <i className="bi bi-bell-fill me-1"></i>
+                      Data importante (Alerta super-importante)
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="d-flex gap-3 mb-3">
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  id="allDayCheck"
-                  checked={allDay}
-                  onChange={(e) => setAllDay(e.target.checked)}
-                  className="form-check-input"
-                />
-                <label htmlFor="allDayCheck" className="form-check-label small">
-                  Dia inteiro
-                </label>
-              </div>
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  id="importantCheck"
-                  checked={important}
-                  onChange={(e) => setImportant(e.target.checked)}
-                  className="form-check-input"
-                />
-                <label htmlFor="importantCheck" className="form-check-label small">
-                  Data importante
-                </label>
-              </div>
-            </div>
-
-            <div className="mb-3">
+            <div className="mb-4">
               <label className="form-label small fw-bold">Descrição</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 placeholder="Detalhes adicionais sobre o evento..."
-                className="form-control form-control-sm"
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="form-label small fw-bold">Cor customizada (opcional)</label>
-              <input
-                type="text"
-                maxLength={30}
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                placeholder="Ex.: #08047D ou var(--color-primary)"
                 className="form-control form-control-sm"
               />
             </div>
@@ -322,7 +301,7 @@ const CadastroEventoModal = ({
               <button
                 type="submit"
                 disabled={saving}
-                className="btn btn-sm btn-primary rounded-pill px-4"
+                className="btn btn-sm btn-primary rounded-pill px-4 fw-bold"
               >
                 {saving ? 'Salvando...' : mode === 'edit' ? 'Salvar Alterações' : 'Criar Evento'}
               </button>

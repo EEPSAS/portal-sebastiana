@@ -6,7 +6,8 @@
  * 1. Conecta o estado de autenticação (`useAuth`) para separar criação pessoal de gestão institucional;
  * 2. Sincroniza a navegação interna por abas (`?tab=calendario|sabados|feriados|horarios`) com o menu Aside;
  * 3. Orquestra o ciclo completo de CRUD através do hook oficial `useEventos`;
- * 4. Monta o componente unificado `<Calendario />`, visões filtradas de Sábados Letivos e Feriados,
+ * 4. Disponibiliza o fluxo unitário ("Novo Evento") e o fluxo em lote ("Cadastro em Massa" - Item 5.6);
+ * 5. Monta o componente unificado `<Calendario />`, visões filtradas de Sábados Letivos e Feriados,
  *    e a grade de `<HorariosEscolares />`.
  */
 
@@ -16,6 +17,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useEventos } from '../../hooks/useEventos';
 import Calendario from '../../components/Portal/calendario/Calendario';
 import CadastroEventoModal from '../../components/Portal/calendario/CadastroEventoModal';
+import ModalCadastroEmMassa from '../../components/Dashboard/agenda/ModalCadastroEmMassa';
 import HorariosEscolares from '../../components/Dashboard/agenda/HorariosEscolares';
 import { createImportantDates } from '../../utils/agendaUtils';
 import '../../pages/Portal/portal.css';
@@ -53,6 +55,7 @@ const AgendaPage = () => {
     loading,
     error,
     create,
+    createEmMassa,
     update,
     remove,
     saving,
@@ -61,8 +64,9 @@ const AgendaPage = () => {
     refresh,
   } = useEventos({ publico: false });
 
-  // Estados locais do diálogo modal e notificações
+  // Estados locais do diálogo modal unitário, em massa e notificações
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalEmMassaOpen, setModalEmMassaOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit'
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [notificacao, setNotificacao] = useState(null);
@@ -102,6 +106,15 @@ const AgendaPage = () => {
     }
   };
 
+  const handleSaveEmMassa = async (listaEventos) => {
+    const result = await createEmMassa(listaEventos);
+    if (result.success) {
+      setModalEmMassaOpen(false);
+      const total = Array.isArray(result.data) ? result.data.length : listaEventos.length;
+      exibirNotificacao(`${total} data(s) escolar(es) cadastrada(s) com sucesso em lote!`);
+    }
+  };
+
   const handleDelete = async (event) => {
     const confirmou = window.confirm(`Deseja realmente excluir o evento "${event.title}"?`);
     if (!confirmou) return;
@@ -114,19 +127,11 @@ const AgendaPage = () => {
     }
   };
 
-  // Filtra eventos que caem em sábados ou possuem menção explícita a Sábado Letivo
+  // Somente eventos da categoria 'Sábados Letivos' (critério estrito: feriados em sábado não entram aqui)
   const sabadosLetivos = useMemo(() => {
     const lista = Array.isArray(eventos) ? eventos : [];
     return lista
-      .filter((ev) => {
-        if (!ev?.date) return false;
-        const dataObj = new Date(`${ev.date}T00:00:00`);
-        const ehSabado = dataObj.getDay() === 6;
-        const mencionaSabado = String(ev.title || '')
-          .toLowerCase()
-          .includes('sábado') || String(ev.title || '').toLowerCase().includes('sabado');
-        return ehSabado || mencionaSabado;
-      })
+      .filter((ev) => ev?.date && ev.category === 'sabados')
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [eventos]);
 
@@ -148,7 +153,7 @@ const AgendaPage = () => {
       {/* Toast Flutuante de Confirmação */}
       {notificacao && (
         <div
-          className="alert alert-success position-fixed top-0 end-0 m-3 shadow-sm py-2 px-3 small z-3"
+          className="alert alert-success dashboard-toast py-2 px-3 small z-3"
           role="status"
         >
           ✓ {notificacao}
@@ -167,7 +172,7 @@ const AgendaPage = () => {
               </p>
             </div>
 
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
               <button
                 type="button"
                 className="btn btn-sm btn-outline-secondary rounded-pill px-3"
@@ -178,6 +183,22 @@ const AgendaPage = () => {
                 <i className={`bi bi-arrow-clockwise me-1 ${loading ? 'spinner-border spinner-border-sm' : ''}`}></i>
                 Atualizar
               </button>
+
+              {/* Botão Cadastro em Massa: exclusivo para gestores (Item 5.6) */}
+              {podeGerenciar && abaAtiva !== 'horarios' && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold"
+                  onClick={() => {
+                    clearMutationError();
+                    setModalEmMassaOpen(true);
+                  }}
+                  title="Cadastrar múltiplos sábados letivos e feriados em tabela"
+                >
+                  <i className="bi bi-table me-1"></i>
+                  Cadastro em Massa
+                </button>
+              )}
 
               {podeCriarEvento && abaAtiva !== 'horarios' && (
                 <button
@@ -193,7 +214,7 @@ const AgendaPage = () => {
           </div>
 
           {/* Barra de Abas Internas sincronizada com o Aside */}
-          <ul className="nav nav-pills gap-2 mt-3" role="tablist">
+          <ul className="nav nav-pills gap-2 mt-3 flex-wrap" role="tablist">
             {ABAS_AGENDA.map((aba) => {
               const ativa = abaAtiva === aba.id;
               return (
@@ -216,11 +237,12 @@ const AgendaPage = () => {
           </ul>
         </header>
 
-        {/* Aba 1: Calendário Completo */}
+        {/* Aba 1: Calendário Completo (Embedded remove fundo cinza e barra vertical - Item 1) */}
         {abaAtiva === 'calendario' && (
-          <div className="portal-scope w-100">
+          <div className="portal-scope portal-scope--embedded w-100">
             <Calendario
               showHero={false}
+              embedded={true}
               publico={false}
               eventos={eventos}
               loading={loading}
@@ -248,7 +270,7 @@ const AgendaPage = () => {
               <div className="alert alert-light border text-center py-4 mb-0">
                 <p className="mb-1 fw-semibold">Nenhum sábado letivo cadastrado até o momento.</p>
                 <small className="text-muted">
-                  Utilize o botão &ldquo;Novo Evento&rdquo; selecionando uma data de sábado para registrar atividades letivas.
+                  Utilize o botão &ldquo;Cadastro em Massa&rdquo; ou &ldquo;Novo Evento&rdquo; para registrar sábados letivos.
                 </small>
               </div>
             ) : (
@@ -356,7 +378,7 @@ const AgendaPage = () => {
         {abaAtiva === 'horarios' && <HorariosEscolares />}
       </div>
 
-      {/* Diálogo Modal de Cadastro e Edição (Montado sob demanda) */}
+      {/* Diálogo Modal de Cadastro e Edição Unitária */}
       <CadastroEventoModal
         key={`${selectedEvent?.id || 'new'}-${modalMode}`}
         isOpen={modalOpen}
@@ -368,6 +390,18 @@ const AgendaPage = () => {
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
       />
+
+      {/* Diálogo Modal de Cadastro em Massa (Item 5.6) */}
+      {/* Montagem condicional: ao fechar, o componente é desmontado e a tabela volta "zerada" na próxima abertura */}
+      {modalEmMassaOpen && (
+        <ModalCadastroEmMassa
+          isOpen
+          saving={saving}
+          error={mutationError}
+          onClose={() => setModalEmMassaOpen(false)}
+          onSave={handleSaveEmMassa}
+        />
+      )}
     </div>
   );
 };

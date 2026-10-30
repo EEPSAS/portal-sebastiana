@@ -147,16 +147,14 @@ class User extends Authenticatable
                 'titulo' => $titulo,
                 'data_inicio' => $dataEvento,
                 'data_fim' => null,
-                'dia_inteiro' => true,
-                'tipo' => TipoEvento::DATAS_COMEMORATIVAS,
+                'tipo' => TipoEvento::EVENTOS,
             ]);
         } else {
             $this->eventos()->create([
                 'titulo' => $titulo,
                 'descricao' => "Celebração do aniversário de {$nomeExibicao}.",
                 'data_inicio' => $dataEvento,
-                'dia_inteiro' => true,
-                'tipo' => TipoEvento::DATAS_COMEMORATIVAS,
+                'tipo' => TipoEvento::EVENTOS,
                 'importante' => false,
                 'is_aniversario' => true,
             ]);

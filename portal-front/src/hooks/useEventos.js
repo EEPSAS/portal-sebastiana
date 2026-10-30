@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import {
   createEvento,
+  createEventosEmMassa,
   deleteEvento,
   listEventos,
   updateEvento,
@@ -62,6 +63,7 @@ export const useEventos = ({ token, publico = false } = {}) => {
   };
 
   const create = (evento) => runMutation(() => createEvento(evento, { token }));
+  const createEmMassa = (eventos) => runMutation(() => createEventosEmMassa(eventos, { token }));
   const update = (evento) => runMutation(() => updateEvento(evento, { token }));
   const remove = (id) => runMutation(() => deleteEvento(id, { token }));
 
@@ -71,10 +73,11 @@ export const useEventos = ({ token, publico = false } = {}) => {
     error: result.requestKey === requestKey ? result.error : null,
     refresh,
     create,
+    createEmMassa,
     update,
     remove,
     saving,
     mutationError,
     clearMutationError: () => setMutationError(null),
   };
-};
+};

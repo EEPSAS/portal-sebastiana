@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\UserRole;
+use App\Models\Ciclo;
 use App\Models\Disciplina;
 use App\Models\Frequencia;
 use App\Models\Matricula;
@@ -120,6 +121,7 @@ class EspecialistaDashboardService
                 'message' => 'Identificamos disciplinas na planilha que precisam ser conciliadas com o catálogo escolar ou criadas no Ciclo da turma.',
                 'disciplinas_pendentes' => array_values($dadosExtraidos['disciplinas_pendentes']),
                 'catalogo_disciplinas' => $catalogoExistente,
+                'catalogo_ciclos' => Ciclo::orderBy('nome')->get(['id_ciclo', 'nome', 'descricao'])->values()->all(),
                 'ambiguidades' => [],
                 'divergencias' => [],
                 'linhas_lidas' => count($linhas),
@@ -767,7 +769,9 @@ class EspecialistaDashboardService
                     : 2;
                 $nomeParaCriar = is_array($decisaoManual) && ! empty($decisaoManual['nome'])
                     ? trim((string) $decisaoManual['nome'])
-                    : $nomeSanitizado;
+                    : (is_array($decisaoManual) && ! empty($decisaoManual['nome_nova'])
+                        ? trim((string) $decisaoManual['nome_nova'])
+                        : $nomeSanitizado);
 
                 $disciplinaEscolhida = $todasDisciplinas->first(
                     fn (Disciplina $d) => Str::lower(Str::ascii($d->nome)) === Str::lower(Str::ascii($nomeParaCriar))
@@ -833,8 +837,18 @@ class EspecialistaDashboardService
             return null;
         }
 
-        // 5. Vincula a disciplina conciliada à Turma e ao Ciclo da Turma (quando houver)
-        if ($turma->ciclo_id !== null) {
+        // 5. Vincula a disciplina conciliada ao Ciclo informado manualmente ou ao Ciclo da Turma
+        $cicloIdInformado = is_array($decisaoManual) && ! empty($decisaoManual['ciclo_id'])
+            ? (int) $decisaoManual['ciclo_id']
+            : null;
+
+        if ($cicloIdInformado) {
+            $disciplinaEscolhida->ciclos()->syncWithoutDetaching([$cicloIdInformado]);
+            // Requisito pedagógico: se a Turma não possuir ciclo definido, associa também a turma a este Ciclo
+            if ($turma->ciclo_id === null) {
+                $turma->update(['ciclo_id' => $cicloIdInformado]);
+            }
+        } elseif ($turma->ciclo_id !== null) {
             $disciplinaEscolhida->ciclos()->syncWithoutDetaching([$turma->ciclo_id]);
         }
 

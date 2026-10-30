@@ -45,6 +45,7 @@ class RelatorioImportadoResource extends JsonResource
             // Lista de disciplinas da planilha que requerem conciliação manual ou criação pelo Especialista (Item 3.4d)
             'disciplinas_pendentes' => $this->resource['disciplinas_pendentes'] ?? ($this->resource['dados']['disciplinas_pendentes'] ?? []),
             'catalogo_disciplinas' => $this->resource['catalogo_disciplinas'] ?? ($this->resource['dados']['catalogo_disciplinas'] ?? []),
+            'catalogo_ciclos' => $this->resource['catalogo_ciclos'] ?? ($this->resource['dados']['catalogo_ciclos'] ?? []),
             'dados' => $this->resource['dados'] ?? [],
         ];
     }

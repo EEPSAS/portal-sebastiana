@@ -148,6 +148,12 @@ class CicloController extends Controller
             abort(403, 'Apenas o Especialista Pedagógico ou Administrador pode excluir ciclos escolares.');
         }
 
+        // Desfaz explicitamente os vínculos: as disciplinas viram "órfãs" e NÃO são excluídas
+        $ciclo->disciplinas()->detach();
+
+        // Turmas do ciclo ficam sem ciclo (preserva turmas e alocações/notas)
+        $ciclo->turmas()->update(['ciclo_id' => null]);
+
         $ciclo->delete();
 
         return response()->json(null, 204);
