@@ -109,12 +109,16 @@ const normalizarComparativo = (resposta) => {
     const notaAluno = lerNumero(registro.nota_aluno, "nota do aluno");
     const mediaTurma = lerNumero(registro.media_turma, "média da turma");
     const valorMaximo = lerNumero(registro.valor_maximo, "valor máximo") || 30;
+    const frequenciaAluno = lerNumero(registro.frequencia_aluno, "frequência do aluno");
+    const frequenciaTurma = lerNumero(registro.frequencia_turma, "frequência da turma");
 
     return {
       id: registro.disciplina_id ?? registro.nome_disciplina,
       nome: registro.nome_disciplina,
       notaAluno: notaAluno === 0 ? null : notaAluno,
       mediaTurma: mediaTurma === 0 ? null : mediaTurma,
+      frequenciaAluno,
+      frequenciaTurma,
       valorMaximo,
     };
   });
@@ -153,6 +157,8 @@ export function useBoletim(turmaIdProp, alunoIdProp) {
             dados: {
               disciplinas: normalizarBoletins(respostasBoletim),
               comparativoNotas: normalizarComparativo(respostaComparativo),
+              frequenciaAlunoGlobal: lerNumero(respostaComparativo?.frequencia_aluno_global, "frequência global do aluno"),
+              frequenciaTurmaGlobal: lerNumero(respostaComparativo?.frequencia_turma_global, "frequência global da turma"),
             },
             erro: null,
           });

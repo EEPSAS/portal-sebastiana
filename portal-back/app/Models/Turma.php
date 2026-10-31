@@ -55,6 +55,14 @@ class Turma extends Model
     }
 
     /**
+     * Relacionamento N:1: Período Letivo oficial ao qual a turma está vinculada.
+     */
+    public function periodoLetivo(): BelongsTo
+    {
+        return $this->belongsTo(PeriodoLetivo::class, 'ano_letivo', 'ano');
+    }
+
+    /**
      * Herda automaticamente todas as disciplinas (e professores titulares) do Ciclo da turma.
      */
     public function herdarDisciplinasDoCiclo(): void

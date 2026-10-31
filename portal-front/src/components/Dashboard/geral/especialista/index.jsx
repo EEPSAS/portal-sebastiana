@@ -53,7 +53,7 @@ const GeralEspecialista = () => {
   return (
     <div className="geral-especialista-page">
       {/* Linha superior: 4 Small Cards de KPIs pedagógicos */}
-      <div className="row g-3">
+      <div className="row g-2 g-md-3">
         {cards.map((card) => (
           <GeralSmallCards
             key={card.id}

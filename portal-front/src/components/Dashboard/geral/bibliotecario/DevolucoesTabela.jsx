@@ -8,7 +8,7 @@ export default function DevolucoesTabela({
 }) {
   return (
     <section
-      className="card border-0 dashboard-card-shadow rounded-4 h-100 p-3"
+      className="card border-0 dashboard-card-shadow rounded-3 h-100 p-2 px-md-3"
       aria-label={titulo}
     >
       <div className="d-flex align-items-center justify-content-between gap-2 mb-3">

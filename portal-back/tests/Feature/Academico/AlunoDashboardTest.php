@@ -190,6 +190,14 @@ test('aluno consulta o comparativo individual vs turma para grafico de radar', f
     Frequencia::factory()->create([
         'turma_id' => $turma->id_turma,
         'disciplina_id' => $discFis->id_disciplina,
+        'usuario_id' => $aluno1->id,
+        'data_aula' => '2026-03-03',
+        'quantidade_aulas' => 20,
+        'status_presenca' => 'Presente',
+    ]);
+    Frequencia::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $discFis->id_disciplina,
         'usuario_id' => $aluno2->id,
         'data_aula' => '2026-03-03',
         'quantidade_aulas' => 4,
@@ -203,14 +211,18 @@ test('aluno consulta o comparativo individual vs turma para grafico de radar', f
         ->assertJsonStructure([
             'turma_id',
             'aluno_id',
+            'frequencia_aluno_global',
+            'frequencia_turma_global',
             'comparativo' => [
                 '*' => [
                     'disciplina_id',
                     'nome_disciplina',
                     'nota_aluno',
                     'faltas_aluno',
+                    'frequencia_aluno',
                     'media_turma',
                     'media_faltas_turma',
+                    'frequencia_turma',
                 ],
             ],
             'radar' => [
@@ -222,8 +234,10 @@ test('aluno consulta o comparativo individual vs turma para grafico de radar', f
     $item = collect($response->json('comparativo'))->firstWhere('nome_disciplina', 'Física');
     expect($item['nota_aluno'])->toEqual(9.0)
         ->and($item['faltas_aluno'])->toBe(0)
+        ->and($item['frequencia_aluno'])->toEqual(100.0)
         ->and($item['media_turma'])->toEqual(7.0) // (9+5)/2
         ->and($item['media_faltas_turma'])->toEqual(2.0)
+        ->and($item['frequencia_turma'])->toBeGreaterThan(80.0)
         ->and($item['valor_maximo'])->toEqual(30.0);
 });
 

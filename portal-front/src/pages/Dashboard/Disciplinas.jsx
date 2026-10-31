@@ -249,23 +249,35 @@ const DisciplinasPage = () => {
 
     return (
       <div className="col-12 col-md-6 col-xl-4" key={disc.id_disciplina}>
-        <div className="card h-100 border rounded-4 shadow-sm p-3 bg-white d-flex flex-column justify-content-between">
+        <div
+          className="card h-100 border rounded-3 shadow-none bg-white d-flex flex-column justify-content-between p-2"
+          style={{ transition: "box-shadow 0.2s ease" }}
+        >
           <div>
-            <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
-              <h3 className="h6 fw-bold text-dark mb-0">{nomeComCiclo}</h3>
-              <span className="badge bg-primary-subtle text-primary rounded-pill text-nowrap">
-                {aulasSem} aula(s)/sem • {totalAulas} aulas/ano
+            <div className="d-flex justify-content-between align-items-center gap-2 mb-1">
+              <h3
+                className="h6 fw-bold text-dark mb-0 text-truncate"
+                style={{ fontSize: "0.92rem" }}
+                title={nomeComCiclo}
+              >
+                {nomeComCiclo}
+              </h3>
+              <span
+                className="badge bg-primary-subtle text-primary rounded-pill text-nowrap"
+                style={{ fontSize: "0.68rem", padding: "0.2rem 0.45rem" }}
+              >
+                {aulasSem} a/sem • {totalAulas} a/ano
               </span>
             </div>
 
             {/* Badges dos Ciclos aos quais a disciplina pertence */}
             {Array.isArray(disc.ciclos) && disc.ciclos.length > 0 && (
-              <div className="d-flex flex-wrap gap-1 mb-2">
+              <div className="d-flex flex-wrap gap-1 mb-1">
                 {disc.ciclos.map((c) => (
                   <span
                     key={c.id_ciclo}
                     className="badge bg-secondary-subtle text-dark rounded-pill"
-                    style={{ fontSize: "0.72rem" }}
+                    style={{ fontSize: "0.68rem", padding: "0.15rem 0.4rem" }}
                   >
                     <i className="bi bi-diagram-3 me-1"></i>
                     {c.nome}
@@ -274,26 +286,13 @@ const DisciplinasPage = () => {
               </div>
             )}
 
-            {/* Resumo de Ementa / BNCC */}
-            {disc.ementa ? (
-              <p className="text-muted small mb-2" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                <strong>Ementa:</strong> {disc.ementa}
-              </p>
-            ) : (
-              <p className="text-muted small fst-italic mb-2">
-                Ementa opcional não informada.
-              </p>
-            )}
-
-            {disc.habilidades_bncc && (
-              <p className="text-muted small mb-2 text-truncate">
-                <strong>BNCC:</strong> {disc.habilidades_bncc}
-              </p>
-            )}
-
-            {/* Professores vinculados */}
+            {/* Professores vinculados (Ementa e BNCC removidos da visualização direta; mantidos no modo editar) */}
             {Array.isArray(disc.professores) && disc.professores.length > 0 && (
-              <div className="small text-secondary mb-2">
+              <div
+                className="small text-secondary text-truncate mb-1"
+                style={{ fontSize: "0.78rem" }}
+                title={disc.professores.map((p) => p.name).join(", ")}
+              >
                 <i className="bi bi-person-badge me-1 text-primary"></i>
                 <strong>Docente(s):</strong>{" "}
                 {disc.professores.map((p) => p.name).join(", ")}
@@ -301,29 +300,32 @@ const DisciplinasPage = () => {
             )}
           </div>
 
-          <div className="d-flex justify-content-between align-items-center pt-2 border-top mt-2">
+          <div className="d-flex justify-content-between align-items-center pt-1 border-top mt-1">
             <button
               type="button"
-              className="btn btn-sm btn-link text-decoration-none px-0 fw-semibold"
+              className="btn btn-sm btn-link text-decoration-none px-0 fw-semibold text-secondary"
+              style={{ fontSize: "0.78rem" }}
               onClick={() => setDisciplinaDetalhe(disc)}
             >
-              <i className="bi bi-eye me-1"></i>
-              Ver Plano Pedagógico
+              <i className="bi bi-eye me-1 text-primary"></i>
+              Plano Pedagógico
             </button>
 
             {podeGerenciar && (
               <div className="btn-group btn-group-sm">
                 <button
                   type="button"
-                  className="btn btn-outline-primary rounded-start-pill px-2"
+                  className="btn btn-outline-primary rounded-start-pill py-0 px-2"
+                  style={{ fontSize: "0.75rem" }}
                   onClick={() => handleAbrirEditarDisciplina(disc)}
-                  title="Editar disciplina"
+                  title="Editar disciplina (inclui Ementa e BNCC)"
                 >
                   <i className="bi bi-pencil"></i>
                 </button>
                 <button
                   type="button"
-                  className="btn btn-outline-danger rounded-end-pill px-2"
+                  className="btn btn-outline-danger rounded-end-pill py-0 px-2"
+                  style={{ fontSize: "0.75rem" }}
                   onClick={() => handleExcluirDisciplina(disc)}
                   title="Excluir disciplina"
                 >
@@ -401,10 +403,10 @@ const DisciplinasPage = () => {
             <p className="text-muted small mt-2">Carregando ciclos e disciplinas...</p>
           </div>
         ) : (
-          <div className="d-flex flex-column gap-4">
+          <div className="d-flex flex-column gap-2">
             {/* Disciplinas sem ciclo (ex: ciclo excluído): exibidas ANTES dos ciclos */}
             {filtrarLista(disciplinasSemCiclo).length > 0 && (
-              <section className="p-4 rounded-4 border border-warning bg-light" aria-labelledby="titulo-nao-vinculadas">
+              <section className="p-2 p-md-3 rounded-3 border border-warning bg-light" aria-labelledby="titulo-nao-vinculadas">
                 <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
                   <h2 id="titulo-nao-vinculadas" className="h6 fw-bold text-secondary mb-0">
                     <i className="bi bi-journal-bookmark me-2"></i>
@@ -414,7 +416,7 @@ const DisciplinasPage = () => {
                     {filtrarLista(disciplinasSemCiclo).length}
                   </span>
                 </div>
-                <div className="row g-3">
+                <div className="row g-2">
                   {filtrarLista(disciplinasSemCiclo).map((disc) => renderCardDisciplina(disc))}
                 </div>
               </section>
@@ -428,7 +430,7 @@ const DisciplinasPage = () => {
               return (
                 <section
                   key={ciclo.id_ciclo}
-                  className="p-4 rounded-4 border bg-light"
+                  className="p-2 p-md-3 rounded-3 border bg-light"
                   aria-labelledby={`titulo-ciclo-${ciclo.id_ciclo}`}
                 >
                   <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
@@ -483,7 +485,7 @@ const DisciplinasPage = () => {
                       Nenhuma disciplina vinculada a este ciclo até o momento.
                     </div>
                   ) : (
-                    <div className="row g-3">
+                    <div className="row g-2">
                       {disciplinasFiltradas.map((disc) => renderCardDisciplina(disc, ciclo))}
                     </div>
                   )}
@@ -637,7 +639,7 @@ const DisciplinasPage = () => {
                   </div>
 
                   {/* Linha 3: Campos Pedagógicos Opcionais (Item 3.3) */}
-                  <div className="row g-3">
+                  <div className="row g-2">
                     <div className="col-12 col-md-6">
                       <label htmlFor="disc-ementa" className="form-label small fw-bold text-dark">
                         Ementa (Opcional):

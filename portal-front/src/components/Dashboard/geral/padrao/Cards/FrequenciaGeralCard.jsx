@@ -25,7 +25,7 @@ export default function FrequenciaGeralCard({
   return (
     <div className="col-12 col-sm-6 col-lg-3">
       <div
-        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-4 text-white p-3 d-flex flex-row align-items-center"
+        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-3 text-white p-2 px-md-3 d-flex flex-row align-items-center"
         style={{
           backgroundColor: bgColor,
         }}

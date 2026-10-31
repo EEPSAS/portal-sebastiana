@@ -1,32 +1,37 @@
-// Valores ilustrativos permanecem isolados até a API fornecer frequência da turma.
-const FREQUENCIA_TURMA_DEMONSTRATIVA = {
-  portugues: 92,
-  matematica: 92,
-  historia: 93,
-  geografia: 94,
-  ciencias: 91,
-  ingles: 91,
-};
+/**
+ * ComparativoTurmaAba.jsx - Aba de Comparativo Individual vs. Média da Turma
+ *
+ * Papel Didático:
+ * Apresenta a análise comparativa entre as notas e percentuais de frequência do aluno
+ * e os indicadores consolidados oficiais de sua turma, calculados diretamente pelo
+ * backend Laravel com base no diário escolar consolidado (Módulo 5 via CSV).
+ */
 
 const normalizarNome = (nome) =>
-  nome
+  (nome || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+    .toLowerCase()
+    .trim();
 
 const formatarNota = (nota) =>
-  nota === null
+  nota === null || nota === undefined
     ? "—"
-    : nota.toLocaleString("pt-BR", {
+    : Number(nota).toLocaleString("pt-BR", {
         minimumFractionDigits: 1,
         maximumFractionDigits: 1,
       });
 
 const formatarPercentual = (valor) =>
-  valor === null ? "—" : `${valor.toLocaleString("pt-BR")}%`;
+  valor === null || valor === undefined
+    ? "—"
+    : `${Number(valor).toLocaleString("pt-BR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })}%`;
 
 const obterClasseDiferenca = (diferenca) => {
-  if (diferenca === null) return "text-muted";
+  if (diferenca === null || diferenca === undefined) return "text-muted";
   return diferenca >= 0 ? "text-success" : "text-danger";
 };
 
@@ -51,47 +56,48 @@ const BarraComparativa = ({ valor, maximo, cor, rotulo }) => (
 );
 
 export default function ComparativoTurmaAba({
-  disciplinas,
-  comparativoNotas,
+  disciplinas = [],
+  comparativoNotas = [],
+  frequenciaAlunoGlobal = null,
+  frequenciaTurmaGlobal = null,
 }) {
+  // Cálculo de contingência da frequência global do aluno a partir das disciplinas
   const totalAulas = disciplinas.reduce(
-    (total, disciplina) => total + disciplina.totalAulas,
+    (total, disciplina) => total + (disciplina.totalAulas || 0),
     0
   );
   const totalFaltas = disciplinas.reduce(
-    (total, disciplina) => total + disciplina.totalFaltas,
+    (total, disciplina) => total + (disciplina.totalFaltas || 0),
     0
   );
-  const frequenciaAluno =
-    totalAulas > 0
+
+  const frequenciaAlunoCalculada =
+    frequenciaAlunoGlobal !== null
+      ? frequenciaAlunoGlobal
+      : totalAulas > 0
       ? Number((((totalAulas - totalFaltas) / totalAulas) * 100).toFixed(1))
       : null;
-  const frequenciaTurmaGlobal = 92.4;
 
   return (
     <section aria-labelledby="boletim-comparativo-titulo">
       <div className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
         <div>
           <h2 id="boletim-comparativo-titulo" className="h5 mb-1">
-            <i className="bi bi-bar-chart-steps me-2" aria-hidden="true" />
+            <i className="bi bi-bar-chart-steps me-2 text-primary" aria-hidden="true" />
             Seu Desempenho vs. Média da Turma
           </h2>
-          <p className="text-muted mb-0">
-            Compare suas médias e frequência com os indicadores agregados da turma.
+          <p className="text-muted mb-0 small">
+            Compare suas médias e frequência com os indicadores agregados oficiais da turma.
           </p>
         </div>
-        <span className="badge rounded-pill boletim__badge boletim__badge--demo">
-          Frequência demonstrativa
+        <span className="badge bg-light text-secondary border px-3 py-2 rounded-pill fw-semibold small">
+          <i className="bi bi-shield-check me-1 text-success" aria-hidden="true" />
+          Dados Oficiais da Turma
         </span>
       </div>
 
-      <p className="alert alert-warning py-2 small" role="note">
-        Os percentuais de frequência da turma abaixo são demonstrativos e não
-        representam dados oficiais. A comparação real será conectada quando a
-        API disponibilizar esse indicador.
-      </p>
-
       <div className="row g-3">
+        {/* Card 1: Comparativo de Notas */}
         <div className="col-12 col-xl-6">
           <section className="boletim__compare-card h-100">
             <div className="boletim__card-heading">
@@ -146,13 +152,14 @@ export default function ComparativoTurmaAba({
                 })}
               </div>
             ) : (
-              <p className="boletim__empty mb-0">
-                Ainda não há notas disponíveis para comparar.
+              <p className="boletim__empty mb-0 text-muted small">
+                Ainda não há notas lançadas para comparar.
               </p>
             )}
           </section>
         </div>
 
+        {/* Card 2: Comparativo de Frequência */}
         <div className="col-12 col-xl-6">
           <section className="boletim__compare-card h-100">
             <div className="boletim__card-heading">
@@ -160,11 +167,11 @@ export default function ComparativoTurmaAba({
               <h3 className="h6 mb-0">Comparativo de Frequência</h3>
             </div>
             <div className="boletim__frequencia-global">
-              <p className="small text-muted mb-2">Frequência Global</p>
+              <p className="small text-muted mb-2">Frequência Global Consolidada</p>
               <div className="row align-items-center text-center g-2">
                 <div className="col-6">
                   <strong className="boletim__global-percentual">
-                    {formatarPercentual(frequenciaAluno)}
+                    {formatarPercentual(frequenciaAlunoCalculada)}
                   </strong>
                   <span className="d-block small fw-semibold">SUA FREQUÊNCIA</span>
                 </div>
@@ -175,17 +182,17 @@ export default function ComparativoTurmaAba({
                   <span className="d-block small fw-semibold">MÉDIA DA TURMA*</span>
                 </div>
               </div>
-              {frequenciaAluno !== null && (
+              {frequenciaAlunoCalculada !== null && frequenciaTurmaGlobal !== null && (
                 <p className="small fw-semibold mt-3 mb-0">
-                  {frequenciaAluno >= frequenciaTurmaGlobal ? (
+                  {frequenciaAlunoCalculada >= frequenciaTurmaGlobal ? (
                     <span className="text-success">
                       <i className="bi bi-arrow-up me-1" aria-hidden="true" />
-                      Você está acima da média demonstrativa.
+                      Você está acima da média da turma.
                     </span>
                   ) : (
                     <span className="text-warning-emphasis">
                       <i className="bi bi-arrow-down me-1" aria-hidden="true" />
-                      Sua frequência está abaixo da média demonstrativa.
+                      Sua frequência está abaixo da média da turma.
                     </span>
                   )}
                 </p>
@@ -194,34 +201,51 @@ export default function ComparativoTurmaAba({
 
             <div className="boletim__frequencia-comparativo">
               <p className="small fw-semibold mb-2">
-                Sua frequência por disciplina e média demonstrativa:
+                Sua frequência por disciplina e média da turma:
               </p>
-              {disciplinas.map((disciplina) => {
-                const mediaDemo =
-                  FREQUENCIA_TURMA_DEMONSTRATIVA[normalizarNome(disciplina.nome)];
-                const acima =
-                  mediaDemo !== undefined &&
-                  disciplina.frequenciaAnual !== null &&
-                  disciplina.frequenciaAnual >= mediaDemo;
+              {disciplinas.length > 0 ? (
+                disciplinas.map((disciplina) => {
+                  const regComparativo = comparativoNotas.find(
+                    (c) =>
+                      String(c.id) === String(disciplina.id) ||
+                      normalizarNome(c.nome) === normalizarNome(disciplina.nome)
+                  );
 
-                return (
-                  <p className="small mb-2" key={disciplina.id}>
-                    <i
-                      className={`bi ${
-                        acima ? "bi-check-circle-fill text-success" : "bi-info-circle-fill text-warning"
-                      } me-2`}
-                      aria-hidden="true"
-                    />
-                    {disciplina.nome}: Sua{" "}
-                    {formatarPercentual(disciplina.frequenciaAnual)} vs. Turma{" "}
-                    {mediaDemo === undefined
-                      ? "—"
-                      : formatarPercentual(mediaDemo)}
-                  </p>
-                );
-              })}
-              <small className="text-muted">
-                * Média agregada ilustrativa, aguardando dado oficial da API.
+                  const freqTurmaDisc = regComparativo?.frequenciaTurma ?? null;
+                  const freqAlunoDisc =
+                    disciplina.frequenciaAnual ?? regComparativo?.frequenciaAluno ?? null;
+
+                  const temDados = freqTurmaDisc !== null && freqAlunoDisc !== null;
+                  const acima = temDados && freqAlunoDisc >= freqTurmaDisc;
+
+                  return (
+                    <p className="small mb-2 d-flex align-items-center justify-content-between" key={disciplina.id}>
+                      <span>
+                        <i
+                          className={`bi ${
+                            !temDados
+                              ? "bi-dash-circle text-muted"
+                              : acima
+                              ? "bi-check-circle-fill text-success"
+                              : "bi-info-circle-fill text-warning"
+                          } me-2`}
+                          aria-hidden="true"
+                        />
+                        {disciplina.nome}
+                      </span>
+                      <span className="text-muted fw-semibold">
+                        Sua: <strong>{formatarPercentual(freqAlunoDisc)}</strong> vs. Turma: <strong>{formatarPercentual(freqTurmaDisc)}</strong>
+                      </span>
+                    </p>
+                  );
+                })
+              ) : (
+                <p className="text-muted small mb-0">
+                  Nenhuma disciplina cadastrada na turma.
+                </p>
+              )}
+              <small className="text-muted d-block mt-3">
+                * Indicadores calculados automaticamente com base no diário consolidado oficial da turma.
               </small>
             </div>
           </section>

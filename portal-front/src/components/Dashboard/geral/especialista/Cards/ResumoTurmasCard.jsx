@@ -84,7 +84,7 @@ export default function GeralMediumCards({
   const alturaGraficoFrequencias = Math.max(220, dadosFrequencias.length * 62);
 
   return (
-    <div className="row g-4 my-2">
+    <div className="row g-2 g-md-3 mt-0 mb-1">
       {/* Card 1: Média de Notas por Turma (col-lg-6 = 50%) */}
       <div className="col-12 col-lg-6">
         <div className="geral-chart-card">

@@ -158,7 +158,7 @@ const NotasAba = ({
       </div>
 
       {/* 3. Painel de Consulta e Diário Escolar da Turma */}
-      <div className="turma-stat-card p-4">
+      <div className="turma-stat-card p-2 p-md-3">
         {/* Barra de Filtros: Filtro por Aluno (Evita sobrecarga) + Período + Busca */}
         <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
           <div>

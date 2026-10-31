@@ -11,7 +11,7 @@ export default function BoletimDetalhado() {
 
   if (loading) {
     return (
-      <div className="card border-0 shadow-sm rounded-4 p-4 mt-4 w-100 text-center text-muted">
+      <div className="card border-0 shadow-sm rounded-3 p-2 px-md-3 mt-2 w-100 text-center text-muted">
         A carregar dados do boletim...
       </div>
     );

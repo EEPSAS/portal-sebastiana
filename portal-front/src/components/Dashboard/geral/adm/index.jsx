@@ -51,7 +51,7 @@ const GeralAdm = () => {
   return (
     <div className="geral-adm-page">
       {/* Linha superior: Small Cards de KPIs globais da instituição */}
-      <div className="row g-3">
+      <div className="row g-2 g-md-3">
         {cards.map((card) => (
           <GeralSmallCards
             key={card.id}

@@ -2,9 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\PeriodoLetivo;
 use Illuminate\Foundation\Http\FormRequest;
 
-// Validação para cadastro de uma nova turma escolar.
+// Validação para cadastro de uma nova turma escolar vinculada a um Período Letivo oficial.
 class StoreTurmaRequest extends FormRequest
 {
     // Autoriza apenas usuários com permissão de gestão acadêmica
@@ -20,7 +21,18 @@ class StoreTurmaRequest extends FormRequest
             'nome_identificador' => ['required', 'string', 'max:255'],
             'ciclo_id' => ['nullable', 'integer', 'exists:ciclos,id_ciclo'],
             'turno' => ['required', 'string', 'in:Matutino,Vespertino,Noturno,Integral'],
-            'ano_letivo' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'ano_letivo' => [
+                'required',
+                'integer',
+                'min:2000',
+                'max:2100',
+                function ($attribute, $value, $fail) {
+                    // Se houver períodos letivos cadastrados no sistema, exige que o ano corresponda a um deles
+                    if (PeriodoLetivo::count() > 0 && ! PeriodoLetivo::where('ano', $value)->exists()) {
+                        $fail('O ano letivo selecionado não corresponde a nenhum Período Letivo cadastrado.');
+                    }
+                },
+            ],
             'capacidade_maxima' => ['nullable', 'integer', 'min:1', 'max:100'],
             'status' => ['nullable', 'string', 'in:Ativa,Inativa,Concluída'],
         ];

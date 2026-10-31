@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Aside.jsx - Barra Lateral de Navegação Retrátil por Módulos do Painel (Dashboard)
  *
  * Papel Didático:
@@ -19,12 +19,13 @@
  * - Exibe contadores numéricos (badges) de aprovações pendentes de Alunos e Professores.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { NavLink, Link, useLocation } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
 import { listarProfessores } from "../../services/professoresService";
 import { obterPendentesResumo } from "../../services/usuarioService";
 import { NAV_STRUCTURE, isChildActive } from "../../utils/dashboardNav";
+import { EVENTO_PENDENCIAS_ATUALIZADAS } from "../../utils/notificacoesEventos";
 
 const ROLE_BADGES = {
   aluno: { label: "Aluno", cor: "bg-primary" },
@@ -56,15 +57,12 @@ const Aside = () => {
   // Estado explícito de grupos abertos/fechados manualmente pelo usuário no acordeão
   const [openGroups, setOpenGroups] = useState({});
 
-  // Busca contagens de aprovações pendentes (alunos e professores) para Especialista e Adm
-  useEffect(() => {
+  // Função centralizada para recarga dos contadores de aprovações pendentes
+  const carregarPendentes = useCallback(() => {
     if (!podeGerenciarAprovacoes) return;
-
-    let ativo = true;
 
     obterPendentesResumo()
       .then((res) => {
-        if (!ativo) return;
         const dados = res?.data || res || {};
         setPendentesResumo({
           alunosPendentes: Number(dados.alunos_pendentes ?? 0),
@@ -76,7 +74,7 @@ const Aside = () => {
         // Fallback para contagem de professores caso o endpoint resumido falhe
         listarProfessores()
           .then((res) => {
-            if (ativo && res?.meta?.pendentes_count !== undefined) {
+            if (res?.meta?.pendentes_count !== undefined) {
               const profs = Number(res.meta.pendentes_count);
               setPendentesResumo((atual) => ({
                 ...atual,
@@ -87,11 +85,22 @@ const Aside = () => {
           })
           .catch(() => {});
       });
+  }, [podeGerenciarAprovacoes]);
 
-    return () => {
-      ativo = false;
+  // Carrega ao montar/trocar de rota e ouve o evento global de aprovação
+  useEffect(() => {
+    carregarPendentes();
+
+    // Ouve notificações nativas disparadas por confirmação de docentes ou alunos
+    const onAtualizacao = () => {
+      carregarPendentes();
     };
-  }, [podeGerenciarAprovacoes, location.pathname]);
+
+    window.addEventListener(EVENTO_PENDENCIAS_ATUALIZADAS, onAtualizacao);
+    return () => {
+      window.removeEventListener(EVENTO_PENDENCIAS_ATUALIZADAS, onAtualizacao);
+    };
+  }, [carregarPendentes, location.pathname]);
 
   const toggleGroup = (groupId, currentOpen) => {
     setOpenGroups((prev) => ({

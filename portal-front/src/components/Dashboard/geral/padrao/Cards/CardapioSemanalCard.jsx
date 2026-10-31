@@ -21,7 +21,7 @@ export default function CardapioSemanalCard({ itensCardapio = CARDAPIO_MOCK }) {
   const [mesAtual] = useState("Maio 2025");
 
   return (
-    <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 w-100 d-flex flex-column justify-content-between">
+    <div className="card border-0 shadow-sm rounded-3 p-2 px-md-3 bg-white h-100 w-100 d-flex flex-column justify-content-between">
       <div>
         {/* Cabeçalho */}
         <div className="d-flex align-items-center gap-2 mb-3">

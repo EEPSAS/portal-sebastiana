@@ -21,6 +21,7 @@ import NotasAba from "./NotasAba";
 import "./Turmas.css";
 import TurmasAba from "./TurmasAba";
 import PainelModulo from "../common/PainelModulo";
+import { notificarAtualizacaoPendencias } from "../../../utils/notificacoesEventos";
 
 /**
  * Determina o trimestre escolar corrente com base no mês do calendário (padrão rede estadual de MG):
@@ -325,6 +326,7 @@ const Turmas = () => {
   // Sucesso na homologação de matrícula do aluno
   const handleSucessoVincular = () => {
     dispararNotificacao("Matrícula homologada com sucesso! Aluno confirmado na turma.");
+    notificarAtualizacaoPendencias();
     setRecargaKey((prev) => prev + 1);
   };
 
@@ -462,7 +464,7 @@ const Turmas = () => {
         )}
 
         {/* Sub-abas de 2º Nível: Segmentadas e Compactas */}
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 p-1 bg-light rounded-4 border mb-4">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 p-1 bg-light rounded-3 border mb-3">
           <div className="d-flex flex-wrap align-items-center gap-1">
             {abasDisponiveis.map((aba) => {
               const ativa = abaAtiva === aba.id;

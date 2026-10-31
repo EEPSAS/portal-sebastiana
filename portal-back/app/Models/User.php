@@ -207,19 +207,31 @@ class User extends Authenticatable
             return null;
         }
 
+        // Identifica o período letivo ativo vigente
+        $anoAtivo = PeriodoLetivo::where('ativo', true)->value('ano');
+
         // Se o relacionamento já tiver sido pré-carregado (eager loading), filtra em memória para economizar queries
         if ($this->relationLoaded('turmas')) {
-            return $this->turmas
-                ->filter(fn ($t) => ($t->pivot?->status_matricula ?? null) === 'Ativo')
-                ->sortByDesc('ano_letivo')
-                ->first();
+            $ativas = $this->turmas
+                ->filter(fn ($t) => ($t->pivot?->status_matricula ?? null) === 'Ativo');
+
+            if ($anoAtivo && $turmaAnoAtivo = $ativas->firstWhere('ano_letivo', $anoAtivo)) {
+                return $turmaAnoAtivo;
+            }
+
+            return $ativas->sortByDesc('ano_letivo')->first();
         }
 
-        // Caso contrário, executa consulta direta otimizada filtrando pelo pivot de matrícula
-        return $this->turmas()
-            ->wherePivot('status_matricula', 'Ativo')
-            ->orderByDesc('ano_letivo')
-            ->first();
+        // Caso contrário, prioriza a turma do ano letivo ativo ou a mais recente
+        $query = $this->turmas()->wherePivot('status_matricula', 'Ativo');
+        if ($anoAtivo) {
+            $turmaAnoAtivo = (clone $query)->where('ano_letivo', $anoAtivo)->first();
+            if ($turmaAnoAtivo) {
+                return $turmaAnoAtivo;
+            }
+        }
+
+        return $query->orderByDesc('ano_letivo')->first();
     }
 
     /**

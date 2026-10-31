@@ -34,20 +34,20 @@ export default function BoasVindasCard({
 
   return (
     <div
-      className={`boas-vindas-card d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 pb-3 ${className}`.trim()}
+      className={`boas-vindas-card d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2 pb-2 ${className}`.trim()}
     >
       {/* Bloco Esquerdo: Ícone do Módulo + Título Institucional + Descrição */}
-      <div className="d-flex align-items-center gap-3">
+      <div className="d-flex align-items-center gap-2 gap-md-3">
         {iconeFinal && (
           <div
             className="boas-vindas-icone rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm"
             aria-hidden="true"
             style={{
-              width: "52px",
-              height: "52px",
+              width: "44px",
+              height: "44px",
               backgroundColor: "var(--dashboard-navy-soft)",
               color: "var(--dashboard-navy)",
-              fontSize: "1.6rem",
+              fontSize: "1.35rem",
             }}
           >
             <i className={`bi ${iconeFinal}`}></i>
@@ -56,10 +56,10 @@ export default function BoasVindasCard({
 
         <div>
           <h1
-            className="boas-vindas-titulo mb-1"
+            className="boas-vindas-titulo mb-0"
             style={{
               fontFamily: "'Cormorant Garamond', Georgia, 'Times New Roman', serif",
-              fontSize: "clamp(1.35rem, 2.2vw, 1.85rem)",
+              fontSize: "clamp(1.25rem, 1.8vw, 1.6rem)",
               fontWeight: 700,
               color: "var(--dashboard-navy)",
               lineHeight: 1.2,
@@ -70,7 +70,7 @@ export default function BoasVindasCard({
           {subtituloFinal && (
             <p
               className="text-secondary small mb-0 boas-vindas-subtitulo"
-              style={{ maxWidth: "720px", lineHeight: 1.45 }}
+              style={{ maxWidth: "720px", fontSize: "0.875rem", lineHeight: 1.4 }}
             >
               {subtituloFinal}
             </p>

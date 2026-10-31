@@ -305,7 +305,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 42px;
+  height: 46px;
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -313,13 +313,13 @@
 }
 
 .portal-scope .portal-calendar__day-number {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--portal-radius-sm);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   transition: all var(--portal-transition);
 }
 

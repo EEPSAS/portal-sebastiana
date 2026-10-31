@@ -19,6 +19,8 @@ export default function PainelModulo({
   subtitulo,
   icone,
   acoes,
+  acoesBoasVindas,
+  mostrarCabecalho = true,
   mostrarNav = true,
   abasCustomizadas,
   abaAtivaCustomizada,
@@ -30,11 +32,14 @@ export default function PainelModulo({
   return (
     <section className={`painel-modulo-container ${className}`.trim()}>
       {/* 1. Cabeçalho institucional com ícone, título e descrição do módulo */}
-      <BoasVindasCard
-        titulo={titulo}
-        subtitulo={subtitulo}
-        icone={icone}
-      />
+      {mostrarCabecalho && (
+        <BoasVindasCard
+          titulo={titulo}
+          subtitulo={subtitulo}
+          icone={icone}
+          acoes={acoesBoasVindas || (!mostrarNav ? acoes : undefined)}
+        />
+      )}
 
       {/* 2. Barra de Navegação Horizontal do Módulo (se aplicável) */}
       {mostrarNav && (

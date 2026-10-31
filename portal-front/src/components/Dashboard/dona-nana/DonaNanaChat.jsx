@@ -206,7 +206,7 @@ const DonaNanaChat = () => {
   return (
     <div className="dona-nana-page-container">
       {/* Banner Superior com BoasVindasCard Padronizado */}
-      <div className="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-3">
+      <div className="bg-white rounded-3 shadow-sm p-2 px-md-3 py-md-2 mb-2">
         <BoasVindasCard />
         <ModuloNav
           acoes={

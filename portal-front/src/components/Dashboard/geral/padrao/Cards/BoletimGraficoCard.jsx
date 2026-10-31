@@ -47,7 +47,7 @@ export default function MediumCard({
 
   return (
     <div
-      className="card border-0 shadow-sm rounded-4 p-4 pb-4 mt-4 position-relative w-100 h-100"
+      className="card border-0 shadow-sm rounded-3 p-2 px-md-3 mt-2 position-relative w-100 h-100"
       style={{
         background: '#f7f7f7',
         minHeight: '0',

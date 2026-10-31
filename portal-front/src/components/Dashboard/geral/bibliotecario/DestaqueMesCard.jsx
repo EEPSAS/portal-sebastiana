@@ -6,7 +6,7 @@ export default function DestaqueMesCard({
 }) {
   return (
     <section
-      className="card border-0 dashboard-card-shadow rounded-4 h-100 text-white p-4"
+      className="card border-0 dashboard-card-shadow rounded-3 h-100 text-white p-2 p-md-3"
       style={{ backgroundColor: "var(--dashboard-pink)" }}
       aria-label="Destaque do mês e livros mais emprestados"
     >

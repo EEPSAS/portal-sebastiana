@@ -12,6 +12,7 @@ use App\Http\Resources\TurmaResumoResource;
 use App\Http\Resources\UsuarioResource;
 use App\Models\Disciplina;
 use App\Models\Frequencia;
+use App\Models\PeriodoLetivo;
 use App\Models\Turma;
 use App\Models\TurmaDisciplina;
 use App\Models\User;
@@ -144,6 +145,14 @@ class TurmaController extends Controller
 
         $query = Turma::query()->orderBy('nome_identificador');
 
+        // Filtra pelo ano letivo solicitado ou pelo ano letivo ativo em vigor
+        if ($request->filled('ano_letivo')) {
+            $query->where('ano_letivo', $request->integer('ano_letivo'));
+        } elseif (PeriodoLetivo::where('ativo', true)->exists()) {
+            $anoAtivo = PeriodoLetivo::where('ativo', true)->value('ano');
+            $query->where('ano_letivo', $anoAtivo);
+        }
+
         // Se o usuário for Professor, filtra estritamente suas turmas vinculadas no resumo gerencial
         if ($user->isProfessor() && ! $user->isAdm()) {
             foreach ($user->disciplinasDocente as $discDocente) {
@@ -196,11 +205,14 @@ class TurmaController extends Controller
     {
         Gate::authorize('update', $turma);
 
-        // Alunos disponíveis para homologação: usuários com papel aluno que ainda não possuem matrícula ativa em nenhuma turma
+        // Alunos disponíveis para homologação: usuários com papel aluno que ainda não possuem matrícula ativa NO MESMO ANO LETIVO desta turma
         $query = User::query()
             ->where('role', UserRole::ALUNO)
-            ->whereDoesntHave('matriculas', function ($q) {
-                $q->where('status_matricula', 'Ativo');
+            ->whereDoesntHave('matriculas', function ($q) use ($turma) {
+                $q->where('status_matricula', 'Ativo')
+                    ->whereHas('turma', function ($qt) use ($turma) {
+                        $qt->where('ano_letivo', $turma->ano_letivo);
+                    });
             });
 
         // Suporte opcional a filtro de busca por nome ou e-mail
@@ -212,7 +224,8 @@ class TurmaController extends Controller
             });
         }
 
-        $alunos = $query->orderBy('name')->limit(50)->get(['id', 'name', 'email']);
+        // Recupera os atributos completos do modelo para correta entrega no UsuarioResource
+        $alunos = $query->orderBy('name')->limit(50)->get();
 
         return response()->json(UsuarioResource::collection($alunos), 200);
     }

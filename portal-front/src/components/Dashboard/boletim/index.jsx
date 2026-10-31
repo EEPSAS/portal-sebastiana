@@ -67,6 +67,8 @@ export default function Boletim({ turmaId, alunoId }) {
           <ComparativoTurmaAba
             disciplinas={dados.disciplinas}
             comparativoNotas={dados.comparativoNotas}
+            frequenciaAlunoGlobal={dados.frequenciaAlunoGlobal}
+            frequenciaTurmaGlobal={dados.frequenciaTurmaGlobal}
           />
         );
       default:
@@ -86,7 +88,7 @@ export default function Boletim({ turmaId, alunoId }) {
       <div className="boletim__shell">
         {/* Sub-abas de 2º Nível: Segmentadas e Elegantes */}
         <div
-          className="d-flex flex-wrap align-items-center gap-1 p-1 bg-light rounded-pill border mb-4 d-inline-flex"
+          className="d-flex flex-wrap align-items-center gap-1 p-1 bg-light rounded-pill border mb-3 d-inline-flex"
           role="tablist"
           aria-label="Seções do boletim escolar"
         >

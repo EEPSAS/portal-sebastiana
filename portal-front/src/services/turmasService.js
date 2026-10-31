@@ -157,7 +157,8 @@ export const fetchTurmaAlunos = async (turmaId, { signal } = {}) => {
     const errorData = await response.json().catch(() => null);
     throw new Error(errorData?.message || "Não foi possível carregar os alunos da turma.");
   }
-  return response.json();
+  const data = await response.json().catch(() => null);
+  return extrairLista(data);
 };
 
 // Busca os alunos cadastrados no sistema elegíveis para matrícula na turma
@@ -168,7 +169,8 @@ export const fetchAlunosDisponiveis = async (turmaId, { busca, signal } = {}) =>
     const errorData = await response.json().catch(() => null);
     throw new Error(errorData?.message || "Não foi possível buscar alunos disponíveis.");
   }
-  return response.json();
+  const data = await response.json().catch(() => null);
+  return extrairLista(data);
 };
 
 // Vincula e matricula um aluno na turma selecionada
@@ -238,5 +240,3 @@ export const turmasService = {
   excluirDadosCsv,
   listarNotasTurma,
 };
-
-

@@ -31,7 +31,12 @@ export const api = async (path, { method = 'GET', body, signal, headers = {} } =
   };
 
   if (body) {
-    config.body = isFormData ? body : JSON.stringify(body);
+    // Blindagem didática contra dupla serialização: se já for string ou FormData, preserva o corpo original
+    config.body = isFormData
+      ? body
+      : typeof body === 'string'
+      ? body
+      : JSON.stringify(body);
   }
 
   const response = await fetch(`${API_URL}${path}`, config);

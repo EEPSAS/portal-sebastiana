@@ -120,7 +120,7 @@ const ConfiguracaoDonaNana = () => {
   return (
     <div className="dona-nana-config-container">
       {/* Cabeçalho Institucional com BoasVindasCard Padronizado */}
-      <div className="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-3">
+      <div className="bg-white rounded-3 shadow-sm p-2 px-md-3 py-md-2 mb-2">
         <BoasVindasCard />
         <ModuloNav
           acoes={

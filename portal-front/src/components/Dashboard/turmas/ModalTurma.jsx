@@ -1,16 +1,21 @@
 /**
- * ModalTurma.jsx - Formulário de Criação e Edição de Turma com Vínculo de Ciclo
+ * ModalTurma.jsx - Formulário de Criação e Edição de Turma com Vínculo de Ciclo e Período Letivo
  *
  * Papel Didático:
- * Atende à Diretriz 3.2a:
- * Permite atribuir um Ciclo (ex: 1º Ano, 2º Ano, 3º Ano) à Turma.
- * Ao pertencer a um Ciclo, a turma herda automaticamente todas as disciplinas
- * daquele ciclo e seus respectivos professores titulares.
+ * 1. Atende à Diretriz 3.2a:
+ *    Permite atribuir um Ciclo (ex: 1º Ano, 2º Ano, 3º Ano) à Turma.
+ *    Ao pertencer a um Ciclo, a turma herda automaticamente todas as disciplinas
+ *    daquele ciclo e seus respectivos professores titulares.
+ * 2. Vínculo Obrigatório com o Período Letivo:
+ *    Obrigatório selecionar o Período Letivo oficial cadastrado no sistema (Ano Letivo),
+ *    garantindo que todas as turmas, matrículas e diários estejam formalmente atrelados
+ *    ao calendário e ciclo avaliativo em vigor.
  */
 
 import { useEffect, useState } from "react";
 import { atualizarTurma, criarTurma } from "../../../services/turmasService";
 import { listarCiclos } from "../../../services/disciplinasService";
+import { listarPeriodosLetivos } from "../../../services/periodosLetivosService";
 
 /**
  * Conteúdo interno do formulário de criação/edição de turma.
@@ -24,11 +29,12 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
   );
   const [turno, setTurno] = useState(() => turmaParaEditar?.turno || "Matutino");
   const [anoLetivo, setAnoLetivo] = useState(
-    () => turmaParaEditar?.ano_letivo || new Date().getFullYear()
+    () => (turmaParaEditar?.ano_letivo ? String(turmaParaEditar.ano_letivo) : "")
   );
   const [status, setStatus] = useState(() => turmaParaEditar?.status || "Ativa");
 
   const [ciclosDisponiveis, setCiclosDisponiveis] = useState([]);
+  const [periodosDisponiveis, setPeriodosDisponiveis] = useState([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -36,15 +42,29 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
 
   useEffect(() => {
     let ativo = true;
-    listarCiclos()
-      .then((lista) => {
-        if (ativo) setCiclosDisponiveis(lista || []);
+
+    Promise.all([listarCiclos(), listarPeriodosLetivos()])
+      .then(([ciclos, periodos]) => {
+        if (!ativo) return;
+        setCiclosDisponiveis(ciclos || []);
+
+        const listaPeriodos = periodos || [];
+        setPeriodosDisponiveis(listaPeriodos);
+
+        // Se estiver criando nova turma e o ano letivo ainda não foi escolhido, pré-seleciona o período ativo vigente
+        if (!turmaParaEditar?.ano_letivo && listaPeriodos.length > 0) {
+          const periodoAtivo = listaPeriodos.find((p) => p.ativo) || listaPeriodos[0];
+          if (periodoAtivo) {
+            setAnoLetivo(String(periodoAtivo.ano));
+          }
+        }
       })
       .catch(() => {});
+
     return () => {
       ativo = false;
     };
-  }, []);
+  }, [turmaParaEditar?.ano_letivo]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -52,6 +72,11 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
 
     if (!nomeIdentificador.trim()) {
       setErro("Informe o nome identificador da turma.");
+      return;
+    }
+
+    if (!anoLetivo) {
+      setErro("A seleção do Período Letivo é obrigatória para vincular a turma.");
       return;
     }
 
@@ -121,7 +146,7 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
 
           <div className="mb-3">
             <label htmlFor="nome-identificador" className="form-label small fw-bold text-dark">
-              Nome da Turma / Identificador:
+              Nome da Turma / Identificador *:
             </label>
             <input
               id="nome-identificador"
@@ -162,7 +187,7 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
           <div className="row g-2 mb-3">
             <div className="col-12 col-sm-6">
               <label htmlFor="turno-turma" className="form-label small fw-bold text-dark">
-                Turno:
+                Turno *:
               </label>
               <select
                 id="turno-turma"
@@ -178,21 +203,31 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
               </select>
             </div>
 
+            {/* Vínculo Obrigatório com o Período Letivo Cadastrado */}
             <div className="col-12 col-sm-6">
               <label htmlFor="ano-letivo" className="form-label small fw-bold text-dark">
-                Ano Letivo:
+                Período Letivo / Ano *:
               </label>
-              <input
+              <select
                 id="ano-letivo"
-                type="number"
-                min="2020"
-                max="2100"
-                className="form-control"
+                className="form-select"
                 value={anoLetivo}
                 onChange={(e) => setAnoLetivo(e.target.value)}
                 disabled={salvando}
                 required
-              />
+              >
+                <option value="">Selecione o período letivo...</option>
+                {periodosDisponiveis.map((p) => (
+                  <option key={p.id_periodo_letivo || p.ano} value={p.ano}>
+                    Ano {p.ano} — {p.tipo_divisao?.toUpperCase()} {p.ativo ? "(Vigente / Ativo)" : `(${p.status})`}
+                  </option>
+                ))}
+              </select>
+              {periodosDisponiveis.length === 0 && (
+                <small className="text-danger d-block mt-1" style={{ fontSize: "0.73rem" }}>
+                  Nenhum período letivo cadastrado. Cadastre um período primeiro em Acadêmico &gt; Período Letivo.
+                </small>
+              )}
             </div>
           </div>
 
@@ -225,7 +260,7 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
             <button
               type="submit"
               className="btn btn-sm turmas-btn-primario px-4 rounded-pill"
-              disabled={salvando}
+              disabled={salvando || periodosDisponiveis.length === 0}
             >
               {salvando ? (
                 <>

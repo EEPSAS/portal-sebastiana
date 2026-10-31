@@ -85,10 +85,10 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false, te
   return (
     <div>
       {/* 1. Cards de Indicadores Globais */}
-      <div className="row g-3 mb-4">
+      <div className="row g-2 g-md-3 mb-2">
         {/* Total de Turmas */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="turma-stat-card p-4 h-100">
+          <div className="turma-stat-card p-2 p-md-3 h-100">
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: "0.75rem" }}>
@@ -112,7 +112,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false, te
 
         {/* Estudantes Matriculados */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="turma-stat-card p-4 h-100">
+          <div className="turma-stat-card p-2 p-md-3 h-100">
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: "0.75rem" }}>
@@ -136,7 +136,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false, te
 
         {/* Média Geral da Escola */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="turma-stat-card p-4 h-100">
+          <div className="turma-stat-card p-2 p-md-3 h-100">
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: "0.75rem" }}>
@@ -160,7 +160,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false, te
 
         {/* Frequência Escolar Média */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="turma-stat-card p-4 h-100">
+          <div className="turma-stat-card p-2 p-md-3 h-100">
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: "0.75rem" }}>
@@ -191,7 +191,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false, te
       <div className="row g-4">
         {/* Gráfico 1: Média Geral por Turma */}
         <div className="col-12 col-lg-6">
-          <div className="turma-stat-card p-4 h-100">
+          <div className="turma-stat-card p-2 p-md-3 h-100">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <div>
                 <h5 className="fw-bold text-dark mb-0 fs-6">Média Geral por Turma</h5>
@@ -236,7 +236,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false, te
 
         {/* Gráfico 2: Taxa de Presença por Turma */}
         <div className="col-12 col-lg-6">
-          <div className="turma-stat-card p-4 h-100">
+          <div className="turma-stat-card p-2 p-md-3 h-100">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <div>
                 <h5 className="fw-bold text-dark mb-0 fs-6">Taxa de Presença por Turma</h5>

@@ -11,7 +11,7 @@ import UpdateItem from "./UltimasAtualizacoesLista.jsx";
  */
 export default function LatestUpdates({ updates = [], loading = false, error = null }) {
   return (
-    <div className="geral-updates-card mt-3 w-100">
+    <div className="geral-updates-card mt-2 w-100">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5 className="geral-updates-title mb-0 d-flex align-items-center gap-2">
           <i className="bi bi-megaphone-fill text-primary fs-5"></i>

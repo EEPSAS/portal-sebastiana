@@ -13,7 +13,7 @@
 /* Container da página com animação suave de entrada */
 .geral-especialista-page {
   animation: fadeInGeral 250ms ease-in-out;
-  padding: 0.5rem 0.25rem 2rem 0.25rem;
+  padding: 0.25rem 0;
 }
 
 @keyframes fadeInGeral {
@@ -59,12 +59,12 @@
 .geral-kpi-card {
   background-color: #ffffff;
   border: 1px solid #d9e5f5;
-  border-radius: 20px;
-  padding: 1.35rem 1.25rem 1.15rem 1.25rem;
+  border-radius: 14px;
+  padding: 0.85rem 1rem 0.75rem 1rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
-  min-height: 145px;
-  box-shadow: 0 4px 16px rgba(13, 35, 70, 0.03);
+  min-height: auto;
+  box-shadow: 0 2px 10px rgba(13, 35, 70, 0.03);
 }
 
 .geral-kpi-card:hover {
@@ -74,8 +74,8 @@
 
 /* Container do ícone circular do KPI */
 .geral-kpi-icon {
-  width: 50px;
-  height: 50px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -118,11 +118,11 @@
 }
 
 .geral-kpi-value {
-  font-size: 2.1rem;
+  font-size: 1.85rem;
   font-weight: 700;
   color: #0f2b5c;
   line-height: 1.1;
-  margin-top: 0.35rem;
+  margin-top: 0.2rem;
 }
 
 /* Rodapé do KPI com métrica de tendência e seta */
@@ -130,8 +130,8 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-top: 0.85rem;
-  padding-top: 0.4rem;
+  margin-top: 0.4rem;
+  padding-top: 0.2rem;
 }
 
 .geral-kpi-trend {
@@ -172,10 +172,10 @@
 .geral-chart-card {
   background-color: #ffffff;
   border: 1px solid #d9e5f5;
-  border-radius: 20px;
-  padding: 1.5rem;
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
   height: 100%;
-  box-shadow: 0 4px 16px rgba(13, 35, 70, 0.03);
+  box-shadow: 0 2px 10px rgba(13, 35, 70, 0.03);
 }
 
 .geral-chart-title {
@@ -200,9 +200,9 @@
 .geral-updates-card {
   background-color: #ffffff;
   border: 1px solid #d9e5f5;
-  border-radius: 20px;
-  padding: 1.5rem 1.75rem;
-  box-shadow: 0 4px 16px rgba(13, 35, 70, 0.03);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 2px 10px rgba(13, 35, 70, 0.03);
 }
 
 .geral-updates-title {
@@ -231,7 +231,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.95rem 0.25rem;
+  padding: 0.45rem 0.25rem;
   border-bottom: 1px solid #eef3fa;
   transition: background-color 0.15s ease;
   border-radius: 8px;
@@ -279,4 +279,42 @@
 .geral-update-item:hover .geral-update-chevron {
   color: #1c3d70;
   transform: translateX(2px);
+}
+
+/* Espaçamento vertical controlado entre as seções do painel */
+.geral-adm-page > .row + .row,
+.geral-especialista-page > .row + .row,
+.teacher-overview > .row + .row {
+  margin-top: 0.35rem !important;
+}
+
+/* Botões em formato de pílula com transição suave e fluida (sem pulos abruptos) */
+.btn-pill-filter {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  border-radius: 50rem;
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.btn-pill-filter:hover:not(.is-active) {
+  background-color: rgba(13, 35, 70, 0.06);
+  color: #0d2346;
+}
+
+.btn-pill-filter.is-active {
+  background-color: var(--dashboard-navy, #0d2346);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(13, 35, 70, 0.18);
+  border-color: var(--dashboard-navy, #0d2346);
 }

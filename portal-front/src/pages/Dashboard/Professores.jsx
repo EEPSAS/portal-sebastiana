@@ -21,6 +21,7 @@ import {
 import { formatarDisciplinaCiclo } from "../../utils/formatters";
 import ModalVincularDisciplina from "../../components/Dashboard/professores/ModalVincularDisciplina";
 import PainelModulo from "../../components/Dashboard/common/PainelModulo";
+import { notificarAtualizacaoPendencias } from "../../utils/notificacoesEventos";
 import "../../components/Dashboard/professores/Professores.css";
 
 const ProfessoresPage = () => {
@@ -124,6 +125,8 @@ const ProfessoresPage = () => {
     try {
       const res = await confirmarProfessor(prof.id, disciplinaIds);
       exibirFeedback(res.message || "Professor aprovado e vinculado às disciplinas com sucesso!");
+      setPendentesCount((prev) => Math.max(0, prev - 1));
+      notificarAtualizacaoPendencias();
       setChaveRecarga((k) => k + 1);
     } catch (err) {
       exibirFeedback(err.message || "Erro ao confirmar professor.");
@@ -144,6 +147,8 @@ const ProfessoresPage = () => {
     try {
       const res = await recusarProfessor(professorId);
       exibirFeedback(res.message || "Acesso recusado.");
+      setPendentesCount((prev) => Math.max(0, prev - 1));
+      notificarAtualizacaoPendencias();
       setChaveRecarga((k) => k + 1);
     } catch (err) {
       exibirFeedback(err.message || "Erro ao recusar professor.");
@@ -462,13 +467,13 @@ const ProfessoresPage = () => {
 
       <PainelModulo acoes={acoesProfessores}>
       {erro && (
-        <div className="alert alert-danger rounded-3 shadow-sm mb-4" role="alert">
+        <div className="alert alert-danger rounded-3 shadow-sm mb-3" role="alert">
           {erro}
         </div>
       )}
 
       {/* Sub-abas de 2º Nível: Segmentadas e Compactas */}
-      <div className="d-flex flex-wrap align-items-center gap-1 p-1 bg-light rounded-pill border mb-4 d-inline-flex">
+      <div className="d-flex flex-wrap align-items-center gap-1 p-1 bg-light rounded-pill border mb-3 d-inline-flex">
         <button
           type="button"
           className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 d-flex align-items-center gap-2 ${

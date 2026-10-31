@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Agenda.css - Estilização Modular da Agenda do Painel (Dashboard)
  *
  * Conceito Didático:
@@ -15,7 +15,7 @@
 .agenda-especialista-page {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 16px 20px;
   container-name: agenda-page;
   container-type: inline-size;
 }
@@ -24,12 +24,12 @@
   display: grid;
   grid-template-columns: 260px minmax(360px, 1fr) 280px;
   align-items: stretch;
-  gap: 24px;
-  padding: 24px;
+  gap: 20px;
+  padding: 20px;
   border: 1px solid #f1f5f9;
-  border-radius: 16px;
+  border-radius: 14px;
   background: #ffffff;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
 
 /* ==========================================================================
@@ -38,7 +38,7 @@
 
 .agenda-especialista-calendar {
   min-width: 0;
-  padding: 0 24px;
+  padding: 0 20px;
   border-right: 1px solid #f1f5f9;
   border-left: 1px solid #f1f5f9;
   container-name: agenda-calendar;
@@ -50,8 +50,8 @@
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 8px;
-  min-height: 58px;
-  margin-bottom: 20px;
+  min-height: 56px;
+  margin-bottom: 18px;
 }
 
 .agenda-calendar-month {

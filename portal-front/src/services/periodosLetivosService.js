@@ -46,10 +46,10 @@ export const obterPeriodoLetivo = async (id, { signal } = {}) => {
 };
 
 export const criarPeriodoLetivo = async (dados) => {
+  // Envia o objeto diretamente: api() já se encarrega da serialização JSON
   const response = await api("/periodos-letivos", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(dados),
+    body: dados,
   });
   const data = await response.json().catch(() => null);
 
@@ -63,10 +63,10 @@ export const criarPeriodoLetivo = async (dados) => {
 };
 
 export const atualizarPeriodoLetivo = async (id, dados) => {
+  // Envia o objeto diretamente para atualização do período
   const response = await api(`/periodos-letivos/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(dados),
+    body: dados,
   });
   const data = await response.json().catch(() => null);
 

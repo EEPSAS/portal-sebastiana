@@ -189,6 +189,8 @@ class PeriodoLetivoService
 
     /**
      * Sincroniza marcos institucionais oficiais na tabela de eventos do calendário escolar.
+     * Marca exclusivamente os dias de início e término de cada divisão (trimestre/semestre)
+     * e do ano letivo, evitando preencher continuamente todos os dias intermediários no calendário.
      */
     public function sincronizarMarcosAgenda(PeriodoLetivo $periodo, ?User $autor = null): int
     {
@@ -201,60 +203,66 @@ class PeriodoLetivoService
         $totalCriadosOuAtualizados = 0;
         $tagIdentificadora = "[Marco Escolar - Ano Letivo {$ano}]";
 
-        // 1. Marco de Início do Ano Letivo
-        Evento::updateOrCreate(
-            [
-                'descricao' => "Início oficial das atividades pedagógicas do ano letivo de {$ano}. {$tagIdentificadora}",
-            ],
-            [
-                'titulo' => "Início do Ano Letivo {$ano}",
-                'data_inicio' => $periodo->data_inicio,
-                'data_fim' => $periodo->data_inicio,
+        // Remove marcos escolares legados deste ano letivo para evitar eventos de longa duração
+        Evento::where('descricao', 'like', "%{$tagIdentificadora}%")->delete();
+
+        // 1. Marco de Início do Ano Letivo (evento pontual)
+        Evento::create([
+            'titulo' => "Início do Ano Letivo {$ano}",
+            'descricao' => "Início oficial das atividades pedagógicas do ano letivo de {$ano}. {$tagIdentificadora}",
+            'data_inicio' => $periodo->data_inicio,
+            'data_fim' => $periodo->data_inicio,
+            'hora_inicio' => '07:30',
+            'tipo' => TipoEvento::EVENTOS->value,
+            'importante' => true,
+            'local' => 'Colégio Sebastiana',
+            'criador_id' => $criadorId,
+        ]);
+        $totalCriadosOuAtualizados++;
+
+        // 2. Marcos pontuais de Início e Término para cada Divisão (ex: 1º Trimestre)
+        foreach ($periodo->divisoes as $div) {
+            // 2.1 Início da Divisão / Trimestre
+            Evento::create([
+                'titulo' => "Início do {$div->nome} — Ano {$ano}",
+                'descricao' => "Início do ciclo avaliativo do {$div->nome} ({$div->pontos} pontos distribuídos). {$tagIdentificadora}",
+                'data_inicio' => $div->data_inicio,
+                'data_fim' => $div->data_inicio,
                 'hora_inicio' => '07:30',
                 'tipo' => TipoEvento::EVENTOS->value,
                 'importante' => true,
                 'local' => 'Colégio Sebastiana',
                 'criador_id' => $criadorId,
-            ]
-        );
-        $totalCriadosOuAtualizados++;
-
-        // 2. Marcos para cada Divisão (ex: 1º Trimestre de data_inicio a data_fim)
-        foreach ($periodo->divisoes as $div) {
-            Evento::updateOrCreate(
-                [
-                    'descricao' => "Ciclo avaliativo correspondente ao {$div->nome} ({$div->pontos} pontos distribuídos). {$tagIdentificadora}",
-                ],
-                [
-                    'titulo' => "{$div->nome} ({$div->pontos} pts) — Ano {$ano}",
-                    'data_inicio' => $div->data_inicio,
-                    'data_fim' => $div->data_fim,
-                    'hora_inicio' => '07:30',
-                    'tipo' => TipoEvento::EVENTOS->value,
-                    'importante' => true,
-                    'local' => 'Colégio Sebastiana',
-                    'criador_id' => $criadorId,
-                ]
-            );
+            ]);
             $totalCriadosOuAtualizados++;
-        }
 
-        // 3. Marco de Encerramento do Ano Letivo
-        Evento::updateOrCreate(
-            [
-                'descricao' => "Término oficial das aulas e fechamento do ano letivo de {$ano}. {$tagIdentificadora}",
-            ],
-            [
-                'titulo' => "Encerramento do Ano Letivo {$ano}",
-                'data_inicio' => $periodo->data_fim,
-                'data_fim' => $periodo->data_fim,
+            // 2.2 Término da Divisão / Trimestre
+            Evento::create([
+                'titulo' => "Término do {$div->nome} — Ano {$ano}",
+                'descricao' => "Fechamento do ciclo avaliativo do {$div->nome}. {$tagIdentificadora}",
+                'data_inicio' => $div->data_fim,
+                'data_fim' => $div->data_fim,
                 'hora_inicio' => '17:00',
                 'tipo' => TipoEvento::EVENTOS->value,
                 'importante' => true,
                 'local' => 'Colégio Sebastiana',
                 'criador_id' => $criadorId,
-            ]
-        );
+            ]);
+            $totalCriadosOuAtualizados++;
+        }
+
+        // 3. Marco de Encerramento do Ano Letivo (evento pontual)
+        Evento::create([
+            'titulo' => "Encerramento do Ano Letivo {$ano}",
+            'descricao' => "Término oficial das aulas e fechamento do ano letivo de {$ano}. {$tagIdentificadora}",
+            'data_inicio' => $periodo->data_fim,
+            'data_fim' => $periodo->data_fim,
+            'hora_inicio' => '17:00',
+            'tipo' => TipoEvento::EVENTOS->value,
+            'importante' => true,
+            'local' => 'Colégio Sebastiana',
+            'criador_id' => $criadorId,
+        ]);
         $totalCriadosOuAtualizados++;
 
         return $totalCriadosOuAtualizados;

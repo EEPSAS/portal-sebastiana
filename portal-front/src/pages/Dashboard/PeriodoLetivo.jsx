@@ -75,17 +75,18 @@ export default function PeriodoLetivoPage() {
     setPeriodoEmEdicao(null);
     setModalAberto(true);
     setMensagemSucesso("");
+    setErro("");
   };
 
   const handleAbrirEdicao = (periodo) => {
     setPeriodoEmEdicao(periodo);
     setModalAberto(true);
     setMensagemSucesso("");
+    setErro("");
   };
 
   const handleSalvar = async (payload) => {
     setSalvando(true);
-    setErro("");
     try {
       if (periodoEmEdicao) {
         await atualizarPeriodoLetivo(periodoEmEdicao.id_periodo_letivo, payload);
@@ -96,8 +97,6 @@ export default function PeriodoLetivoPage() {
       }
       setModalAberto(false);
       await recarregarPeriodos();
-    } catch (err) {
-      setErro(err.message || "Erro ao salvar período letivo.");
     } finally {
       setSalvando(false);
     }
@@ -144,6 +143,7 @@ export default function PeriodoLetivoPage() {
     }
   };
 
+  // Botão de criação posicionado no slot de ações do cabeçalho institucional (BoasVindasCard)
   const acoesCabecalho = podeGerenciar ? (
     <button
       type="button"
@@ -163,7 +163,7 @@ export default function PeriodoLetivoPage() {
       mostrarNav={false}
       acoes={acoesCabecalho}
     >
-      {/* Alertas de Feedback */}
+      {/* Alertas de Feedback da Página Principal */}
       {mensagemSucesso && (
         <div className="alert alert-success alert-dismissible fade show rounded-4 shadow-sm mb-4" role="alert">
           <i className="bi bi-check-circle-fill me-2 fs-5 align-middle"></i>
@@ -234,7 +234,7 @@ export default function PeriodoLetivoPage() {
         />
       )}
 
-      {/* Modal de Criação / Edição */}
+      {/* Modal de Criação / Edição com tratamento de erros interno */}
       <ModalPeriodoLetivo
         aberto={modalAberto}
         periodoEmEdicao={periodoEmEdicao}

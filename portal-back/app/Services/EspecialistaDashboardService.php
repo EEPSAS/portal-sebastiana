@@ -1475,6 +1475,8 @@ class EspecialistaDashboardService
         // 1. Determina as turmas do escopo com base no papel do usuário
         $isDocenteEstrito = $usuario->isProfessor() && ! $usuario->canManageAcademic();
 
+        $anoVigente = $periodoAtivo?->ano;
+
         if ($isDocenteEstrito) {
             // Diretriz 3.4a: Garante que as disciplinas vinculadas ao professor propaguem seus vínculos com os Ciclos e Turmas
             $disciplinasDoProfessor = $usuario->disciplinasDocente()->with('ciclos.turmas')->get();
@@ -1491,23 +1493,31 @@ class EspecialistaDashboardService
                 ->filter()
                 ->values();
 
-            // Se o professor possui turmas atribuídas, filtra por elas; caso contrário, fallback para turmas ativas
+            // Considera estritamente as turmas ativas do ano letivo em vigor
+            $queryTurmasDocente = Turma::where('status', 'Ativa');
+            if ($anoVigente) {
+                $queryTurmasDocente->where('ano_letivo', $anoVigente);
+            }
+
             if ($turmasIds->isNotEmpty()) {
-                $turmas = Turma::whereIn('id_turma', $turmasIds)
-                    ->where('status', 'Ativa')
+                $turmas = (clone $queryTurmasDocente)->whereIn('id_turma', $turmasIds)
                     ->orderBy('nome_identificador')
                     ->get();
             } else {
-                $turmas = Turma::where('status', 'Ativa')->orderBy('nome_identificador')->get();
+                $turmas = $queryTurmasDocente->orderBy('nome_identificador')->get();
             }
         } else {
-            // Especialistas e Administradores visualizam todas as turmas ativas da instituição
-            $turmas = Turma::where('status', 'Ativa')->orderBy('nome_identificador')->get();
+            // Especialistas e Administradores visualizam estritamente as turmas ativas do ano letivo em vigor
+            $queryTurmasAdm = Turma::where('status', 'Ativa');
+            if ($anoVigente) {
+                $queryTurmasAdm->where('ano_letivo', $anoVigente);
+            }
+            $turmas = $queryTurmasAdm->orderBy('nome_identificador')->get();
             $disciplinasIdsProf = collect();
         }
 
-        // Caso a escola não tenha turmas com status 'Ativa', busca todas
-        if ($turmas->isEmpty()) {
+        // Se nenhum período estiver ativo e nenhuma turma ativa existir, fallback geral
+        if ($turmas->isEmpty() && ! $anoVigente) {
             $turmas = Turma::orderBy('nome_identificador')->get();
         }
 
@@ -1746,11 +1756,15 @@ class EspecialistaDashboardService
                 'tipo_divisao' => $periodoAtivo?->tipo_divisao ?? 'trimestre',
                 'divisao_selecionada' => $divisaoEfetiva,
                 'pontos_divisao' => $pontosDivisao,
+                'data_inicio' => $periodoAtivo?->data_inicio ? \Carbon\Carbon::parse($periodoAtivo->data_inicio)->format('Y-m-d') : null,
+                'data_fim' => $periodoAtivo?->data_fim ? \Carbon\Carbon::parse($periodoAtivo->data_fim)->format('Y-m-d') : null,
                 'divisoes_disponiveis' => $periodoAtivo?->divisoes->map(fn ($div) => [
                     'id_divisao' => $div->id_divisao,
                     'nome' => $div->nome,
                     'pontos' => (float) $div->pontos,
                     'is_atual' => $div->isVigente(),
+                    'data_inicio' => $div->data_inicio ? \Carbon\Carbon::parse($div->data_inicio)->format('Y-m-d') : null,
+                    'data_fim' => $div->data_fim ? \Carbon\Carbon::parse($div->data_fim)->format('Y-m-d') : null,
                 ])->values()->all() ?? [],
             ],
         ];

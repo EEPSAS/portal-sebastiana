@@ -9,6 +9,8 @@ use App\Models\Evento;
 use App\Models\Frequencia;
 use App\Models\Matricula;
 use App\Models\Nota;
+use App\Models\PeriodoLetivo;
+use App\Models\PeriodoLetivoDivisao;
 use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -284,7 +286,24 @@ class AlunoDashboardService
         $turma = Turma::findOrFail($turmaId);
         $disciplinas = $this->obterDisciplinasDaTurma($turma);
 
-        $totalAlunosMatriculados = max(1, Matricula::where('turma_id', $turmaId)->where('status_matricula', 'Ativo')->count());
+        $alunosAtivosIds = Matricula::where('turma_id', $turmaId)
+            ->where('status_matricula', 'Ativo')
+            ->pluck('usuario_id')
+            ->all();
+
+        $totalAlunosMatriculados = max(1, count($alunosAtivosIds));
+
+        // Consulta agregada de frequência para todos os alunos ativos da turma
+        $queryFreqGeral = Frequencia::where('turma_id', $turmaId)
+            ->whereIn('usuario_id', $alunosAtivosIds);
+        $this->aplicarFiltroDataFrequencia($queryFreqGeral, $trimestre);
+
+        // Agrupado por disciplina_id e usuario_id
+        $dadosFreqAgrupados = $queryFreqGeral
+            ->selectRaw('disciplina_id, usuario_id, sum(quantidade_aulas) as total_aulas, sum(case when status_presenca = "Falta" then quantidade_aulas else 0 end) as total_faltas')
+            ->groupBy('disciplina_id', 'usuario_id')
+            ->get()
+            ->groupBy('disciplina_id');
 
         $comparativo = [];
         $labels = [];
@@ -294,7 +313,7 @@ class AlunoDashboardService
         $mediasFaltasTurma = [];
 
         foreach ($disciplinas as $disciplina) {
-            // 1. Desempenho individual do aluno
+            // 1. Desempenho individual de notas do aluno
             $queryNotaAluno = Nota::where('turma_id', $turmaId)
                 ->where('disciplina_id', $disciplina->id_disciplina)
                 ->where('usuario_id', $alunoId);
@@ -302,32 +321,59 @@ class AlunoDashboardService
             $notaAluno = $queryNotaAluno->avg('valor_nota');
             $notaAlunoNum = $notaAluno !== null ? round((float) $notaAluno, 2) : 0.0;
 
-            $queryFreqAluno = Frequencia::where('turma_id', $turmaId)
-                ->where('disciplina_id', $disciplina->id_disciplina)
-                ->where('usuario_id', $alunoId);
-            $this->aplicarFiltroDataFrequencia($queryFreqAluno, $trimestre);
-            $faltasAlunoNum = (int) $queryFreqAluno->where('status_presenca', 'Falta')->sum('quantidade_aulas');
-
-            // 2. Desempenho coletivo da turma
+            // 2. Desempenho coletivo de notas da turma
             $queryNotaTurma = Nota::where('turma_id', $turmaId)
                 ->where('disciplina_id', $disciplina->id_disciplina);
             $this->aplicarFiltroPeriodo($queryNotaTurma, $trimestre);
             $mediaTurma = $queryNotaTurma->avg('valor_nota');
             $mediaTurmaNum = $mediaTurma !== null ? round((float) $mediaTurma, 2) : 0.0;
 
-            $queryFreqTurma = Frequencia::where('turma_id', $turmaId)
-                ->where('disciplina_id', $disciplina->id_disciplina);
-            $this->aplicarFiltroDataFrequencia($queryFreqTurma, $trimestre);
-            $totalFaltasTurma = (int) $queryFreqTurma->where('status_presenca', 'Falta')->sum('quantidade_aulas');
+            // 3. Faltas e Frequência percentual (Decisão Pedagógica: média simples dos alunos ativos)
+            $freqAlunosDisc = $dadosFreqAgrupados->get($disciplina->id_disciplina, collect());
+            $regAlunoEspecifico = $freqAlunosDisc->firstWhere('usuario_id', (int) $alunoId);
+
+            $faltasAlunoNum = $regAlunoEspecifico ? (int) $regAlunoEspecifico->total_faltas : 0;
+            $totalFaltasTurma = (int) $freqAlunosDisc->sum('total_faltas');
             $mediaFaltasTurmaNum = round($totalFaltasTurma / $totalAlunosMatriculados, 2);
+
+            $frequenciaAluno = null;
+            $frequenciaTurma = null;
+
+            if ($freqAlunosDisc->isNotEmpty()) {
+                $percentuaisIndividuais = [];
+
+                foreach ($freqAlunosDisc as $reg) {
+                    $aulas = (int) $reg->total_aulas;
+                    $faltas = (int) $reg->total_faltas;
+
+                    // Ajuste de projeção de aulas caso apenas faltas tenham sido sincronizadas via CSV
+                    if ($faltas > 0 && $aulas <= $faltas) {
+                        $aulasPrevistas = max(20, (int) round(($disciplina->carga_horaria_anual ?: 80) / ($trimestre ? 3 : 1)));
+                        $aulas = max($faltas, $aulasPrevistas);
+                    }
+
+                    $pct = $aulas > 0 ? max(0.0, min(100.0, (($aulas - $faltas) / $aulas) * 100)) : 100.0;
+                    $percentuaisIndividuais[] = $pct;
+
+                    if ((int) $reg->usuario_id === (int) $alunoId) {
+                        $frequenciaAluno = round($pct, 1);
+                    }
+                }
+
+                if (! empty($percentuaisIndividuais)) {
+                    $frequenciaTurma = round(array_sum($percentuaisIndividuais) / count($percentuaisIndividuais), 1);
+                }
+            }
 
             $item = [
                 'disciplina_id' => $disciplina->id_disciplina,
                 'nome_disciplina' => $disciplina->nome,
                 'nota_aluno' => $notaAlunoNum,
                 'faltas_aluno' => $faltasAlunoNum,
+                'frequencia_aluno' => $frequenciaAluno,
                 'media_turma' => $mediaTurmaNum,
                 'media_faltas_turma' => $mediaFaltasTurmaNum,
+                'frequencia_turma' => $frequenciaTurma,
                 'valor_maximo' => $this->obterValorMaximoPeriodo($trimestre),
             ];
 
@@ -341,10 +387,41 @@ class AlunoDashboardService
             $mediasFaltasTurma[] = $mediaFaltasTurmaNum;
         }
 
+        // 4. Frequência Global (Geral da Turma e do Aluno)
+        $frequenciaTurmaGlobal = null;
+        $frequenciaAlunoGlobal = null;
+
+        if ($dadosFreqAgrupados->isNotEmpty()) {
+            $alunosGlobais = $dadosFreqAgrupados->flatten(1)->groupBy('usuario_id');
+            $percentuaisGlobaisAlunos = [];
+
+            foreach ($alunosGlobais as $idUsuario => $registrosDoAluno) {
+                $aulasTotal = (int) $registrosDoAluno->sum('total_aulas');
+                $faltasTotal = (int) $registrosDoAluno->sum('total_faltas');
+
+                if ($faltasTotal > 0 && $aulasTotal <= $faltasTotal) {
+                    $aulasTotal = max($faltasTotal, 100);
+                }
+
+                $pctGlobal = $aulasTotal > 0 ? max(0.0, min(100.0, (($aulasTotal - $faltasTotal) / $aulasTotal) * 100)) : 100.0;
+                $percentuaisGlobaisAlunos[] = $pctGlobal;
+
+                if ((int) $idUsuario === (int) $alunoId) {
+                    $frequenciaAlunoGlobal = round($pctGlobal, 1);
+                }
+            }
+
+            if (! empty($percentuaisGlobaisAlunos)) {
+                $frequenciaTurmaGlobal = round(array_sum($percentuaisGlobaisAlunos) / count($percentuaisGlobaisAlunos), 1);
+            }
+        }
+
         return [
             'turma_id' => (int) $turmaId,
             'aluno_id' => (int) $alunoId,
             'periodo_selecionado' => $trimestre ? "{$trimestre}º Trimestre" : 'Consolidado Anual',
+            'frequencia_aluno_global' => $frequenciaAlunoGlobal,
+            'frequencia_turma_global' => $frequenciaTurmaGlobal,
             'comparativo' => $comparativo,
             'radar' => [
                 'labels' => $labels,
@@ -603,13 +680,42 @@ class AlunoDashboardService
     }
 
     /**
-     * Retorna o valor máximo oficial da avaliação de acordo com o trimestre informado (padrão SEE-MG / EEPSAS).
-     * 1º Trimestre: 30 pts, 2º Trimestre: 30 pts, 3º Trimestre: 40 pts (Totalizando 100 pontos).
+     * Retorna o valor máximo oficial da avaliação de acordo com a divisão informada e o período letivo da turma.
+     * Consulta dinamicamente a tabela periodo_letivo_divisoes com fallback padrão caso não haja período específico.
      */
-    public function obterValorMaximoPeriodo(?string $trimestre): float
+    public function obterValorMaximoPeriodo(?string $trimestre, ?int $anoLetivo = null): float
     {
         if (empty($trimestre)) {
+            if ($anoLetivo) {
+                $total = PeriodoLetivo::where('ano', $anoLetivo)->value('total_pontos');
+                if ($total) {
+                    return (float) $total;
+                }
+            }
+
             return 100.00;
+        }
+
+        // Tenta consultar dinamicamente a divisão cadastrada no período letivo
+        $triNum = is_numeric($trimestre) ? (int) $trimestre : (int) filter_var($trimestre, FILTER_SANITIZE_NUMBER_INT);
+
+        $queryDiv = PeriodoLetivoDivisao::query();
+        if ($anoLetivo) {
+            $queryDiv->whereHas('periodoLetivo', fn ($q) => $q->where('ano', $anoLetivo));
+        } else {
+            $queryDiv->whereHas('periodoLetivo', fn ($q) => $q->where('ativo', true));
+        }
+
+        if ($triNum > 0) {
+            $divisao = (clone $queryDiv)->where('numero', $triNum)->first();
+            if ($divisao) {
+                return (float) $divisao->pontos;
+            }
+        }
+
+        $divisaoNome = $queryDiv->where('nome', 'like', "%{$trimestre}%")->first();
+        if ($divisaoNome) {
+            return (float) $divisaoNome->pontos;
         }
 
         $trimestreNorm = Str::ascii(Str::lower(trim($trimestre)));
@@ -646,11 +752,12 @@ class AlunoDashboardService
     }
 
     /**
-     * Aplica filtro temporal flexível por trimestre nas frequências baseando-se na data_aula.
+     * Aplica filtro temporal flexível por trimestre nas frequências baseando-se na data_aula
+     * ou nos intervalos oficiais cadastrados no período letivo.
      *
      * @param  Builder|\Illuminate\Database\Query\Builder  $query
      */
-    protected function aplicarFiltroDataFrequencia($query, ?string $trimestre): void
+    protected function aplicarFiltroDataFrequencia($query, ?string $trimestre, ?int $anoLetivo = null): void
     {
         if (empty($trimestre) || ! is_numeric($trimestre)) {
             return;
@@ -658,7 +765,22 @@ class AlunoDashboardService
 
         $triNum = (int) $trimestre;
 
-        // Divisão por trimestres letivos do ano escolar
+        // Se houver divisão cadastrada com intervalo de datas no período letivo, utiliza as datas oficiais
+        $queryDiv = PeriodoLetivoDivisao::query()->where('numero', $triNum);
+        if ($anoLetivo) {
+            $queryDiv->whereHas('periodoLetivo', fn ($q) => $q->where('ano', $anoLetivo));
+        } else {
+            $queryDiv->whereHas('periodoLetivo', fn ($q) => $q->where('ativo', true));
+        }
+        $divisao = $queryDiv->first();
+
+        if ($divisao && $divisao->data_inicio && $divisao->data_fim) {
+            $query->whereBetween('data_aula', [$divisao->data_inicio, $divisao->data_fim]);
+
+            return;
+        }
+
+        // Fallback para calendário trimestral padrão
         match ($triNum) {
             1 => $query->whereMonth('data_aula', '<=', 4),
             2 => $query->whereMonth('data_aula', '>=', 5)->whereMonth('data_aula', '<=', 8),

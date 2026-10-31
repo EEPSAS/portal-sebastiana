@@ -26,7 +26,7 @@ export default function ListaAlunosRisco({
     <div
       className="border-start ps-3 flex-grow-1"
       style={{
-        maxHeight: "14rem",
+        maxHeight: "10.5rem",
         minWidth: 0,
         overflowY: "auto",
         borderColor: "rgba(38, 52, 74, 0.12)",

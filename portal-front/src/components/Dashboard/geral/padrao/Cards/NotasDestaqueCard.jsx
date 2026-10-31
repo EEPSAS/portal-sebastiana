@@ -14,7 +14,7 @@ export function MelhorNotaCard({
   return (
     <div className="col-12 col-sm-6 col-lg-3">
       <div
-        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-4 p-3 d-flex flex-column justify-content-between bg-white"
+        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-3 p-2 px-md-3 d-flex flex-column justify-content-between bg-white"
       >
         <div>
           <div className="d-flex align-items-center gap-2 mb-2">
@@ -54,7 +54,7 @@ export function NotaAtencaoCard({
   return (
     <div className="col-12 col-sm-6 col-lg-3">
       <div
-        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-4 p-3 d-flex flex-column justify-content-between bg-white"
+        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-3 p-2 px-md-3 d-flex flex-column justify-content-between bg-white"
       >
         <div>
           <div className="d-flex align-items-center gap-2 mb-2">

@@ -415,7 +415,7 @@ const TurmasAba = ({
       )}
 
       {/* 4. Lista Nominal de Alunos Matriculados (Reativa ao Card Selecionado) */}
-      <div className="turma-stat-card p-4">
+      <div className="turma-stat-card p-2 p-md-3">
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
           <div>
             <div className="d-flex align-items-center gap-2 flex-wrap">

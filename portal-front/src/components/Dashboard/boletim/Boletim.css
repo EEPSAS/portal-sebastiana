@@ -1,4 +1,4 @@
-﻿.boletim-page {
+.boletim-page {
   color: var(--dashboard-navy);
   padding-bottom: 24px;
 }
@@ -73,7 +73,7 @@
 
 .boletim__content {
   min-height: 300px;
-  padding: 24px;
+  padding: 12px;
 }
 
 .boletim__content:focus {
@@ -89,7 +89,7 @@
 }
 
 .boletim__card {
-  padding: 20px;
+  padding: 12px;
 }
 
 .boletim__card-heading {

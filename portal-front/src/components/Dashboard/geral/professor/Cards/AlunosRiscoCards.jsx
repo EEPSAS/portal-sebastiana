@@ -28,13 +28,13 @@ const CARDS_RISCO = [
 ];
 
 /** Exibe os totais demonstrativos com a linguagem visual dos cards bibliotecários. */
-export default function AlunosRiscoCards({ dados, periodo, metaPontos = null, isReal = false }) {
+export default function AlunosRiscoCards({ dados, periodo, datasPeriodo = null, metaPontos = null, isReal = false }) {
   return (
     <>
       {CARDS_RISCO.map((card) => (
         <div className="col-12 col-md-6" key={card.id}>
           <section
-            className="card dashboard-card-shadow rounded-4 h-100 p-4"
+            className="card dashboard-card-shadow rounded-3 h-100 p-2 p-md-3"
             style={{
               backgroundColor: card.fundo,
               border: `1px solid ${card.borda}`,
@@ -46,8 +46,8 @@ export default function AlunosRiscoCards({ dados, periodo, metaPontos = null, is
                 <span
                   className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                   style={{
-                    width: "2.75rem",
-                    height: "2.75rem",
+                    width: "2.25rem",
+                    height: "2.25rem",
                     color: card.cor,
                     backgroundColor: `${card.cor}1a`,
                   }}
@@ -76,10 +76,10 @@ export default function AlunosRiscoCards({ dados, periodo, metaPontos = null, is
               </span>
             </div>
 
-            <div className="d-flex flex-column flex-lg-row align-items-lg-center gap-3 mt-3">
+            <div className="d-flex flex-column flex-lg-row align-items-lg-center gap-2 mt-2">
               <div className="flex-shrink-0">
                 <strong
-                  className="display-4 lh-1"
+                  className="display-5 lh-1 fw-bold"
                   style={{ color: card.cor }}
                 >
                   {dados[card.valor]}
@@ -92,9 +92,14 @@ export default function AlunosRiscoCards({ dados, periodo, metaPontos = null, is
                   style={{ width: "2rem", borderTop: `2px solid ${card.cor}` }}
                   aria-hidden="true"
                 />
-                <p className="small mb-0" style={{ color: "#687386" }}>
+                <p className="small mb-0 fw-semibold" style={{ color: "#687386" }}>
                   {periodo}
                 </p>
+                {datasPeriodo && (
+                  <span className="small text-muted d-block mt-0" style={{ fontSize: "0.75rem" }}>
+                    {datasPeriodo}
+                  </span>
+                )}
               </div>
               <ListaAlunosRisco
                 indicador={card.indicador}

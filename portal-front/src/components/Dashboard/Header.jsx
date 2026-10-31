@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Header.jsx - Barra Superior do Painel Administrativo (Navbar)
  *
  * Funcionalidades Didáticas:
@@ -100,14 +100,14 @@ const Header = ({
 
   return (
     <>
-      <header className="dashboard-header d-flex align-items-center justify-content-between px-4 py-3" style={{ background: "transparent" }}>
+      <header className="dashboard-header d-flex align-items-center justify-content-between px-3 py-2" style={{ background: "transparent" }}>
         <div className="d-flex align-items-center gap-3">
-          {/* Saudação amigável e acolhedora pelo apelido */}
+          {/* Saudação amigável e acolhedora pelo apelido com dimensões slim */}
           <div className="d-flex flex-column text-start">
-            <span className="fs-5 fw-bold text-dark lh-sm">
+            <span className="fw-bold text-dark lh-sm" style={{ fontSize: "1.15rem" }}>
               Olá, {userName}!
             </span>
-            <span className="text-secondary small">
+            <span className="text-secondary small" style={{ fontSize: "0.85rem" }}>
               Bem-vindo(a) ao Portal Sebastiana
             </span>
           </div>

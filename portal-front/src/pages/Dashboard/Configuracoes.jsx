@@ -37,12 +37,12 @@ const ConfiguracoesPage = () => {
   return (
     <div className="configuracoes-page container-fluid px-0">
       {/* Cabeçalho Institucional Padronizado */}
-      <div className="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4">
+      <div className="bg-white rounded-3 shadow-sm p-2 px-md-3 py-md-2 mb-2">
         <BoasVindasCard />
       </div>
 
       {/* Grid de Cartões Modulares */}
-      <div className="row g-4">
+      <div className="row g-3">
         {/* Coluna Lateral: Cartão de Foto de Perfil */}
         <div className="col-12 col-lg-4 col-xl-3">
           <AvatarCard user={user} onUserUpdated={handleUserUpdated} />
@@ -50,7 +50,7 @@ const ConfiguracoesPage = () => {
 
         {/* Coluna Principal: Dados Pessoais e Segurança */}
         <div className="col-12 col-lg-8 col-xl-9">
-          <div className="d-flex flex-column gap-4">
+          <div className="d-flex flex-column gap-3">
             <DadosPessoaisCard user={user} onUserUpdated={handleUserUpdated} />
             <SegurancaCard user={user} />
           </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchAlunosDisponiveis, vincularAlunoTurma } from "../../../services/turmasService";
+import { notificarAtualizacaoPendencias } from "../../../utils/notificacoesEventos";
 
 /**
  * Normaliza e tenta encontrar a turma cadastrada no sistema correspondente
@@ -62,7 +63,7 @@ const ModalVincularAluno = ({
       fetchAlunosDisponiveis(turma.id_turma, { busca: termoBusca })
         .then((dados) => {
           if (!cancelado) {
-            const lista = dados || [];
+            const lista = Array.isArray(dados) ? dados : Array.isArray(dados?.data) ? dados.data : [];
             setAlunos(lista);
             // Pré-seleciona o primeiro estudante da fila se nenhum estiver ativo
             if (lista.length > 0) {
@@ -145,6 +146,9 @@ const ModalVincularAluno = ({
         usuarioId: Number(usuarioIdSelecionado),
         dataMatricula,
       });
+
+      // Notifica o barramento para atualizar contadores e badges imediatamente
+      notificarAtualizacaoPendencias();
 
       // Remove imediatamente o estudante homologado da fila local de pendências
       const novosAlunos = alunos.filter(

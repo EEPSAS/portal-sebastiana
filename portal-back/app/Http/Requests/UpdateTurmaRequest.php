@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\PeriodoLetivo;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -30,7 +31,18 @@ class UpdateTurmaRequest extends FormRequest
             // Identificador amigável da turma (ex: 3º Ano Técnico)
             'nome_identificador' => ['sometimes', 'required', 'string', 'max:100'],
             'ciclo_id' => ['nullable', 'integer', 'exists:ciclos,id_ciclo'],
-            'ano_letivo' => ['sometimes', 'required', 'integer', 'min:2020', 'max:2100'],
+            'ano_letivo' => [
+                'sometimes',
+                'required',
+                'integer',
+                'min:2000',
+                'max:2100',
+                function ($attribute, $value, $fail) {
+                    if (PeriodoLetivo::count() > 0 && ! PeriodoLetivo::where('ano', $value)->exists()) {
+                        $fail('O ano letivo selecionado não corresponde a nenhum Período Letivo cadastrado.');
+                    }
+                },
+            ],
             'turno' => ['sometimes', 'required', 'string', 'in:Matutino,Vespertino,Noturno,Integral'],
             // Limite de vagas da sala para controle de matrículas ativas
             'capacidade_maxima' => ['sometimes', 'required', 'integer', 'min:1'],
@@ -48,11 +60,13 @@ class UpdateTurmaRequest extends FormRequest
         return [
             'nome_identificador.required' => 'O nome identificador da turma é obrigatório.',
             'ciclo_id.exists' => 'O ciclo escolar selecionado é inválido.',
-            'ano_letivo.integer' => 'O ano letivo deve ser um número inteiro válido.',
-            'turno.in' => 'O turno selecionado é inválido.',
-            'capacidade_maxima.integer' => 'A capacidade máxima deve ser um número inteiro válido.',
-            'capacidade_maxima.min' => 'A capacidade máxima deve ser de pelo menos 1 estudante.',
-            'status.in' => 'O status informado é inválido.',
+            'ano_letivo.required' => 'O ano letivo é obrigatório.',
+            'turno.required' => 'O turno é obrigatório.',
+            'turno.in' => 'O turno deve ser Matutino, Vespertino, Noturno ou Integral.',
+            'capacidade_maxima.required' => 'A capacidade máxima é obrigatória.',
+            'capacidade_maxima.min' => 'A capacidade máxima deve ser de pelo menos 1 aluno.',
+            'status.required' => 'O status da turma é obrigatório.',
+            'status.in' => 'O status deve ser Ativa, Inativa ou Concluída.',
         ];
     }
 }

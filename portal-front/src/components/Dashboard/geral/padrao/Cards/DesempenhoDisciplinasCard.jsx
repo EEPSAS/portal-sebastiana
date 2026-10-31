@@ -79,7 +79,7 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
   const sufixo = isNotas ? "" : "%";
 
   return (
-    <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 w-100">
+    <div className="card border-0 shadow-sm rounded-3 p-2 px-md-3 bg-white h-100 w-100">
       {/* Cabeçalho do Card com Seletor Disciplina vs Frequência */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
         <div className="d-flex align-items-center gap-3">

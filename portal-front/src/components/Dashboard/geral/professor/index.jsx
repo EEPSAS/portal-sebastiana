@@ -16,6 +16,16 @@ import AlunosRiscoCards from "./Cards/AlunosRiscoCards";
 import materiasProfessorMock from "./materiasProfessorMock";
 import { fetchDashboardGeral } from "../../../../services/geralService";
 
+
+const formatarDataDiaMes = (dataString) => {
+  if (!dataString) return "";
+  const partes = String(dataString).split("T")[0].split("-");
+  if (partes.length >= 3) {
+    return `${partes[2]}/${partes[1]}`;
+  }
+  return dataString;
+};
+
 const GeralProfessor = () => {
   const [dadosApi, setDadosApi] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,8 +55,32 @@ const GeralProfessor = () => {
   }, [divisaoSelecionada]);
 
   const periodoContexto = dadosApi?.periodo_contexto;
-  const divisoesDisponiveis = periodoContexto?.divisoes_disponiveis || [];
+  const divisoesDisponiveis = useMemo(
+    () => periodoContexto?.divisoes_disponiveis || [],
+    [periodoContexto?.divisoes_disponiveis]
+  );
   const pontosDivisaoAtual = periodoContexto?.pontos_divisao || 30.0;
+
+  // Formata o intervalo de datas da etapa ativa (ex: '05/02 a 30/04')
+  const datasDivisaoFormatadas = useMemo(() => {
+    if (!divisaoSelecionada || divisaoSelecionada === "todos") {
+      if (periodoContexto?.data_inicio && periodoContexto?.data_fim) {
+        return `${formatarDataDiaMes(periodoContexto.data_inicio)} a ${formatarDataDiaMes(periodoContexto.data_fim)}`;
+      }
+      return null;
+    }
+
+    const divisaoObj = divisoesDisponiveis.find((d) => d.nome === divisaoSelecionada);
+    if (divisaoObj?.data_inicio && divisaoObj?.data_fim) {
+      return `${formatarDataDiaMes(divisaoObj.data_inicio)} a ${formatarDataDiaMes(divisaoObj.data_fim)}`;
+    }
+
+    if (divisaoSelecionada.includes("1º")) return "05/02 a 30/04";
+    if (divisaoSelecionada.includes("2º")) return "02/05 a 31/08";
+    if (divisaoSelecionada.includes("3º")) return "01/09 a 18/12";
+
+    return null;
+  }, [divisaoSelecionada, divisoesDisponiveis, periodoContexto]);
 
   // Constrói a lista de matérias do professor a partir de `disciplinas_detalhadas` da API
   // ou utiliza o fallback demonstrativo caso o professor ainda não tenha disciplinas com dados
@@ -123,7 +157,7 @@ const GeralProfessor = () => {
   return (
     <div className="teacher-overview">
       {/* 1. Barra de Seleção da Etapa do Período Letivo (Trimestres / Bimestres) */}
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 p-3 bg-white rounded-4 border shadow-xs">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 p-2 px-3 bg-white rounded-3 border shadow-xs">
         <div className="d-flex align-items-center gap-2 flex-wrap">
           <span className="small fw-bold text-dark text-uppercase d-flex align-items-center gap-1 me-2" style={{ letterSpacing: "0.5px" }}>
             <i className="bi bi-calendar-range text-primary"></i>
@@ -132,11 +166,7 @@ const GeralProfessor = () => {
           <div className="btn-group btn-group-sm flex-wrap p-1 bg-light rounded-pill border" role="group" aria-label="Filtrar por etapa do período letivo">
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 fw-semibold transition ${
-                divisaoSelecionada === "todos"
-                  ? "btn-primary shadow-sm text-white"
-                  : "text-secondary border-0"
-              }`}
+              className={`btn-pill-filter ${divisaoSelecionada === "todos" ? "is-active" : ""}`}
               onClick={() => setDivisaoSelecionada("todos")}
             >
               Consolidado Geral
@@ -147,11 +177,7 @@ const GeralProfessor = () => {
                 <button
                   type="button"
                   key={div.id_divisao || div.nome}
-                  className={`btn btn-sm rounded-pill px-3 fw-semibold transition ${
-                    isAtiva
-                      ? "btn-primary shadow-sm text-white"
-                      : "text-secondary border-0"
-                  }`}
+                  className={`btn-pill-filter ${isAtiva ? "is-active" : ""}`}
                   onClick={() => setDivisaoSelecionada(div.nome)}
                 >
                   {div.nome} ({div.pontos} pts)
@@ -180,11 +206,7 @@ const GeralProfessor = () => {
             <button
               type="button"
               key={materia.id}
-              className={`btn btn-sm rounded-pill px-3 fw-semibold transition ${
-                materia.id === materiaSelecionada.id
-                  ? "btn-primary shadow-sm text-white"
-                  : "text-secondary border-0"
-              }`}
+              className={`btn-pill-filter ${materia.id === materiaSelecionada.id ? "is-active" : ""}`}
               aria-pressed={materia.id === materiaSelecionada.id}
               onClick={() => setMateriaSelecionadaId(materia.id)}
             >
@@ -216,6 +238,7 @@ const GeralProfessor = () => {
       <div className="row g-3 mb-3">
         <AlunosRiscoCards
           dados={materiaSelecionada.risco}
+          datasPeriodo={datasDivisaoFormatadas}
           periodo={
             divisaoSelecionada && divisaoSelecionada !== "todos"
               ? `${divisaoSelecionada} (${pontosDivisaoAtual} pts)`

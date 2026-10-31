@@ -6,7 +6,7 @@ export default function CirculacaoAtivaCard({
 }) {
   return (
     <section
-      className="card border-0 dashboard-card-shadow rounded-4 h-100 p-4"
+      className="card border-0 dashboard-card-shadow rounded-3 h-100 p-2 p-md-3"
       style={{ backgroundColor: "var(--dashboard-amber)" }}
       aria-label="Circulação ativa e devoluções recentes"
     >

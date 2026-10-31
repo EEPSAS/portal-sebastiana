@@ -7,6 +7,7 @@
  */
 
 import { api } from './api';
+import { notificarAtualizacaoPendencias } from '../utils/notificacoesEventos';
 
 /**
  * Atualiza os dados cadastrais do perfil do próprio usuário (ou via gestão).
@@ -154,6 +155,8 @@ export const confirmarVinculoAluno = async (usuarioId, turmaId) => {
     throw new Error(data?.message || 'Não foi possível aprovar e vincular o aluno à turma.');
   }
 
+  // Notifica o barramento de eventos para atualização síncrona dos badges
+  notificarAtualizacaoPendencias();
   return data;
 };
 
