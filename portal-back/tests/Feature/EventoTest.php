@@ -214,6 +214,35 @@ test('especialista can create, update, delete and view events', function () {
         ->assertNoContent();
 });
 
+test('especialista pode cadastrar sábados letivos e feriados em massa', function () {
+    $especialista = User::factory()->especialista()->create();
+
+    $response = $this->actingAs($especialista, 'sanctum')
+        ->postJson('/api/eventos/em-massa', [
+            'eventos' => [
+                [
+                    'data_inicio' => '2026-11-07',
+                    'titulo' => 'Sábado Letivo',
+                    'tipo' => TipoEvento::SABADO_LETIVO->value,
+                    'descricao' => 'Reposição de aula.',
+                ],
+                [
+                    'data_inicio' => '2026-11-20',
+                    'titulo' => 'Feriado Escolar',
+                    'tipo' => TipoEvento::FERIADOS_E_RECESSOS->value,
+                    'descricao' => 'Recesso previsto no calendário.',
+                ],
+            ],
+        ]);
+
+    $response->assertCreated()
+        ->assertJsonCount(2)
+        ->assertJsonFragment(['titulo' => 'Sábado Letivo'])
+        ->assertJsonFragment(['titulo' => 'Feriado Escolar']);
+
+    expect(Evento::query()->where('criador_id', $especialista->id)->count())->toBe(2);
+});
+
 test('administrator has full access to calendar operations', function () {
     $admin = User::factory()->adm()->create();
     $aluno = User::factory()->padrao()->create();
