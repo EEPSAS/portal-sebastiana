@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // ==============================================================================
 // DADOS DA LIDERANÇA
@@ -63,14 +63,8 @@ const teamMembers = [
     portfolioUrl: "https://github.com/",
     // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
     social: {
-<<<<<<< Updated upstream
-      instagram: "https://instagram.com/",
-      linkedin: "https://linkedin.com/",
-      github: "https://github.com/",
-=======
       instagram: "https://www.instagram.com/5davi.almeida?obrf=MXF4bTdscWl6bmV6dw==",
       github: "https://github.com/Davi0110",
->>>>>>> Stashed changes
     },
   },
   {
@@ -81,12 +75,7 @@ const teamMembers = [
     portfolioUrl: "https://github.com/",
     // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
     social: {
-<<<<<<< Updated upstream
-      instagram: "https://instagram.com/",
-      linkedin: "https://linkedin.com/",
-=======
       instagram: "https://www.instagram.com/l_anaazs?obrf=YTFlY3R2bDhheXFu",
->>>>>>> Stashed changes
       github: "https://github.com/",
     },
   },
@@ -98,12 +87,7 @@ const teamMembers = [
     portfolioUrl: "https://github.com/",
     // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
     social: {
-<<<<<<< Updated upstream
-      instagram: "https://instagram.com/",
-      linkedin: "https://linkedin.com/",
-=======
       instagram: "https://www.instagram.com/rhaynner__09?srtk=bG1xOG80ZG9oNmhn",
->>>>>>> Stashed changes
       github: "https://github.com/",
     },
   },
@@ -130,14 +114,8 @@ const teamMembers = [
     portfolioUrl: "https://github.com/",
     // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
     social: {
-<<<<<<< Updated upstream
-      instagram: "https://instagram.com/",
-      linkedin: "https://linkedin.com/",
-      github: "https://github.com/",
-=======
       instagram: "https://www.instagram.com/caduxl_00909?xtok=cmtnbGVkeWVoNDEz",
       github: "https://github.com/cadu22306-coder",
->>>>>>> Stashed changes
     },
   },
 ];
