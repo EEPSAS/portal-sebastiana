@@ -53,8 +53,9 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureDefaults(): void
     {
-        // Força a geração de links e assets sob HTTPS quando em produção (ex: atrás do proxy do Railway)
-        if ($this->app->isProduction()) {
+        // Força a geração de links e assets sob HTTPS quando em produção real (ex: atrás do proxy do Railway), exceto em localhost
+        $isLocalHost = str_contains(request()->getHost(), 'localhost') || str_contains(request()->getHost(), '127.0.0.1');
+        if ($this->app->isProduction() && ! $isLocalHost) {
             URL::forceScheme('https');
         }
 

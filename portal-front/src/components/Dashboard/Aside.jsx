@@ -87,6 +87,16 @@ const Aside = () => {
       });
   }, [podeGerenciarAprovacoes]);
 
+  // Controla se a lista do menu está visível em telas móveis (< 768px)
+  const [mobileExpanded, setMobileExpanded] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(location.pathname);
+
+  // Padrão oficial React para ajuste de estado durante render quando a rota muda
+  if (prevPathname !== location.pathname) {
+    setPrevPathname(location.pathname);
+    setMobileExpanded(false);
+  }
+
   // Carrega ao montar/trocar de rota e ouve o evento global de aprovação
   useEffect(() => {
     carregarPendentes();
@@ -140,25 +150,52 @@ const Aside = () => {
   }, []);
 
   return (
-    <aside className="dashboard-aside d-flex flex-column flex-shrink-0 p-3 bg-white shadow-sm">
-      {/* Cabeçalho do Aside: Logotipo e Badge exclusivo do Admin */}
-      <Link
-        to="/dashboard"
-        className="d-flex flex-column align-items-center mb-3 text-decoration-none text-center"
-      >
-        <span className="fs-4 fw-bold text-primary">EEPSAS</span>
-        <span className="fs-6 text-muted fw-semibold">Portal Escolar</span>
-        {isAdmin && (
-          <span className={`badge ${badgeInfo.cor} mt-2 px-3 py-1 rounded-pill`}>
-            {badgeInfo.label}
-          </span>
-        )}
-      </Link>
+    <aside
+      className={`dashboard-aside d-flex flex-column flex-shrink-0 p-3 bg-white shadow-sm ${
+        !mobileExpanded ? "is-mobile-collapsed" : ""
+      }`}
+    >
+      {/* Barra compacta superior visível exclusivamente em telas móveis */}
+      <div className="dashboard-aside-mobile-bar d-md-none">
+        <Link
+          to="/dashboard"
+          className="d-flex align-items-center gap-2 text-decoration-none"
+        >
+          <span className="fs-5 fw-bold text-primary">EEPSAS</span>
+          <span className="small text-muted fw-semibold">Portal Escolar</span>
+        </Link>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 rounded-pill px-3"
+          onClick={() => setMobileExpanded((prev) => !prev)}
+          aria-expanded={mobileExpanded}
+          aria-label="Alternar menu de navegação"
+        >
+          <i className={`bi ${mobileExpanded ? "bi-x-lg" : "bi-list"} fs-6`}></i>
+          <span className="small fw-semibold">{mobileExpanded ? "Fechar" : "Menu"}</span>
+        </button>
+      </div>
 
-      <hr className="my-2" />
+      {/* Container de navegação: sempre visível no desktop e colapsável em telas móveis */}
+      <div className="dashboard-aside-nav-container d-flex flex-column flex-grow-1">
+        {/* Cabeçalho do Aside: Logotipo e Badge exclusivo do Admin no Desktop */}
+        <Link
+          to="/dashboard"
+          className="d-none d-md-flex flex-column align-items-center mb-3 text-decoration-none text-center"
+        >
+          <span className="fs-4 fw-bold text-primary">EEPSAS</span>
+          <span className="fs-6 text-muted fw-semibold">Portal Escolar</span>
+          {isAdmin && (
+            <span className={`badge ${badgeInfo.cor} mt-2 px-3 py-1 rounded-pill`}>
+              {badgeInfo.label}
+            </span>
+          )}
+        </Link>
 
-      {/* Lista Principal de Navegação Retrátil por Módulos */}
-      <ul className="nav nav-pills flex-column mb-auto gap-1">
+        <hr className="my-2 d-none d-md-block" />
+
+        {/* Lista Principal de Navegação Retrátil por Módulos */}
+        <ul className="nav nav-pills flex-column mb-auto gap-1">
         {estruturaFiltrada.map((entry) => {
           if (entry.type === "item") {
             const ativo = isChildActive(entry, location);
@@ -338,6 +375,7 @@ const Aside = () => {
           </NavLink>
         </li>
       </ul>
+      </div>
     </aside>
   );
 };
