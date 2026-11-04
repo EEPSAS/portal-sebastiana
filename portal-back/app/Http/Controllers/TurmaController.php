@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Data\Academico\FiltroNotasTurmaData;
+use App\Data\Academico\SalvarTurmaData;
 use App\Enums\UserRole;
 use App\Http\Requests\StoreTurmaRequest;
 use App\Http\Requests\UpdateTurmaRequest;
@@ -36,7 +38,7 @@ class TurmaController extends Controller
         Gate::authorize('viewAny', Turma::class);
 
         $user = $request->user();
-        $query = Turma::query()->with('ciclo')->withCount(['alunos', 'disciplinas']);
+        $query = Turma::query()->with(['ciclo', 'periodoLetivo'])->withCount(['alunos', 'disciplinas']);
 
         // Se o usuário for Professor, filtra estritamente as turmas em que ele leciona
         if ($user && $user->isProfessor() && ! $user->isAdm()) {
@@ -72,11 +74,21 @@ class TurmaController extends Controller
     {
         Gate::authorize('create', Turma::class);
 
-        $turma = Turma::create($request->validated());
+        // Revalida e tipa a entrada via Spatie Laravel Data
+        $dadosTurma = SalvarTurmaData::validateAndCreate($request->validated());
+        $payload = $dadosTurma->toArray();
+
+        // Garante vínculo automático com o Período Letivo correspondente ao ano_letivo
+        if (empty($payload['periodo_letivo_id'])) {
+            $payload['periodo_letivo_id'] = PeriodoLetivo::where('ano', $dadosTurma->ano_letivo)
+                ->value('id_periodo_letivo');
+        }
+
+        $turma = Turma::create($payload);
 
         // Herda automaticamente as disciplinas e professores do Ciclo Escolar vinculado
         $turma->herdarDisciplinasDoCiclo();
-        $turma->load('ciclo')->loadCount(['alunos', 'disciplinas']);
+        $turma->load(['ciclo', 'periodoLetivo'])->loadCount(['alunos', 'disciplinas']);
 
         return response()->json(new TurmaResource($turma), 201);
     }
@@ -88,7 +100,7 @@ class TurmaController extends Controller
     {
         Gate::authorize('view', $turma);
 
-        $turma->load('ciclo')->loadCount(['alunos', 'disciplinas']);
+        $turma->load(['ciclo', 'periodoLetivo'])->loadCount(['alunos', 'disciplinas']);
 
         return response()->json(new TurmaResource($turma), 200);
     }
@@ -106,7 +118,7 @@ class TurmaController extends Controller
 
         // Caso o Ciclo Escolar tenha sido atribuído ou alterado, sincroniza as disciplinas herdadas
         $turma->herdarDisciplinasDoCiclo();
-        $turma->load('ciclo')->loadCount(['alunos', 'disciplinas']);
+        $turma->load(['ciclo', 'periodoLetivo'])->loadCount(['alunos', 'disciplinas']);
 
         return response()->json(new TurmaResource($turma), 200);
     }
@@ -143,7 +155,7 @@ class TurmaController extends Controller
             abort(403, 'Acesso restrito ao corpo docente e pedagógico.');
         }
 
-        $query = Turma::query()->orderBy('nome_identificador');
+        $query = Turma::query()->with('ciclo')->orderBy('nome_identificador');
 
         // Filtra pelo ano letivo solicitado ou pelo ano letivo ativo em vigor
         if ($request->filled('ano_letivo')) {
@@ -168,9 +180,13 @@ class TurmaController extends Controller
 
         foreach ($turmas as $turma) {
             $resumo = $dashboardService->obterResumoGerencial($turma);
+            $distDesempenho = $resumo['distribuicao_desempenho'] ?? [];
+
             $resultado[] = [
                 'id_turma' => $turma->id_turma,
                 'nome_identificador' => $turma->nome_identificador,
+                'ciclo_id' => $turma->ciclo_id,
+                'ciclo_nome' => $turma->ciclo?->nome,
                 'turno' => $turma->turno,
                 'ano_letivo' => $turma->ano_letivo,
                 'status' => $turma->status,
@@ -179,6 +195,11 @@ class TurmaController extends Controller
                 'taxa_presenca' => $resumo['kpis']['taxa_presenca'] ?? 0.0,
                 'taxa_absenteismo' => $resumo['kpis']['taxa_absenteismo'] ?? 0.0,
                 'total_avaliados' => $resumo['kpis']['total_alunos_avaliados'] ?? 0,
+                'distribuicao' => [
+                    'acima' => $distDesempenho['excelentes']['percentual'] ?? 0.0,
+                    'na_media' => $distDesempenho['na_media']['percentual'] ?? 0.0,
+                    'abaixo' => $distDesempenho['criticos']['percentual'] ?? 0.0,
+                ],
             ];
         }
 
@@ -302,24 +323,65 @@ class TurmaController extends Controller
                 'disciplina:id_disciplina,nome',
             ]);
 
+        // Revalida e normaliza os filtros cumulativos via Spatie Laravel Data
+        $filtros = FiltroNotasTurmaData::validateAndCreate($request->query());
+
         // Filtro temporal por período letivo (ex: '1º Trimestre')
-        if ($request->filled('periodo_letivo')) {
-            $query->where('periodo_letivo', $request->query('periodo_letivo'));
+        if (! empty($filtros->periodo_letivo)) {
+            $query->where('periodo_letivo', $filtros->periodo_letivo);
         }
 
         // Filtro por componente curricular específico
-        if ($request->filled('disciplina_id')) {
-            $query->where('disciplina_id', $request->query('disciplina_id'));
+        if ($filtros->disciplina_id !== null) {
+            $query->where('disciplina_id', $filtros->disciplina_id);
         }
 
-        // Filtro por aluno individual para evitar carregar todas as notas da turma de uma vez
-        if ($request->filled('aluno_id')) {
-            $query->where('usuario_id', $request->query('aluno_id'));
-        } elseif ($request->filled('usuario_id')) {
-            $query->where('usuario_id', $request->query('usuario_id'));
+        // Filtro por aluno individual
+        $idEstudante = $filtros->obterIdEstudante();
+        if ($idEstudante !== null) {
+            $query->where('usuario_id', $idEstudante);
         }
 
-        return response()->json(NotaResource::collection($query->orderByDesc('id_nota')->get()), 200);
+        $notasColecao = $query->orderByDesc('id_nota')->get();
+
+        // Carrega frequências da turma para enriquecer as notas com taxa de faltas
+        $frequencias = Frequencia::where('turma_id', $turma->id_turma)
+            ->get()
+            ->groupBy(fn (Frequencia $f) => "{$f->usuario_id}_{$f->disciplina_id}");
+
+        // Obtém o período letivo da turma (ou do ano letivo equivalente) para recuperar o valor oficial das divisões
+        $periodoLetivoTurma = $turma->periodoLetivo()->with('divisoes')->first()
+            ?? PeriodoLetivo::where('ano', $turma->ano_letivo)->with('divisoes')->first();
+        $mapaDivisoes = [];
+        if ($periodoLetivoTurma) {
+            foreach ($periodoLetivoTurma->divisoes as $div) {
+                $mapaDivisoes[$div->nome] = (float) $div->pontos;
+            }
+        }
+
+        foreach ($notasColecao as $nota) {
+            $chaveFreq = "{$nota->usuario_id}_{$nota->disciplina_id}";
+            $freqsDoAluno = $frequencias->get($chaveFreq, collect());
+            $totalFaltas = (int) $freqsDoAluno->where('status_presenca', 'Falta')->sum('quantidade_aulas');
+            $totalAulas = (int) $freqsDoAluno->sum('quantidade_aulas');
+            if ($totalFaltas > 0 && $totalAulas <= $totalFaltas) {
+                $totalAulas = max($totalFaltas, 100);
+            }
+            $percentualFaltas = $totalAulas > 0 ? round(($totalFaltas / $totalAulas) * 100, 1) : 0.0;
+
+            $nota->percentual_faltas = $percentualFaltas;
+            $nota->total_faltas = $totalFaltas;
+
+            // Se a divisão estiver mapeada no Período Letivo da Turma, utiliza sua pontuação oficial
+            if (isset($mapaDivisoes[$nota->periodo_letivo])) {
+                $nota->valor_maximo_periodo = $mapaDivisoes[$nota->periodo_letivo];
+                $nota->valor_maximo = $mapaDivisoes[$nota->periodo_letivo];
+            } else {
+                $nota->valor_maximo_periodo = (float) ($nota->valor_maximo ?: 30.0);
+            }
+        }
+
+        return response()->json(NotaResource::collection($notasColecao), 200);
     }
 
     /**

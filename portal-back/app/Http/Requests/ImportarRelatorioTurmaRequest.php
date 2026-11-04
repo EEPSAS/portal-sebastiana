@@ -12,10 +12,17 @@ class ImportarRelatorioTurmaRequest extends FormRequest
 {
     /**
      * Determina se o usuário está autorizado a fazer essa requisição.
+     * Exige privilégios de gestão acadêmica (Especialista Pedagógico ou Administrador).
      */
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        $user = $this->user();
+
+        return $user !== null && (
+            $user->isAdm()
+            || $user->isEspecialista()
+            || (method_exists($user, 'canManageAcademic') && $user->canManageAcademic())
+        );
     }
 
     /**
@@ -62,6 +69,42 @@ class ImportarRelatorioTurmaRequest extends FormRequest
             // Decisão sobre notas divergentes de períodos já cadastrados ('atualizar' ou 'manter')
             'decisao_divergencias' => ['nullable', 'string', 'in:atualizar,manter'],
         ];
+    }
+
+    /**
+     * Validações adicionais de segurança para o arquivo CSV enviado.
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $arquivo = $this->file('arquivo') ?: $this->file('planilha');
+            if (! $arquivo || ! $arquivo->isValid()) {
+                return;
+            }
+
+            // Lê amostra de segurança do conteúdo
+            $caminho = $arquivo->getRealPath();
+            $conteudo = @file_get_contents($caminho);
+
+            if ($conteudo === false) {
+                $validator->errors()->add('arquivo', 'Não foi possível ler o conteúdo do arquivo enviado.');
+
+                return;
+            }
+
+            // Blindagem contra scripts maliciosos embutidos
+            if (preg_match('/<\?php|<\?=|<script\b/i', $conteudo)) {
+                $validator->errors()->add('arquivo', 'O arquivo enviado contém assinaturas de código não permitidas.');
+
+                return;
+            }
+
+            // Proteção contra payload excessivo (DoS em lote)
+            $linhas = preg_split('/\r\n|\r|\n/', trim($conteudo));
+            if (count($linhas) > 1500) {
+                $validator->errors()->add('arquivo', 'A planilha excede o limite máximo permitido de 1500 linhas.');
+            }
+        });
     }
 
     /**

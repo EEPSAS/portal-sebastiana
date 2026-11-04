@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Turmas.css - Estilização Visual do Módulo de Turmas
  *
  * Papel Didático:
@@ -304,4 +304,98 @@
 /* A seta só existe visualmente no tema de gestão */
 .turma-stat-seta {
   display: none;
+}
+
+/* ==========================================================================
+   9. Controle de Guias de Turmas (Estilo Tab Control do Access com Alto Destaque)
+   ========================================================================== */
+
+.turmas-tab-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 6px 8px 0 8px;
+  background-color: #f1f5f9;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 2px solid #2563eb;
+  margin-bottom: 0.9rem;
+  scrollbar-width: thin;
+}
+
+.turmas-tab-item {
+  position: relative;
+  background-color: #e2e8f0;
+  border: 1px solid #94a3b8;
+  border-bottom: none;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  padding: 8px 16px 7px 16px;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
+  min-width: 165px;
+  max-width: 260px;
+  white-space: nowrap;
+  user-select: none;
+  margin-bottom: -2px;
+}
+
+.turmas-tab-item:hover:not(.is-active) {
+  background-color: #dbeafe;
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+}
+
+.turmas-tab-item.is-active {
+  background-color: #ffffff;
+  border-left: 2px solid #2563eb;
+  border-right: 2px solid #2563eb;
+  border-top: 4px solid #2563eb;
+  border-bottom: 2px solid #ffffff;
+  z-index: 3;
+  box-shadow: 0 -4px 12px rgba(37, 99, 235, 0.16);
+}
+
+.turmas-tab-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.turmas-tab-item.is-active .turmas-tab-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #1d4ed8;
+}
+
+.turmas-tab-subtitle {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #475569;
+  line-height: 1.15;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.turmas-tab-item.is-active .turmas-tab-subtitle {
+  color: #1e40af;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   10. Diálogo Nativo do Boletim Técnico (Top-Layer & Scroll Containment)
+   ========================================================================== */
+dialog.boletim-native-dialog:modal {
+  overscroll-behavior: contain;
+  margin: auto;
+}
+
+dialog.boletim-native-dialog::backdrop {
+  background-color: rgba(15, 23, 42, 0.65);
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
