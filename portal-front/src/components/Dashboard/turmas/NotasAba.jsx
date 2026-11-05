@@ -310,9 +310,9 @@ export default function NotasAba({
 
       {/* 2. Painel Central da Turma Selecionada */}
       <div className="row g-3">
-        {/* Painel Esquerdo: Resumo da Turma (Donut de Média + Velocímetro logo abaixo, sem legendas intermediárias) */}
-        <div className="col-12 col-lg-4 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white d-flex flex-column justify-content-between">
+        {/* Painel Esquerdo: Resumo da Turma (Donut de Média + Velocímetro logo abaixo com altura estática fixa no topo) */}
+        <div className="col-12 col-lg-4 col-xl-3 align-self-start">
+          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-column">
             <div>
               {/* Título do Card */}
               <div className="d-flex align-items-center gap-2 mb-2">
@@ -361,7 +361,7 @@ export default function NotasAba({
 
             <hr className="my-2 border-secondary-subtle" />
 
-            {/* Gráfico 2: Velocímetro / Manômetro de Faltas (subido diretamente para abaixo do Donut) */}
+            {/* Gráfico 2: Velocímetro / Manômetro de Faltas (fixado diretamente abaixo do Donut) */}
             <div className="pt-1 pb-1">
               <VelocimetroPresenca taxaFaltas={taxaFaltasTurma} />
             </div>
