@@ -58,7 +58,7 @@ test('bibliotecaria pode notificar somente aluno com devolucao proxima', functio
     Matricula::factory()->create(['usuario_id' => $alunoSemDevolucao->id]);
     Emprestimo::factory()->create([
         'usuario_id' => $alunoComDevolucao->id,
-        'status' => 'aprovado',
+        'status' => 'entregue',
         'data_prevista_devolucao' => now()->addDays(2),
     ]);
 

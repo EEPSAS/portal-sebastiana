@@ -118,11 +118,12 @@ class BibliotecaSeeder extends Seeder
                 [
                     'livro_id' => $livrosCriados[0]->id_livro,
                     'usuario_id' => $yasmin->id,
-                    'status' => 'aprovado',
+                    'status' => 'entregue',
                 ],
                 [
                     'data_emprestimo' => now()->subDays(5),
                     'data_prevista_devolucao' => now()->addDays(9),
+                    'reserva_ativa' => true,
                     'observacoes' => 'Retirado na biblioteca para trabalho de literatura.',
                 ]
             );
@@ -189,23 +190,25 @@ class BibliotecaSeeder extends Seeder
                 [
                     'data_emprestimo' => now()->subDays(3),
                     'data_prevista_devolucao' => now()->addDays(11),
-                    'status' => 'aprovado',
+                    'status' => 'entregue',
+                    'reserva_ativa' => true,
                     'observacoes' => 'Estudo para Olimpíada de Física.',
                 ]
             );
         }
 
         if ($beatriz && count($livrosCriados) > 2) {
-            // Empréstimo solicitado aguardando aprovação
+            // Empréstimo solicitado aguardando entrega física no balcão
             Emprestimo::updateOrCreate(
                 [
                     'livro_id' => $livrosCriados[2]->id_livro,
                     'usuario_id' => $beatriz->id,
                 ],
                 [
-                    'data_emprestimo' => now(),
-                    'data_prevista_devolucao' => now()->addDays(14),
+                    'data_emprestimo' => null,
+                    'data_prevista_devolucao' => null,
                     'status' => 'solicitado',
+                    'reserva_ativa' => true,
                     'observacoes' => 'Solicitação via portal web.',
                 ]
             );

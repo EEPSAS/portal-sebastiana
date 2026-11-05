@@ -629,7 +629,7 @@ class AlunoDashboardService
         // 3. Leitura atual do aluno (módulo de biblioteca — filtra apenas empréstimos ativos/solicitados via Enum)
         $ultimoEmprestimo = Emprestimo::where('usuario_id', $aluno->id)
             ->whereIn('status', [
-                EmprestimoStatus::APROVADO->value,
+                EmprestimoStatus::ENTREGUE->value,
                 EmprestimoStatus::RENOVADO->value,
                 EmprestimoStatus::ATRASADO->value,
                 EmprestimoStatus::SOLICITADO->value,
