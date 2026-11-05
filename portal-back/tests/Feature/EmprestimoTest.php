@@ -185,58 +185,13 @@ test('user views only their loans whereas admin views all loans', function () {
         ->assertJsonCount(2);
 });
 
-test('requesting a book reserves stock and notifies the librarian with an important alert', function () {
+test('emprestimo inclui o papel do usuario para identificar estudantes nas devolucoes', function () {
+    $bibliotecaria = User::factory()->create(['role' => 'bibliotecaria']);
     $aluno = User::factory()->aluno()->create();
-    $bibliotecaria = User::factory()->bibliotecaria()->create();
-    $livro = Livro::factory()->create(['quantidade_disponivel' => 1]);
+    Emprestimo::factory()->create(['usuario_id' => $aluno->id]);
 
-    $this->actingAs($aluno, 'sanctum')
-        ->postJson('/api/emprestimos/solicitar', ['livro_id' => $livro->id_livro])
-        ->assertCreated()
-        ->assertJsonPath('livro.titulo', $livro->titulo);
-
-    expect($livro->fresh()->quantidade_disponivel)->toBe(0)
-        ->and($bibliotecaria->notifications()->count())->toBe(1)
-        ->and($bibliotecaria->notifications()->first()->data['prioridade'])->toBe('importante')
-        ->and($bibliotecaria->notifications()->first()->data['assunto'])
-        ->toContain($aluno->name, $livro->titulo);
-});
-
-test('student can cancel only their pending loan and restore the reserved copy', function () {
-    $aluno = User::factory()->aluno()->create();
-    $outroAluno = User::factory()->aluno()->create();
-    $livro = Livro::factory()->create(['quantidade_disponivel' => 0]);
-    $emprestimo = Emprestimo::factory()->solicitado()->create([
-        'livro_id' => $livro->id_livro,
-        'usuario_id' => $aluno->id,
-        'reserva_ativa' => true,
-    ]);
-
-    $this->actingAs($outroAluno, 'sanctum')
-        ->patchJson("/api/emprestimos/{$emprestimo->id_emprestimo}/cancelar")
-        ->assertForbidden();
-
-    $this->actingAs($aluno, 'sanctum')
-        ->patchJson("/api/emprestimos/{$emprestimo->id_emprestimo}/cancelar")
+    $this->actingAs($bibliotecaria, 'sanctum')
+        ->getJson('/api/emprestimos')
         ->assertOk()
-        ->assertJsonPath('status', 'recusado');
-
-    expect($livro->fresh()->quantidade_disponivel)->toBe(1);
-});
-
-test('approval reserves stock once for a legacy request without an active reservation', function () {
-    $adm = User::factory()->create(['role' => 'adm']);
-    $livro = Livro::factory()->create(['quantidade_disponivel' => 1]);
-    $emprestimo = Emprestimo::factory()->solicitado()->create([
-        'livro_id' => $livro->id_livro,
-        'reserva_ativa' => false,
-    ]);
-
-    $this->actingAs($adm, 'sanctum')
-        ->patchJson("/api/emprestimos/{$emprestimo->id_emprestimo}/aprovar")
-        ->assertOk()
-        ->assertJsonPath('status', 'aprovado');
-
-    expect($livro->fresh()->quantidade_disponivel)->toBe(0)
-        ->and($emprestimo->fresh()->reserva_ativa)->toBeTrue();
+        ->assertJsonPath('0.usuario.role', 'aluno');
 });

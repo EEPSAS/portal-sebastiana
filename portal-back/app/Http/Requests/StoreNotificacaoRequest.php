@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreNotificacaoRequest extends FormRequest
 {
@@ -10,16 +11,8 @@ class StoreNotificacaoRequest extends FormRequest
     {
         $user = $this->user();
 
-        if ($user === null) {
-            return false;
-        }
-
-        if ($this->input('destinatario_tipo') === 'geral'
-            && ! ($user->isEspecialista() || $user->isAdm())) {
-            abort(403, 'Somente Especialista ou Administrador pode enviar comunicados gerais.');
-        }
-
-        return $user->isProfessor() || $user->isEspecialista() || $user->isAdm();
+        return $user !== null
+            && ($user->isProfessor() || $user->isEspecialista() || $user->isAdm() || $user->isBibliotecaria());
     }
 
     public function rules(): array
@@ -27,7 +20,11 @@ class StoreNotificacaoRequest extends FormRequest
         return [
             'titulo' => ['required', 'string', 'max:255'],
             'assunto' => ['required', 'string', 'max:5000'],
-            'destinatario_tipo' => ['required', 'string', 'in:aluno,turma,geral'],
+            'destinatario_tipo' => [
+                'required',
+                'string',
+                Rule::in($this->user()?->isBibliotecaria() ? ['aluno'] : ['aluno', 'turma', 'geral']),
+            ],
             'aluno_id' => ['exclude_unless:destinatario_tipo,aluno', 'required', 'integer', 'exists:users,id'],
             'turma_id' => ['exclude_unless:destinatario_tipo,turma', 'required', 'integer', 'exists:turmas,id_turma'],
             'super_importante' => ['sometimes', 'boolean'],

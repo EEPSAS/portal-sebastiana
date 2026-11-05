@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../../../hooks/useAuth";
 import {
   cancelarMatriculaAluno,
@@ -52,6 +52,7 @@ const ABAS = [
  */
 const Turmas = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const role = user?.role || "aluno";
   const podeGerenciar = role === "especialista" || role === "adm";
@@ -66,8 +67,17 @@ const Turmas = () => {
         ]
       : ABAS;
 
-  // Estados de navegação (inicia em 'turmas' para o professor e em 'geral' para gestão)
-  const [abaAtiva, setAbaAtiva] = useState(() => (role === "professor" ? "turmas" : "geral"));
+  const abaSolicitada = searchParams.get("aba");
+  const abaAtiva = abasDisponiveis.some((aba) => aba.id === abaSolicitada)
+    ? abaSolicitada
+    : role === "professor"
+      ? "turmas"
+      : "geral";
+  const selecionarAba = (aba) => {
+    const parametros = new URLSearchParams(searchParams);
+    parametros.set("aba", aba);
+    setSearchParams(parametros, { replace: true });
+  };
 
   // Dados centrais
   const [turmas, setTurmas] = useState([]);
@@ -453,7 +463,7 @@ const Turmas = () => {
                 if (turmaAlvo) {
                   handleAbrirVincularAluno(turmaAlvo);
                 } else {
-                  setAbaAtiva("turmas");
+                  selecionarAba("turmas");
                 }
               }}
             >
@@ -472,7 +482,7 @@ const Turmas = () => {
                 <button
                   key={aba.id}
                   type="button"
-                  onClick={() => setAbaAtiva(aba.id)}
+                  onClick={() => selecionarAba(aba.id)}
                   className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 transition-all ${
                     ativa ? "btn-primary text-white shadow-sm" : "btn-light text-muted"
                   }`}

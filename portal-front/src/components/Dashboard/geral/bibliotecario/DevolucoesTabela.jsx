@@ -5,6 +5,7 @@ export default function DevolucoesTabela({
   formatarData,
   mensagemVazia,
   corBadge,
+  onNotificar,
 }) {
   return (
     <section
@@ -26,13 +27,14 @@ export default function DevolucoesTabela({
         >
           <table
             className="table table-sm table-hover align-middle mb-0"
-            style={{ minWidth: "350px" }}
+            style={{ minWidth: onNotificar ? "390px" : "350px" }}
           >
             <thead className="table-light">
               <tr>
                 <th scope="col">Pessoa</th>
                 <th scope="col">Livro e prazo</th>
                 <th scope="col">Retirada</th>
+                {onNotificar && <th scope="col" className="text-end">Ações</th>}
               </tr>
             </thead>
             <tbody>
@@ -50,6 +52,21 @@ export default function DevolucoesTabela({
                   <td className="text-nowrap">
                     {formatarData(emprestimo.data_emprestimo)}
                   </td>
+                  {onNotificar && (
+                    <td className="text-end">
+                      {["aluno", "padrao"].includes(emprestimo.usuario?.role) && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary rounded-pill px-2"
+                          title={`Criar notificação para ${emprestimo.usuario?.name || "estudante"}`}
+                          aria-label={`Criar notificação para ${emprestimo.usuario?.name || "estudante"}`}
+                          onClick={() => onNotificar(emprestimo)}
+                        >
+                          <i className="bi bi-bell" aria-hidden="true"></i>
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

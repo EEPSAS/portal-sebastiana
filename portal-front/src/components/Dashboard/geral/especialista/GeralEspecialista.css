@@ -5,7 +5,7 @@
  * Centraliza os estilos visuais da visão analítica de gestão escolar (GeralEspecialista),
  * garantindo fidelidade estrita ao protótipo de design:
  * - Título serifado imponente (#0d2346) com sublinhado decorativo azul;
- * - Cartões de KPI com cantos arredondados (20px), ícones pastéis, valores marcantes e indicadores de tendência;
+ * - Cartões de KPI com cantos arredondados, ícones pastéis e setas de navegação;
  * - Cartões de gráficos Recharts lado a lado (50/50) com badges arredondados;
  * - Card de atividades recentes com botão 'Ver todas →' e linhas com separadores suaves.
  */
@@ -125,45 +125,39 @@
   margin-top: 0.2rem;
 }
 
-/* Rodapé do KPI com métrica de tendência e seta */
+/* Rodapé do KPI com seta de navegação acessível */
 .geral-kpi-footer {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-end;
   margin-top: 0.4rem;
   padding-top: 0.2rem;
 }
 
-.geral-kpi-trend {
-  display: flex;
-  flex-direction: column;
-}
-
-.geral-kpi-trend-stat {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #1c3d70;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.geral-kpi-trend-desc {
-  font-size: 0.75rem;
-  color: #7b8ea8;
-  margin-top: 0.1rem;
-}
-
 .geral-kpi-arrow-btn {
-  color: #3b6fb5;
+  color: #ffffff;
+  background-color: #0f2b5c;
   font-size: 1.1rem;
   line-height: 1;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
   transition: transform 0.2s ease, color 0.2s ease;
 }
 
 .geral-kpi-card:hover .geral-kpi-arrow-btn {
   transform: translateX(4px);
-  color: #0f2b5c;
+  color: #ffffff;
+  background-color: #081b3c;
+}
+
+.geral-kpi-arrow-btn:focus-visible {
+  outline: 3px solid #f4b400;
+  outline-offset: 3px;
 }
 
 /* ==========================================================================
@@ -195,7 +189,7 @@
 }
 
 /* ==========================================================================
-   3. Card de Últimas Atualizações
+   3. Card de Últimas Notificações
    ========================================================================== */
 .geral-updates-card {
   background-color: #ffffff;

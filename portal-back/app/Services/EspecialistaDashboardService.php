@@ -14,9 +14,11 @@ use App\Models\PeriodoLetivo;
 use App\Models\Turma;
 use App\Models\TurmaDisciplina;
 use App\Models\User;
+use App\Notifications\NotificacaoPortal;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -1684,6 +1686,9 @@ class EspecialistaDashboardService
         $divisaoEfetiva = $divisaoFiltro ?: ($divisaoAtual?->nome ?? null);
         $divisaoObjeto = $periodoAtivo?->divisoes->firstWhere('nome', $divisaoEfetiva);
         $pontosDivisao = $divisaoObjeto ? (float) $divisaoObjeto->pontos : 30.0;
+        $pontosConsolidados = $periodoAtivo?->divisoes
+            ->filter(fn ($divisao) => $divisao->data_fim && Carbon::parse($divisao->data_fim)->lt(Carbon::today()))
+            ->sum('pontos') ?? 0.0;
 
         // 1. Determina as turmas do escopo com base no papel do usuário
         $isDocenteEstrito = $usuario->isProfessor() && ! $usuario->canManageAcademic();
@@ -1741,8 +1746,8 @@ class EspecialistaDashboardService
         $frequenciasTurmas = [];
         $somaMediasTurmas = 0.0;
         $turmasComNota = 0;
-        $totalAulasGeral = 0;
-        $totalFaltasGeral = 0;
+        $somaFrequenciasTurmas = 0.0;
+        $turmasComFrequencia = 0;
 
         foreach ($turmas as $turma) {
             // Consulta de notas da turma (filtrando disciplinas do docente e período letivo)
@@ -1763,11 +1768,9 @@ class EspecialistaDashboardService
                     return ((float) $nota->valor_nota / $max) * 10;
                 })->avg();
 
+                $somaMediasTurmas += (float) $aproveitamentoTurma;
                 $mediaTurma = round((float) $aproveitamentoTurma, 1);
-                $somaMediasTurmas += $mediaTurma;
                 $turmasComNota++;
-            } else {
-                $mediaTurma = 0.0;
             }
 
             // Consulta de faltas e presenças da turma
@@ -1775,27 +1778,34 @@ class EspecialistaDashboardService
             if ($isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()) {
                 $queryFreq->whereIn('disciplina_id', $disciplinasIdsProf);
             }
+            if ($divisaoEfetiva === 'todos') {
+                if ($periodoAtivo?->data_inicio && $periodoAtivo?->data_fim) {
+                    $queryFreq->whereBetween('data_aula', [$periodoAtivo->data_inicio, $periodoAtivo->data_fim]);
+                }
+            } elseif ($divisaoObjeto?->data_inicio && $divisaoObjeto?->data_fim) {
+                $queryFreq->whereBetween('data_aula', [$divisaoObjeto->data_inicio, $divisaoObjeto->data_fim]);
+            }
             $aulasTurma = (int) (clone $queryFreq)->sum('quantidade_aulas');
             $faltasTurma = (int) (clone $queryFreq)->whereIn('status_presenca', ['Falta', 'Falta Justificada'])->sum('quantidade_aulas');
 
-            $totalAulasGeral += $aulasTurma;
-            $totalFaltasGeral += $faltasTurma;
+            if ($notas->isNotEmpty()) {
+                $mediasTurmas[] = [
+                    'id' => $turma->id_turma,
+                    'turma' => $turma->nome_identificador,
+                    'nota' => $mediaTurma,
+                ];
+            }
 
-            $presencaTurma = $aulasTurma > 0
-                ? (int) round((1 - ($faltasTurma / $aulasTurma)) * 100)
-                : 100;
-
-            $mediasTurmas[] = [
-                'id' => $turma->id_turma,
-                'turma' => $turma->nome_identificador,
-                'nota' => $mediaTurma,
-            ];
-
-            $frequenciasTurmas[] = [
-                'id' => $turma->id_turma,
-                'turma' => $turma->nome_identificador,
-                'percentual' => $presencaTurma,
-            ];
+            if ($aulasTurma > 0) {
+                $presencaTurma = (1 - ($faltasTurma / $aulasTurma)) * 100;
+                $somaFrequenciasTurmas += $presencaTurma;
+                $turmasComFrequencia++;
+                $frequenciasTurmas[] = [
+                    'id' => $turma->id_turma,
+                    'turma' => $turma->nome_identificador,
+                    'percentual' => round($presencaTurma, 1),
+                ];
+            }
         }
 
         // 3. Consolidação dos KPIs Superiores
@@ -1808,57 +1818,15 @@ class EspecialistaDashboardService
         // Média geral agregada (escala 0-10)
         $mediaGeral = $turmasComNota > 0 ? round($somaMediasTurmas / $turmasComNota, 1) : 0.0;
 
-        // Frequência média global em percentual
-        $frequenciaMediaPercentual = $totalAulasGeral > 0
-            ? round((1 - ($totalFaltasGeral / $totalAulasGeral)) * 100, 1)
-            : 100.0;
+        // A média aritmética dá o mesmo peso a cada turma com registros no período.
+        $frequenciaMediaPercentual = $turmasComFrequencia > 0
+            ? round($somaFrequenciasTurmas / $turmasComFrequencia, 1)
+            : null;
 
         // Total de notícias publicadas no sistema
         $noticiasCount = Noticia::count();
 
-        // 4. Últimas Atualizações Reais (Notícias recentes + Atualizações recentes de notas)
-        $atualizacoes = [];
-
-        // Notícias recentes (até 3)
-        $noticiasRecentes = Noticia::orderByDesc('created_at')->limit(3)->get();
-        foreach ($noticiasRecentes as $noticia) {
-            $atualizacoes[] = [
-                'id' => "noticia-{$noticia->id}",
-                'tipo' => 'noticia',
-                'texto' => "Nova notícia publicada: {$noticia->titulo}",
-                'tempoAtras' => $noticia->created_at ? $noticia->created_at->locale('pt_BR')->diffForHumans() : 'recentemente',
-                'timestamp' => $noticia->created_at?->timestamp ?? 0,
-            ];
-        }
-
-        // Notas recentes (até 3)
-        $notasRecentes = Nota::with(['turma', 'disciplina'])
-            ->whereIn('turma_id', $turmasIdsList)
-            ->orderByDesc('updated_at')
-            ->limit(3)
-            ->get();
-
-        foreach ($notasRecentes as $nota) {
-            $nomeTurma = $nota->turma?->nome_identificador ?? 'Turma';
-            $nomeDisc = $nota->disciplina?->nome ?? 'Disciplina';
-            $atualizacoes[] = [
-                'id' => "nota-{$nota->id_nota}",
-                'tipo' => 'notas',
-                'texto' => "Notas atualizadas — {$nomeTurma} ({$nomeDisc})",
-                'tempoAtras' => $nota->updated_at ? $nota->updated_at->locale('pt_BR')->diffForHumans() : 'recentemente',
-                'timestamp' => $nota->updated_at?->timestamp ?? 0,
-            ];
-        }
-
-        // Ordena atualizações por cronologia decrescente (mais recentes primeiro)
-        usort($atualizacoes, fn ($a, $b) => $b['timestamp'] <=> $a['timestamp']);
-
-        // Remove a chave de ordenação interna antes de entregar
-        $ultimasAtualizacoes = array_map(function ($item) {
-            unset($item['timestamp']);
-
-            return $item;
-        }, array_slice($atualizacoes, 0, 5));
+        $ultimasNotificacoes = $this->obterUltimasNotificacoes();
 
         // Nomes e detalhes das disciplinas sob regência do docente (Item 3.4a)
         $disciplinasDocenteColecao = $isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()
@@ -1952,8 +1920,8 @@ class EspecialistaDashboardService
         return [
             'kpis' => [
                 'total_alunos' => $totalAlunos,
-                'media_geral' => $mediaGeral,
-                'frequencia_media' => "{$frequenciaMediaPercentual}%",
+                'media_geral' => $turmasComNota > 0 ? $mediaGeral : null,
+                'frequencia_media' => $frequenciaMediaPercentual !== null ? "{$frequenciaMediaPercentual}%" : null,
                 'noticias_publicadas' => $noticiasCount,
                 'total_turmas' => count($turmas),
             ],
@@ -1963,12 +1931,13 @@ class EspecialistaDashboardService
             ],
             'disciplinas_docente' => $disciplinasDocenteNomes,
             'disciplinas_detalhadas' => $disciplinasDetalhadas,
-            'ultimas_atualizacoes' => $ultimasAtualizacoes,
+            'ultimas_notificacoes' => $ultimasNotificacoes,
             'periodo_contexto' => [
                 'ano' => $periodoAtivo?->ano ?? (int) date('Y'),
                 'tipo_divisao' => $periodoAtivo?->tipo_divisao ?? 'trimestre',
                 'divisao_selecionada' => $divisaoEfetiva,
                 'pontos_divisao' => $pontosDivisao,
+                'pontos_consolidados' => (float) $pontosConsolidados,
                 'data_inicio' => $periodoAtivo?->data_inicio ? Carbon::parse($periodoAtivo->data_inicio)->format('Y-m-d') : null,
                 'data_fim' => $periodoAtivo?->data_fim ? Carbon::parse($periodoAtivo->data_fim)->format('Y-m-d') : null,
                 'divisoes_disponiveis' => $periodoAtivo?->divisoes->map(fn ($div) => [
@@ -1981,5 +1950,67 @@ class EspecialistaDashboardService
                 ])->values()->all() ?? [],
             ],
         ];
+    }
+
+    /**
+     * Agrupa as cópias por destinatário para exibir cada notificação uma única vez.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function obterUltimasNotificacoes(): array
+    {
+        $autoresIds = User::query()
+            ->whereIn('role', [
+                UserRole::PROFESSOR->value,
+                UserRole::ESPECIALISTA->value,
+                UserRole::ADM->value,
+                'admin',
+                UserRole::BIBLIOTECARIA->value,
+                'bibliotecario',
+            ])
+            ->pluck('id');
+        $bibliotecariasIds = User::query()
+            ->whereIn('role', [UserRole::BIBLIOTECARIA->value, 'bibliotecario'])
+            ->pluck('id');
+
+        $eventos = DatabaseNotification::query()
+            ->where('type', NotificacaoPortal::class)
+            ->whereNotNull('data->event_key')
+            ->where(function ($query) use ($autoresIds, $bibliotecariasIds) {
+                $query->where(function ($query) use ($autoresIds) {
+                    $query->where('data->tipo', 'manual')
+                        ->whereIn('data->criador_id', $autoresIds);
+                })->orWhere(function ($query) use ($bibliotecariasIds) {
+                    $query->where('notifiable_type', User::class)
+                        ->whereIn('notifiable_id', $bibliotecariasIds);
+                });
+            })
+            ->selectRaw("MAX(id) as id, MAX(created_at) as created_at, json_extract(data, '$.event_key') as event_key")
+            ->groupByRaw("json_extract(data, '$.event_key')")
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
+        $notificacoes = DatabaseNotification::query()
+            ->whereIn('id', $eventos->pluck('id'))
+            ->get()
+            ->keyBy('id');
+
+        return $eventos->map(function ($evento) use ($notificacoes) {
+            $notificacao = $notificacoes->get($evento->id);
+            $dados = $notificacao?->data ?? [];
+            $titulo = $dados['titulo'] ?? 'Notificação escolar';
+            $criador = $dados['criador_nome'] ?? 'Sistema';
+
+            return [
+                'id' => (string) $evento->event_key,
+                'tipo' => 'notificacao',
+                'texto' => "{$criador}: {$titulo}",
+                'assunto' => $dados['assunto'] ?? '',
+                'tempoAtras' => $notificacao?->created_at
+                    ? $notificacao->created_at->locale('pt_BR')->diffForHumans()
+                    : 'recentemente',
+            ];
+        })->all();
     }
 }
