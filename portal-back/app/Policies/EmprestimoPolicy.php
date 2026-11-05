@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\EmprestimoStatus;
 use App\Models\Emprestimo;
 use App\Models\User;
 
@@ -41,6 +42,15 @@ class EmprestimoPolicy
     public function solicitar(User $user): bool
     {
         return $user->hasPermissionTo('solicitar_emprestimo');
+    }
+
+    /**
+     * Autoriza o titular a liberar somente uma solicitação ainda pendente.
+     */
+    public function cancelar(User $user, Emprestimo $emprestimo): bool
+    {
+        return $emprestimo->usuario_id === $user->id
+            && $emprestimo->status === EmprestimoStatus::SOLICITADO;
     }
 
     /**

@@ -121,6 +121,12 @@ export const solicitarEmprestimo = (dados) =>
   requestJson('/emprestimos/solicitar', { method: 'POST', body: dados });
 
 /**
+ * Cancela uma solicitação pendente pertencente ao usuário autenticado.
+ */
+export const cancelarSolicitacaoEmprestimo = (id) =>
+  requestJson(`/emprestimos/${id}/cancelar`, { method: 'PATCH' });
+
+/**
  * Atualiza o status do empréstimo (Aprovar, Devolver, Renovar - Bibliotecária / Adm).
  * @param {number|string} id Identificador do empréstimo.
  * @param {object} dados Objeto com novo status e observações.
@@ -138,6 +144,7 @@ export const bibliotecaService = {
   meusEmprestimos,
   listarEmprestimos,
   solicitarEmprestimo,
+  cancelarSolicitacaoEmprestimo,
   atualizarEmprestimo,
 };
 

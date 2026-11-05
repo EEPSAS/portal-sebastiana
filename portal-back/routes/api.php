@@ -148,9 +148,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/alunos/{usuario}/turmas', [MatriculaController::class, 'listarTurmasDoAluno']);
     Route::get('/me/turmas', [MatriculaController::class, 'minhasTurmas']);
 
-    // Módulo Acadêmico: Consultas de Frequência e Notas (Geradas via CSV)
+    // O CSV continua sendo o fluxo oficial; lançamentos manuais são uma redundância para Especialista/Adm.
     Route::get('/frequencias/relatorio-faltas', [FrequenciaController::class, 'gerarRelatorioFaltas']);
     Route::get('/frequencias/minha-frequencia', [FrequenciaController::class, 'consultarFrequenciaPropria']);
+    Route::post('/frequencias', [FrequenciaController::class, 'registrarManual']);
+    Route::post('/notas', [NotaController::class, 'lancarNotaOficial']);
     Route::get('/notas/media-periodo', [NotaController::class, 'calcularMediaPeriodo']);
     Route::get('/notas/boletim/{usuario}', [NotaController::class, 'gerarBoletim']);
     Route::get('/notas/meu-boletim', [NotaController::class, 'consultarNotaPropria']);
@@ -166,6 +168,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/emprestimos/meus-emprestimos', [EmprestimoController::class, 'meusEmprestimos']);
     Route::post('/emprestimos/solicitar', [EmprestimoController::class, 'solicitar']);
     Route::patch('/emprestimos/{emprestimo}/aprovar', [EmprestimoController::class, 'aprovar']);
+    Route::patch('/emprestimos/{emprestimo}/cancelar', [EmprestimoController::class, 'cancelarSolicitacao']);
     Route::patch('/emprestimos/{emprestimo}/renovar', [EmprestimoController::class, 'renovar']);
     Route::patch('/emprestimos/{emprestimo}/devolver', [EmprestimoController::class, 'registrarDevolucao']);
     Route::patch('/emprestimos/{emprestimo}/status', [EmprestimoController::class, 'atualizarStatus']);
@@ -209,9 +212,9 @@ Route::middleware('auth:sanctum')->group(function () {
 /*
     |--------------------------------------------------------------------------
     | ROTAS DESATIVADAS (FORA DE ESCOPO - ARQUIVADAS COM SEGURANÇA)
-    | As notas e frequências são populadas exclusivamente via upload do arquivo
-    | consolidado CSV pelo Especialista. Tarefas manuais, submissões e remessas
-    | estão arquivadas e disponíveis em caso de futura mudança de escopo.
+    | A importação CSV permanece o fluxo padrão das notas e frequências. O
+    | lançamento individual é uma exceção autorizada para Especialista/Adm.
+    | Chamadas diárias, submissões e remessas continuam fora de escopo.
     |--------------------------------------------------------------------------
     // Módulo Acadêmico: Remessas Docentes (Desativado)
     // Route::post('/remessas', [RemessaDocenteController::class, 'enviarRemessa']);
@@ -225,8 +228,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Route::put('/frequencias/{frequencia}', [FrequenciaController::class, 'atualizarPresencaIndividual']);
     // Route::patch('/frequencias/{frequencia}', [FrequenciaController::class, 'atualizarPresencaIndividual']);
 
-    // Módulo Acadêmico: Lançamento Manual de Notas (Desativado)
-    // Route::post('/notas', [NotaController::class, 'lancarNotaOficial']);
     // Route::put('/notas/{nota}', [NotaController::class, 'atualizarNota']);
     // Route::patch('/notas/{nota}', [NotaController::class, 'atualizarNota']);
     // Route::delete('/notas/{nota}', [NotaController::class, 'deletarNota']);

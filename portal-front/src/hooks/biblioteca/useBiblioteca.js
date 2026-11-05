@@ -16,6 +16,7 @@ import {
   editarLivro,
   excluirLivro,
   solicitarEmprestimo,
+  cancelarSolicitacaoEmprestimo,
   meusEmprestimos,
 } from '../../services/biblioteca/bibliotecaService';
 
@@ -60,7 +61,7 @@ export const useBiblioteca = (termoBusca = '') => {
 
         const livrosPromessa = listarLivros(filtros, { signal: controller.signal });
         const emprestimosPromessa = hasPortalSession()
-          ? meusEmprestimos({ signal: controller.signal }).catch(() => [])
+          ? meusEmprestimos({ signal: controller.signal })
           : Promise.resolve([]);
 
         const [resultadoLivros, resultadoEmprestimos] = await Promise.all([
@@ -201,6 +202,23 @@ export const useBiblioteca = (termoBusca = '') => {
     }
   };
 
+  const cancelarEmprestimoLivro = async (emprestimoId) => {
+    try {
+      await cancelarSolicitacaoEmprestimo(emprestimoId);
+      setEmprestimos((prev) => prev.map((item) => (
+        String(item.id) === String(emprestimoId)
+          ? { ...item, status: 'recusado' }
+          : item
+      )));
+      dispararAviso('Solicitação cancelada; o exemplar voltou a ficar disponível.');
+      setTriggerRecarregar((prev) => prev + 1);
+      return true;
+    } catch (error) {
+      dispararAviso(error.message || 'Não foi possível cancelar a solicitação.');
+      return false;
+    }
+  };
+
   // ================= Operações de Videoaulas =================
 
   const adicionarVideoaula = (videoaula) => {
@@ -231,6 +249,7 @@ export const useBiblioteca = (termoBusca = '') => {
     importarCsvLivros,
     removerLivro,
     solicitarEmprestimoLivro,
+    cancelarEmprestimoLivro,
     adicionarVideoaula,
     removerVideoaula,
   };

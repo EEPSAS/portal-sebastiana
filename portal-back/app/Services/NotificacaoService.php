@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\UserRole;
 use App\Models\Disciplina;
 use App\Models\Evento;
+use App\Models\Emprestimo;
 use App\Models\Frequencia;
 use App\Models\Matricula;
 use App\Models\Nota;
@@ -78,6 +79,37 @@ class NotificacaoService
 
         if ($destinatarios->isNotEmpty()) {
             Notification::send($destinatarios, new NotificacaoPortal($payload));
+        }
+    }
+
+    /**
+     * Avisa a equipe da biblioteca sobre uma nova solicitação sem expor o pedido a outros perfis.
+     */
+    public function notificarSolicitacaoEmprestimo(Emprestimo $emprestimo): void
+    {
+        $emprestimo->loadMissing(['livro', 'usuario']);
+        $eventKey = "emprestimo:solicitacao:{$emprestimo->id_emprestimo}";
+        $payload = [
+            'titulo' => "Livro solicitado: {$emprestimo->livro->titulo}",
+            'assunto' => "{$emprestimo->usuario->name} solicitou o livro \"{$emprestimo->livro->titulo}\". Pedido #{$emprestimo->id_emprestimo}.",
+            'tipo' => 'emprestimo',
+            'origem' => 'sistema',
+            'prioridade' => 'importante',
+            'criador_id' => $emprestimo->usuario_id,
+            'criador_nome' => $emprestimo->usuario->name,
+            'event_key' => $eventKey,
+        ];
+
+        $bibliotecarias = User::query()
+            ->where('ativo', true)
+            ->where(function ($query) {
+                $query->where('role', UserRole::BIBLIOTECARIA->value)
+                    ->orWhereHas('roleModel', fn ($roleQuery) => $roleQuery->whereIn('slug', ['bibliotecaria', 'bibliotecario']));
+            })
+            ->get();
+
+        foreach ($bibliotecarias as $bibliotecaria) {
+            $this->enviarUmaVez($bibliotecaria, $payload);
         }
     }
 

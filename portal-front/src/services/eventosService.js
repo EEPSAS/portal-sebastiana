@@ -54,7 +54,7 @@ export const mapEvento = (evento) => ({
   category: getCategoryFromApiType(evento.tipo),
   important: Boolean(evento.importante),
   location: evento.local || '',
-  creatorId: evento.criador_id,
+  creatorId: evento.criador?.id ?? evento.criador_id,
   createdAt: evento.created_at,
   updatedAt: evento.updated_at,
   isCustom: true,

@@ -3,6 +3,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { obterPeriodoLetivoAtivo } from "../../../services/periodosLetivosService";
 import { formatarDisciplinaCiclo } from "../../../utils/formatters";
 import ModalGerarBoletim from "./ModalGerarBoletim";
+import ModalLancamentoManual from "./ModalLancamentoManual";
 import VelocimetroPresenca from "./VelocimetroPresenca";
 
 /**
@@ -29,6 +30,7 @@ export default function NotasAba({
   podeGerenciar = false,
   onAbrirImportarNotas,
   onAbrirExcluirDadosCsv,
+  onManualSave,
   loadingNotas = false,
   alunosTurma = [],
   alunoFiltroId = "",
@@ -39,6 +41,7 @@ export default function NotasAba({
   const [disciplinaFiltro, setDisciplinaFiltro] = useState("");
   const [baseCalculoAnual, setBaseCalculoAnual] = useState("100");
   const [modalBoletimAberto, setModalBoletimAberto] = useState(false);
+  const [modalManualAberto, setModalManualAberto] = useState(false);
   const [subAbaPainel, setSubAbaPainel] = useState("notas");
 
   // Busca o período letivo ativo institucional para compor as etapas oficiais
@@ -499,6 +502,19 @@ export default function NotasAba({
                       </button>
                     )}
 
+                    {podeGerenciar && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1.5"
+                        onClick={() => setModalManualAberto(true)}
+                        disabled={!turmaAtiva || alunosTurma.length === 0}
+                        title="Registrar nota ou frequência manual para um aluno"
+                      >
+                        <i className="bi bi-pencil-square"></i>
+                        Lançamento manual
+                      </button>
+                    )}
+
                     {/* Botão Excluir Diário CSV */}
                     {podeGerenciar && notas.length > 0 && onAbrirExcluirDadosCsv && (
                       <button
@@ -809,6 +825,17 @@ export default function NotasAba({
         periodosDisponiveis={divisoesDisponiveis}
         alunoPreSelecionadoId={alunoFiltroId}
       />
+      {modalManualAberto && turmaAtiva && (
+        <ModalLancamentoManual
+          turmaId={turmaAtiva.id_turma}
+          alunos={alunosTurma}
+          periodos={divisoesDisponiveis}
+          periodoInicial={periodoFiltro}
+          alunoInicial={alunoFiltroId}
+          onClose={() => setModalManualAberto(false)}
+          onSuccess={onManualSave}
+        />
+      )}
     </div>
   );
 }

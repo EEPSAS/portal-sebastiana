@@ -36,6 +36,9 @@ const AgendaPage = () => {
   const { user } = useAuth();
   const role = String(user?.role || '').toLowerCase();
   const podeGerenciar = ['especialista', 'adm', 'admin'].includes(role);
+  const podeAlterarEvento = (event) => (
+    podeGerenciar || String(event.creatorId) === String(user?.id)
+  );
   // Qualquer usuário autenticado pode criar eventos na própria agenda.
   const podeCriarEvento = Boolean(user?.id);
 
@@ -200,8 +203,9 @@ const AgendaPage = () => {
               eventos={eventos}
               loading={loading}
               error={error}
-              onEditEvent={podeGerenciar ? handleOpenEdit : null}
-              onDeleteEvent={podeGerenciar ? handleDelete : null}
+              canModifyEvent={podeAlterarEvento}
+              onEditEvent={handleOpenEdit}
+              onDeleteEvent={handleDelete}
             />
           </div>
         )}

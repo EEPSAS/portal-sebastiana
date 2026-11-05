@@ -331,6 +331,11 @@ const Turmas = () => {
     setRecargaKey((prev) => prev + 1);
   };
 
+  const handleSucessoLancamentoManual = (tipo) => {
+    dispararNotificacao(tipo === "nota" ? "Nota manual registrada com sucesso." : "Frequência manual registrada com sucesso.");
+    setRecargaKey((prev) => prev + 1);
+  };
+
   // Confirmação e execução de exclusão de turma
   const handleConfirmarExclusaoTurma = async () => {
     if (!turmaParaExcluir) return;
@@ -536,6 +541,7 @@ const Turmas = () => {
             podeGerenciar={podeGerenciar}
             onAbrirImportarNotas={handleAbrirImportarNotas}
             onAbrirExcluirDadosCsv={handleAbrirExcluirDadosCsv}
+            onManualSave={handleSucessoLancamentoManual}
             loadingNotas={loadingNotas}
             trimestreAtual={obterTrimestreAtual()}
             alunosTurma={alunosTurmaSelecionada}
