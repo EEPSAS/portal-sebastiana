@@ -22,6 +22,31 @@ test('authenticated user can request a book loan', function () {
         ->assertJsonPath('livro.id_livro', $livro->id_livro);
 
     expect(Emprestimo::where('usuario_id', $user->id)->count())->toBe(1);
+    expect($livro->fresh()->quantidade_disponivel)->toBe(1);
+});
+
+test('requesting the last available book makes it unavailable for others', function () {
+    $aluno1 = User::factory()->create(['role' => 'padrao']);
+    $aluno2 = User::factory()->create(['role' => 'padrao']);
+    $livro = Livro::factory()->create(['quantidade_disponivel' => 1]);
+
+    // Aluno 1 solicita o único exemplar
+    $this->actingAs($aluno1, 'sanctum')
+        ->postJson('/api/emprestimos/solicitar', [
+            'livro_id' => $livro->id_livro,
+        ])
+        ->assertCreated();
+
+    // O livro passa a ficar indisponível para outros alunos
+    expect($livro->fresh()->quantidade_disponivel)->toBe(0);
+    expect($livro->fresh()->verificarDisponibilidade())->toBeFalse();
+
+    // Aluno 2 tenta solicitar o mesmo livro e recebe erro 422
+    $this->actingAs($aluno2, 'sanctum')
+        ->postJson('/api/emprestimos/solicitar', [
+            'livro_id' => $livro->id_livro,
+        ])
+        ->assertUnprocessable();
 });
 
 test('cannot request an unavailable book or duplicate active request', function () {

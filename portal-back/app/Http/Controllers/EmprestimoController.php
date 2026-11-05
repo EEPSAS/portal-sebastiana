@@ -104,11 +104,16 @@ class EmprestimoController extends Controller
             ], 422);
         }
 
+        // Reserva o exemplar físico no acervo imediatamente (garante que fique indisponível para outros alunos)
+        $livro->decrement('quantidade_disponivel');
+
         $emprestimo = Emprestimo::create([
             'livro_id' => $livro->id_livro ?? $livro->id,
             'usuario_id' => $request->user()->id,
             'status' => EmprestimoStatus::SOLICITADO,
             'observacoes' => $request->filled('observacoes') ? $request->string('observacoes')->toString() : null,
+            'data_emprestimo' => now(),
+            'data_prevista_devolucao' => now()->addDays(14),
         ]);
 
         $emprestimo->load(['livro', 'usuario:id,name,email']);
@@ -131,18 +136,15 @@ class EmprestimoController extends Controller
 
         $livro = $emprestimo->livro;
 
-        if ($livro->quantidade_disponivel <= 0) {
-            return response()->json([
-                'message' => 'Não há exemplares disponíveis para aprovar este empréstimo.',
-            ], 422);
+        // Se o empréstimo foi criado sem pré-decremento (ex.: testes legados)
+        if (! $emprestimo->data_emprestimo && $livro->quantidade_disponivel > 0) {
+            $livro->decrement('quantidade_disponivel');
         }
-
-        $livro->decrement('quantidade_disponivel');
 
         $emprestimo->update([
             'status' => EmprestimoStatus::APROVADO,
-            'data_emprestimo' => now(),
-            'data_prevista_devolucao' => now()->addDays(14),
+            'data_emprestimo' => $emprestimo->data_emprestimo ?? now(),
+            'data_prevista_devolucao' => $emprestimo->data_prevista_devolucao ?? now()->addDays(14),
         ]);
 
         $emprestimo->load(['livro', 'usuario:id,name,email']);
@@ -217,17 +219,17 @@ class EmprestimoController extends Controller
         $novoStatus = EmprestimoStatus::from($request->string('status')->toString());
         $statusAntigo = $emprestimo->status;
 
-        $eraAtivo = in_array($statusAntigo, [EmprestimoStatus::APROVADO, EmprestimoStatus::RENOVADO, EmprestimoStatus::ATRASADO]);
-        $seraAtivo = in_array($novoStatus, [EmprestimoStatus::APROVADO, EmprestimoStatus::RENOVADO, EmprestimoStatus::ATRASADO]);
+        $eraReservadoOuAtivo = in_array($statusAntigo, [EmprestimoStatus::SOLICITADO, EmprestimoStatus::APROVADO, EmprestimoStatus::RENOVADO, EmprestimoStatus::ATRASADO]);
+        $seraReservadoOuAtivo = in_array($novoStatus, [EmprestimoStatus::SOLICITADO, EmprestimoStatus::APROVADO, EmprestimoStatus::RENOVADO, EmprestimoStatus::ATRASADO]);
 
-        if (! $eraAtivo && $seraAtivo) {
+        if (! $eraReservadoOuAtivo && $seraReservadoOuAtivo) {
             if ($emprestimo->livro->quantidade_disponivel <= 0) {
                 return response()->json([
                     'message' => 'Não há exemplares disponíveis para ativar este empréstimo.',
                 ], 422);
             }
             $emprestimo->livro->decrement('quantidade_disponivel');
-        } elseif ($eraAtivo && ! $seraAtivo) {
+        } elseif ($eraReservadoOuAtivo && ! $seraReservadoOuAtivo) {
             $emprestimo->livro->increment('quantidade_disponivel');
         }
 
