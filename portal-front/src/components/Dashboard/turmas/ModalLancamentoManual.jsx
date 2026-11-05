@@ -42,8 +42,6 @@ export default function ModalLancamentoManual({
 
   useEffect(() => {
     let ativo = true;
-    setCarregandoDisciplinas(true);
-    setErro("");
     fetchTurmaDisciplinas(turmaId)
       .then((lista) => {
         if (ativo) {

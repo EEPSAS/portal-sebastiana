@@ -112,10 +112,13 @@ export const listarTodos = async (filtros = {}, { signal } = {}) => {
  * DELETE /api/usuarios/{id} — Encerra o vínculo do usuário em duas etapas (estilo GitHub)
  * preservando o histórico acadêmico e forçando o logoff imediato (Itens 1.3.6 e 1.3.7).
  */
-export const desvincularUsuario = async (id, confirmacaoNome) => {
+export const desvincularUsuario = async (id, confirmacaoNome, { permanente = false } = {}) => {
   const response = await api(`/usuarios/${encodeURIComponent(id)}`, {
     method: 'DELETE',
-    body: { confirmacao_nome: confirmacaoNome },
+    body: {
+      confirmacao_nome: confirmacaoNome,
+      permanente: Boolean(permanente),
+    },
   });
 
   const data = await response.json().catch(() => null);
@@ -125,6 +128,13 @@ export const desvincularUsuario = async (id, confirmacaoNome) => {
   }
 
   return data;
+};
+
+/**
+ * Exclui fisicamente e de forma definitiva o usuário do banco de dados (Item 6).
+ */
+export const excluirUsuarioTotalmente = async (id, confirmacaoNome) => {
+  return desvincularUsuario(id, confirmacaoNome, { permanente: true });
 };
 
 /**
@@ -235,6 +245,7 @@ export const usuarioService = {
   listarTodos,
   listarUsuarios,
   desvincularUsuario,
+  excluirUsuarioTotalmente,
   obterPendentesResumo,
   confirmarVinculoAluno,
   alternarBloqueio,

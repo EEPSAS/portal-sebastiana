@@ -16,11 +16,12 @@ class DesvincularUsuarioRequest extends FormRequest
         return $this->user() !== null && ($this->user()->isAdm() || $this->user()->hasPermissionTo('gerenciar_usuarios'));
     }
 
-    // Valida a confirmação do nome completo do usuário quando enviada no corpo da requisição
+    // Valida a confirmação do nome completo do usuário quando enviada no corpo da requisição e o flag permanente
     public function rules(): array
     {
         return [
             'confirmacao_nome' => ['nullable', 'string', 'max:255'],
+            'permanente' => ['nullable', 'boolean'],
         ];
     }
 }
