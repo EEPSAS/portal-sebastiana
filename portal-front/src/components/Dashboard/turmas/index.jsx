@@ -294,7 +294,7 @@ const Turmas = () => {
     setProcessandoExclusaoCsv(true);
     try {
       const resp = await excluirDadosCsv(idTurmaAlvo, {
-        periodo: periodoFiltro,
+        periodo: periodoFiltro === "todos" ? undefined : periodoFiltro,
       });
       dispararNotificacao(resp?.message || "Dados do diário escolar excluídos com sucesso!");
       setModalExcluirCsvAberto(false);
@@ -696,7 +696,7 @@ const Turmas = () => {
             <p className="text-muted mb-4 small">
               Deseja realmente excluir as notas e faltas carregadas via CSV da turma{" "}
               <strong>"{(turmaParaExcluirCsv || turmaAtivaParaCSV)?.nome_identificador}"</strong>
-              {periodoFiltro ? (
+              {periodoFiltro && periodoFiltro !== "todos" ? (
                 <>
                   {" "}para o período <strong>"{periodoFiltro}"</strong>
                 </>

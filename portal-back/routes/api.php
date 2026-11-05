@@ -128,6 +128,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/alunos/{aluno_id}/turmas/{turma_id}/disciplinas/{disciplina_id}/desempenho', [AlunoDashboardController::class, 'desempenhoDisciplina']);
 
     // Módulo Acadêmico: Ciclos Escolares e Disciplinas (Diretriz 3)
+    Route::post('/ciclos/{ciclo}/disciplinas', [CicloController::class, 'vincularDisciplina']);
+    Route::delete('/ciclos/{ciclo}/disciplinas/{disciplina}', [CicloController::class, 'desvincularDisciplina']);
     Route::apiResource('ciclos', CicloController::class)->except(['show']);
     Route::post('/disciplinas/{disciplina}/vincular-professor', [DisciplinaController::class, 'vincularProfessor']);
     Route::apiResource('disciplinas', DisciplinaController::class);

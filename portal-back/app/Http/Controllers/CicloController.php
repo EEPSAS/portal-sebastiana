@@ -163,4 +163,45 @@ class CicloController extends Controller
 
         return response()->json(null, 204);
     }
+
+    /**
+     * Vincula uma disciplina existente ao ciclo escolar.
+     */
+    public function vincularDisciplina(Request $request, Ciclo $ciclo): JsonResponse
+    {
+        if (! $request->user()?->canManageAcademic()) {
+            abort(403, 'Apenas o Especialista Pedagógico ou Administrador pode vincular disciplinas a ciclos escolares.');
+        }
+
+        $validated = $request->validate([
+            'disciplina_id' => ['required', 'integer', 'exists:disciplinas,id_disciplina'],
+        ]);
+
+        $disciplina = Disciplina::findOrFail($validated['disciplina_id']);
+        $ciclo->disciplinas()->syncWithoutDetaching([$disciplina->id_disciplina]);
+        $disciplina->sincronizarComTurmasDosCiclos();
+
+        return response()->json([
+            'message' => "Disciplina '{$disciplina->nome}' vinculada ao ciclo '{$ciclo->nome}' com sucesso.",
+            'data' => new CicloResource($ciclo->fresh(['disciplinas.professores', 'turmas'])),
+        ], 200);
+    }
+
+    /**
+     * Desvincula uma disciplina do ciclo escolar (sem excluí-la do catálogo escolar).
+     */
+    public function desvincularDisciplina(Request $request, Ciclo $ciclo, Disciplina $disciplina): JsonResponse
+    {
+        if (! $request->user()?->canManageAcademic()) {
+            abort(403, 'Apenas o Especialista Pedagógico ou Administrador pode desvincular disciplinas de ciclos escolares.');
+        }
+
+        $ciclo->disciplinas()->detach($disciplina->id_disciplina);
+        $disciplina->sincronizarComTurmasDosCiclos();
+
+        return response()->json([
+            'message' => "Disciplina '{$disciplina->nome}' desvinculada do ciclo '{$ciclo->nome}' com sucesso.",
+            'data' => new CicloResource($ciclo->fresh(['disciplinas.professores', 'turmas'])),
+        ], 200);
+    }
 }
