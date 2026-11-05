@@ -10,7 +10,7 @@ class StoreUsuarioRequest extends FormRequest
     // Autoriza apenas administradores com permissão de gerenciar usuários
     public function authorize(): bool
     {
-        return $this->user() !== null && $this->user()->hasPermissionTo('gerenciar_usuarios');
+        return $this->user() !== null && ($this->user()->hasPermissionTo('gerenciar_usuarios') || $this->user()->isAdm());
     }
 
     // Regras de validação para os dados cadastrais e perfil do usuário
@@ -21,8 +21,12 @@ class StoreUsuarioRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
             'role_id' => ['nullable', 'exists:roles,id'],
-            'role' => ['nullable', 'string', 'exists:roles,slug'],
+            'role' => ['nullable', 'string'],
             'ativo' => ['nullable', 'boolean'],
+            'telefone' => ['nullable', 'string', 'max:30'],
+            'data_nascimento' => ['nullable', 'date'],
+            'turma_id' => ['nullable', 'integer', 'exists:turmas,id_turma'],
+            'status_confirmacao' => ['nullable', 'string', 'in:confirmado,pendente,inativo'],
         ];
     }
 }

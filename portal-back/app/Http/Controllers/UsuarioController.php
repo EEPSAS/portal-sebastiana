@@ -29,7 +29,7 @@ class UsuarioController extends Controller
 {
     /**
      * Lista usuários cadastrados com suporte a busca por nome e filtro por Role.
-     * Carregamento padrão limitado aos 15 últimos usuários cadastrados (Itens 1.3.1 a 1.3.4).
+     * Exibe todos os usuários cadastrados (mesmo sem pendências, com pendências ou aguardando aprovação).
      *
      * @return JsonResponse Coleção de usuários formatada pelo UsuarioResource
      */
@@ -37,9 +37,8 @@ class UsuarioController extends Controller
     {
         Gate::authorize('gerenciar_usuarios');
 
-        // Ordena pelos últimos usuários cadastrados para exibir os 15 mais recentes por padrão
+        // Ordena pelos últimos usuários cadastrados para exibir os mais recentes por padrão
         $query = User::with(['roleModel', 'autorizadoPor', 'vinculos.autorizadoPor'])
-            ->where('status_confirmacao', '!=', 'inativo')
             ->orderByDesc('created_at')
             ->orderByDesc('id');
 
@@ -59,6 +58,25 @@ class UsuarioController extends Controller
                 $q->whereHas('roleModel', fn ($r) => $r->where('slug', $roleSlug))
                     ->orWhere('role', $roleSlug);
             });
+        }
+
+        if ($request->filled('status')) {
+            $status = $request->string('status')->toString();
+            if ($status === 'pendente') {
+                $query->where('status_confirmacao', 'pendente');
+            } elseif ($status === 'confirmado') {
+                $query->where(function ($q) {
+                    $q->where('status_confirmacao', 'confirmado')
+                        ->orWhereNull('status_confirmacao');
+                });
+            } elseif ($status === 'inativo') {
+                $query->where(function ($q) {
+                    $q->where('status_confirmacao', 'inativo')
+                        ->orWhere('ativo', false);
+                });
+            } else {
+                $query->where('status_confirmacao', $status);
+            }
         }
 
         if ($request->has('ativo')) {
@@ -93,10 +111,49 @@ class UsuarioController extends Controller
             $dados['role'] = UserRole::ALUNO;
         }
 
+        $turmaId = $dados['turma_id'] ?? null;
+        unset($dados['turma_id']);
+
+        $statusConfirmacao = $dados['status_confirmacao'] ?? 'confirmado';
+        $dados['status_confirmacao'] = $statusConfirmacao;
         $dados['ativo'] = $dados['ativo'] ?? true;
+        $dados['autorizado_por_id'] = $request->user()->id;
+
+        if ($statusConfirmacao === 'confirmado') {
+            $dados['confirmado_em'] = now();
+        }
 
         $usuario = User::create($dados);
-        $usuario->load('roleModel.permissions');
+
+        // Se for aluno e possuir turma informada, matricula o aluno e vincula
+        if ($usuario->isAluno() && ! empty($turmaId)) {
+            $turma = Turma::find($turmaId);
+            if ($turma) {
+                Matricula::create([
+                    'usuario_id' => $usuario->id,
+                    'turma_id' => $turma->id_turma,
+                    'data_matricula' => now()->toDateString(),
+                    'status_matricula' => 'Ativo',
+                ]);
+
+                $usuario->registrarVinculoEscolar(
+                    $request->user()->id,
+                    "Cadastrado diretamente pelo Administrador e vinculado à turma {$turma->nome_identificador}."
+                );
+            }
+        } elseif ($statusConfirmacao === 'confirmado') {
+            $usuario->registrarVinculoEscolar(
+                $request->user()->id,
+                'Cadastrado diretamente pelo Administrador no Controle de Usuários.'
+            );
+        }
+
+        // Sincroniza data de nascimento com a agenda pessoal se fornecida
+        if (! empty($dados['data_nascimento'])) {
+            $usuario->syncEventoAniversario($dados['data_nascimento']);
+        }
+
+        $usuario->load(['roleModel.permissions', 'autorizadoPor', 'vinculos.autorizadoPor']);
 
         return response()->json(new UsuarioResource($usuario), 201);
     }

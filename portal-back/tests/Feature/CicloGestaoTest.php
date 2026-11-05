@@ -78,3 +78,26 @@ test('professor nao pode editar nem excluir ciclos', function () {
     $this->putJson("/api/ciclos/{$ciclo->id_ciclo}", ['nome' => 'Outro'])->assertForbidden();
     $this->deleteJson("/api/ciclos/{$ciclo->id_ciclo}")->assertForbidden();
 });
+
+test('especialista vincula e desvincula disciplina de ciclo existente', function () {
+    Sanctum::actingAs(usuarioComPapel(UserRole::ESPECIALISTA));
+
+    $ciclo = Ciclo::create(['nome' => 'Ensino Médio Regular']);
+    $disciplina = Disciplina::factory()->create(['nome' => 'Filosofia']);
+
+    // 1. Vincula
+    $this->postJson("/api/ciclos/{$ciclo->id_ciclo}/disciplinas", [
+        'disciplina_id' => $disciplina->id_disciplina,
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.id_ciclo', $ciclo->id_ciclo);
+
+    expect($ciclo->fresh()->disciplinas->pluck('id_disciplina'))->toContain($disciplina->id_disciplina);
+
+    // 2. Desvincula
+    $this->deleteJson("/api/ciclos/{$ciclo->id_ciclo}/disciplinas/{$disciplina->id_disciplina}")
+        ->assertOk();
+
+    expect($ciclo->fresh()->disciplinas->pluck('id_disciplina'))->not->toContain($disciplina->id_disciplina)
+        ->and(Disciplina::find($disciplina->id_disciplina))->not->toBeNull();
+});
