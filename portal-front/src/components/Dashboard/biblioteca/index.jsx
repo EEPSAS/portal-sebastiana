@@ -51,6 +51,7 @@ export default function Biblioteca() {
 
   const {
     livros,
+    emprestimos,
     videoaulas,
     carregandoBiblioteca,
     erroCarregamento,
@@ -61,6 +62,7 @@ export default function Biblioteca() {
     importarCsvLivros,
     removerLivro,
     solicitarEmprestimoLivro,
+    cancelarEmprestimoLivro,
     adicionarVideoaula,
     removerVideoaula,
   } = useBiblioteca(busca);
@@ -178,11 +180,13 @@ export default function Biblioteca() {
           {abaAtiva === 'acervo' && (
             <AcervoAba
               livros={livrosFiltrados}
+              emprestimos={emprestimos}
               buscaAtiva={Boolean(termoBusca)}
               onSalvarLivro={salvarLivro}
               onImportarCsv={importarCsvLivros}
               onExcluirLivro={setItemParaExcluir}
               onSolicitarEmprestimo={solicitarEmprestimoLivro}
+              onCancelarEmprestimo={cancelarEmprestimoLivro}
               onAviso={dispararAviso}
               onAdicionarAoPlano={setItemParaAdicionarAoPlano}
               onRegistrarAcoes={setAcoesAcervo}

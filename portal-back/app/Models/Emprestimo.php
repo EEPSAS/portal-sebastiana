@@ -28,6 +28,7 @@ class Emprestimo extends Model
         'data_prevista_devolucao',
         'data_devolucao_real',
         'status',
+        'reserva_ativa',
         'observacoes',
     ];
 
@@ -44,6 +45,7 @@ class Emprestimo extends Model
             'data_prevista_devolucao' => 'datetime',
             'data_devolucao_real' => 'datetime',
             'status' => EmprestimoStatus::class,
+            'reserva_ativa' => 'boolean',
         ];
     }
 

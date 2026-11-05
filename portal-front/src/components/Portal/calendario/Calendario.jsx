@@ -42,6 +42,7 @@ const CalendarioSection = ({
   eventos: customEvents,
   loading: customLoading,
   error: customError,
+  canModifyEvent,
   onEditEvent,
   onDeleteEvent,
 }) => {
@@ -359,7 +360,9 @@ const CalendarioSection = ({
                     !String(event.id).startsWith('feriado-') &&
                     !String(event.id).startsWith('data-')
                   );
-                  const hasActions = isCustomEvent && Boolean(onEditEvent || onDeleteEvent);
+                  const hasActions = isCustomEvent
+                    && Boolean(canModifyEvent?.(event))
+                    && Boolean(onEditEvent || onDeleteEvent);
 
                   return (
                     <div

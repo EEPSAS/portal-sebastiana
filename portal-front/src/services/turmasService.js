@@ -1,7 +1,9 @@
 import { api } from "./api";
 import {
   ImportarRelatorioInputSchema,
+  FrequenciaManualSchema,
   ListaAlunosTurmaSchema,
+  NotaDiarioSchema,
   ListaNotasDiarioSchema,
   ListaTurmaResumoSchema,
   ListaTurmasSchema,
@@ -135,6 +137,33 @@ export const fetchTurmaNotas = async (turmaId, { periodo, disciplinaId, alunoId,
   const raw = await response.json();
   return validarContratoZod(ListaNotasDiarioSchema, extrairLista(raw), "GET /turmas/:id/notas");
 };
+
+export const fetchTurmaDisciplinas = async (turmaId, { signal } = {}) => {
+  const response = await api(`/turmas/${turmaId}/disciplinas`, { signal });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.message || "Não foi possível carregar as disciplinas da turma.");
+  }
+
+  return extrairLista(data)
+    .map((vinculo) => vinculo?.disciplina)
+    .filter((disciplina) => disciplina?.id_disciplina && disciplina?.nome);
+};
+
+const salvarLancamentoManual = async (endpoint, dados, schema, contexto) => {
+  const response = await api(endpoint, { method: "POST", body: dados });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.message || "Não foi possível salvar o lançamento manual.");
+  }
+  return validarContratoZod(schema, payload?.data || payload, contexto);
+};
+
+export const lancarNotaManual = (dados) =>
+  salvarLancamentoManual("/notas", dados, NotaDiarioSchema, "POST /notas");
+
+export const lancarFrequenciaManual = (dados) =>
+  salvarLancamentoManual("/frequencias", dados, FrequenciaManualSchema, "POST /frequencias");
 
 // Exclui notas e frequências importadas via CSV para a turma e período selecionados
 export const excluirDadosCsv = async (turmaId, { periodo, signal } = {}) => {

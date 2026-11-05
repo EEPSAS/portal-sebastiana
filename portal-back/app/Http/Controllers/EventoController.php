@@ -253,9 +253,9 @@ class EventoController extends Controller
     {
         Gate::authorize('delete', $evento);
 
-        // Se o evento excluído for o de aniversário, limpa a data de nascimento no perfil
-        if ($evento->is_aniversario && $evento->criador) {
-            $evento->criador->update(['data_nascimento' => null]);
+        // Só apaga a data do perfil se o evento pertence ao usuário autenticado.
+        if ($evento->is_aniversario && $evento->criador_id === $request->user()->id) {
+            $request->user()->update(['data_nascimento' => null]);
         }
 
         $evento->delete();
