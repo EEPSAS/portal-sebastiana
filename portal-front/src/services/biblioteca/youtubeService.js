@@ -109,6 +109,7 @@ export const searchYouTubeVideos = async (
     maxResults: String(maxResults),
     safeSearch: 'strict',
     videoEmbeddable: 'true',
+    videoSyndicated: 'true',
     relevanceLanguage: 'pt',
     order: 'relevance',
     q: searchTerm,
@@ -147,7 +148,7 @@ export const searchYouTubeVideos = async (
     return { videos: [], nextPageToken: null, totalResults };
   }
 
-  // Consulta o endpoint 'videos?part=contentDetails,status' em lote para capturar a duração de cada vídeo
+  // Consulta o endpoint 'videos?part=contentDetails,status' em lote para capturar duração e filtrar restrição etária
   try {
     const ids = videosBasicos.map((v) => v.videoId).join(',');
     const detalhesPayload = await requestYouTubeApi('videos', {
@@ -156,17 +157,35 @@ export const searchYouTubeVideos = async (
     }, signal);
 
     const mapaDuracoes = {};
+    const idsRestritosOuBloqueados = new Set();
+
     (detalhesPayload.items ?? []).forEach((item) => {
-      if (item.id && item.contentDetails?.duration) {
+      if (!item.id) return;
+
+      // Descarta vídeos com restrição de idade (ytAgeRestricted) inadequados para menores de 18 anos
+      const ehRestritoIdade = item.contentDetails?.contentRating?.ytRating === 'ytAgeRestricted';
+      const ehIncorporavel = item.status?.embeddable !== false;
+
+      if (ehRestritoIdade || !ehIncorporavel) {
+        idsRestritosOuBloqueados.add(item.id);
+        return;
+      }
+
+      if (item.contentDetails?.duration) {
         mapaDuracoes[item.id] = formatarDuracaoISO8601(item.contentDetails.duration);
       }
     });
 
-    return {
-      videos: videosBasicos.map((video) => ({
+    // Retorna apenas vídeos aprovados pelo filtro de segurança e classificação indicativa
+    const videosFiltrados = videosBasicos
+      .filter((video) => !idsRestritosOuBloqueados.has(video.videoId))
+      .map((video) => ({
         ...video,
         duration: mapaDuracoes[video.videoId] || '',
-      })),
+      }));
+
+    return {
+      videos: videosFiltrados,
       nextPageToken,
       totalResults,
     };
@@ -185,7 +204,7 @@ export const searchYouTubeVideos = async (
 
 /**
  * Valida se um vídeo específico existe e está disponível publicamente no YouTube,
- * retornando também sua duração formatada e URL oficial.
+ * checando se não possui restrição etária incompatível com o ambiente escolar.
  * @param {string} videoId ID de 11 caracteres do YouTube.
  */
 export const validateYouTubeVideo = async (videoId) => {
@@ -201,6 +220,11 @@ export const validateYouTubeVideo = async (videoId) => {
 
   if (!video) {
     throw createApiError('VIDEO_UNAVAILABLE');
+  }
+
+  // Verifica se o vídeo possui restrição para menores de 18 anos
+  if (video.contentDetails?.contentRating?.ytRating === 'ytAgeRestricted') {
+    throw createApiError('AGE_RESTRICTED_VIDEO');
   }
 
   return {

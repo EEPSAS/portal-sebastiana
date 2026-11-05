@@ -616,12 +616,17 @@ export default function PlanosAba({ onAviso }) {
       {/* Modal de Compartilhamento de Plano com Turmas Vinculadas ao Professor */}
       {planoCompartilhando && podeCompartilharComTurmas && (
         <div
-          className="biblioteca-modal-backdrop"
+          className="biblioteca-modal-overlay"
+          onClick={fecharModalCompartilhar}
           role="dialog"
           aria-modal="true"
           aria-labelledby="modal-compartilhar-plano-titulo"
         >
-          <div className="bg-white rounded-4 shadow-lg p-4 w-100" style={{ maxWidth: '520px' }}>
+          <div
+            className="biblioteca-modal-dialog biblioteca-modal-dialog--lg p-4"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '540px' }}
+          >
             <div className="d-flex justify-content-between align-items-start mb-3">
               <div>
                 <h5 id="modal-compartilhar-plano-titulo" className="fw-bold mb-1 text-dark">

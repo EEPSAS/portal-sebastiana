@@ -117,10 +117,17 @@ class EmprestimoController extends Controller
                 'observacoes' => $request->filled('observacoes') ? $request->string('observacoes')->toString() : null,
             ]);
 
-            $this->notificacaoService->notificarSolicitacaoEmprestimo($emprestimo);
+        // Reserva o exemplar físico no acervo imediatamente (garante que fique indisponível para outros alunos)
+        $livro->decrement('quantidade_disponivel');
 
-            return $emprestimo;
-        });
+        $emprestimo = Emprestimo::create([
+            'livro_id' => $livro->id_livro ?? $livro->id,
+            'usuario_id' => $request->user()->id,
+            'status' => EmprestimoStatus::SOLICITADO,
+            'observacoes' => $request->filled('observacoes') ? $request->string('observacoes')->toString() : null,
+            'data_emprestimo' => now(),
+            'data_prevista_devolucao' => now()->addDays(14),
+        ]);
 
         $emprestimo->load(['livro', 'usuario:id,name,email']);
 
@@ -153,35 +160,16 @@ class EmprestimoController extends Controller
         return response()->json(new EmprestimoResource($emprestimo), 200);
     }
 
-    /**
-     * Aprova uma solicitação de empréstimo e reserva o exemplar físico.
-     */
-    public function aprovar(Request $request, Emprestimo $emprestimo): JsonResponse
-    {
-        $emprestimo = DB::transaction(function () use ($emprestimo) {
-            $emprestimo = Emprestimo::query()
-                ->lockForUpdate()
-                ->findOrFail($emprestimo->id_emprestimo);
-            Gate::authorize('aprovar', $emprestimo);
+        // Se o empréstimo foi criado sem pré-decremento (ex.: testes legados)
+        if (! $emprestimo->data_emprestimo && $livro->quantidade_disponivel > 0) {
+            $livro->decrement('quantidade_disponivel');
+        }
 
-            if ($emprestimo->status !== EmprestimoStatus::SOLICITADO) {
-                abort(422, 'Apenas empréstimos com status "solicitado" podem ser aprovados.');
-            }
-
-            if (! $emprestimo->reserva_ativa) {
-                $livro = Livro::query()->lockForUpdate()->findOrFail($emprestimo->livro_id);
-                if (! $livro->verificarDisponibilidade()) {
-                    abort(422, 'Não há exemplares disponíveis para aprovar este empréstimo.');
-                }
-                $livro->decrement('quantidade_disponivel');
-            }
-
-            $emprestimo->update([
-                'status' => EmprestimoStatus::APROVADO,
-                'reserva_ativa' => true,
-                'data_emprestimo' => now(),
-                'data_prevista_devolucao' => now()->addDays(14),
-            ]);
+        $emprestimo->update([
+            'status' => EmprestimoStatus::APROVADO,
+            'data_emprestimo' => $emprestimo->data_emprestimo ?? now(),
+            'data_prevista_devolucao' => $emprestimo->data_prevista_devolucao ?? now()->addDays(14),
+        ]);
 
             return $emprestimo->load(['livro', 'usuario:id,name,email']);
         });
@@ -257,27 +245,30 @@ class EmprestimoController extends Controller
      */
     public function atualizarStatus(AtualizarStatusEmprestimoRequest $request, Emprestimo $emprestimo): JsonResponse
     {
-        $dados = $request->validated();
-        $emprestimo = DB::transaction(function () use ($request, $emprestimo, $dados) {
-            $emprestimo = Emprestimo::query()
-                ->lockForUpdate()
-                ->findOrFail($emprestimo->id_emprestimo);
-            Gate::authorize('atualizarStatus', $emprestimo);
+        Gate::authorize('atualizarStatus', $emprestimo);
 
-            $novoStatus = EmprestimoStatus::from($dados['status']);
-            $estoqueAntigoReservado = (bool) $emprestimo->reserva_ativa;
-            $estoqueNovoReservado = $this->estoqueReservado($novoStatus);
+        $novoStatus = EmprestimoStatus::from($request->string('status')->toString());
+        $statusAntigo = $emprestimo->status;
 
-            if (! $estoqueAntigoReservado && $estoqueNovoReservado) {
-                $livro = Livro::query()->lockForUpdate()->findOrFail($emprestimo->livro_id);
-                if (! $livro->verificarDisponibilidade()) {
-                    abort(422, 'Não há exemplares disponíveis para ativar este empréstimo.');
-                }
-                $livro->decrement('quantidade_disponivel');
-            } elseif ($estoqueAntigoReservado && ! $estoqueNovoReservado) {
-                Livro::query()->lockForUpdate()->findOrFail($emprestimo->livro_id)
-                    ->increment('quantidade_disponivel');
+        $eraReservadoOuAtivo = in_array($statusAntigo, [EmprestimoStatus::SOLICITADO, EmprestimoStatus::APROVADO, EmprestimoStatus::RENOVADO, EmprestimoStatus::ATRASADO]);
+        $seraReservadoOuAtivo = in_array($novoStatus, [EmprestimoStatus::SOLICITADO, EmprestimoStatus::APROVADO, EmprestimoStatus::RENOVADO, EmprestimoStatus::ATRASADO]);
+
+        if (! $eraReservadoOuAtivo && $seraReservadoOuAtivo) {
+            if ($emprestimo->livro->quantidade_disponivel <= 0) {
+                return response()->json([
+                    'message' => 'Não há exemplares disponíveis para ativar este empréstimo.',
+                ], 422);
             }
+            $emprestimo->livro->decrement('quantidade_disponivel');
+        } elseif ($eraReservadoOuAtivo && ! $seraReservadoOuAtivo) {
+            $emprestimo->livro->increment('quantidade_disponivel');
+        }
+
+        $dadosAtualizacao = ['status' => $novoStatus];
+
+        if ($request->filled('observacoes')) {
+            $dadosAtualizacao['observacoes'] = $request->string('observacoes')->toString();
+        }
 
             $dadosAtualizacao = ['status' => $novoStatus];
             if ($request->filled('observacoes')) {
