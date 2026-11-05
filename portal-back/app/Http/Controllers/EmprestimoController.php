@@ -29,7 +29,7 @@ class EmprestimoController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $query = Emprestimo::query()->with(['livro', 'usuario:id,name,email']);
+        $query = Emprestimo::query()->with(['livro', 'usuario:id,name,email,role']);
 
         // Usuário sem permissão de gestão de biblioteca vê apenas suas próprias retiradas
         if (! $user->canManageLibrary()) {
@@ -57,7 +57,7 @@ class EmprestimoController extends Controller
     public function meusEmprestimos(Request $request): JsonResponse
     {
         $emprestimos = Emprestimo::where('usuario_id', $request->user()->id)
-            ->with(['livro', 'usuario:id,name,email'])
+            ->with(['livro', 'usuario:id,name,email,role'])
             ->orderByDesc('created_at')
             ->get();
 

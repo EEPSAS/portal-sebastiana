@@ -144,7 +144,7 @@ Suporta envio tanto em `application/json` quanto em `multipart/form-data` (quand
 |---|---|---|---|---|---|---|
 | `GET` | `/api/livros` | Público / Logado (Leitura para Aluno e Prof) | N/A | `LivroResource` (Coleção) | `bibliotecaService.listarLivros()` | Catálogo da biblioteca (pré-carrega os 5 últimos cadastrados; busca completa via `?q=`) |
 | `GET` | `/api/livros/{id}` | Público / Logado | N/A | `LivroResource` | `bibliotecaService.detalharLivro()` | Detalhes e disponibilidade do livro |
-| `GET` | `/api/emprestimos` | Logado (gestores da biblioteca recebem histórico global; demais usuários recebem apenas os próprios registros) | N/A | `EmprestimoResource` (Coleção) | `bibliotecaService.listarEmprestimos()` | Histórico usado no Geral da Bibliotecária para circulação, devoluções e destaque mensal |
+| `GET` | `/api/emprestimos` | Logado (gestores da biblioteca recebem histórico global; demais usuários recebem apenas os próprios registros) | N/A | `EmprestimoResource` (Coleção) | `bibliotecaService.listarEmprestimos()` | Histórico usado no Geral da Bibliotecária para circulação, devoluções e destaque mensal; `usuario.role` identifica estudantes elegíveis para notificação |
 | `GET` | `/api/dashboard/biblioteca/top-livros` | Bibliotecária / Especialista / Adm | N/A | `TopLivrosEmprestadosResource` (proposto) | `bibliotecaService.obterTopLivrosMaisEmprestados()` (pendente) | **Solicitação à equipe backend:** retornar os três livros mais emprestados de todo o histórico; rota ainda não implementada |
 | `POST` | `/api/livros` | Bibliotecária / Especialista / Adm | `StoreLivroRequest` | `LivroResource` | `bibliotecaService.cadastrarLivro()` | Cadastra exemplar no acervo (`codigo_livro`, `titulo`, `editora`, `autor`, `genero`, `data_lancamento`, `capa`, `quantidade_total`, `prateleira_localizacao`) |
 | `POST` | `/api/livros/importar-csv` | Bibliotecária / Especialista / Adm | `ImportarLivrosCsvRequest` | `LivroResource` (Coleção) | `bibliotecaService.importarLivrosCSV()` | **Mass Assignment via CSV** (`titulo`, `editora`, `autor`, `genero`, `data_lancamento`, `codigo_livro`) |
@@ -459,7 +459,7 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
 
 | Método | Endpoint | Acesso | API Resource (Back) | Serviço Front | Dados Retornados por Perfil |
 |---|---|---|---|---|---|
-| `GET` | `/api/dashboard/geral` | Especialista / Prof / Adm | `DashboardGeralResource` | `geralService()` / `fetchDashboardGeral()` | Indicadores agregados (KPIs), médias por turma (0-10), disciplinas do docente e últimas atualizações reais |
+| `GET` | `/api/dashboard/geral?divisao={nome|todos}` | Especialista / Prof / Adm | `DashboardGeralResource` | `geralService()` / `fetchDashboardGeral()` | KPIs e médias/frequências por turma filtrados pela etapa ou pelo ano consolidado, disciplinas do docente e cinco últimas notificações únicas |
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/resumo-global` | Aluno / Prof / Esp / Adm | `AlunoResumoGlobalResource` | `dashboardService.obterResumoAluno()` | Média geral, percentual de frequência e avisos |
 | `GET` | `/api/turmas/{turma_id}/resumo-gerencial` | Especialista / Adm | `EspecialistaResumoGerencialResource` | `dashboardService.obterResumoEspecialista()` | Médias por componente, evasão e índice de frequência |
 | `GET` | `/api/turmas/{turma_id}/alunos-criticos` | Especialista / Adm | `AlunoCriticoResource` | `dashboardService.obterAlunosCriticos()` | Alunos com risco de retenção por falta ou nota |
@@ -487,23 +487,23 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
     ]
   },
   "disciplinas_docente": ["Matemática", "Física"],
-  "ultimas_atualizacoes": [
+  "ultimas_notificacoes": [
     {
-      "id": "noticia-1",
-      "tipo": "noticia",
-      "texto": "Nova notícia publicada: Feira de Ciências 2026",
+      "id": "manual:...",
+      "tipo": "notificacao",
+      "texto": "Clara Mendes: Comunicado escolar",
+      "assunto": "Atenção ao cronograma.",
       "tempoAtras": "há 2 horas"
-    },
-    {
-      "id": "nota-1",
-      "tipo": "notas",
-      "texto": "Notas atualizadas — 1º Ano A - Ensino Médio",
-      "tempoAtras": "há 1 dia"
     }
-  ]
+  ],
+  "periodo_contexto": {
+    "divisao_selecionada": "2º Trimestre",
+    "pontos_divisao": 30,
+    "pontos_consolidados": 30
+  }
 }
 ```
-* **Nota sobre Escopo**: Para o `especialista` e `adm`, os dados abrangem todas as turmas ativas da instituição. Para o `professor`, os KPIs e listagens de turmas são calculados dinamicamente com base nas turmas e disciplinas sob sua regência docente (com fallback automático para a visão da escola caso ainda não possua turmas atribuídas).
+* **Nota sobre Escopo**: Para o `especialista` e `adm`, os dados abrangem todas as turmas ativas da instituição. Para o `professor`, os KPIs e listagens de turmas são calculados dinamicamente com base nas turmas e disciplinas sob sua regência docente (com fallback automático para a visão da escola caso ainda não possua turmas atribuídas). O parâmetro `divisao` aceita o nome de uma etapa ou `todos`; notas filtram pelo período letivo e frequências pelo intervalo de datas. As médias gerais são médias aritméticas das turmas com dados no período; sem dados, o valor do KPI é `null`. `pontos_consolidados` soma somente as etapas cuja data final já passou. `ultimas_notificacoes` lista até cinco eventos únicos, sem filtrar por leitura: inclui mensagens manuais criadas por Professor, Especialista, Adm ou Bibliotecária e eventos destinados a Bibliotecárias.
 
 ---
 
@@ -514,7 +514,7 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
 |---|---|---|---|---|---|---|
 | `GET` | `/api/notificacoes?page={n}&per_page={n}` | Logado | N/A | `NotificacaoResource` (paginada) | `notificacoesService.listarNotificacoes()` | Lista notificações não confirmadas do próprio usuário, da mais recente para a mais antiga; `per_page` é limitado a 100 |
 | `GET` | `/api/notificacoes/super-importantes` | Logado | N/A | `NotificacaoResource` (Array JSON na raiz) | `notificacoesService.listarSuperImportantes()` | Lista notificações super-importantes não confirmadas para exibição no login |
-| `POST` | `/api/notificacoes` | Professor / Especialista / Adm | `StoreNotificacaoRequest` | `NotificacaoResource` (Array JSON na raiz) | `notificacoesService.criarNotificacao()` | Cria mensagens para aluno, turma ou comunidade escolar; notificação individual é persistida somente para o aluno destinatário; professor só pode alcançar alunos/turmas sob sua regência e recebe 403 JSON explícito ao tentar comunicado geral; comunicado geral é restrito a Especialista/Adm |
+| `POST` | `/api/notificacoes` | Professor / Especialista / Adm / Bibliotecária | `StoreNotificacaoRequest` | `NotificacaoResource` (Array JSON na raiz) | `notificacoesService.criarNotificacao()` | Cria mensagens para aluno, turma ou comunidade escolar; professor só pode alcançar alunos/turmas sob sua regência; comunicado geral é restrito a Especialista/Adm; Bibliotecária só pode notificar individualmente estudantes com devolução atrasada, de hoje ou nos próximos três dias |
 | `PATCH` | `/api/notificacoes/{id}/lida` | Destinatário | N/A | `NotificacaoResource` | `notificacoesService.marcarNotificacaoLida()` | Confirma individualmente e retira a notificação da caixa pendente |
 | `PATCH` | `/api/notificacoes/marcar-padrao-lidas` | Logado | N/A | Sem conteúdo (`204`) | `notificacoesService.marcarPadraoComoLidas()` | Confirma em massa somente notificações padrão; importantes/super-importantes exigem confirmação individual |
 
@@ -529,7 +529,7 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
   "super_importante": "boolean (opcional, padrão false)"
 }
 ```
-Para cada destinatário, o canal de banco nativo do Laravel cria um registro individual com `id`, `titulo`, `assunto`, `tipo`, `origem`, `prioridade`, `criador_id`, `criador_nome`, `destinatario_id`, `event_key`, `read_at` e `created_at`. O estado `read_at` é individual, mesmo quando a mensagem foi enviada para uma turma/comunidade.
+Para cada destinatário, o canal de banco nativo do Laravel cria um registro individual com `id`, `titulo`, `assunto`, `tipo`, `origem`, `prioridade`, `criador_id`, `criador_nome`, `destinatario_id`, `event_key`, `read_at` e `created_at`. O estado `read_at` é individual, mesmo quando a mensagem foi enviada para uma turma/comunidade. Bibliotecárias podem enviar somente para um aluno com empréstimo atrasado, vencendo hoje ou nos próximos três dias; o painel limita essa ação ao estudante da linha selecionada.
 
 #### Saída: `NotificacaoResource`
 ```json

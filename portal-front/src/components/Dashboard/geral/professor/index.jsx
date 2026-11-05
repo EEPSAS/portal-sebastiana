@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "../especialista/GeralEspecialista.css";
 import GeralMediumCards from "../especialista/Cards/ResumoTurmasCard";
+import LatestUpdates from "../especialista/LatestUpdates/UltimasAtualizacoes";
 import AlunosRiscoCards from "./Cards/AlunosRiscoCards";
 import materiasProfessorMock from "./materiasProfessorMock";
 import { fetchDashboardGeral } from "../../../../services/geralService";
@@ -31,6 +32,14 @@ const GeralProfessor = () => {
   const [loading, setLoading] = useState(true);
   const [materiaSelecionadaId, setMateriaSelecionadaId] = useState("");
   const [divisaoSelecionada, setDivisaoSelecionada] = useState("");
+  const [erroCarregamento, setErroCarregamento] = useState("");
+
+  const selecionarDivisao = (divisao) => {
+    if (divisao === divisaoSelecionada) return;
+    setErroCarregamento("");
+    setLoading(true);
+    setDivisaoSelecionada(divisao);
+  };
 
   useEffect(() => {
     let ativo = true;
@@ -44,7 +53,11 @@ const GeralProfessor = () => {
           }
         }
       })
-      .catch(() => {})
+      .catch((erro) => {
+        if (ativo) {
+          setErroCarregamento(erro.message || "Não foi possível carregar os dados do painel.");
+        }
+      })
       .finally(() => {
         if (ativo) setLoading(false);
       });
@@ -59,7 +72,10 @@ const GeralProfessor = () => {
     () => periodoContexto?.divisoes_disponiveis || [],
     [periodoContexto?.divisoes_disponiveis]
   );
-  const pontosDivisaoAtual = periodoContexto?.pontos_divisao || 30.0;
+  const pontosDivisaoAtual =
+    divisaoSelecionada === "todos"
+      ? periodoContexto?.pontos_consolidados ?? 0
+      : periodoContexto?.pontos_divisao ?? 30.0;
 
   // Formata o intervalo de datas da etapa ativa (ex: '05/02 a 30/04')
   const datasDivisaoFormatadas = useMemo(() => {
@@ -146,6 +162,14 @@ const GeralProfessor = () => {
     );
   }
 
+  if (erroCarregamento && !dadosApi) {
+    return (
+      <div className="alert alert-danger rounded-3" role="alert">
+        Não foi possível carregar os dados do painel: {erroCarregamento}
+      </div>
+    );
+  }
+
   if (!materiaSelecionada) {
     return (
       <p className="text-muted">
@@ -156,6 +180,12 @@ const GeralProfessor = () => {
 
   return (
     <div className="teacher-overview">
+      {erroCarregamento && (
+        <div className="alert alert-danger rounded-3 py-2" role="alert">
+          Não foi possível atualizar os dados da etapa selecionada: {erroCarregamento}
+        </div>
+      )}
+
       {/* 1. Barra de Seleção da Etapa do Período Letivo (Trimestres / Bimestres) */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 p-2 px-3 bg-white rounded-3 border shadow-xs">
         <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -167,7 +197,7 @@ const GeralProfessor = () => {
             <button
               type="button"
               className={`btn-pill-filter ${divisaoSelecionada === "todos" ? "is-active" : ""}`}
-              onClick={() => setDivisaoSelecionada("todos")}
+              onClick={() => selecionarDivisao("todos")}
             >
               Consolidado Geral
             </button>
@@ -178,7 +208,7 @@ const GeralProfessor = () => {
                   type="button"
                   key={div.id_divisao || div.nome}
                   className={`btn-pill-filter ${isAtiva ? "is-active" : ""}`}
-                  onClick={() => setDivisaoSelecionada(div.nome)}
+                  onClick={() => selecionarDivisao(div.nome)}
                 >
                   {div.nome} ({div.pontos} pts)
                   {div.is_atual ? " • Atual" : ""}
@@ -190,7 +220,8 @@ const GeralProfessor = () => {
 
         {periodoContexto && (
           <span className="badge bg-light text-secondary border rounded-pill px-3 py-2 small">
-            Ano Letivo {periodoContexto.ano} • {pontosDivisaoAtual} pts na etapa
+            Ano Letivo {periodoContexto.ano} • {pontosDivisaoAtual} pts{" "}
+            {divisaoSelecionada === "todos" ? "acumulados" : "na etapa"}
           </span>
         )}
       </div>
@@ -245,9 +276,7 @@ const GeralProfessor = () => {
               : "Ano Letivo Consolidado"
           }
           metaPontos={
-            divisaoSelecionada && divisaoSelecionada !== "todos"
-              ? (pontosDivisaoAtual * 0.6).toFixed(1)
-              : "60.0"
+            (pontosDivisaoAtual * 0.6).toFixed(1)
           }
           isReal={materiaSelecionada.origemReal}
         />
@@ -270,7 +299,9 @@ const GeralProfessor = () => {
             ? `Meta mín. 60% (${(pontosDivisaoAtual * 0.6).toFixed(1)} pts)`
             : "Meta mín. 60%"
         }
+        href="/dashboard/turmas?aba=notas"
       />
+      <LatestUpdates updates={dadosApi?.ultimas_notificacoes || []} />
     </div>
   );
 };

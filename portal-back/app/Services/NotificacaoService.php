@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\UserRole;
 use App\Models\Disciplina;
+use App\Models\Emprestimo;
 use App\Models\Evento;
 use App\Models\Emprestimo;
 use App\Models\Frequencia;
@@ -377,6 +378,10 @@ class NotificacaoService
     {
         $tipo = $dados['destinatario_tipo'];
 
+        if ($autor->isBibliotecaria() && $tipo !== 'aluno') {
+            abort(403, 'A Bibliotecária só pode notificar individualmente os estudantes da lista de devoluções.');
+        }
+
         if ($tipo === 'geral' && ! ($autor->isEspecialista() || $autor->isAdm())) {
             abort(403, 'Somente Especialista ou Administrador pode enviar comunicados gerais.');
         }
@@ -400,6 +405,22 @@ class NotificacaoService
             throw ValidationException::withMessages([
                 'aluno_id' => 'As notificações individuais desta tela devem ser enviadas a um aluno.',
             ]);
+        }
+
+        if ($autor->isBibliotecaria()) {
+            $prazoLimite = now()->addDays(3)->toDateString();
+            $temDevolucaoProxima = Emprestimo::query()
+                ->where('usuario_id', $aluno->id)
+                ->whereIn('status', ['aprovado', 'renovado', 'atrasado'])
+                ->where(function ($query) use ($prazoLimite) {
+                    $query->where('status', 'atrasado')
+                        ->orWhereDate('data_prevista_devolucao', '<=', $prazoLimite);
+                })
+                ->exists();
+
+            if (! $temDevolucaoProxima) {
+                abort(403, 'A Bibliotecária só pode notificar estudantes listados nas devoluções próximas.');
+            }
         }
 
         $turmasAtivas = Matricula::query()

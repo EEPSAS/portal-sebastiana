@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Disciplina;
+use App\Models\Emprestimo;
 use App\Models\Frequencia;
 use App\Models\Matricula;
 use App\Models\Turma;
@@ -47,6 +48,47 @@ test('especialista envia notificacao individual e aluno pode confirmar a leitura
 
     expect($aluno->notifications()->whereKey($notificacaoId)->firstOrFail()->read_at)
         ->not->toBeNull();
+});
+
+test('bibliotecaria pode notificar somente aluno com devolucao proxima', function () {
+    $bibliotecaria = User::factory()->create(['role' => 'bibliotecaria']);
+    $alunoComDevolucao = User::factory()->aluno()->create();
+    $alunoSemDevolucao = User::factory()->aluno()->create();
+    Matricula::factory()->create(['usuario_id' => $alunoComDevolucao->id]);
+    Matricula::factory()->create(['usuario_id' => $alunoSemDevolucao->id]);
+    Emprestimo::factory()->create([
+        'usuario_id' => $alunoComDevolucao->id,
+        'status' => 'aprovado',
+        'data_prevista_devolucao' => now()->addDays(2),
+    ]);
+
+    $this->actingAs($bibliotecaria, 'sanctum')
+        ->postJson('/api/notificacoes', [
+            'titulo' => 'Devolução próxima',
+            'assunto' => 'Lembre-se de devolver o livro emprestado.',
+            'destinatario_tipo' => 'aluno',
+            'aluno_id' => $alunoComDevolucao->id,
+        ])
+        ->assertCreated()
+        ->assertJsonPath('0.destinatario_id', $alunoComDevolucao->id);
+
+    $this->actingAs($bibliotecaria, 'sanctum')
+        ->postJson('/api/notificacoes', [
+            'titulo' => 'Aviso',
+            'assunto' => 'Este aluno não aparece nas devoluções próximas.',
+            'destinatario_tipo' => 'aluno',
+            'aluno_id' => $alunoSemDevolucao->id,
+        ])
+        ->assertForbidden();
+
+    $this->actingAs($bibliotecaria, 'sanctum')
+        ->postJson('/api/notificacoes', [
+            'titulo' => 'Aviso de turma',
+            'assunto' => 'A Bibliotecária não pode enviar para uma turma.',
+            'destinatario_tipo' => 'turma',
+            'turma_id' => Turma::factory()->create()->id_turma,
+        ])
+        ->assertUnprocessable();
 });
 
 test('professor nao pode notificar aluno fora de turma sob sua regencia', function () {

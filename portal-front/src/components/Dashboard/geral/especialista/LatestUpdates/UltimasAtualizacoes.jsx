@@ -1,26 +1,20 @@
-import { Link } from "react-router";
 import UpdateItem from "./UltimasAtualizacoesLista.jsx";
 
 /**
  * UltimasAtualizacoes.jsx - Feed de Atividades Recentes do Painel Geral
  *
  * Papel Didático:
- * Apresenta as atualizações institucionais recentes (notícias e notas) com:
- * 1. Cabeçalho com ícone de megafone, título marcante e link navegável 'Ver todas →';
- * 2. Linhas elegantes com ícones circulares azuis e cronologia relativa.
+ * Apresenta as cinco notificações mais recentes com ícones e cronologia relativa.
  */
 export default function LatestUpdates({ updates = [], loading = false, error = null }) {
   return (
     <div className="geral-updates-card mt-2 w-100">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5 className="geral-updates-title mb-0 d-flex align-items-center gap-2">
-          <i className="bi bi-megaphone-fill text-primary fs-5"></i>
-          <span>Últimas Atualizações</span>
+          <i className="bi bi-bell-fill text-primary fs-5"></i>
+          <span>Últimas Notificações</span>
         </h5>
-        <Link to="/dashboard/noticias" className="geral-updates-viewall">
-          <span>Ver todas</span>
-          <i className="bi bi-arrow-right"></i>
-        </Link>
+        <span className="text-muted small">5 mais recentes</span>
       </div>
 
       {/* 1. Estado Assíncrono: Carregando */}
@@ -34,7 +28,7 @@ export default function LatestUpdates({ updates = [], loading = false, error = n
         <div className="text-muted py-3 text-center">Nenhuma atualização recente no momento.</div>
       )}
 
-      {/* Lista de eventos recentes (notícias publicadas e importações de notas) */}
+      {/* Cada linha representa um evento único, ainda que tenha vários destinatários. */}
       <div className="d-flex flex-column">
         {updates.map((update) => (
           <UpdateItem

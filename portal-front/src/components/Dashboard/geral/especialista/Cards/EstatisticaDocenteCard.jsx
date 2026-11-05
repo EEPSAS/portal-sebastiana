@@ -1,9 +1,11 @@
+import { Link } from "react-router";
+
 /**
  * EstatisticaDocenteCard.jsx - Card Unitário de Indicador Rápido (KPI)
  *
  * Papel Didático:
  * Renderiza um indicador numérico destacado (Total de Alunos, Média Geral, Frequência Média
- * ou Notícias Publicadas) com ícone circular pastel, tipografia proeminente e métricas de tendência.
+ * ou Notícias Publicadas) com ícone circular pastel e tipografia proeminente.
  */
 
 // Renderiza o ícone vetorial correspondente à categoria do KPI
@@ -38,22 +40,13 @@ function RenderIcon({ tipo }) {
   }
 }
 
-// Configuração padrão de tendências visuais baseada no protótipo de design
-const TENDENCIAS_PADRAO = {
-  alunos: { sinal: "→", valor: "0%", desc: "em relação ao mês anterior" },
-  notas: { sinal: "↑", valor: "2,3%", desc: "em relação ao mês anterior" },
-  frequencia: { sinal: "↑", valor: "0,5%", desc: "em relação ao mês anterior" },
-  noticias: { sinal: "↑", valor: "100%", desc: "em relação ao mês anterior" },
-};
-
 export default function GeralSmallCards({
   titulo,
   valor,
   tipoIcone,
-  tendencia,
+  href,
 }) {
   const classeCorIcone = `geral-kpi-icon--${tipoIcone || "alunos"}`;
-  const infoTendencia = tendencia || TENDENCIAS_PADRAO[tipoIcone] || TENDENCIAS_PADRAO.alunos;
 
   return (
     <div className="col-12 col-sm-6 col-lg-3">
@@ -74,21 +67,17 @@ export default function GeralSmallCards({
           </div>
         </div>
 
-        {/* Bloco Inferior: Métrica de Tendência + Seta Fina de Navegação */}
         <div className="geral-kpi-footer">
-          <div className="geral-kpi-trend">
-            <span className="geral-kpi-trend-stat">
-              <span>{infoTendencia.sinal}</span>
-              <span>{infoTendencia.valor}</span>
-            </span>
-            <span className="geral-kpi-trend-desc">
-              {infoTendencia.desc}
-            </span>
-          </div>
-
-          <div className="geral-kpi-arrow-btn" aria-hidden="true">
-            <i className="bi bi-arrow-right"></i>
-          </div>
+          {href && (
+            <Link
+              to={href}
+              className="geral-kpi-arrow-btn"
+              aria-label={`Abrir ${titulo}`}
+              title={`Abrir ${titulo}`}
+            >
+              <i className="bi bi-arrow-right" aria-hidden="true"></i>
+            </Link>
+          )}
         </div>
       </div>
     </div>
