@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Biblioteca.css - Estilização Visual Centralizada da Biblioteca Escolar
  *
  * Papel Didático:
@@ -41,14 +41,15 @@
    2. Modais Customizados
    ========================================================================== */
 
-.biblioteca-modal-overlay {
+.biblioteca-modal-overlay,
+.biblioteca-modal-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(var(--dashboard-navy-rgb), 0.5);
+  background-color: rgba(var(--dashboard-navy-rgb), 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1060;
+  z-index: 1070;
   padding: 16px;
 }
 

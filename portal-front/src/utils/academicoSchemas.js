@@ -158,6 +158,18 @@ export const NotaDiarioSchema = z.object({
 
 export const ListaNotasDiarioSchema = z.array(NotaDiarioSchema);
 
+// Espelha FrequenciaResource para validar o retorno do lançamento individual.
+export const FrequenciaManualSchema = z.object({
+  id_frequencia: z.number().int(),
+  turma_id: z.number().int(),
+  disciplina_id: z.number().int(),
+  usuario_id: z.number().int(),
+  data_aula: z.string(),
+  quantidade_aulas: z.number().int(),
+  status_presenca: z.string(),
+  justificativa: z.string().nullable(),
+});
+
 // Schema de Divisão e Período Letivo (espelha PeriodoLetivoResource)
 export const PeriodoLetivoDivisaoSchema = z.object({
   id_divisao: z.number().int().optional(),

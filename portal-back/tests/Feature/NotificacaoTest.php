@@ -9,6 +9,7 @@ use App\Models\TurmaDisciplina;
 use App\Models\User;
 use App\Notifications\NotificacaoPortal;
 use App\Services\NotificacaoService;
+use Illuminate\Http\UploadedFile;
 
 test('especialista envia notificacao individual e aluno pode confirmar a leitura', function () {
     $especialista = User::factory()->especialista()->create();
@@ -103,6 +104,47 @@ test('professor nao pode notificar aluno fora de turma sob sua regencia', functi
             'aluno_id' => $aluno->id,
         ])
         ->assertForbidden();
+});
+
+test('professor receives an explicit forbidden response when requesting a general notification', function () {
+    $professor = User::factory()->professor()->create();
+
+    $this->actingAs($professor, 'sanctum')
+        ->postJson('/api/notificacoes', [
+            'titulo' => 'Comunicado geral',
+            'assunto' => 'Mensagem para toda a comunidade.',
+            'destinatario_tipo' => 'geral',
+        ])
+        ->assertForbidden()
+        ->assertJsonPath('message', 'Somente Especialista ou Administrador pode enviar comunicados gerais.');
+});
+
+test('individual manual notifications are stored only for the selected student', function () {
+    $especialista = User::factory()->especialista()->create();
+    $aluno = User::factory()->aluno()->create();
+    $bibliotecaria = User::factory()->bibliotecaria()->create();
+    $turma = Turma::factory()->create();
+    Matricula::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $aluno->id,
+    ]);
+
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson('/api/notificacoes', [
+            'titulo' => 'Aviso individual',
+            'assunto' => 'Mensagem exclusiva do estudante.',
+            'destinatario_tipo' => 'aluno',
+            'aluno_id' => $aluno->id,
+        ])
+        ->assertCreated();
+
+    expect($aluno->notifications()->count())->toBe(1)
+        ->and($bibliotecaria->notifications()->count())->toBe(0);
+
+    $this->actingAs($bibliotecaria, 'sanctum')
+        ->getJson('/api/notificacoes')
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
 });
 
 test('notificacao para turma alcanca somente matriculas ativas', function () {
@@ -228,6 +270,43 @@ test('alerta de frequencia respeita o limite do boletim e nao duplica na reimpor
 
     expect($professor->notifications()->count())->toBe(1)
         ->and($especialista->notifications()->count())->toBe(1);
+});
+
+test('CSV import creates individual grade and attendance alerts after successful synchronization', function () {
+    $especialista = User::factory()->especialista()->create();
+    $turma = Turma::factory()->create(['ano_letivo' => 2026]);
+    $disciplina = Disciplina::factory()->create([
+        'nome' => 'Física',
+        'carga_horaria_anual' => 60,
+    ]);
+    $aluno = User::factory()->aluno()->create([
+        'name' => 'Aluno Alerta CSV',
+        'email' => 'aluno.alerta.csv@aluno.mg.gov.br',
+    ]);
+    Matricula::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $aluno->id,
+    ]);
+
+    $csv = implode("\n", [
+        'ALUNO;Física;',
+        ';1º Trimestre;FALTAS',
+        'ALUNO ALERTA CSV;10;6',
+    ]);
+    $arquivo = UploadedFile::fake()->createWithContent('alertas.csv', $csv);
+
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson("/api/turmas/{$turma->id_turma}/importar-relatorio", [
+            'arquivo' => $arquivo,
+            'periodo_letivo' => '1º Trimestre',
+        ])
+        ->assertOk()
+        ->assertJsonPath('status', 'sucesso')
+        ->assertJsonPath('dados.notas_sincronizadas', 1)
+        ->assertJsonPath('dados.frequencias_sincronizadas', 1);
+
+    expect($aluno->notifications()->where('data->tipo', 'nota_alerta')->count())->toBe(1)
+        ->and($aluno->notifications()->where('data->tipo', 'frequencia_risco')->count())->toBe(1);
 });
 
 test('lembrete apos tres dias e enviado uma unica vez ao aluno e ao criador', function () {

@@ -135,6 +135,21 @@ test('standard user can create personal events and manage only their own', funct
         ->assertForbidden();
 });
 
+test('aluno can delete a personal event returned by the calendar resource', function () {
+    $aluno = User::factory()->aluno()->create();
+    $evento = Evento::factory()->create([
+        'titulo' => 'Lembrete particular',
+        'criador_id' => $aluno->id,
+        'tipo' => TipoEvento::EVENTOS,
+    ]);
+
+    $this->actingAs($aluno, 'sanctum')
+        ->deleteJson("/api/eventos/{$evento->id}")
+        ->assertNoContent();
+
+    expect(Evento::query()->whereKey($evento->id)->exists())->toBeFalse();
+});
+
 test('professor events are shared with authenticated users but remain private to public visitors', function () {
     $professor = User::factory()->professor()->create();
     $aluno = User::factory()->padrao()->create();

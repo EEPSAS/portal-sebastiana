@@ -396,18 +396,21 @@ class TurmaController extends Controller
             abort(403, 'Acesso restrito ao perfil de Especialista Pedagógico ou Administrador.');
         }
 
-        $periodoLetivo = $request->input('periodo_letivo') ?? $request->query('periodo_letivo');
+        $periodoRaw = $request->input('periodo_letivo') ?? $request->query('periodo_letivo');
+        // Normalização pedagógica: 'todos' ou vazio indica exclusão de todas as etapas avaliativas do diário
+        $isTodos = empty($periodoRaw) || strtolower(trim((string) $periodoRaw)) === 'todos';
+        $periodoLetivo = $isTodos ? null : trim((string) $periodoRaw);
 
         // 1. Exclusão das notas da turma (filtrando pelo período caso informado)
         $queryNotas = $turma->notas();
-        if (! empty($periodoLetivo)) {
+        if ($periodoLetivo !== null) {
             $queryNotas->where('periodo_letivo', $periodoLetivo);
         }
         $notasRemovidas = $queryNotas->delete();
 
         // 2. Exclusão das faltas/frequências registradas para a turma
         $queryFreq = Frequencia::where('turma_id', $turma->id_turma);
-        if (! empty($periodoLetivo)) {
+        if ($periodoLetivo !== null) {
             // Mapeia o trimestre escolar para os meses de realização das aulas
             if (str_contains($periodoLetivo, '1º')) {
                 $queryFreq->whereMonth('data_aula', '<=', 4);
@@ -419,7 +422,7 @@ class TurmaController extends Controller
         }
         $frequenciasRemovidas = $queryFreq->delete();
 
-        $mensagemPeriodo = ! empty($periodoLetivo) ? " do período '{$periodoLetivo}'" : '';
+        $mensagemPeriodo = $periodoLetivo !== null ? " do período '{$periodoLetivo}'" : ' de todos os períodos';
 
         return response()->json([
             'message' => "Dados do diário escolar{$mensagemPeriodo} excluídos com sucesso.",

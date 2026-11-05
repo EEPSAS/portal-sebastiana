@@ -23,6 +23,8 @@ const MENSAGENS_ERRO_YOUTUBE = {
     'Problema de conexão. Verifique sua internet e tente novamente.',
   INVALID_VIDEO_ID: 'Este vídeo possui um identificador inválido.',
   VIDEO_UNAVAILABLE: 'Este vídeo está indisponível no YouTube.',
+  AGE_RESTRICTED_VIDEO:
+    'Este vídeo possui restrição de idade no YouTube e não é adequado para menores de 18 anos no ambiente escolar.',
 };
 
 const traduzirErroYouTube = (error) =>

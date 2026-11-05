@@ -3,17 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreNotaRequest;
+use App\Http\Resources\NotaResource;
 use App\Models\Disciplina;
 use App\Models\Nota;
 use App\Models\Turma;
+use App\Services\NotificacaoService;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 // Controller responsável pelo lançamento oficial de notas, médias e boletim escolar.
 class NotaController extends Controller
 {
+    public function __construct(private readonly NotificacaoService $notificacaoService) {}
+
     // Lança oficialmente uma nova nota para o aluno.
     public function lancarNotaOficial(StoreNotaRequest $request): JsonResponse
     {
@@ -24,9 +29,29 @@ class NotaController extends Controller
             $dados['data_registro'] = now()->format('Y-m-d');
         }
 
-        $nota = Nota::create($dados);
+        $nota = DB::transaction(function () use ($dados) {
+            $nota = Nota::create($dados);
+            $nota->load(['aluno:id,name,email', 'disciplina', 'turma']);
 
-        return response()->json($nota->load(['aluno:id,name,email', 'disciplina', 'turma']), 201);
+            // Reaproveita a regra de alertas acadêmicos para dados incluídos manualmente.
+            $this->notificacaoService->notificarImportacaoAcademica(
+                $nota->turma,
+                [[
+                    'usuario_id' => $nota->usuario_id,
+                    'notas' => [[
+                        'disciplina_id' => $nota->disciplina_id,
+                        'periodo_letivo' => $nota->periodo_letivo,
+                    ]],
+                    'faltas' => [],
+                ]],
+                $nota->periodo_letivo,
+                $nota->data_registro->format('Y-m-d')
+            );
+
+            return $nota;
+        });
+
+        return response()->json(new NotaResource($nota), 201);
     }
 
     // Atualiza os dados ou pontuação de uma nota já registrada.
