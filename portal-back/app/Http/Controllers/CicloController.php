@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Data\Academico\SalvarCicloData;
 use App\Http\Requests\StoreCicloRequest;
 use App\Http\Resources\CicloResource;
 use App\Http\Resources\DisciplinaResource;
@@ -116,7 +117,9 @@ class CicloController extends Controller
      */
     public function store(StoreCicloRequest $request): JsonResponse
     {
-        $ciclo = Ciclo::create($request->validated());
+        // Revalida e tipa o payload via Spatie Laravel Data antes de persistir
+        $dadosCiclo = SalvarCicloData::validateAndCreate($request->validated());
+        $ciclo = Ciclo::create($dadosCiclo->toArray());
         $ciclo->load(['disciplinas.professores', 'turmas']);
 
         return response()->json([
@@ -130,7 +133,9 @@ class CicloController extends Controller
      */
     public function update(StoreCicloRequest $request, Ciclo $ciclo): JsonResponse
     {
-        $ciclo->update($request->validated());
+        // Revalida e tipa a atualização via Spatie Laravel Data
+        $dadosCiclo = SalvarCicloData::validateAndCreate($request->validated());
+        $ciclo->update($dadosCiclo->toArray());
         $ciclo->load(['disciplinas.professores', 'turmas']);
 
         return response()->json([

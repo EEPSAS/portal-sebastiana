@@ -15,6 +15,12 @@ import { useEffect, useState } from "react";
 import { listarCiclos } from "../../../services/disciplinasService";
 import ModalCiclo from "../disciplinas/ModalCiclo";
 import { importarNotasCSV } from "../../../services/turmasService";
+import {
+  ArquivoCsvUploadSchema,
+  MapeamentosAlunosCsvSchema,
+  MapeamentosDisciplinasCsvSchema,
+  validarFormularioZod,
+} from "../../../utils/academicoSchemas";
 import { formatarDisciplinaCiclo } from "../../../utils/formatters";
 
 const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
@@ -145,10 +151,12 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
         const mapaInicial = {};
         listaPend.forEach((item) => {
           const chave = item.nome_sanitizado || item.nome_csv;
-          if (item.sugestao_id) {
+          // Contrato canônico: sugestao_disciplina_id -> disciplina_id
+          const sugestaoId = item.sugestao_disciplina_id ?? item.sugestao_id;
+          if (sugestaoId) {
             mapaInicial[chave] = {
               acao: "vincular",
-              id_disciplina: Number(item.sugestao_id),
+              disciplina_id: Number(sugestaoId),
               nome_nova: item.nome_sanitizado || item.nome_csv,
               aulas_semanais: 4,
               ciclo_id: cicloPadraoId,
@@ -156,7 +164,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
           } else {
             mapaInicial[chave] = {
               acao: "criar_nova",
-              id_disciplina: catalogo[0]?.id_disciplina || "",
+              disciplina_id: catalogo[0]?.id_disciplina || "",
               nome_nova: item.nome_sanitizado || item.nome_csv,
               aulas_semanais: 4,
               ciclo_id: cicloPadraoId,
@@ -249,7 +257,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     URL.revokeObjectURL(url);
   };
 
-  // Manipula e valida a seleção do arquivo, bloqueando formatos não-CSV instantaneamente
+  // Manipula e valida a seleção do arquivo via Zod, bloqueando formatos não-CSV ou arquivos vazios/>10MB
   const handleArquivoChange = (event) => {
     setErro("");
     setResultado(null);
@@ -260,10 +268,9 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
       return;
     }
 
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setErro(
-        "O formato de arquivo é incompatível com o sistema. Por favor, envie exclusivamente um arquivo no formato CSV."
-      );
+    const checkArquivo = validarFormularioZod(ArquivoCsvUploadSchema, file);
+    if (!checkArquivo.valido) {
+      setErro(checkArquivo.mensagem);
       setArquivo(null);
       event.target.value = "";
       return;
@@ -278,15 +285,9 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     setErro("");
     setResultado(null);
 
-    if (!arquivo) {
-      setErro("Por favor, selecione um arquivo CSV para enviar.");
-      return;
-    }
-
-    if (!arquivo.name.toLowerCase().endsWith(".csv")) {
-      setErro(
-        "O formato de arquivo é incompatível com o sistema. Por favor, envie exclusivamente um arquivo no formato CSV."
-      );
+    const checkArquivo = validarFormularioZod(ArquivoCsvUploadSchema, arquivo);
+    if (!checkArquivo.valido) {
+      setErro(checkArquivo.mensagem);
       return;
     }
 
@@ -303,10 +304,19 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     }
   };
 
-  // Envio da aprovação de conciliação de disciplinas (Diretriz 3.4d)
+  // Envio da aprovação de conciliação de disciplinas validado via Zod (Diretriz 3.4d)
   const handleConfirmarDisciplinas = async (event) => {
     event.preventDefault();
     setErro("");
+
+    const checkDisc = validarFormularioZod(
+      MapeamentosDisciplinasCsvSchema,
+      mapeamentosDisciplinas
+    );
+    if (!checkDisc.valido) {
+      setErro(checkDisc.mensagem);
+      return;
+    }
 
     const formData = construirFormDataBase();
 
@@ -323,11 +333,17 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     }
   };
 
-  // Envio de confirmação manual de homônimos (Resolução de Alunos)
+  // Envio de confirmação manual de homônimos validado via Zod (Resolução de Alunos)
   const handleConfirmarHomonimos = async (event) => {
     event.preventDefault();
     setErro("");
     setResultado(null);
+
+    const checkAlunos = validarFormularioZod(MapeamentosAlunosCsvSchema, mapeamentos);
+    if (!checkAlunos.valido) {
+      setErro(checkAlunos.mensagem);
+      return;
+    }
 
     const formData = construirFormDataBase();
 
@@ -619,9 +635,10 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
             >
               {disciplinasPendentes.map((item, idx) => {
                 const chave = item.nome_sanitizado || item.nome_csv;
+                const sugestaoNome = item.sugestao_disciplina_nome ?? item.sugestao_nome;
                 const decisao = mapeamentosDisciplinas[chave] || {
                   acao: "criar_nova",
-                  id_disciplina: "",
+                  disciplina_id: "",
                   nome_nova: chave,
                   aulas_semanais: 4,
                 };
@@ -641,9 +658,9 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                           </span>
                         )}
                       </div>
-                      {item.sugestao_nome && (
+                      {sugestaoNome && (
                         <span className="badge bg-warning-subtle text-dark border">
-                          Sugestão aproximada: {item.sugestao_nome}
+                          Sugestão aproximada: {sugestaoNome}
                         </span>
                       )}
                     </div>
@@ -651,10 +668,14 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                     {/* Escolha de Ação */}
                     <div className="row g-2 align-items-end">
                       <div className={decisao.acao === "criar_nova" ? "col-12 col-md-4" : "col-12 col-md-5"}>
-                        <label className="form-label small fw-bold text-dark mb-1">
+                        <label
+                          htmlFor={`conciliar-acao-${idx}`}
+                          className="form-label small fw-bold text-dark mb-1"
+                        >
                           Ação de Conciliação:
                         </label>
                         <select
+                          id={`conciliar-acao-${idx}`}
                           className="form-select form-select-sm"
                           value={decisao.acao}
                           onChange={(e) =>
@@ -674,15 +695,19 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
 
                       {decisao.acao === "vincular" && (
                         <div className="col-12 col-md-7">
-                          <label className="form-label small fw-bold text-dark mb-1">
+                          <label
+                            htmlFor={`conciliar-disc-sel-${idx}`}
+                            className="form-label small fw-bold text-dark mb-1"
+                          >
                             Selecionar Disciplina do Sistema:
                           </label>
                           <select
+                            id={`conciliar-disc-sel-${idx}`}
                             className="form-select form-select-sm"
-                            value={decisao.id_disciplina || ""}
+                            value={decisao.disciplina_id || ""}
                             onChange={(e) =>
                               atualizarDecisaoDisciplina(chave, {
-                                id_disciplina: Number(e.target.value),
+                                disciplina_id: Number(e.target.value),
                               })
                             }
                             disabled={loading}
@@ -701,10 +726,14 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                       {decisao.acao === "criar_nova" && (
                         <>
                           <div className="col-12 col-md-3">
-                            <label className="form-label small fw-bold text-dark mb-1">
+                            <label
+                              htmlFor={`conciliar-disc-nome-${idx}`}
+                              className="form-label small fw-bold text-dark mb-1"
+                            >
                               Nome da Disciplina:
                             </label>
                             <input
+                              id={`conciliar-disc-nome-${idx}`}
                               type="text"
                               className="form-control form-control-sm"
                               value={decisao.nome_nova || ""}
@@ -718,10 +747,14 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                             />
                           </div>
                           <div className="col-4 col-md-2">
-                            <label className="form-label small fw-bold text-dark mb-1">
+                            <label
+                              htmlFor={`conciliar-disc-aulas-${idx}`}
+                              className="form-label small fw-bold text-dark mb-1"
+                            >
                               Aulas/Sem:
                             </label>
                             <input
+                              id={`conciliar-disc-aulas-${idx}`}
                               type="number"
                               min={1}
                               max={20}
@@ -737,11 +770,15 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                             />
                           </div>
                           <div className="col-8 col-md-3">
-                            <label className="form-label small fw-bold text-dark mb-1">
+                            <label
+                              htmlFor={`conciliar-disc-ciclo-${idx}`}
+                              className="form-label small fw-bold text-dark mb-1"
+                            >
                               Ciclo Escolar:
                             </label>
                             <div className="input-group input-group-sm">
                               <select
+                                id={`conciliar-disc-ciclo-${idx}`}
                                 className="form-select form-select-sm"
                                 value={decisao.ciclo_id || ""}
                                 onChange={(e) =>
@@ -861,6 +898,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                     {amb.candidatos?.map((cand) => (
                       <label
                         key={cand.id}
+                        htmlFor={`amb-${index}-cand-${cand.id}`}
                         className={`form-check-label p-2 rounded-2 border d-flex align-items-center justify-content-between ${
                           mapeamentos[amb.nome_csv] === cand.id
                             ? "bg-white border-primary shadow-sm"
@@ -870,6 +908,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                       >
                         <div className="d-flex align-items-center gap-2">
                           <input
+                            id={`amb-${index}-cand-${cand.id}`}
                             type="radio"
                             className="form-check-input mt-0"
                             name={`ambiguidade-${index}`}
@@ -897,6 +936,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                     ))}
 
                     <label
+                      htmlFor={`amb-${index}-ignorar`}
                       className={`form-check-label p-2 rounded-2 border d-flex align-items-center gap-2 ${
                         mapeamentos[amb.nome_csv] === "ignorar"
                           ? "bg-white border-warning shadow-sm"
@@ -905,6 +945,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                       style={{ cursor: "pointer" }}
                     >
                       <input
+                        id={`amb-${index}-ignorar`}
                         type="radio"
                         className="form-check-input mt-0"
                         name={`ambiguidade-${index}`}

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Data\Academico\Csv\ImportarRelatorioInputData;
 use App\Http\Requests\ImportarRelatorioTurmaRequest;
 use App\Http\Resources\AlunoCriticoResource;
 use App\Http\Resources\DesempenhoComponenteResource;
@@ -39,25 +40,24 @@ class EspecialistaDashboardController extends Controller
         $turma = Turma::findOrFail($turma_id);
 
         $arquivo = $request->file('arquivo') ?? $request->file('planilha');
-        $periodo = $request->input('periodo_letivo');
-        $dataAula = $request->input('data_aula');
-        // Mapeamentos manuais de resolução de homônimos enviados pelo especialista
-        $mapeamentosAlunos = $request->input('mapeamentos_alunos', []);
-        // Decisão do Especialista para notas divergentes ('atualizar' ou 'manter')
-        $decisaoDivergencias = $request->input('decisao_divergencias');
-        // Mapeamentos manuais de conciliação de disciplinas (Item 3.4d)
-        $mapeamentosDisciplinas = $request->input('mapeamentos_disciplinas', []);
-        $exigirConciliacao = $request->boolean('exigir_conciliacao_disciplinas', false) || $turma->ciclo_id !== null;
+
+        // Revalida e normaliza os parâmetros e mapeamentos de conciliação via Spatie Laravel Data
+        $inputValidado = ImportarRelatorioInputData::fromFormRequest($request, $turma->ciclo_id !== null);
+
+        // Caso um ciclo_id explícito tenha sido enviado na conciliação e a turma ainda não possua ciclo, vincula
+        if ($inputValidado->ciclo_id !== null && $turma->ciclo_id === null) {
+            $turma->update(['ciclo_id' => $inputValidado->ciclo_id]);
+        }
 
         $resultado = $this->dashboardService->processarPlanilhaConsolidada(
             $turma,
             $arquivo,
-            $periodo,
-            $dataAula,
-            $mapeamentosAlunos,
-            $decisaoDivergencias,
-            is_array($mapeamentosDisciplinas) ? $mapeamentosDisciplinas : [],
-            $exigirConciliacao
+            $inputValidado->periodo_letivo,
+            $inputValidado->data_aula,
+            $inputValidado->mapeamentos_alunos,
+            $inputValidado->decisao_divergencias,
+            $inputValidado->mapeamentos_disciplinas,
+            $inputValidado->exigir_conciliacao_disciplinas
         );
 
         return (new RelatorioImportadoResource([

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../../hooks/useAuth";
 import {
@@ -200,13 +200,13 @@ const Turmas = () => {
    * do estudante selecionado no filtro, garantindo performance e granularidade.
    */
   useEffect(() => {
-    if (!turmaSelecionadaId || !alunoFiltroNota) return;
+    if (!turmaSelecionadaId) return;
 
     let cancelado = false;
 
     fetchTurmaNotas(turmaSelecionadaId, {
-      periodo: periodoFiltro,
-      alunoId: alunoFiltroNota,
+      periodo: periodoFiltro === "todos" ? undefined : periodoFiltro,
+      alunoId: alunoFiltroNota || undefined,
     })
       .then((dadosNotas) => {
         if (!cancelado) {
@@ -251,12 +251,7 @@ const Turmas = () => {
 
   const handleAlunoFiltroChange = (idAluno) => {
     setAlunoFiltroNota(idAluno);
-    if (idAluno) {
-      setLoadingNotas(true);
-    } else {
-      setNotas([]);
-      setLoadingNotas(false);
-    }
+    setLoadingNotas(true);
   };
 
   // Navega para a visão individual do Boletim Escolar passando os identificadores do aluno e turma
@@ -527,6 +522,7 @@ const Turmas = () => {
         {/* 3. Conteúdo da Aba Notas: Cards de Média e Diário Escolar */}
         {abaAtiva === "notas" && (
           <NotasAba
+            turmas={turmas}
             resumoGeral={resumoGeral}
             turmaSelecionadaId={turmaSelecionadaId}
             onSelecionarTurma={handleSelecionarTurmaNotas}
