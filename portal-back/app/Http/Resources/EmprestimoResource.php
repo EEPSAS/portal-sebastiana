@@ -34,6 +34,7 @@ class EmprestimoResource extends JsonResource
                 'id' => $this->usuario?->id,
                 'name' => $this->usuario?->name,
                 'email' => $this->usuario?->email,
+                'role' => $this->usuario?->role?->value,
             ],
             // Prazos e controle temporal
             'data_emprestimo' => $this->data_emprestimo?->format('Y-m-d') ?? $this->data_emprestimo,

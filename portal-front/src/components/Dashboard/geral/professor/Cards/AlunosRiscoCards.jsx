@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import ListaAlunosRisco from "../ListaAlunosRisco";
 
 const CARDS_RISCO = [
@@ -64,16 +65,26 @@ export default function AlunosRiscoCards({ dados, periodo, datasPeriodo = null, 
                   </p>
                 </div>
               </div>
-              <span
-                className="badge rounded-pill fw-normal"
-                style={{
-                  color: card.cor,
-                  backgroundColor: `${card.cor}12`,
-                  border: `1px solid ${card.cor}25`,
-                }}
-              >
-                {isReal ? "Monitoramento Ativo" : "Demonstrativo"}
-              </span>
+              <div className="d-flex align-items-center gap-2">
+                <span
+                  className="badge rounded-pill fw-normal"
+                  style={{
+                    color: card.cor,
+                    backgroundColor: `${card.cor}12`,
+                    border: `1px solid ${card.cor}25`,
+                  }}
+                >
+                  {isReal ? "Monitoramento Ativo" : "Demonstrativo"}
+                </span>
+                <Link
+                  to="/dashboard/turmas?aba=notas"
+                  className="geral-kpi-arrow-btn"
+                  aria-label={`Abrir Notas e Diário Escolar: ${card.titulo}`}
+                  title="Abrir Notas e Diário Escolar"
+                >
+                  <i className="bi bi-arrow-right" aria-hidden="true"></i>
+                </Link>
+              </div>
             </div>
 
             <div className="d-flex flex-column flex-lg-row align-items-lg-center gap-2 mt-2">

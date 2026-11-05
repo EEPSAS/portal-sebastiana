@@ -28,8 +28,10 @@ class DashboardGeralResource extends JsonResource
                 'total_alunos' => (int) ($this->resource['kpis']['total_alunos'] ?? 0),
                 'media_geral' => isset($this->resource['kpis']['media_geral'])
                     ? round((float) $this->resource['kpis']['media_geral'], 1)
-                    : 0.0,
-                'frequencia_media' => (string) ($this->resource['kpis']['frequencia_media'] ?? '100%'),
+                    : null,
+                'frequencia_media' => isset($this->resource['kpis']['frequencia_media'])
+                    ? (string) $this->resource['kpis']['frequencia_media']
+                    : null,
                 'noticias_publicadas' => (int) ($this->resource['kpis']['noticias_publicadas'] ?? 0),
                 'total_turmas' => (int) ($this->resource['kpis']['total_turmas'] ?? 0),
             ],
@@ -44,8 +46,8 @@ class DashboardGeralResource extends JsonResource
             'disciplinas_docente' => $this->resource['disciplinas_docente'] ?? [],
             'disciplinas_detalhadas' => $this->resource['disciplinas_detalhadas'] ?? [],
 
-            // Seção inferior: Feed dinâmico de últimas atualizações escolares
-            'ultimas_atualizacoes' => $this->resource['ultimas_atualizacoes'] ?? [],
+            // Seção inferior: Feed de notificações escolares únicas
+            'ultimas_notificacoes' => $this->resource['ultimas_notificacoes'] ?? [],
 
             // Contexto do Período Letivo e divisão avaliativa selecionada
             'periodo_contexto' => $this->resource['periodo_contexto'] ?? null,

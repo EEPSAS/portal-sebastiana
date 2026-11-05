@@ -72,7 +72,7 @@ const GeralAdm = () => {
         error={error}
       />
 
-      {/* Linha inferior: Feed de últimas atualizações escolares */}
+      {/* Linha inferior: Feed das últimas notificações escolares */}
       <LatestUpdates
         updates={updates}
         loading={loading}

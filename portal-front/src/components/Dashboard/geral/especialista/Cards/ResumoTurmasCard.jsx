@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import {
   BarChart,
   Bar,
@@ -27,6 +28,7 @@ export default function GeralMediumCards({
   escalaNotaMaxima = 10,
   mostrarLinhasReferencia = true,
   badgeMedia = null,
+  href = null,
 }) {
   // 1. Estado Assíncrono: Carregando
   if (loading) {
@@ -93,9 +95,21 @@ export default function GeralMediumCards({
               <i className="bi bi-bell text-primary fs-5"></i>
               <span>Média de Notas por Turma</span>
             </h5>
-            <span className="geral-chart-badge">
-              {badgeMedia || `Escala 0 a ${escalaNotaMaxima}`}
-            </span>
+            <div className="d-flex align-items-center gap-2">
+              <span className="geral-chart-badge">
+                {badgeMedia || `Escala 0 a ${escalaNotaMaxima}`}
+              </span>
+              {href && (
+                <Link
+                  to={href}
+                  className="geral-kpi-arrow-btn"
+                  aria-label="Abrir Notas e Diário Escolar"
+                  title="Abrir Notas e Diário Escolar"
+                >
+                  <i className="bi bi-arrow-right" aria-hidden="true"></i>
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* 3. Estado Assíncrono: Vazio */}
@@ -173,7 +187,19 @@ export default function GeralMediumCards({
               <i className="bi bi-calendar3 text-primary fs-5"></i>
               <span>Frequência por Turma</span>
             </h5>
-            <span className="geral-chart-badge">Meta mín. 75%</span>
+            <div className="d-flex align-items-center gap-2">
+              <span className="geral-chart-badge">Meta mín. 75%</span>
+              {href && (
+                <Link
+                  to={href}
+                  className="geral-kpi-arrow-btn"
+                  aria-label="Abrir Notas e Diário Escolar"
+                  title="Abrir Notas e Diário Escolar"
+                >
+                  <i className="bi bi-arrow-right" aria-hidden="true"></i>
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* 3. Estado Assíncrono: Vazio */}

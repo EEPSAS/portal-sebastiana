@@ -158,3 +158,14 @@ test('user views only their loans whereas admin views all loans', function () {
         ->assertOk()
         ->assertJsonCount(2);
 });
+
+test('emprestimo inclui o papel do usuario para identificar estudantes nas devolucoes', function () {
+    $bibliotecaria = User::factory()->create(['role' => 'bibliotecaria']);
+    $aluno = User::factory()->aluno()->create();
+    Emprestimo::factory()->create(['usuario_id' => $aluno->id]);
+
+    $this->actingAs($bibliotecaria, 'sanctum')
+        ->getJson('/api/emprestimos')
+        ->assertOk()
+        ->assertJsonPath('0.usuario.role', 'aluno');
+});
