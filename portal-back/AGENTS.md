@@ -1,43 +1,77 @@
 # Backend — Contexto, Convenções e Mentoria Socrática (`portal-back/AGENTS.md`)
 
-> **Diretriz Máxima Pedagógica:** As diretrizes pedagógicas e a postura de **Tutor Técnico Sênior** em `../AGENTS.md` são obrigatórias e têm precedência soberana sobre quaisquer automações ou regras genéricas deste repositório.
+> **Diretriz Máxima Pedagógica:** As diretrizes pedagógicas e a postura de **Tutor Técnico Sênior** em [`../AGENTS.md`](../AGENTS.md) são obrigatórias e têm precedência soberana sobre quaisquer automações ou regras genéricas deste repositório.
 
 ---
 
 ## 1. Contexto Fundamental do Backend
-* **Arquitetura**: API RESTful pura desenvolvida em **PHP 8.5+** com **Laravel 12/13**, autenticação via **Laravel Sanctum** e respostas estritamente em **JSON**.
-* **Escopo Oficial**: O backend atende aos 7 módulos do sistema descritos no [`apiContract.md`](file:///c:/Users/prent/OneDrive/Documentos/repositorios/portal-sebastiana/apiContract.md).
-* **Turmas / Boletim (Escopo Enxuto)**:
-  * Notas e faltas são alimentadas exclusivamente pela importação do relatório consolidado em CSV pelo **Especialista** (`POST /api/turmas/{turma_id}/importar-relatorio`).
-  * O papel de **Professor** possui acesso estritamente de consulta aos dados das turmas e alunos.
-  * **Proibição:** Não crie tabelas, controllers ou rotas para lançamento avulso de tarefas, submissões ou chamada diária manual.
+* **Arquitetura**: API RESTful pura desenvolvida em **PHP 8.5+** com **Laravel 12/13**, autenticação via **Laravel Sanctum**, Data Objects tipados com **Spatie Laravel Data** e respostas estritamente em **JSON**.
+* **Escopo Oficial**: O backend atende aos **7 módulos oficiais** (e seus submódulos: Radioatividade/Podcast, Planos de Estudos, Horários Escolares, Período Letivo, Ciclos/Turnos, Disciplinas, Professores, Turmas e Matrículas) e aos **Módulos Transversais** (**Notificações** e **Assistente Dona Nana** com Google Gemini), conforme [`../AGENTS.md`](../AGENTS.md) e [`../apiContract.md`](../apiContract.md).
+* **Acadêmico — Turmas / Boletim (Escopo Enxuto via CSV)**:
+  * O Especialista (e Adm) gerencia turmas, matrículas, períodos letivos, ciclos, disciplinas e vínculos docentes, mas **notas e faltas** são alimentadas **exclusivamente** pela importação do relatório consolidado em CSV (inclusive multi-período) via `POST /api/turmas/{turma_id}/importar-relatorio` (com opção de limpeza em `DELETE /api/turmas/{turma}/dados-csv`).
+  * O papel de **Professor** possui acesso estritamente **consultivo** aos dados das turmas e alunos.
+  * **Proibição:** Não crie tabelas, controllers ou rotas para lançamento avulso de tarefas, submissões ou chamada diária manual (estruturas antigas permanecem isoladas em `_archive/fora_de_escopo/`).
 
 ---
 
-## 2. Blindagem Arquitetural Obrigatória (Requests & Resources)
+## 2. Camadas Oficiais e Estrutura do `app/`
+
+Novos módulos e evoluções no backend seguem o fluxo oficial de camadas:
+
+```mermaid
+flowchart LR
+    R["Rota (api.php + auth:sanctum)"] --> FR["Form Request"]
+    FR --> C["Controller magro"]
+    C --> S["Service (app/Services)"]
+    S --> D["Data Object (app/Data)"]
+    S --> M["Model Eloquent"]
+    D --> RS["API Resource"]
+    M --> RS
+    RS --> J["JSON (contrato)"]
+```
+
+```text
+portal-back/app/
+├── Console/Commands/    # Comandos Artisan agendados (ex.: EnviarLembretesNotificacoes)
+├── Data/<Dominio>/      # Data Objects tipados com Spatie Laravel Data (ex.: Academico/Boletim, Academico/Csv)
+├── Enums/               # UserRole, EmprestimoStatus, TipoEvento
+├── Http/
+│   ├── Controllers/     # Controladores enxutos (delegam regras complexas aos Services)
+│   ├── Requests/        # Form Requests dedicadas (blindagem de entrada)
+│   └── Resources/       # Eloquent API Resources (blindagem de saída JSON)
+├── Models/              # Modelos Eloquent, relacionamentos e escopos (+ Role, Permission, UsuarioVinculo)
+├── Notifications/       # Notificações do portal (ex.: NotificacaoPortal)
+├── Policies/            # Autorização granular por recurso/ação
+├── Services/            # Regras de negócio, cruzamentos estatísticos e integrações externas (Gemini, horários, dashboards)
+└── Traits/              # Traits reutilizáveis de domínio (ex.: HasRolesAndPermissions)
+```
+
+---
+
+## 3. Blindagem Arquitetural Obrigatória (Requests, Data Objects & Resources)
 
 Para garantir segurança, previsibilidade de payload e código limpo, é mandatória a seguinte estrutura:
 
-1. **Entrada de Dados (`app/Http/Requests/`)**:
+1. **Entrada de Dados (`app/Http/Requests/` + `app/Data/`)**:
    * Toda requisição que envia dados (POST, PUT, PATCH) deve utilizar uma **Form Request dedicada**.
-   * A validação deve ser semântica e explícita, bloqueando *Mass Assignment* e campos indevidos.
-   * O controller recebe dados validados via `$request->validated()`.
-2. **Saída de Dados (`app/Http/Resources/`)**:
-   * Toda resposta JSON com dados deve encapsular os models em um **Eloquent API Resource** (`app/Http/Resources/`).
+   * A validação deve ser semântica e explícita, bloqueando *Mass Assignment* e campos indevidos (`$request->validated()`).
+   * O **Data Object** (`Spatie\LaravelData\Data`) **complementa, mas não substitui**, a Form Request: use-o para transportar dados validados e tipados entre Controller e Service (ex.: `ImportarRelatorioTurmaRequest` + `ImportarRelatorioInputData`; `StoreCicloRequest` + `SalvarCicloData`).
+2. **Saída de Dados (`app/Http/Resources/` + `app/Data/`)**:
+   * Toda resposta JSON com dados deve encapsular o retorno (Model Eloquent ou Data Object, ex.: `CicloResource` + `CicloData`) em um **Eloquent API Resource** (`app/Http/Resources/`).
    * **É terminantemente proibido retornar models Eloquent brutos ou arrays soltos diretamente dos controllers.**
    * O Resource garante que apenas os campos acordados no contrato de API sejam expostos ao frontend.
 
 ---
 
-## 3. Protocolo de Governança com `apiContract.md` e Cláusula 'PRENTYS'
+## 4. Protocolo de Governança com `apiContract.md` e Cláusula 'PRENTYS'
 
-O arquivo [`apiContract.md`](file:///c:/Users/prent/OneDrive/Documentos/repositorios/portal-sebastiana/apiContract.md) na raiz do monorepo é a fonte única da verdade técnica:
+O arquivo [`apiContract.md`](../apiContract.md) na raiz do monorepo é a fonte única da verdade técnica:
 
 1. **Gatilho de Atualização (Delta Check)**:
-   * Sempre que um **Model** (dados, métodos, relacionamentos, casts ou colunas), Form Request ou Resource for alterado, o trecho afetado no `apiContract.md` deve ser atualizado.
+   * Sempre que um **Model** (dados, métodos, relacionamentos, casts ou colunas), Data Object, Form Request ou Resource for alterado, o trecho afetado no `apiContract.md` deve ser atualizado.
 2. **Loop de Consistência (Até 3 Tentativas)**:
-   * O agente simula a requisição HTTP correspondente (verificando correspondência 1:1 entre a chamada do front, a Form Request e o API Resource).
-   * A verificação é restrita **somente ao trecho do Model afetado** durante a interação.
+   * O agente simula a requisição HTTP correspondente (verificando correspondência 1:1 entre a chamada/schema do front, a Form Request/Data Object e o API Resource).
+   * A verificação é restrita **somente ao trecho do Model/módulo afetado** durante a interação.
 3. **Cláusula de Interrupção ('PRENTYS')**:
    * Se a correspondência exata não for obtida após a 3ª tentativa:
      1. Interromper imediatamente o loop de código;
@@ -47,31 +81,33 @@ O arquivo [`apiContract.md`](file:///c:/Users/prent/OneDrive/Documentos/reposito
 
 ---
 
-## 4. Diretrizes de Mentoria Socrática no Backend
+## 5. Diretrizes de Mentoria Socrática no Backend
 
 1. **Migrations e Banco de Dados**:
    * Antes de rodar ou criar uma migration, formule perguntas socráticas de decisão ao desenvolvedor júnior:
      * *"Quais colunas precisamos guardar no banco para esta tabela funcionar?"*
      * *"Como esta tabela se relaciona com as outras?"*
    * Apresente opções estruturadas em lote (até 5 perguntas) com a opção recomendada em destaque.
-2. **Controllers Magros e Procedurais**:
+2. **Controllers Magros**:
    * Peça para o desenvolvedor descrever em pseudocódigo o que o método deve fazer antes de gerar o código PHP.
-   * Mantenha os controllers enxutos: a Form Request valida, o Model/Resource processa e formata.
-3. **Evite Over-engineering**:
-   * Não imponha Services, Repositories, DTOs ou padrões complexos quando os recursos nativos do Eloquent e Form Requests resolverem com clareza.
+   * Mantenha os controllers enxutos: a Form Request valida, o Service/Model processa (apoiado por Data Objects quando houver payload estruturado) e o Resource formata.
+3. **Camadas com propósito**:
+   * **Service** (`app/Services/<Contexto>Service.php`): use quando a regra envolver mais de um Model, cálculos/estatísticas, integração externa (Gemini, Google) ou fluxo reutilizado por mais de um controller. Injete pelo construtor.
+   * **Data Object** (`app/Data/<Dominio>/<Nome>Data.php`, Spatie Laravel Data): use para payloads tipados e aninhados (entrada de importação, boletins, resumos). Subpastas por subdomínio (`Boletim/`, `Csv/`).
+   * **Proibido:** Repositories genéricos e interfaces sem segunda implementação real.
 4. **Comentários Didáticos Obrigatórios (pt-BR)**:
    * Combine PHPDoc blocks nas assinaturas de métodos com **comentários didáticos curtos em pt-BR** nas linhas de lógica interna, explicando o *porquê* daquela instrução para os estudantes.
 
 ---
 
-## 5. Autenticação, Segurança e Roles
+## 6. Autenticação, Segurança, RBAC e Integrações
 
 * **Sanctum**: Endpoints protegidos exigem `auth:sanctum`.
-* **Enum de Roles**: Uso estrito de `App\Enums\UserRole` (`ALUNO = 'aluno'`, `PROFESSOR = 'professor'`, `BIBLIOTECARIA = 'bibliotecaria'`, `ESPECIALISTA = 'especialista'`, `ADM = 'adm'`).
-* **Checagem de Permissões**: Use métodos semânticos do model User (`$user->isAdm()`, `$user->isEspecialista()`, `$user->isProfessor()`, `$user->isBibliotecaria()`, `$user->isAluno()`). Proíba o uso de strings brutas como `'administrador'` em regras de negócio.
+* **Enum de Roles**: Uso estrito de `App\Enums\UserRole` (`ALUNO = 'aluno'`, `PROFESSOR = 'professor'`, `BIBLIOTECARIA = 'bibliotecaria'`, `ESPECIALISTA = 'especialista'`, `ADM = 'adm'`, além de `PADRAO = 'padrao'` mantido apenas para compatibilidade legada com o mesmo nível de `aluno` e não atribuível em novos cadastros).
+* **RBAC Híbrido e Policies**: A autorização combina o enum `UserRole` e métodos semânticos do model `User` (`$user->isAdm()`, `$user->isEspecialista()`, `$user->isProfessor()`, `$user->isBibliotecaria()`, `$user->isAluno()`) com as tabelas `roles`/`permissions` via trait `HasRolesAndPermissions` e políticas dedicadas em `app/Policies/`. Proíba o uso de strings brutas como `'administrador'` em regras de negócio.
 
-### 5.1. Checagem de "Login With Google", Certificados SSL (`cacert.pem`), Extensões e CORS Local
-O endpoint `POST /api/auth/google` valida o token JWT junto ao servidor do Google (`https://oauth2.googleapis.com/tokeninfo`). No ambiente local Windows, verifique obrigatoriamente:
+### 6.1. Checagem de "Login With Google", Gemini AI (`Dona Nana`), SSL (`cacert.pem`) e CORS Local
+O endpoint `POST /api/auth/google` valida o token JWT junto ao Google (`https://oauth2.googleapis.com/tokeninfo`) e o `DonaNanaService` consome a API REST do Google Gemini (`generativelanguage.googleapis.com`). No ambiente local Windows, verifique obrigatoriamente:
 1. **Pacote Oficial de Certificados Raiz da Mozilla (`cacert.pem`)**:
    * Baixar `https://curl.se/ca/cacert.pem` e salvar em `C:\php\extras\ssl\cacert.pem`.
    * No arquivo `php.ini` em uso (consulte o caminho com `php --ini`), configurar as duas diretivas:
@@ -83,40 +119,60 @@ O endpoint `POST /api/auth/google` valida o token JWT junto ao servidor do Googl
 2. **Extensões PHP Obrigatórias (`php -m`)**:
    * Confirmar que `curl`, `openssl`, `mbstring`, `fileinfo` e `pdo_sqlite` (ou `pdo_mysql`) estão ativas no `php.ini`.
 3. **Variáveis de Ambiente (`portal-back/.env`)**:
-   * `GOOGLE_CLIENT_ID`: Deve conter exatamente o mesmo Client ID configurado em `VITE_GOOGLE_CLIENT_ID` no frontend.
-   * `FRONTEND_URL=http://localhost:5173`: URL da aplicação React para liberação no CORS.
+   * `GOOGLE_CLIENT_ID` (idêntico ao `VITE_GOOGLE_CLIENT_ID` do frontend), `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` e `GOOGLE_PROJECT_ID`.
+   * `FRONTEND_URL=http://localhost:5173`: URL da aplicação React para liberação no CORS e Sanctum.
+   * `GEMINI_API_KEY` e `GEMINI_MODEL`: Credenciais da assistente Dona Nana (quando ausentes em ambiente local, o `DonaNanaService` responde via *fallback* amigável sem quebrar a aplicação).
 4. **Configuração de CORS (`config/cors.php`)**:
    * Garantir que `allowed_origins` inclua `env('FRONTEND_URL', 'http://localhost:5173')`, `http://localhost:5173` e `http://127.0.0.1:5173`, com `supports_credentials => true`.
 
 ---
 
-## 6. Ferramentas, Formatação e Testes do Ecossistema Laravel
+## 7. Ferramentas, Formatação, Análise Estática e Testes
 
-### 6.1 Artisan
+### 7.1 Artisan e Agendamento (`Schedule`)
 * Use comandos Artisan com `--no-interaction` (ex.: `php artisan make:model Livro -mfc --no-interaction`).
 * Sempre gere a **Factory** e o **Resource** ao criar um novo Model (perguntando antes quais dados *fakers* fazem sentido para os testes).
+* Para testar localmente rotinas agendadas em `routes/console.php` (como o lembrete diário `app:enviar-lembretes-notificacoes`), utilize `php artisan schedule:work`.
 
-### 6.2 Formatação Obrigatória (Laravel Pint)
+### 7.2 Formatação Obrigatória (Laravel Pint) e Análise Estática (PHPStan/Larastan)
 * Após editar arquivos PHP, execute obrigatoriamente:
   ```powershell
   vendor/bin/pint --dirty --format agent
   ```
-  Não finalize tarefas com código desformatado.
+* Para validar tipagem estática (inclusive Data Objects e Services), execute `composer types:check` (`phpstan analyse`).
+* A pipeline de integração contínua (`.github/workflows/tests.yml`) valida o repositório via `composer ci:check`.
 
-### 6.3 Testes Automatizados (Pest)
+### 7.3 Testes Automatizados (Pest)
 * O projeto utiliza **Pest** para testes de feature e unidade.
 * Crie testes com: `php artisan make:test --pest NomeDoTeste`.
-* Execute suítes compactas: `php artisan test --compact`.
+* Execute suítes compactas: `php artisan test --compact` (ou `vendor/bin/pest`).
 * Nunca exclua testes existentes sem aprovação explícita.
 
-### 6.4 Definição de Pronto (DoD)
+### 7.4 Definição de Pronto (DoD)
 Nenhuma tarefa de código no backend é considerada pronta sem:
 1. Validação prévia de campos e regras com o desenvolvedor júnior;
-2. Form Request + API Resource implementados;
-3. Execução de `pint` sem erros de estilo;
+2. Form Request + (Service / Data Object quando aplicável) + API Resource implementados;
+3. Execução de `pint` sem erros de estilo e `composer types:check` consistente;
 4. Execução de testes Pest sem falhas no escopo;
 5. Atualização do `apiContract.md`;
 6. Bloco de **Fechamento Explicativo** (O que foi feito / Por que foi feito / Como foi feito).
+
+---
+
+## 8. Precedência e Exceções sobre o bloco `laravel-boost-guidelines`
+O bloco abaixo é gerado automaticamente pelo Laravel Boost (`boost:update`) e pode ser regenerado. Em caso de conflito, prevalece este documento e o [`../AGENTS.md`](../AGENTS.md):
+1. **Inaplicáveis neste projeto:** seções de Inertia, Inertia + React, Wayfinder, Tailwind, Laravel Cloud e a referência a `.ai/rules` (pasta inexistente). O backend é uma API REST pura; esses pacotes são resíduos do starter kit.
+2. **Comentários:** a regra "Prefer PHPDoc blocks over inline comments" é **substituída** pela Diretriz 3 do [`../AGENTS.md`](../AGENTS.md) (PHPDoc nas assinaturas **e** comentários didáticos curtos em pt-BR na lógica interna).
+3. **API Resources:** não usar versionamento de API (`/v1`). Seguir a convenção existente em `routes/api.php`.
+4. **Documentação:** atualizar AGENTS/README/apiContract quando a tarefa pedir é permitido e esperado.
+
+---
+
+## 9. Dívidas Técnicas Conhecidas
+* **Policies órfãs de módulos arquivados**: `AtividadePolicy`, `SubmissaoPolicy` e `RemessaDocentePolicy` permanecem em `app/Policies/` referentes a recursos fora de escopo.
+* **Resíduos do starter kit**: pacotes e arquivos `inertiajs/inertia-laravel`, `laravel/wayfinder`, `resources/js/*`, `routes/web.php` (`Route::inertia`), `HandleInertiaRequests`, `vite.config.ts` e as skills `tailwindcss-development`/`wayfinder-development` permanecem instalados, porém fora do runtime da API.
+* **Scripts Node no `composer.json`**: `composer setup`, `composer dev` e `composer ci:check` ainda executam comandos `npm` locais do starter kit do backend.
+* **Arquivo morto controlado**: `_archive/fora_de_escopo/` preserva Atividades, Submissões e Remessas Docentes apenas para histórico — não reativar sem mudança formal de escopo.
 
 ===
 

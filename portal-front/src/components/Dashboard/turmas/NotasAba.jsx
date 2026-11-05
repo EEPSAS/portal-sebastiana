@@ -3,6 +3,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { obterPeriodoLetivoAtivo } from "../../../services/periodosLetivosService";
 import { formatarDisciplinaCiclo } from "../../../utils/formatters";
 import ModalGerarBoletim from "./ModalGerarBoletim";
+import ModalLancamentoManual from "./ModalLancamentoManual";
 import VelocimetroPresenca from "./VelocimetroPresenca";
 
 /**
@@ -29,6 +30,7 @@ export default function NotasAba({
   podeGerenciar = false,
   onAbrirImportarNotas,
   onAbrirExcluirDadosCsv,
+  onManualSave,
   loadingNotas = false,
   alunosTurma = [],
   alunoFiltroId = "",
@@ -39,6 +41,7 @@ export default function NotasAba({
   const [disciplinaFiltro, setDisciplinaFiltro] = useState("");
   const [baseCalculoAnual, setBaseCalculoAnual] = useState("100");
   const [modalBoletimAberto, setModalBoletimAberto] = useState(false);
+  const [modalManualAberto, setModalManualAberto] = useState(false);
   const [subAbaPainel, setSubAbaPainel] = useState("notas");
 
   // Busca o período letivo ativo institucional para compor as etapas oficiais
@@ -310,9 +313,9 @@ export default function NotasAba({
 
       {/* 2. Painel Central da Turma Selecionada */}
       <div className="row g-3">
-        {/* Painel Esquerdo: Resumo da Turma (Donut de Média + Velocímetro logo abaixo, sem legendas intermediárias) */}
-        <div className="col-12 col-lg-4 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white d-flex flex-column justify-content-between">
+        {/* Painel Esquerdo: Resumo da Turma (Donut de Média + Velocímetro logo abaixo com altura estática fixa no topo) */}
+        <div className="col-12 col-lg-4 col-xl-3 align-self-start">
+          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-column">
             <div>
               {/* Título do Card */}
               <div className="d-flex align-items-center gap-2 mb-2">
@@ -361,7 +364,7 @@ export default function NotasAba({
 
             <hr className="my-2 border-secondary-subtle" />
 
-            {/* Gráfico 2: Velocímetro / Manômetro de Faltas (subido diretamente para abaixo do Donut) */}
+            {/* Gráfico 2: Velocímetro / Manômetro de Faltas (fixado diretamente abaixo do Donut) */}
             <div className="pt-1 pb-1">
               <VelocimetroPresenca taxaFaltas={taxaFaltasTurma} />
             </div>
@@ -496,6 +499,19 @@ export default function NotasAba({
                       >
                         <i className="bi bi-upload"></i>
                         Cadastrar Notas (CSV)
+                      </button>
+                    )}
+
+                    {podeGerenciar && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1.5"
+                        onClick={() => setModalManualAberto(true)}
+                        disabled={!turmaAtiva || alunosTurma.length === 0}
+                        title="Registrar nota ou frequência manual para um aluno"
+                      >
+                        <i className="bi bi-pencil-square"></i>
+                        Lançamento manual
                       </button>
                     )}
 
@@ -809,6 +825,17 @@ export default function NotasAba({
         periodosDisponiveis={divisoesDisponiveis}
         alunoPreSelecionadoId={alunoFiltroId}
       />
+      {modalManualAberto && turmaAtiva && (
+        <ModalLancamentoManual
+          turmaId={turmaAtiva.id_turma}
+          alunos={alunosTurma}
+          periodos={divisoesDisponiveis}
+          periodoInicial={periodoFiltro}
+          alunoInicial={alunoFiltroId}
+          onClose={() => setModalManualAberto(false)}
+          onSuccess={onManualSave}
+        />
+      )}
     </div>
   );
 }

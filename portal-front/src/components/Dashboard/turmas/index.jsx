@@ -294,7 +294,7 @@ const Turmas = () => {
     setProcessandoExclusaoCsv(true);
     try {
       const resp = await excluirDadosCsv(idTurmaAlvo, {
-        periodo: periodoFiltro,
+        periodo: periodoFiltro === "todos" ? undefined : periodoFiltro,
       });
       dispararNotificacao(resp?.message || "Dados do diário escolar excluídos com sucesso!");
       setModalExcluirCsvAberto(false);
@@ -328,6 +328,11 @@ const Turmas = () => {
   // Sucesso na importação de notas CSV
   const handleSucessoImportacaoCSV = (resultado) => {
     dispararNotificacao(resultado?.message || "Notas importadas e sincronizadas com sucesso!");
+    setRecargaKey((prev) => prev + 1);
+  };
+
+  const handleSucessoLancamentoManual = (tipo) => {
+    dispararNotificacao(tipo === "nota" ? "Nota manual registrada com sucesso." : "Frequência manual registrada com sucesso.");
     setRecargaKey((prev) => prev + 1);
   };
 
@@ -536,6 +541,7 @@ const Turmas = () => {
             podeGerenciar={podeGerenciar}
             onAbrirImportarNotas={handleAbrirImportarNotas}
             onAbrirExcluirDadosCsv={handleAbrirExcluirDadosCsv}
+            onManualSave={handleSucessoLancamentoManual}
             loadingNotas={loadingNotas}
             trimestreAtual={obterTrimestreAtual()}
             alunosTurma={alunosTurmaSelecionada}
@@ -690,7 +696,7 @@ const Turmas = () => {
             <p className="text-muted mb-4 small">
               Deseja realmente excluir as notas e faltas carregadas via CSV da turma{" "}
               <strong>"{(turmaParaExcluirCsv || turmaAtivaParaCSV)?.nome_identificador}"</strong>
-              {periodoFiltro ? (
+              {periodoFiltro && periodoFiltro !== "todos" ? (
                 <>
                   {" "}para o período <strong>"{periodoFiltro}"</strong>
                 </>

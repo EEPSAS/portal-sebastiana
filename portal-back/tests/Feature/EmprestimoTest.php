@@ -76,11 +76,12 @@ test('cannot request an unavailable book or duplicate active request', function 
         ->assertUnprocessable();
 });
 
-test('admin can approve loan which decrements available book quantity', function () {
+test('admin can approve a loan without decrementing an already reserved copy twice', function () {
     $adm = User::factory()->create(['role' => 'adm']);
     $livro = Livro::factory()->create(['quantidade_disponivel' => 3]);
     $emprestimo = Emprestimo::factory()->solicitado()->create([
         'livro_id' => $livro->id_livro,
+        'reserva_ativa' => true,
     ]);
 
     $response = $this->actingAs($adm, 'sanctum')
@@ -90,7 +91,7 @@ test('admin can approve loan which decrements available book quantity', function
         ->assertJsonPath('status', 'aprovado')
         ->assertJsonPath('data_prevista_devolucao', fn ($date) => ! is_null($date));
 
-    expect($livro->fresh()->quantidade_disponivel)->toBe(2);
+    expect($livro->fresh()->quantidade_disponivel)->toBe(3);
 });
 
 test('standard user cannot approve or register return', function () {
@@ -182,4 +183,60 @@ test('user views only their loans whereas admin views all loans', function () {
         ->getJson('/api/emprestimos')
         ->assertOk()
         ->assertJsonCount(2);
+});
+
+test('requesting a book reserves stock and notifies the librarian with an important alert', function () {
+    $aluno = User::factory()->aluno()->create();
+    $bibliotecaria = User::factory()->bibliotecaria()->create();
+    $livro = Livro::factory()->create(['quantidade_disponivel' => 1]);
+
+    $this->actingAs($aluno, 'sanctum')
+        ->postJson('/api/emprestimos/solicitar', ['livro_id' => $livro->id_livro])
+        ->assertCreated()
+        ->assertJsonPath('livro.titulo', $livro->titulo);
+
+    expect($livro->fresh()->quantidade_disponivel)->toBe(0)
+        ->and($bibliotecaria->notifications()->count())->toBe(1)
+        ->and($bibliotecaria->notifications()->first()->data['prioridade'])->toBe('importante')
+        ->and($bibliotecaria->notifications()->first()->data['assunto'])
+        ->toContain($aluno->name, $livro->titulo);
+});
+
+test('student can cancel only their pending loan and restore the reserved copy', function () {
+    $aluno = User::factory()->aluno()->create();
+    $outroAluno = User::factory()->aluno()->create();
+    $livro = Livro::factory()->create(['quantidade_disponivel' => 0]);
+    $emprestimo = Emprestimo::factory()->solicitado()->create([
+        'livro_id' => $livro->id_livro,
+        'usuario_id' => $aluno->id,
+        'reserva_ativa' => true,
+    ]);
+
+    $this->actingAs($outroAluno, 'sanctum')
+        ->patchJson("/api/emprestimos/{$emprestimo->id_emprestimo}/cancelar")
+        ->assertForbidden();
+
+    $this->actingAs($aluno, 'sanctum')
+        ->patchJson("/api/emprestimos/{$emprestimo->id_emprestimo}/cancelar")
+        ->assertOk()
+        ->assertJsonPath('status', 'recusado');
+
+    expect($livro->fresh()->quantidade_disponivel)->toBe(1);
+});
+
+test('approval reserves stock once for a legacy request without an active reservation', function () {
+    $adm = User::factory()->create(['role' => 'adm']);
+    $livro = Livro::factory()->create(['quantidade_disponivel' => 1]);
+    $emprestimo = Emprestimo::factory()->solicitado()->create([
+        'livro_id' => $livro->id_livro,
+        'reserva_ativa' => false,
+    ]);
+
+    $this->actingAs($adm, 'sanctum')
+        ->patchJson("/api/emprestimos/{$emprestimo->id_emprestimo}/aprovar")
+        ->assertOk()
+        ->assertJsonPath('status', 'aprovado');
+
+    expect($livro->fresh()->quantidade_disponivel)->toBe(0)
+        ->and($emprestimo->fresh()->reserva_ativa)->toBeTrue();
 });

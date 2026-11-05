@@ -28,6 +28,8 @@ import {
   desvincularUsuario,
 } from "../../services/usuarioService";
 import PainelModulo from "../../components/Dashboard/common/PainelModulo";
+import ModalCadastrarUsuario from "../../components/Dashboard/usuarios/ModalCadastrarUsuario";
+import { listarTurmas } from "../../services/turmasService";
 
 const ROLES_OPCOES = [
   { value: "", label: "Todas as Roles" },
@@ -66,6 +68,10 @@ const UsuariosPage = () => {
   const [pagina, setPagina] = useState(1);
   const [filtroRole, setFiltroRole] = useState("");
   const [buscaNome, setBuscaNome] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState("");
+  const [porPagina, setPorPagina] = useState(25);
+  const [modalNovoAberto, setModalNovoAberto] = useState(false);
+  const [turmas, setTurmas] = useState([]);
   const [recargaKey, setRecargaKey] = useState(0);
 
   const [loading, setLoading] = useState(true);
@@ -92,6 +98,21 @@ const UsuariosPage = () => {
     setFeedback(msg);
     setTimeout(() => setFeedback(""), 4500);
   };
+
+  // Carrega catálogo de turmas para o formulário de cadastro de alunos
+  useEffect(() => {
+    let ativo = true;
+    listarTurmas()
+      .then((res) => {
+        if (!ativo) return;
+        setTurmas(Array.isArray(res) ? res : res?.data || []);
+      })
+      .catch(() => {});
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   // Mantém a paginação no servidor para continuar carregando somente 15 usuários por requisição
   useEffect(() => {
@@ -127,7 +148,7 @@ const UsuariosPage = () => {
       ativo = false;
       clearTimeout(timer);
     };
-  }, [filtroRole, buscaNome, pagina, recargaKey]);
+  }, [filtroRole, filtroStatus, buscaNome, pagina, porPagina, recargaKey]);
 
   // Abre o modal de edição populando os campos atuais do usuário
   const handleAbrirEditar = (u) => {
@@ -210,8 +231,36 @@ const UsuariosPage = () => {
   };
 
   const acoesUsuarios = (
-    <div className="usuarios-nav-filtros d-flex align-items-center gap-2">
+    <div className="usuarios-nav-filtros d-flex flex-wrap align-items-center gap-2">
+      <button
+        type="button"
+        id="btn-novo-usuario"
+        className="btn btn-sm btn-primary rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm"
+        onClick={() => setModalNovoAberto(true)}
+      >
+        <i className="bi bi-person-plus-fill"></i>
+        <span>Novo Usuário</span>
+      </button>
+
       <div style={{ minWidth: "150px" }}>
+        <select
+          id="filtro-status-usuarios"
+          className="form-select form-select-sm rounded-pill shadow-none"
+          value={filtroStatus}
+          onChange={(e) => {
+            setFiltroStatus(e.target.value);
+            setPagina(1);
+          }}
+          aria-label="Filtrar por status"
+        >
+          <option value="">Todos os Status</option>
+          <option value="confirmado">Confirmados / Ativos</option>
+          <option value="pendente">Aguardando Aprovação</option>
+          <option value="inativo">Inativos</option>
+        </select>
+      </div>
+
+      <div style={{ minWidth: "140px" }}>
         <select
           id="filtro-role-usuarios"
           className="form-select form-select-sm rounded-pill shadow-none"
@@ -230,7 +279,7 @@ const UsuariosPage = () => {
         </select>
       </div>
 
-      <div className="input-group" style={{ minWidth: "180px", maxWidth: "260px" }}>
+      <div className="input-group" style={{ minWidth: "180px", maxWidth: "240px" }}>
         <span className="input-group-text bg-white border-end-0 text-muted">
           <i className="bi bi-search"></i>
         </span>
@@ -245,6 +294,24 @@ const UsuariosPage = () => {
             setPagina(1);
           }}
         />
+      </div>
+
+      <div style={{ minWidth: "115px" }}>
+        <select
+          id="seletor-per-page-usuarios"
+          className="form-select form-select-sm rounded-pill shadow-none text-muted"
+          value={porPagina}
+          onChange={(e) => {
+            setPorPagina(Number(e.target.value));
+            setPagina(1);
+          }}
+          aria-label="Itens por página"
+        >
+          <option value={15}>15 por pág.</option>
+          <option value={25}>25 por pág.</option>
+          <option value={50}>50 por pág.</option>
+          <option value={100}>100 por pág.</option>
+        </select>
       </div>
     </div>
   );
@@ -280,6 +347,7 @@ const UsuariosPage = () => {
             <thead>
               <tr>
                 <th scope="col">Nome do Usuário</th>
+                <th scope="col">Status</th>
                 <th scope="col">Autorizado / Vinculado por</th>
                 <th scope="col">Data de Vínculo no Sistema</th>
                 <th scope="col">Role do Usuário</th>
@@ -291,14 +359,14 @@ const UsuariosPage = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-5 text-muted">
+                  <td colSpan={6} className="text-center py-5 text-muted">
                     <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                     Carregando usuários...
                   </td>
                 </tr>
               ) : usuarios.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-5 text-muted">
+                  <td colSpan={6} className="text-center py-5 text-muted">
                     Nenhum usuário encontrado para os filtros informados.
                   </td>
                 </tr>
@@ -320,16 +388,6 @@ const UsuariosPage = () => {
                         <div className="d-flex flex-column">
                           <div className="d-flex align-items-center gap-2">
                             <span>{u.name}</span>
-                            {inativo && (
-                              <span className="badge bg-secondary rounded-pill" style={{ fontSize: "0.7rem" }}>
-                                Inativo (Vínculo Encerrado)
-                              </span>
-                            )}
-                            {!inativo && u.status_confirmacao === "pendente" && (
-                              <span className="badge bg-warning text-dark rounded-pill" style={{ fontSize: "0.7rem" }}>
-                                Pendente
-                              </span>
-                            )}
                           </div>
                           <small className="text-muted fw-normal">{u.email}</small>
                           {u.comentario_admin && (
@@ -340,6 +398,24 @@ const UsuariosPage = () => {
                           )}
                         </div>
                       </th>
+                      <td>
+                        {inativo ? (
+                          <span className="badge bg-secondary text-white rounded-pill px-2 py-1 small fw-semibold">
+                            <i className="bi bi-slash-circle me-1"></i>
+                            Inativo
+                          </span>
+                        ) : u.status_confirmacao === "pendente" ? (
+                          <span className="badge bg-warning text-dark rounded-pill px-2 py-1 small fw-semibold">
+                            <i className="bi bi-hourglass-split me-1"></i>
+                            Aguardando Aprovação
+                          </span>
+                        ) : (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small fw-semibold">
+                            <i className="bi bi-check-circle me-1"></i>
+                            Confirmado
+                          </span>
+                        )}
+                      </td>
                       <td>
                         <span className="small fw-semibold text-secondary">
                           <i className="bi bi-person-check me-1"></i>
@@ -661,6 +737,16 @@ const UsuariosPage = () => {
           </div>
         </div>
       )}
+      {/* Modal 3: Cadastrar Novo Usuário */}
+      <ModalCadastrarUsuario
+        show={modalNovoAberto}
+        onClose={() => setModalNovoAberto(false)}
+        turmas={turmas}
+        onSuccess={(novo) => {
+          exibirFeedback(`Usuário "${novo.name}" cadastrado com sucesso!`);
+          setRecargaKey((k) => k + 1);
+        }}
+      />
     </div>
   );
 };

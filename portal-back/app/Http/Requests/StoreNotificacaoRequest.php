@@ -10,8 +10,16 @@ class StoreNotificacaoRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user !== null
-            && ($user->isProfessor() || $user->isEspecialista() || $user->isAdm());
+        if ($user === null) {
+            return false;
+        }
+
+        if ($this->input('destinatario_tipo') === 'geral'
+            && ! ($user->isEspecialista() || $user->isAdm())) {
+            abort(403, 'Somente Especialista ou Administrador pode enviar comunicados gerais.');
+        }
+
+        return $user->isProfessor() || $user->isEspecialista() || $user->isAdm();
     }
 
     public function rules(): array

@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ConsolidarChamadaRequest;
+use App\Http\Requests\StoreFrequenciaManualRequest;
+use App\Http\Resources\FrequenciaResource;
 use App\Models\Frequencia;
 use App\Models\Turma;
+use App\Services\NotificacaoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +16,51 @@ use Illuminate\Support\Facades\Gate;
 // Controller responsável pelo lançamento, consolidação e relatório de frequências.
 class FrequenciaController extends Controller
 {
+    public function __construct(private readonly NotificacaoService $notificacaoService) {}
+
+    // Grava a frequência de um aluno e atualiza os alertas do período correspondente.
+    public function registrarManual(StoreFrequenciaManualRequest $request): JsonResponse
+    {
+        Gate::authorize('manage', Frequencia::class);
+
+        $dados = $request->validated();
+        $frequencia = DB::transaction(function () use ($dados) {
+            $frequencia = Frequencia::updateOrCreate(
+                [
+                    'turma_id' => $dados['turma_id'],
+                    'disciplina_id' => $dados['disciplina_id'],
+                    'usuario_id' => $dados['usuario_id'],
+                    'data_aula' => $dados['data_aula'],
+                ],
+                [
+                    'quantidade_aulas' => $dados['quantidade_aulas'],
+                    'status_presenca' => $dados['status_presenca'],
+                    'justificativa' => $dados['justificativa'] ?? null,
+                ]
+            );
+
+            $frequencia->load(['aluno:id,name,email', 'disciplina', 'turma']);
+            $mes = (int) substr($dados['data_aula'], 5, 2);
+            $trimestre = $mes <= 4 ? 1 : ($mes <= 8 ? 2 : 3);
+
+            // Usa o mesmo cálculo de risco de frequência aplicado depois da importação CSV.
+            $this->notificacaoService->notificarImportacaoAcademica(
+                $frequencia->turma,
+                [[
+                    'usuario_id' => $frequencia->usuario_id,
+                    'notas' => [],
+                    'faltas' => [['disciplina_id' => $frequencia->disciplina_id]],
+                ]],
+                "{$trimestre}º Trimestre",
+                $dados['data_aula']
+            );
+
+            return $frequencia;
+        });
+
+        return response()->json(new FrequenciaResource($frequencia), 201);
+    }
+
     // Consolida a chamada diária para todos os alunos de uma turma em lote.
     public function consolidarChamadaDiaria(ConsolidarChamadaRequest $request): JsonResponse
     {

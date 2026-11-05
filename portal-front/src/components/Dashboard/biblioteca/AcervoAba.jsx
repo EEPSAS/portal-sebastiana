@@ -30,11 +30,13 @@ const ESTADO_LIVRO_INICIAL = {
 
 const AcervoAba = ({
   livros = [],
+  emprestimos = [],
   buscaAtiva = false,
   onSalvarLivro,
   onImportarCsv,
   onExcluirLivro,
   onSolicitarEmprestimo,
+  onCancelarEmprestimo,
   onAviso,
   onAdicionarAoPlano,
   onRegistrarAcoes,
@@ -60,6 +62,7 @@ const AcervoAba = ({
   const [arquivoCsv, setArquivoCsv] = useState(null);
   const [observacaoEmprestimo, setObservacaoEmprestimo] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [emprestimoCancelandoId, setEmprestimoCancelandoId] = useState(null);
 
   // Estados da busca na web (Google Books API) para autopreenchimento do cadastro
   const [termoBuscaWeb, setTermoBuscaWeb] = useState('');
@@ -207,6 +210,12 @@ const AcervoAba = ({
     }
   };
 
+  const handleCancelarEmprestimo = async (emprestimo) => {
+    setEmprestimoCancelandoId(emprestimo.id);
+    await onCancelarEmprestimo?.(emprestimo.id);
+    setEmprestimoCancelandoId(null);
+  };
+
     useEffect(() => {
     if (onRegistrarAcoes) {
       onRegistrarAcoes({
@@ -269,6 +278,32 @@ const AcervoAba = ({
           </button>
         </div>
       </div>
+
+      {emprestimos.length > 0 && (
+        <section className="card border-0 shadow-sm rounded-4 p-3 mb-4" aria-labelledby="meus-emprestimos-titulo">
+          <h2 className="h6 fw-bold mb-3" id="meus-emprestimos-titulo">Minhas solicitações e empréstimos</h2>
+          <div className="d-flex flex-column gap-2">
+            {emprestimos.map((emprestimo) => (
+              <div key={emprestimo.id} className="d-flex flex-wrap justify-content-between align-items-center gap-2 border rounded-3 p-2">
+                <div>
+                  <strong>{emprestimo.livro?.titulo || "Livro"}</strong>
+                  <div className="small text-muted">Situação: {emprestimo.status}</div>
+                </div>
+                {emprestimo.status === "solicitado" && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-danger rounded-pill"
+                    onClick={() => handleCancelarEmprestimo(emprestimo)}
+                    disabled={emprestimoCancelandoId === emprestimo.id}
+                  >
+                    {emprestimoCancelandoId === emprestimo.id ? "Cancelando..." : "Cancelar solicitação"}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Grade de Livros Redimensionada para 5 Cards em Uma Linha no Desktop (row-cols-xl-5) */}
       <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-5 g-3">

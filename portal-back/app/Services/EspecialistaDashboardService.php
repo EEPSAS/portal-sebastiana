@@ -318,33 +318,53 @@ class EspecialistaDashboardService
 
     /**
      * Normaliza a identificação do período letivo a partir do cabeçalho ou sub-cabeçalho da planilha.
-     * Suporta trimestres (1º, 2º, 3º), bimestres (1º a 4º) e avaliações de recuperação (EIR).
+     * Suporta trimestres (1º, 2º, 3º com variações 1°, 1o, 1. e abreviações TRI/TRIM),
+     * bimestres (1º a 4º) e avaliações de recuperação (EIR).
      */
     public function normalizarPeriodoLetivo(string $texto, ?string $periodoFallback = null): ?string
     {
         $t = Str::upper(trim($texto));
+        $ascii = Str::ascii($t);
 
-        if (str_contains($t, '1º TRIM') || str_contains($t, '1 TRIM') || str_contains($t, '1ºTRIM')) {
+        // Trimestres (suporta '1º TRI', '1° TRIM', '1o TRIMESTRE', 'FALTAS 1º TRI', etc.)
+        if (preg_match('/1\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $texto)
+            || preg_match('/1\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $ascii)
+            || str_contains($t, '1º TRIM') || str_contains($t, '1 TRIM') || str_contains($t, '1ºTRIM')) {
             return '1º Trimestre';
         }
-        if (str_contains($t, '2º TRIM') || str_contains($t, '2 TRIM') || str_contains($t, '2ºTRIM')) {
+        if (preg_match('/2\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $texto)
+            || preg_match('/2\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $ascii)
+            || str_contains($t, '2º TRIM') || str_contains($t, '2 TRIM') || str_contains($t, '2ºTRIM')) {
             return '2º Trimestre';
         }
-        if (str_contains($t, '3º TRIM') || str_contains($t, '3 TRIM') || str_contains($t, '3ºTRIM')) {
+        if (preg_match('/3\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $texto)
+            || preg_match('/3\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $ascii)
+            || str_contains($t, '3º TRIM') || str_contains($t, '3 TRIM') || str_contains($t, '3ºTRIM')) {
             return '3º Trimestre';
         }
-        if (str_contains($t, '1º BIM') || str_contains($t, '1 BIM') || str_contains($t, '1ºBIM')) {
+
+        // Bimestres (suporta '1º BIM', '1° BIMESTRE', etc.)
+        if (preg_match('/1\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $texto)
+            || preg_match('/1\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $ascii)
+            || str_contains($t, '1º BIM') || str_contains($t, '1 BIM') || str_contains($t, '1ºBIM')) {
             return '1º Bimestre';
         }
-        if (str_contains($t, '2º BIM') || str_contains($t, '2 BIM') || str_contains($t, '2ºBIM')) {
+        if (preg_match('/2\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $texto)
+            || preg_match('/2\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $ascii)
+            || str_contains($t, '2º BIM') || str_contains($t, '2 BIM') || str_contains($t, '2ºBIM')) {
             return '2º Bimestre';
         }
-        if (str_contains($t, '3º BIM') || str_contains($t, '3 BIM') || str_contains($t, '3ºBIM')) {
+        if (preg_match('/3\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $texto)
+            || preg_match('/3\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $ascii)
+            || str_contains($t, '3º BIM') || str_contains($t, '3 BIM') || str_contains($t, '3ºBIM')) {
             return '3º Bimestre';
         }
-        if (str_contains($t, '4º BIM') || str_contains($t, '4 BIM') || str_contains($t, '4ºBIM')) {
+        if (preg_match('/4\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $texto)
+            || preg_match('/4\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $ascii)
+            || str_contains($t, '4º BIM') || str_contains($t, '4 BIM') || str_contains($t, '4ºBIM')) {
             return '4º Bimestre';
         }
+
         if ($t === 'EIR' || str_contains($t, 'RECUPERA')) {
             return 'Recuperação (EIR)';
         }
@@ -606,12 +626,11 @@ class EspecialistaDashboardService
                     continue;
                 }
 
-                // Se a coluna não for de falta, detecta dinamicamente a divisão/período (1º Tri, 2º Tri, 3º Tri, Bimestre, EIR)
-                if (! $isFalta) {
-                    $periodoDetectadoNaColuna = $this->normalizarPeriodoLetivo($subTexto);
-                    if ($periodoDetectadoNaColuna !== null) {
-                        $ultimoPeriodoDetectado = $periodoDetectadoNaColuna;
-                    }
+                // Detecta dinamicamente a divisão/período (1º Tri, 2º Tri, 3º Tri, Bimestre, EIR)
+                // Se a coluna contiver referência a um período (mesmo sendo falta, ex: 'Faltas 1º Tri'), atualiza
+                $periodoDetectadoNaColuna = $this->normalizarPeriodoLetivo($subTexto);
+                if ($periodoDetectadoNaColuna !== null) {
+                    $ultimoPeriodoDetectado = $periodoDetectadoNaColuna;
                 }
 
                 $periodoDaColuna = $ultimoPeriodoDetectado;
@@ -673,6 +692,37 @@ class EspecialistaDashboardService
             }
 
             $primeiraLinhaAlunosIdx = $linhaCabecalhoIdx + 1;
+        }
+
+        // Identifica se uma disciplina possui apenas uma coluna de faltas consolidada para múltiplos períodos de notas
+        $faltasPorDisciplina = [];
+        $notasPorDisciplina = [];
+        foreach ($mapaColunas as $colIdx => $colInfo) {
+            if (($colInfo['tipo'] ?? '') === 'ignorar' || empty($colInfo['disciplina_id'])) {
+                continue;
+            }
+            if ($colInfo['tipo'] === 'falta') {
+                $faltasPorDisciplina[$colInfo['disciplina_id']][] = $colIdx;
+            } elseif ($colInfo['tipo'] === 'nota') {
+                $notasPorDisciplina[$colInfo['disciplina_id']][] = $colInfo['periodo_letivo'];
+            }
+        }
+
+        foreach ($faltasPorDisciplina as $discId => $colIndices) {
+            $periodosNotas = array_values(array_unique($notasPorDisciplina[$discId] ?? []));
+            // Se há exatamente 1 coluna de faltas para esta matéria e ela possui notas em 2 ou mais períodos
+            if (count($colIndices) === 1 && count($periodosNotas) > 1) {
+                $colIdxFalta = $colIndices[0];
+                $textoCol = $subCabecalhoIdx !== null
+                    ? trim($subCabecalhos[$colIdxFalta] ?? '')
+                    : trim($cabecalhos[$colIdxFalta] ?? '');
+
+                // Se o texto da coluna não especifica um período individual (ex: 'FALTAS 1º TRI')
+                if ($this->normalizarPeriodoLetivo($textoCol) === null) {
+                    $mapaColunas[$colIdxFalta]['tipo'] = 'falta_acumulada';
+                    $mapaColunas[$colIdxFalta]['periodos_disciplina'] = $periodosNotas;
+                }
+            }
         }
 
         // 4. Percorrer as linhas com os dados dos alunos
@@ -809,6 +859,42 @@ class EspecialistaDashboardService
                             'tipo_avaliacao' => $registro->tipo_avaliacao ?? 'Diário Consolidado',
                             'valor_nota' => (float) $registro->valor_nota,
                         ];
+                    } elseif ($infoColuna['tipo'] === 'falta_acumulada') {
+                        // Revalida o lançamento de faltas acumuladas via Spatie Data (inteiro >= 0)
+                        if (floor($valorNumerico) !== $valorNumerico) {
+                            $alertas[] = "Lançamento de faltas ignorado para '{$alunoEncontrado->name}' em '{$nomeDiscColuna}' ({$periodoColuna}): valor '{$valorBruto}' deve ser inteiro.";
+
+                            continue;
+                        }
+
+                        $qtdTotalFaltas = (int) $valorNumerico;
+                        $periodosDisciplina = $infoColuna['periodos_disciplina'] ?? [$periodoColuna];
+                        $totalPeriodos = count($periodosDisciplina);
+                        $baseFaltas = intdiv($qtdTotalFaltas, $totalPeriodos);
+                        $restoFaltas = $qtdTotalFaltas % $totalPeriodos;
+
+                        foreach ($periodosDisciplina as $pIdx => $periodoItem) {
+                            // Distribui o resto das faltas nas etapas mais recentes
+                            $qtdPeriodo = $baseFaltas + ($pIdx >= ($totalPeriodos - $restoFaltas) ? 1 : 0);
+
+                            $registro = RegistroNotaCsvData::validateAndCreate([
+                                'usuario_id' => $alunoEncontrado->id,
+                                'nome_aluno' => $alunoEncontrado->name,
+                                'disciplina_id' => (int) $infoColuna['disciplina_id'],
+                                'nome_disciplina' => $nomeDiscColuna,
+                                'periodo_letivo' => $periodoItem,
+                                'tipo_registro' => 'falta',
+                                'tipo_avaliacao' => null,
+                                'valor_nota' => null,
+                                'quantidade_faltas' => $qtdPeriodo,
+                            ]);
+
+                            $faltasDoAluno[] = [
+                                'disciplina_id' => $registro->disciplina_id,
+                                'quantidade_faltas' => (int) $registro->quantidade_faltas,
+                                'periodo_letivo' => $registro->periodo_letivo,
+                            ];
+                        }
                     } else {
                         // Revalida o lançamento de faltas via Spatie Data (inteiro >= 0)
                         if (floor($valorNumerico) !== $valorNumerico) {

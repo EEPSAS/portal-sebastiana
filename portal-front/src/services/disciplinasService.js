@@ -123,6 +123,42 @@ export const atualizarCiclo = async (idCiclo, dados) => {
 /**
  * Exclui um Ciclo Escolar.
  */
+/**
+ * Vincula uma disciplina existente a um Ciclo Escolar.
+ */
+export const vincularDisciplinaAoCiclo = async (idCiclo, idDisciplina) => {
+  const response = await api(`/ciclos/${encodeURIComponent(idCiclo)}/disciplinas`, {
+    method: "POST",
+    body: { disciplina_id: Number(idDisciplina) },
+  });
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Não foi possível vincular a disciplina ao ciclo escolar.");
+  }
+
+  return data;
+};
+
+/**
+ * Desvincula uma disciplina de um Ciclo Escolar (sem apagá-la do catálogo escolar).
+ */
+export const desvincularDisciplinaDoCiclo = async (idCiclo, idDisciplina) => {
+  const response = await api(
+    `/ciclos/${encodeURIComponent(idCiclo)}/disciplinas/${encodeURIComponent(idDisciplina)}`,
+    {
+      method: "DELETE",
+    }
+  );
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Não foi possível desvincular a disciplina do ciclo escolar.");
+  }
+
+  return data;
+};
+
 export const excluirCiclo = async (idCiclo) => {
   const response = await api(`/ciclos/${encodeURIComponent(idCiclo)}`, {
     method: "DELETE",
@@ -214,6 +250,8 @@ export const disciplinasService = {
   criarCiclo,
   atualizarCiclo,
   excluirCiclo,
+  vincularDisciplinaAoCiclo,
+  desvincularDisciplinaDoCiclo,
   listarDisciplinas,
   criarDisciplina,
   atualizarDisciplina,

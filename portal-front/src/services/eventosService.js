@@ -54,7 +54,7 @@ export const mapEvento = (evento) => ({
   category: getCategoryFromApiType(evento.tipo),
   important: Boolean(evento.importante),
   location: evento.local || '',
-  creatorId: evento.criador_id,
+  creatorId: evento.criador?.id || evento.criador_id || null,
   createdAt: evento.created_at,
   updatedAt: evento.updated_at,
   isCustom: true,
@@ -126,10 +126,10 @@ export const createEvento = async (evento, { token } = {}) => {
 export const createEventosEmMassa = async (eventos, { token } = {}) => {
   const payload = {
     eventos: eventos.map((ev) => ({
-      data: ev.data || ev.date,
+      // Envia as chaves oficiais da Form Request para evitar depender da normalização do backend.
+      data_inicio: ev.data || ev.date,
       titulo: ev.titulo || ev.title,
-      // Converte a chave interna do front (ex.: 'sabados') para o rótulo oficial aceito pela API
-      categoria: getApiTypeFromCategory(ev.categoria || ev.category),
+      tipo: getApiTypeFromCategory(ev.categoria || ev.category),
       descricao: ev.descricao || ev.description,
     })),
   };

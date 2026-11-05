@@ -22,6 +22,7 @@ import {
  *    das etapas e estipular os intervalos oficiais de início e término.
  * 2. Disponibiliza ativação de período vigente e sincronização com a Agenda/Calendário escolar.
  * 3. Trata visualmente os 3 estados assíncronos obrigatórios (Carregando, Erro Amigável e Vazio).
+ * 4. Mantém a barra de navegação superior (ModuloNav) consolidada com todas as rotas do Acadêmico.
  */
 export default function PeriodoLetivoPage() {
   const { user } = useAuth();
@@ -143,11 +144,11 @@ export default function PeriodoLetivoPage() {
     }
   };
 
-  // Botão de criação posicionado no slot de ações do cabeçalho institucional (BoasVindasCard)
+  // Botão de criação posicionado nas ações do Painel / ModuloNav
   const acoesCabecalho = podeGerenciar ? (
     <button
       type="button"
-      className="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm d-flex align-items-center gap-2"
+      className="btn btn-primary rounded-pill px-3 py-1 fw-semibold d-flex align-items-center gap-2 shadow-sm"
       onClick={handleAbrirCriacao}
     >
       <i className="bi bi-plus-circle-fill fs-6"></i>
@@ -160,7 +161,6 @@ export default function PeriodoLetivoPage() {
       titulo="Período Letivo"
       subtitulo="Configuração do ano letivo escolar, ciclos avaliativos (Bimestres/Trimestres), pontuações e marcos institucionais."
       icone="bi-calendar-range"
-      mostrarNav={false}
       acoes={acoesCabecalho}
     >
       {/* Alertas de Feedback da Página Principal */}

@@ -92,6 +92,7 @@ export const listarTodos = async (filtros = {}, { signal } = {}) => {
   if (filtros.busca) params.set('busca', filtros.busca);
   if (filtros.q) params.set('q', filtros.q);
   if (filtros.role) params.set('role', filtros.role);
+  if (filtros.status) params.set('status', filtros.status);
   if (filtros.ativo !== undefined) params.set('ativo', String(filtros.ativo));
   if (filtros.page) params.set('page', String(filtros.page));
   params.set('per_page', String(filtros.per_page || 15));
@@ -197,6 +198,32 @@ export const alterarPapel = async (id, role) => {
   return data;
 };
 
+/**
+ * POST /api/usuarios — Cria e cadastra um novo usuário no sistema (StoreUsuarioRequest).
+ *
+ * @param {object} dados Dados validados para cadastro do usuário
+ */
+export const cadastrarUsuario = async (dados) => {
+  const response = await api('/usuarios', {
+    method: 'POST',
+    body: dados,
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const error = new Error(data?.message || 'Não foi possível cadastrar o usuário.');
+    error.status = response.status;
+    error.errors = data?.errors || null;
+    throw error;
+  }
+
+  notificarAtualizacaoPendencias();
+  return data;
+};
+
+export const criarUsuario = cadastrarUsuario;
+
 export const listarUsuarios = listarTodos;
 export const atualizarUsuario = atualizarPerfil;
 
@@ -212,4 +239,6 @@ export const usuarioService = {
   confirmarVinculoAluno,
   alternarBloqueio,
   alterarPapel,
+  cadastrarUsuario,
+  criarUsuario,
 };
