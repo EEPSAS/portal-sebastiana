@@ -223,6 +223,8 @@ Enquanto a rota não estiver pronta, o frontend apresenta dados demonstrativos a
 | `DELETE`| `/api/eventos/{id}` | Logado (Dono / Especialista / Adm) | N/A | Mensagem 200/204 | `eventosService.excluir()` | Remove evento (próprio ou institucional) |
 
 > **Regra de Visibilidade dos Calendários:** O calendário do Portal Público é uma visão *read-only* alimentada pelos eventos que o **Especialista / Adm** cadastra. No Dashboard, qualquer usuário logado pode criar eventos. Eventos criados por **Professores** são visíveis a todos os usuários autenticados; eventos de **Alunos** e **Bibliotecárias** ficam visíveis somente ao autor. Eventos do Especialista/Adm continuam institucionais e visíveis para toda a comunidade escolar. A visibilidade compartilhada não concede permissão para editar ou excluir eventos de terceiros.
+>
+> **Cadastro em massa:** `POST /api/eventos/em-massa` recebe `eventos[]` com `data_inicio`, `titulo`, `tipo` (`Sábados Letivos` ou `Feriados e Recessos`) e `descricao`. O frontend envia essas chaves diretamente conforme a `StoreEventoEmMassaRequest`.
 
 #### Horários semanais
 *Grades por turma e ano letivo, consultadas na Agenda do Dashboard.*
