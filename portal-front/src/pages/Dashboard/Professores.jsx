@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Professores.jsx - Painel de Controle de Professores (Especialista e Administrador)
  *
  * Papel Didático:
@@ -20,6 +20,7 @@ import {
 } from "../../services/professoresService";
 import { formatarDisciplinaCiclo } from "../../utils/formatters";
 import ModalVincularDisciplina from "../../components/Dashboard/professores/ModalVincularDisciplina";
+import SeletorDisciplinas from "../../components/Dashboard/professores/SeletorDisciplinas";
 import PainelModulo from "../../components/Dashboard/common/PainelModulo";
 import { notificarAtualizacaoPendencias } from "../../utils/notificacoesEventos";
 import "../../components/Dashboard/professores/Professores.css";
@@ -261,36 +262,14 @@ const ProfessoresPage = () => {
                             Nenhuma disciplina cadastrada. Cadastre em Acadêmico &gt; Disciplinas.
                           </p>
                         ) : (
-                          <div
-                            className="d-flex flex-wrap gap-2"
-                            style={{ maxHeight: "140px", overflowY: "auto" }}
-                          >
-                            {disciplinasCatalogo.map((disc) => {
-                              const marcado = selecionadas.includes(disc.id_disciplina);
-
-                              return (
-                                <button
-                                  key={disc.id_disciplina}
-                                  type="button"
-                                  onClick={() =>
-                                    toggleDisciplinaPendente(prof.id, disc.id_disciplina)
-                                  }
-                                  className={`btn btn-sm rounded-pill px-3 ${
-                                    marcado
-                                      ? "btn-primary fw-semibold"
-                                      : "btn-outline-secondary bg-white"
-                                  }`}
-                                >
-                                  <i
-                                    className={`bi ${
-                                      marcado ? "bi-check-circle-fill" : "bi-plus-circle"
-                                    } me-1`}
-                                  ></i>
-                                  {formatarDisciplinaCiclo(disc)}
-                                </button>
-                              );
-                            })}
-                          </div>
+                          <SeletorDisciplinas
+                            idPrefixo={`prof-${prof.id}`}
+                            disciplinas={disciplinasCatalogo}
+                            selecionadas={selecionadas}
+                            onToggle={(idDisciplina) =>
+                              toggleDisciplinaPendente(prof.id, idDisciplina)
+                            }
+                          />
                         )}
                       </div>
 

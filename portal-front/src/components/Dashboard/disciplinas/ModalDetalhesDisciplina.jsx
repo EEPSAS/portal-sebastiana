@@ -31,7 +31,7 @@ export default function ModalDetalhesDisciplina({ disciplina, onFechar }) {
           <div className="modal-header border-bottom-0 pb-0">
             <div>
               <h2 className="modal-title h5 fw-bold text-primary mb-1">
-                {disciplina.nome || formatarDisciplinaCiclo(disciplina)}
+                {formatarDisciplinaCiclo(disciplina)}
               </h2>
               <span className="badge bg-primary-subtle text-primary rounded-pill">
                 {aulasSem} aulas semanais • {totalAulas} aulas anuais (40 semanas)

@@ -259,7 +259,7 @@ class TurmaController extends Controller
         Gate::authorize('view', $turma);
 
         $disciplinas = $turma->turmaDisciplinas()
-            ->with(['disciplina', 'professor:id,name,email'])
+            ->with(['disciplina.ciclos', 'professor:id,name,email'])
             ->get();
 
         return response()->json($disciplinas, 200);

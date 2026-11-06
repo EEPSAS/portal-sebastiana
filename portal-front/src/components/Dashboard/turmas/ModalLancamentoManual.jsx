@@ -4,6 +4,7 @@ import {
   lancarFrequenciaManual,
   lancarNotaManual,
 } from "../../../services/turmasService";
+import { formatarDisciplinaCiclo } from "../../../utils/formatters";
 
 // Mantém a data no calendário local sem deslocamento causado pelo fuso horário.
 const dataHoje = () => {
@@ -134,7 +135,8 @@ export default function ModalLancamentoManual({
                 <label className="form-label fw-semibold" htmlFor="manual-disciplina">Disciplina</label>
                 <select id="manual-disciplina" className="form-select" required value={disciplinaId} onChange={(event) => setDisciplinaId(event.target.value)} disabled={carregandoDisciplinas}>
                   <option value="">{carregandoDisciplinas ? "Carregando..." : "Selecione"}</option>
-                  {disciplinas.map((disciplina) => <option key={disciplina.id_disciplina} value={disciplina.id_disciplina}>{disciplina.nome}</option>)}
+                  {/* Nome + Ciclo (ex.: "Filosofia - 2º Ano regular") para evitar ambiguidade entre ciclos */}
+              {disciplinas.map((disciplina) => <option key={disciplina.id_disciplina} value={disciplina.id_disciplina}>{formatarDisciplinaCiclo(disciplina)}</option>)}
                 </select>
               </div>
               {tipo === "nota" ? (

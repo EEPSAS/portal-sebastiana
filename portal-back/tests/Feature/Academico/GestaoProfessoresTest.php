@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Models\Ciclo;
 use App\Models\Disciplina;
 use App\Models\Turma;
 use App\Models\TurmaDisciplina;
@@ -175,4 +176,21 @@ test('usuario comum aluno nao pode acessar endpoints de gestao de professores', 
         ->getJson('/api/professores');
 
     $response->assertStatus(403);
+});
+
+test('disciplinas do professor retornam os ciclos para exibir Nome - Ciclo', function () {
+    $ciclo = Ciclo::create(['nome' => '2º Ano regular']);
+    $this->disciplina->ciclos()->attach($ciclo->id_ciclo);
+
+    $professor = User::factory()->create([
+        'role' => UserRole::PROFESSOR,
+        'status_confirmacao' => 'confirmado',
+    ]);
+    $professor->disciplinasDocente()->attach($this->disciplina->id_disciplina);
+
+    $this->actingAs($this->especialista, 'sanctum')
+        ->getJson('/api/professores')
+        ->assertOk()
+        ->assertJsonPath('data.0.disciplinas.0.nome', 'Física Quântica Básica')
+        ->assertJsonPath('data.0.disciplinas.0.ciclos.0.nome', '2º Ano regular');
 });

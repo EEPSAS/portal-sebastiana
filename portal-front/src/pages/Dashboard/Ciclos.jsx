@@ -33,6 +33,7 @@ import {
   validarFormularioZod,
 } from "../../utils/academicoSchemas";
 import { useAuth } from "../../hooks/useAuth";
+import { formatarDisciplinaCiclo } from "../../utils/formatters";
 
 export default function CiclosPage() {
   const { user } = useAuth();
@@ -684,9 +685,9 @@ export default function CiclosPage() {
                                     <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
                                       <h4
                                         className="h6 fw-bold text-dark mb-0 text-truncate"
-                                        title={disc.nome}
+                                        title={formatarDisciplinaCiclo(disc, ciclo)}
                                       >
-                                        {disc.nome}
+                                        {formatarDisciplinaCiclo(disc, ciclo)}
                                       </h4>
                                       <span
                                         className="badge bg-primary-subtle text-primary rounded-pill text-nowrap"

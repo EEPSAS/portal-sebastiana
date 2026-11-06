@@ -15,6 +15,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
+import { formatarDisciplinaCiclo } from "../../utils/formatters";
 import PainelModulo from "../../components/Dashboard/common/PainelModulo";
 import ModalCiclo from "../../components/Dashboard/disciplinas/ModalCiclo";
 import ModalDisciplina from "../../components/Dashboard/disciplinas/ModalDisciplina";
@@ -262,8 +263,8 @@ const DisciplinasPage = () => {
                     <div>
                       {/* Topo do Card: Nome e Carga Horária */}
                       <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
-                        <h3 className="h6 fw-bold text-dark mb-0" title={disc.nome}>
-                          {disc.nome}
+                        <h3 className="h6 fw-bold text-dark mb-0" title={formatarDisciplinaCiclo(disc)}>
+                          {formatarDisciplinaCiclo(disc)}
                         </h3>
                         <span className="badge bg-primary-subtle text-primary rounded-pill text-nowrap">
                           {aulasSem} a/sem • {totalAulas} a/ano

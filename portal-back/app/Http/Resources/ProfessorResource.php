@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -11,6 +12,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Papel Didático:
  * Padroniza a resposta JSON entregue ao Especialista Pedagógico e Administrador,
  * centralizando o status de confirmação escolar e a relação de disciplinas/turmas atribuídas.
+ *
+ * @mixin User
  */
 class ProfessorResource extends JsonResource
 {
@@ -21,10 +24,10 @@ class ProfessorResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        // Carrega as disciplinas vinculadas diretamente ao professor
+        // Carrega as disciplinas vinculadas diretamente ao professor (com seus Ciclos para exibição "Nome - Ciclo")
         $disciplinas = $this->relationLoaded('disciplinasDocente')
             ? $this->disciplinasDocente
-            : $this->disciplinasDocente()->get();
+            : $this->disciplinasDocente()->with('ciclos')->get();
 
         // Extrai as turmas onde as disciplinas atribuídas ao docente estão presentes
         $disciplinasIds = $disciplinas->pluck('id_disciplina');
@@ -53,7 +56,7 @@ class ProfessorResource extends JsonResource
             'role' => 'professor',
             'role_label' => 'Professor',
             'status_confirmacao' => $this->status_confirmacao ?? 'confirmado',
-            'confirmado_em' => $this->confirmado_em?->toISOString(),
+            'confirmado_em' => $this->confirmado_em ? (string) $this->confirmado_em : null,
             'created_at' => $this->created_at?->toISOString(),
             'total_disciplinas' => $disciplinas->count(),
             'total_turmas' => $turmasResumo->count(),
@@ -62,6 +65,13 @@ class ProfessorResource extends JsonResource
                 'nome' => $d->nome,
                 'carga_horaria_anual' => $d->carga_horaria_anual,
                 'descricao' => $d->descricao,
+                // Ciclos da disciplina: o front concatena "Nome - Ciclo" (ex.: "Filosofia - 2º Ano regular")
+                'ciclos' => $d->relationLoaded('ciclos')
+                    ? $d->ciclos->map(fn ($c) => [
+                        'id_ciclo' => $c->id_ciclo,
+                        'nome' => $c->nome,
+                    ])->values()
+                    : [],
             ])->values(),
             'turmas' => $turmasResumo,
         ];
