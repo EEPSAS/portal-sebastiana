@@ -40,7 +40,7 @@ const SobreEepsas = () => {
         <p className="sobre-eyebrow">Nossa escola</p>
         <h2>Escola Estadual Professora Sebastiana de Almeida e Silva</h2>
         <p className="sobre-description">
-           Escola Estadual localizada na cidade de Jaguaraçu, na Rua São José, 30. Hoje disponibiliza o Ensino Médio em Tempo Integral 3º ano, Ensino Parcial 2º e 1º ano.
+          Escola Estadual localizada na cidade de Jaguaraçu, na Rua São José, 30. Hoje disponibiliza o Ensino Médio em Tempo Integral 3º ano, Ensino Parcial 2º e 1º ano.
         </p>
         <p className="sobre-note">Educação, comunidade e futuro em um só lugar.</p>
       </div>
