@@ -2,9 +2,10 @@
 :root {
   --ink: #172951;
   --ink-soft: #365183;
-  --paper: #f8f8f7;
+  --paper: #f8f9fa;
   --line: #d7d8dc;
-  font-family: Georgia, "Times New Roman", serif;
+  /* Tipografia global unificada: mesma família sem serifa moderna do Aside e Header */
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color: var(--ink);
   background: var(--paper);
   font-synthesis: none;
@@ -20,6 +21,7 @@ body {
   margin: 0;
   min-width: 320px;
   background: var(--paper);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 button,
@@ -77,7 +79,7 @@ button {
 
 /* Tokens locais mantêm a nova paleta restrita às páginas do Dashboard. */
 .dashboard-card-shadow {
-  box-shadow: var(--bs-box-shadow-sm, 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075)) !important;
+  box-shadow: 0 2px 8px rgba(13, 35, 70, 0.05) !important;
 }
 
 .dashboard-shell {
@@ -87,7 +89,8 @@ button {
   --dashboard-navy: #0d2346;
   --dashboard-navy-rgb: 13, 35, 70;
   --dashboard-blue-accent: #1e3d70;
-  --dashboard-bg-surface: #e9f2fd;
+  /* Fundo Off-White no lugar do azul claro (#e9f2fd), trazendo leveza visual e alto contraste */
+  --dashboard-bg-surface: #fffaf4ee;
   --dashboard-gray: #909698;
   --dashboard-gray-rgb: 144, 150, 152;
   --dashboard-ink-muted: rgba(var(--dashboard-navy-rgb), 0.7);
@@ -99,7 +102,7 @@ button {
   --dashboard-pink-rgb: 226, 42, 113;
   --dashboard-gray-soft: rgba(var(--dashboard-gray-rgb), 0.1);
   --dashboard-gray-subtle: rgba(var(--dashboard-gray-rgb), 0.18);
-  --dashboard-gray-border: rgba(var(--dashboard-gray-rgb), 0.35);
+  --dashboard-gray-border: rgba(var(--dashboard-gray-rgb), 0.28);
   --dashboard-navy-soft: rgba(var(--dashboard-navy-rgb), 0.08);
   --dashboard-pink-soft: rgba(var(--dashboard-pink-rgb), 0.1);
   --dashboard-amber-soft: rgba(var(--dashboard-amber-rgb), 0.18);
@@ -150,7 +153,17 @@ button {
   --bs-focus-ring-color: rgba(var(--dashboard-navy-rgb), 0.25);
   min-height: 100vh;
   background-color: var(--dashboard-bg-surface);
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Tipografia padrão sem serifa herdada por todos os elementos do Dashboard */
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Garante que os cards e painéis se destaquem com elegância sobre o fundo off-white */
+.dashboard-shell .card,
+.dashboard-shell .geral-kpi-card,
+.dashboard-shell .geral-chart-card,
+.dashboard-shell .geral-updates-card {
+  border: 1px solid rgba(13, 35, 70, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(13, 35, 70, 0.04) !important;
 }
 
 .dashboard-shell.bg-light {

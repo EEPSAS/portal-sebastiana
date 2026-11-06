@@ -11,7 +11,15 @@ const NoticiaContent = ({ noticia }) => {
   return (
     <article className="noticia-detail__content">
       {/* Imagem de Capa em destaque no topo da notícia */}
-      {imagemCapa && <img src={imagemCapa} alt={noticia.titulo || ''} />}
+      {imagemCapa && (
+        <img
+          src={imagemCapa}
+          alt={noticia.titulo || ''}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+        />
+      )}
       <p>{noticia.conteudo}</p>
     </article>
   );
