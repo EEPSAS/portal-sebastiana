@@ -4,7 +4,7 @@
  * Papel Didático:
  * Atua como a identidade visual e o ponto de ancoragem superior de cada tela do Dashboard.
  * 1. Ícone representativo do módulo (Bootstrap Icons) em substituição à foto de perfil;
- * 2. Título do módulo em tipografia clássica e nobre ('Cormorant Garamond');
+ * 2. Título do módulo em tipografia sem serifa padronizada e marcante (sans-serif do sistema);
  * 3. Subtítulo com mensagem curta e descritiva da funcionalidade ativa;
  * 4. Slot flexível à direita (`acoes`) para centralizar botões de cadastro e campos de busca globais.
  */
@@ -55,12 +55,11 @@ export default function BoasVindasCard({
         )}
 
         <div>
+          {/* Título do módulo utilizando a tipografia sans-serif padrão padronizada no Dashboard */}
           <h1
-            className="boas-vindas-titulo mb-0"
+            className="boas-vindas-titulo mb-0 fw-bold"
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, 'Times New Roman', serif",
               fontSize: "clamp(1.25rem, 1.8vw, 1.6rem)",
-              fontWeight: 700,
               color: "var(--dashboard-navy)",
               lineHeight: 1.2,
             }}

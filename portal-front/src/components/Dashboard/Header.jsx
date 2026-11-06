@@ -100,8 +100,8 @@ const Header = ({
 
   return (
     <>
-      <header className="dashboard-header d-flex align-items-center justify-content-between px-3 py-2" style={{ background: "transparent" }}>
-        <div className="d-flex align-items-center gap-3">
+      <header className="dashboard-header d-flex align-items-center justify-content-between px-3 py-2">
+        <div className="d-flex align-items-center gap-2 gap-md-3 flex-wrap">
           {/* Saudação amigável e acolhedora pelo apelido com dimensões slim */}
           <div className="d-flex flex-column text-start">
             <span className="fw-bold text-dark lh-sm" style={{ fontSize: "1.15rem" }}>
@@ -114,15 +114,16 @@ const Header = ({
 
           {/* Menu Suspenso de Alternância de Visão exclusivo para o Administrador */}
           {isRealAdmin && (
-            <div className="position-relative ms-2">
+            <div className="position-relative ms-1 ms-md-2">
               <button
                 type="button"
-                className="btn btn-sm btn-outline-primary dropdown-toggle d-flex align-items-center gap-2 fw-semibold rounded-pill px-3"
+                className="btn btn-sm btn-outline-primary dropdown-toggle d-flex align-items-center gap-2 fw-semibold rounded-pill px-2 px-md-3"
                 onClick={() => setDropdownAberto((prev) => !prev)}
                 title="Alternar modo de visualização entre perfis"
+                style={{ maxWidth: "220px" }}
               >
                 <i className="bi bi-eye"></i>
-                <span>Ver como: {activeRoleLabel}</span>
+                <span className="text-truncate">Ver como: {activeRoleLabel}</span>
               </button>
 
               {dropdownAberto && (
@@ -140,7 +141,7 @@ const Header = ({
                         className={`dropdown-item d-flex align-items-center gap-2 py-2 ${
                           (user?.role === opcao.value ||
                             (opcao.value === "bibliotecaria" &&
-                              user?.role === "bibliotecario"))
+                               user?.role === "bibliotecario"))
                             ? "active fw-bold text-white bg-primary"
                             : ""
                         }`}
@@ -158,7 +159,7 @@ const Header = ({
         </div>
 
         {/* Identificação do Usuário Logado, Notificação e Ações */}
-        <div className="d-flex align-items-center ms-auto gap-3">
+        <div className="d-flex align-items-center ms-auto gap-2 gap-md-3">
           {/* Central de Notificações interativa */}
           <NotificacoesHeader />
 
@@ -170,13 +171,13 @@ const Header = ({
                   src={userPhoto}
                   alt={userName}
                   className="rounded-circle border border-2 border-primary"
-                  style={{ width: "40px", height: "40px", objectFit: "cover" }}
+                  style={{ width: "38px", height: "38px", objectFit: "cover" }}
                   onError={() => setUrlFotoComErro(userPhoto)}
                 />
               ) : (
                 <div
                   className="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center fw-bold"
-                  style={{ width: "40px", height: "40px", fontSize: "1.1rem" }}
+                  style={{ width: "38px", height: "38px", fontSize: "1.05rem" }}
                 >
                   <i className="bi bi-person-fill"></i>
                 </div>
@@ -196,17 +197,12 @@ const Header = ({
           {/* Botão Sair conforme o protótipo (pílula com ícone e texto) */}
           <button
             type="button"
-            className="btn btn-sm rounded-pill px-3 d-flex align-items-center gap-1 fw-semibold"
-            style={{
-              borderColor: "#a3c2e6",
-              color: "#1c3d70",
-              backgroundColor: "transparent",
-            }}
+            className="btn btn-sm btn-outline-secondary rounded-pill px-3 d-flex align-items-center gap-1 fw-semibold"
             onClick={handleLogout}
             title="Sair do sistema e voltar ao portal público"
           >
             <i className="bi bi-box-arrow-right"></i>
-            <span>Sair</span>
+            <span className="d-none d-sm-inline">Sair</span>
           </button>
         </div>
       </header>
