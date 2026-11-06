@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // ==============================================================================
 // DADOS DA LIDERANÇA
@@ -26,9 +26,8 @@ const leaders = [
     portfolioUrl: "https://github.com/",
     // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
     social: {
-      instagram: "https://instagram.com/",
-      linkedin: "https://linkedin.com/",
-      github: "https://github.com/",
+      instagram: "https://www.instagram.com/l_anaazs?obrf=YTFlY3R2bDhheXFu",
+      github: "https://github.com/lanaazz0193-coder",
     },
   },
   {
@@ -40,11 +39,10 @@ const leaders = [
     photo: "/img/teixeira-perfil.png",
     objectPosition: "center 22%",
     // Link configurável para o portfólio pessoal do desenvolvedor
-    portfolioUrl: "https://github.com/",
+    portfolioUrl: "https://yasminxst.github.io/Portif-lioDaYas/",
     // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
     social: {
       instagram: "https://www.instagram.com/yasminxst0/",
-      linkedin: "https://linkedin.com/",
       github: "https://github.com/yasminxst",
     },
   },
@@ -66,8 +64,7 @@ const teamMembers = [
     // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
     social: {
       instagram: "https://www.instagram.com/5davi.almeida?obrf=MXF4bTdscWl6bmV6dw==",
-      linkedin: "https://linkedin.com/",
-      github: "https://github.com/",
+      github: "https://github.com/Davi0110",
     },
   },
   {
@@ -79,7 +76,6 @@ const teamMembers = [
     // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
     social: {
       instagram: "https://www.instagram.com/l_anaazs?obrf=YTFlY3R2bDhheXFu",
-      linkedin: "https://linkedin.com/",
       github: "https://github.com/",
     },
   },
@@ -92,7 +88,6 @@ const teamMembers = [
     // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
     social: {
       instagram: "https://www.instagram.com/rhaynner__09?srtk=bG1xOG80ZG9oNmhn",
-      linkedin: "https://linkedin.com/",
       github: "https://github.com/",
     },
   },
@@ -104,12 +99,11 @@ const teamMembers = [
     photoClassName: "foto-yasmim-gomes",
     // Centraliza com precisão o rosto e o sorriso, preservando o volume dos cachos
     objectPosition: "50% 45%",
-    portfolioUrl: "https://github.com/",
+    portfolioUrl: "meus-projetos-production-6580.up.railway.app",
     // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
     social: {
       instagram: "https://www.instagram.com/yasmimg36/",
-      linkedin: "https://linkedin.com/",
-      github: "https://github.com/",
+      github: "https://github.com/yasmimgoliveira357",
     },
   },
   {
@@ -121,8 +115,7 @@ const teamMembers = [
     // Redes sociais (substituir pelas URLs reais; rede omitida = ícone não aparece)
     social: {
       instagram: "https://www.instagram.com/caduxl_00909?xtok=cmtnbGVkeWVoNDEz",
-      linkedin: "https://linkedin.com/",
-      github: "https://github.com/",
+      github: "https://github.com/cadu22306-coder",
     },
   },
 ];
