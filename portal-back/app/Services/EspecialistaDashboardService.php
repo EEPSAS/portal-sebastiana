@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\Academico\Csv\RegistroNotaCsvData;
 use App\Enums\UserRole;
 use App\Models\Ciclo;
 use App\Models\Disciplina;
@@ -13,11 +14,15 @@ use App\Models\PeriodoLetivo;
 use App\Models\Turma;
 use App\Models\TurmaDisciplina;
 use App\Models\User;
+use App\Notifications\NotificacaoPortal;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Service responsável por processar inteligência acadêmica e dados analíticos
@@ -315,33 +320,53 @@ class EspecialistaDashboardService
 
     /**
      * Normaliza a identificação do período letivo a partir do cabeçalho ou sub-cabeçalho da planilha.
-     * Suporta trimestres (1º, 2º, 3º), bimestres (1º a 4º) e avaliações de recuperação (EIR).
+     * Suporta trimestres (1º, 2º, 3º com variações 1°, 1o, 1. e abreviações TRI/TRIM),
+     * bimestres (1º a 4º) e avaliações de recuperação (EIR).
      */
     public function normalizarPeriodoLetivo(string $texto, ?string $periodoFallback = null): ?string
     {
         $t = Str::upper(trim($texto));
+        $ascii = Str::ascii($t);
 
-        if (str_contains($t, '1º TRIM') || str_contains($t, '1 TRIM') || str_contains($t, '1ºTRIM')) {
+        // Trimestres (suporta '1º TRI', '1° TRIM', '1o TRIMESTRE', 'FALTAS 1º TRI', etc.)
+        if (preg_match('/1\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $texto)
+            || preg_match('/1\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $ascii)
+            || str_contains($t, '1º TRIM') || str_contains($t, '1 TRIM') || str_contains($t, '1ºTRIM')) {
             return '1º Trimestre';
         }
-        if (str_contains($t, '2º TRIM') || str_contains($t, '2 TRIM') || str_contains($t, '2ºTRIM')) {
+        if (preg_match('/2\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $texto)
+            || preg_match('/2\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $ascii)
+            || str_contains($t, '2º TRIM') || str_contains($t, '2 TRIM') || str_contains($t, '2ºTRIM')) {
             return '2º Trimestre';
         }
-        if (str_contains($t, '3º TRIM') || str_contains($t, '3 TRIM') || str_contains($t, '3ºTRIM')) {
+        if (preg_match('/3\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $texto)
+            || preg_match('/3\s*([º°oª\.]|\b)\s*(tri|trimestre)/iu', $ascii)
+            || str_contains($t, '3º TRIM') || str_contains($t, '3 TRIM') || str_contains($t, '3ºTRIM')) {
             return '3º Trimestre';
         }
-        if (str_contains($t, '1º BIM') || str_contains($t, '1 BIM') || str_contains($t, '1ºBIM')) {
+
+        // Bimestres (suporta '1º BIM', '1° BIMESTRE', etc.)
+        if (preg_match('/1\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $texto)
+            || preg_match('/1\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $ascii)
+            || str_contains($t, '1º BIM') || str_contains($t, '1 BIM') || str_contains($t, '1ºBIM')) {
             return '1º Bimestre';
         }
-        if (str_contains($t, '2º BIM') || str_contains($t, '2 BIM') || str_contains($t, '2ºBIM')) {
+        if (preg_match('/2\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $texto)
+            || preg_match('/2\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $ascii)
+            || str_contains($t, '2º BIM') || str_contains($t, '2 BIM') || str_contains($t, '2ºBIM')) {
             return '2º Bimestre';
         }
-        if (str_contains($t, '3º BIM') || str_contains($t, '3 BIM') || str_contains($t, '3ºBIM')) {
+        if (preg_match('/3\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $texto)
+            || preg_match('/3\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $ascii)
+            || str_contains($t, '3º BIM') || str_contains($t, '3 BIM') || str_contains($t, '3ºBIM')) {
             return '3º Bimestre';
         }
-        if (str_contains($t, '4º BIM') || str_contains($t, '4 BIM') || str_contains($t, '4ºBIM')) {
+        if (preg_match('/4\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $texto)
+            || preg_match('/4\s*([º°oª\.]|\b)\s*(bim|bimestre)/iu', $ascii)
+            || str_contains($t, '4º BIM') || str_contains($t, '4 BIM') || str_contains($t, '4ºBIM')) {
             return '4º Bimestre';
         }
+
         if ($t === 'EIR' || str_contains($t, 'RECUPERA')) {
             return 'Recuperação (EIR)';
         }
@@ -378,6 +403,69 @@ class EspecialistaDashboardService
         }
 
         return 30.00;
+    }
+
+    /**
+     * Retorna o valor máximo oficial baseado nas divisões do Período Letivo da Turma ou na escala padrão.
+     */
+    public function obterValorMaximoPeriodoComTurma(Turma $turma, ?string $periodo): float
+    {
+        if ($turma->periodoLetivo) {
+            $divisao = $turma->periodoLetivo->divisoes()
+                ->where('nome', $periodo)
+                ->first();
+            if ($divisao && (float) $divisao->pontos > 0) {
+                return (float) $divisao->pontos;
+            }
+        }
+
+        return $this->obterValorMaximoPeriodo($periodo);
+    }
+
+    /**
+     * Determina a data de referência oficial para a etapa escolar/período.
+     */
+    public function obterDataReferenciaPeriodo(Turma $turma, ?string $periodo, ?string $dataFallback = null): string
+    {
+        $anoAtual = (int) ($turma->ano_letivo ?: date('Y'));
+
+        if ($turma->periodoLetivo) {
+            $divisao = $turma->periodoLetivo->divisoes()
+                ->where('nome', $periodo)
+                ->first();
+            if ($divisao && ! empty($divisao->data_fim)) {
+                return $divisao->data_fim->format('Y-m-d');
+            }
+        }
+
+        if (! $periodo) {
+            return $dataFallback ?: "{$anoAtual}-04-15";
+        }
+
+        $p = Str::lower(Str::ascii($periodo));
+        if (str_contains($p, '1') && str_contains($p, 'tri')) {
+            return "{$anoAtual}-04-15";
+        }
+        if (str_contains($p, '2') && str_contains($p, 'tri')) {
+            return "{$anoAtual}-08-15";
+        }
+        if (str_contains($p, '3') && str_contains($p, 'tri')) {
+            return "{$anoAtual}-11-15";
+        }
+        if (str_contains($p, '1') && str_contains($p, 'bim')) {
+            return "{$anoAtual}-04-15";
+        }
+        if (str_contains($p, '2') && str_contains($p, 'bim')) {
+            return "{$anoAtual}-06-30";
+        }
+        if (str_contains($p, '3') && str_contains($p, 'bim')) {
+            return "{$anoAtual}-09-30";
+        }
+        if (str_contains($p, '4') && str_contains($p, 'bim')) {
+            return "{$anoAtual}-12-15";
+        }
+
+        return $dataFallback ?: "{$anoAtual}-04-15";
     }
 
     /**
@@ -491,6 +579,7 @@ class EspecialistaDashboardService
             // Formato com sub-cabeçalho oficial DED MG (ex: Linha de Disciplinas e Linha de 1º TRIMESTRE / FALTAS)
             $subCabecalhos = str_getcsv($linhas[$subCabecalhoIdx], $delimitador);
             $disciplinaAtualNome = null;
+            $ultimoPeriodoDetectado = $periodoPadrao ?: '1º Trimestre';
             $maxCols = max(count($cabecalhos), count($subCabecalhos));
 
             // Carrega disciplinas existentes para busca resiliente insensível a maiúsculas e acentos
@@ -504,6 +593,8 @@ class EspecialistaDashboardService
                 $nomeNaColuna = trim($cabecalhos[$c] ?? '');
                 if (! empty($nomeNaColuna)) {
                     $disciplinaAtualNome = $nomeNaColuna;
+                    // Ao iniciar nova disciplina, reestabelece o período base
+                    $ultimoPeriodoDetectado = $periodoPadrao ?: '1º Trimestre';
                 }
 
                 if (empty($disciplinaAtualNome)) {
@@ -537,7 +628,14 @@ class EspecialistaDashboardService
                     continue;
                 }
 
-                $periodoDaColuna = $this->normalizarPeriodoLetivo($subTexto, $periodoPadrao ?: '1º Trimestre');
+                // Detecta dinamicamente a divisão/período (1º Tri, 2º Tri, 3º Tri, Bimestre, EIR)
+                // Se a coluna contiver referência a um período (mesmo sendo falta, ex: 'Faltas 1º Tri'), atualiza
+                $periodoDetectadoNaColuna = $this->normalizarPeriodoLetivo($subTexto);
+                if ($periodoDetectadoNaColuna !== null) {
+                    $ultimoPeriodoDetectado = $periodoDetectadoNaColuna;
+                }
+
+                $periodoDaColuna = $ultimoPeriodoDetectado;
                 $isRecuperacao = $subTexto === 'EIR' || str_contains($subTexto, 'RECUPERA');
 
                 $mapaColunas[$c] = [
@@ -596,6 +694,37 @@ class EspecialistaDashboardService
             }
 
             $primeiraLinhaAlunosIdx = $linhaCabecalhoIdx + 1;
+        }
+
+        // Identifica se uma disciplina possui apenas uma coluna de faltas consolidada para múltiplos períodos de notas
+        $faltasPorDisciplina = [];
+        $notasPorDisciplina = [];
+        foreach ($mapaColunas as $colIdx => $colInfo) {
+            if (($colInfo['tipo'] ?? '') === 'ignorar' || empty($colInfo['disciplina_id'])) {
+                continue;
+            }
+            if ($colInfo['tipo'] === 'falta') {
+                $faltasPorDisciplina[$colInfo['disciplina_id']][] = $colIdx;
+            } elseif ($colInfo['tipo'] === 'nota') {
+                $notasPorDisciplina[$colInfo['disciplina_id']][] = $colInfo['periodo_letivo'];
+            }
+        }
+
+        foreach ($faltasPorDisciplina as $discId => $colIndices) {
+            $periodosNotas = array_values(array_unique($notasPorDisciplina[$discId] ?? []));
+            // Se há exatamente 1 coluna de faltas para esta matéria e ela possui notas em 2 ou mais períodos
+            if (count($colIndices) === 1 && count($periodosNotas) > 1) {
+                $colIdxFalta = $colIndices[0];
+                $textoCol = $subCabecalhoIdx !== null
+                    ? trim($subCabecalhos[$colIdxFalta] ?? '')
+                    : trim($cabecalhos[$colIdxFalta] ?? '');
+
+                // Se o texto da coluna não especifica um período individual (ex: 'FALTAS 1º TRI')
+                if ($this->normalizarPeriodoLetivo($textoCol) === null) {
+                    $mapaColunas[$colIdxFalta]['tipo'] = 'falta_acumulada';
+                    $mapaColunas[$colIdxFalta]['periodos_disciplina'] = $periodosNotas;
+                }
+            }
         }
 
         // 4. Percorrer as linhas com os dados dos alunos
@@ -698,21 +827,104 @@ class EspecialistaDashboardService
                     continue;
                 }
 
-                $valorNumerico = (float) str_replace(',', '.', $valorBruto);
+                $valorNormalizado = str_replace(',', '.', $valorBruto);
+                $nomeDiscColuna = (string) ($infoColuna['nome_disciplina'] ?? 'Disciplina');
+                $periodoColuna = (string) ($infoColuna['periodo_letivo'] ?? ($periodoPadrao ?: '1º Trimestre'));
 
-                if ($infoColuna['tipo'] === 'nota') {
-                    $notasDoAluno[] = [
-                        'disciplina_id' => $infoColuna['disciplina_id'],
-                        'nome_disciplina' => $infoColuna['nome_disciplina'] ?? '',
-                        'periodo_letivo' => $infoColuna['periodo_letivo'] ?? ($periodoPadrao ?: '1º Trimestre'),
-                        'tipo_avaliacao' => $infoColuna['tipo_avaliacao'] ?? 'Diário Consolidado',
-                        'valor_nota' => $valorNumerico,
-                    ];
-                } else {
-                    $faltasDoAluno[] = [
-                        'disciplina_id' => $infoColuna['disciplina_id'],
-                        'quantidade_faltas' => (int) $valorNumerico,
-                    ];
+                if (! is_numeric($valorNormalizado)) {
+                    $alertas[] = "Lançamento ignorado para '{$alunoEncontrado->name}' em '{$nomeDiscColuna}' ({$periodoColuna}): valor '{$valorBruto}' não é numérico.";
+
+                    continue;
+                }
+
+                $valorNumerico = (float) $valorNormalizado;
+
+                try {
+                    if ($infoColuna['tipo'] === 'nota') {
+                        // Revalida o lançamento de nota via Spatie Data (0 a 100 pontos)
+                        $registro = RegistroNotaCsvData::validateAndCreate([
+                            'usuario_id' => $alunoEncontrado->id,
+                            'nome_aluno' => $alunoEncontrado->name,
+                            'disciplina_id' => (int) $infoColuna['disciplina_id'],
+                            'nome_disciplina' => $nomeDiscColuna,
+                            'periodo_letivo' => $periodoColuna,
+                            'tipo_registro' => 'nota',
+                            'tipo_avaliacao' => (string) ($infoColuna['tipo_avaliacao'] ?? 'Diário Consolidado'),
+                            'valor_nota' => $valorNumerico,
+                            'quantidade_faltas' => null,
+                        ]);
+
+                        $notasDoAluno[] = [
+                            'disciplina_id' => $registro->disciplina_id,
+                            'nome_disciplina' => $registro->nome_disciplina,
+                            'periodo_letivo' => $registro->periodo_letivo,
+                            'tipo_avaliacao' => $registro->tipo_avaliacao ?? 'Diário Consolidado',
+                            'valor_nota' => (float) $registro->valor_nota,
+                        ];
+                    } elseif ($infoColuna['tipo'] === 'falta_acumulada') {
+                        // Revalida o lançamento de faltas acumuladas via Spatie Data (inteiro >= 0)
+                        if (floor($valorNumerico) !== $valorNumerico) {
+                            $alertas[] = "Lançamento de faltas ignorado para '{$alunoEncontrado->name}' em '{$nomeDiscColuna}' ({$periodoColuna}): valor '{$valorBruto}' deve ser inteiro.";
+
+                            continue;
+                        }
+
+                        $qtdTotalFaltas = (int) $valorNumerico;
+                        $periodosDisciplina = $infoColuna['periodos_disciplina'] ?? [$periodoColuna];
+                        $totalPeriodos = count($periodosDisciplina);
+                        $baseFaltas = intdiv($qtdTotalFaltas, $totalPeriodos);
+                        $restoFaltas = $qtdTotalFaltas % $totalPeriodos;
+
+                        foreach ($periodosDisciplina as $pIdx => $periodoItem) {
+                            // Distribui o resto das faltas nas etapas mais recentes
+                            $qtdPeriodo = $baseFaltas + ($pIdx >= ($totalPeriodos - $restoFaltas) ? 1 : 0);
+
+                            $registro = RegistroNotaCsvData::validateAndCreate([
+                                'usuario_id' => $alunoEncontrado->id,
+                                'nome_aluno' => $alunoEncontrado->name,
+                                'disciplina_id' => (int) $infoColuna['disciplina_id'],
+                                'nome_disciplina' => $nomeDiscColuna,
+                                'periodo_letivo' => $periodoItem,
+                                'tipo_registro' => 'falta',
+                                'tipo_avaliacao' => null,
+                                'valor_nota' => null,
+                                'quantidade_faltas' => $qtdPeriodo,
+                            ]);
+
+                            $faltasDoAluno[] = [
+                                'disciplina_id' => $registro->disciplina_id,
+                                'quantidade_faltas' => (int) $registro->quantidade_faltas,
+                                'periodo_letivo' => $registro->periodo_letivo,
+                            ];
+                        }
+                    } else {
+                        // Revalida o lançamento de faltas via Spatie Data (inteiro >= 0)
+                        if (floor($valorNumerico) !== $valorNumerico) {
+                            $alertas[] = "Lançamento de faltas ignorado para '{$alunoEncontrado->name}' em '{$nomeDiscColuna}' ({$periodoColuna}): valor '{$valorBruto}' deve ser inteiro.";
+
+                            continue;
+                        }
+
+                        $registro = RegistroNotaCsvData::validateAndCreate([
+                            'usuario_id' => $alunoEncontrado->id,
+                            'nome_aluno' => $alunoEncontrado->name,
+                            'disciplina_id' => (int) $infoColuna['disciplina_id'],
+                            'nome_disciplina' => $nomeDiscColuna,
+                            'periodo_letivo' => $periodoColuna,
+                            'tipo_registro' => 'falta',
+                            'tipo_avaliacao' => null,
+                            'valor_nota' => null,
+                            'quantidade_faltas' => (int) $valorNumerico,
+                        ]);
+
+                        $faltasDoAluno[] = [
+                            'disciplina_id' => $registro->disciplina_id,
+                            'quantidade_faltas' => (int) $registro->quantidade_faltas,
+                            'periodo_letivo' => $registro->periodo_letivo,
+                        ];
+                    }
+                } catch (ValidationException) {
+                    $alertas[] = "Lançamento ignorado para '{$alunoEncontrado->name}' em '{$nomeDiscColuna}' ({$periodoColuna}): valor '{$valorBruto}' fora dos limites permitidos.";
                 }
             }
 
@@ -788,7 +1000,7 @@ class EspecialistaDashboardService
                 }
             } else {
                 $idManual = is_array($decisaoManual)
-                    ? (int) ($decisaoManual['disciplina_id'] ?? 0)
+                    ? (int) ($decisaoManual['disciplina_id'] ?? $decisaoManual['id_disciplina'] ?? 0)
                     : (int) $acao;
 
                 if ($idManual > 0) {
@@ -969,8 +1181,9 @@ class EspecialistaDashboardService
                         continue;
                     }
 
-                    // Determina o valor máximo oficial correspondente ao período (1º Tri: 30, 2º Tri: 30, 3º Tri: 40)
-                    $valorMaximoNota = $this->obterValorMaximoPeriodo($periodoDaNota);
+                    // Determina a data de referência oficial e o valor máximo conforme o período da nota
+                    $dataNota = $this->obterDataReferenciaPeriodo($turma, $periodoDaNota, $dataAula);
+                    $valorMaximoNota = $this->obterValorMaximoPeriodoComTurma($turma, $periodoDaNota);
 
                     Nota::updateOrCreate(
                         [
@@ -983,7 +1196,7 @@ class EspecialistaDashboardService
                             'tipo_avaliacao' => $notaItem['tipo_avaliacao'] ?? 'Diário Consolidado',
                             'valor_nota' => $notaItem['valor_nota'],
                             'valor_maximo' => $valorMaximoNota,
-                            'data_registro' => $dataAula,
+                            'data_registro' => $dataNota,
                             'observacoes' => 'Importado via diário escolar consolidado do Especialista',
                         ]
                     );
@@ -993,18 +1206,20 @@ class EspecialistaDashboardService
                 // 2. Sincroniza cada registro de faltas
                 foreach ($alunoItem['faltas'] as $faltaItem) {
                     $qtdFaltas = $faltaItem['quantidade_faltas'];
+                    $periodoDaFalta = $faltaItem['periodo_letivo'] ?? $periodoLetivo;
+                    $dataFalta = $this->obterDataReferenciaPeriodo($turma, $periodoDaFalta, $dataAula);
 
                     Frequencia::updateOrCreate(
                         [
                             'turma_id' => $turma->id_turma,
                             'disciplina_id' => $faltaItem['disciplina_id'],
                             'usuario_id' => $usuarioId,
-                            'data_aula' => $dataAula,
+                            'data_aula' => $dataFalta,
                         ],
                         [
                             'quantidade_aulas' => max(1, $qtdFaltas),
                             'status_presenca' => $qtdFaltas > 0 ? 'Falta' : 'Presente',
-                            'justificativa' => $qtdFaltas > 0 ? 'Registro de faltas via diário escolar' : null,
+                            'justificativa' => $qtdFaltas > 0 ? "Registro de faltas via diário escolar ({$periodoDaFalta})" : null,
                         ]
                     );
                     $frequenciasSincronizadas++;
@@ -1471,6 +1686,9 @@ class EspecialistaDashboardService
         $divisaoEfetiva = $divisaoFiltro ?: ($divisaoAtual?->nome ?? null);
         $divisaoObjeto = $periodoAtivo?->divisoes->firstWhere('nome', $divisaoEfetiva);
         $pontosDivisao = $divisaoObjeto ? (float) $divisaoObjeto->pontos : 30.0;
+        $pontosConsolidados = $periodoAtivo?->divisoes
+            ->filter(fn ($divisao) => $divisao->data_fim && Carbon::parse($divisao->data_fim)->lt(Carbon::today()))
+            ->sum('pontos') ?? 0.0;
 
         // 1. Determina as turmas do escopo com base no papel do usuário
         $isDocenteEstrito = $usuario->isProfessor() && ! $usuario->canManageAcademic();
@@ -1528,8 +1746,8 @@ class EspecialistaDashboardService
         $frequenciasTurmas = [];
         $somaMediasTurmas = 0.0;
         $turmasComNota = 0;
-        $totalAulasGeral = 0;
-        $totalFaltasGeral = 0;
+        $somaFrequenciasTurmas = 0.0;
+        $turmasComFrequencia = 0;
 
         foreach ($turmas as $turma) {
             // Consulta de notas da turma (filtrando disciplinas do docente e período letivo)
@@ -1550,11 +1768,9 @@ class EspecialistaDashboardService
                     return ((float) $nota->valor_nota / $max) * 10;
                 })->avg();
 
+                $somaMediasTurmas += (float) $aproveitamentoTurma;
                 $mediaTurma = round((float) $aproveitamentoTurma, 1);
-                $somaMediasTurmas += $mediaTurma;
                 $turmasComNota++;
-            } else {
-                $mediaTurma = 0.0;
             }
 
             // Consulta de faltas e presenças da turma
@@ -1562,27 +1778,34 @@ class EspecialistaDashboardService
             if ($isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()) {
                 $queryFreq->whereIn('disciplina_id', $disciplinasIdsProf);
             }
+            if ($divisaoEfetiva === 'todos') {
+                if ($periodoAtivo?->data_inicio && $periodoAtivo?->data_fim) {
+                    $queryFreq->whereBetween('data_aula', [$periodoAtivo->data_inicio, $periodoAtivo->data_fim]);
+                }
+            } elseif ($divisaoObjeto?->data_inicio && $divisaoObjeto?->data_fim) {
+                $queryFreq->whereBetween('data_aula', [$divisaoObjeto->data_inicio, $divisaoObjeto->data_fim]);
+            }
             $aulasTurma = (int) (clone $queryFreq)->sum('quantidade_aulas');
             $faltasTurma = (int) (clone $queryFreq)->whereIn('status_presenca', ['Falta', 'Falta Justificada'])->sum('quantidade_aulas');
 
-            $totalAulasGeral += $aulasTurma;
-            $totalFaltasGeral += $faltasTurma;
+            if ($notas->isNotEmpty()) {
+                $mediasTurmas[] = [
+                    'id' => $turma->id_turma,
+                    'turma' => $turma->nome_identificador,
+                    'nota' => $mediaTurma,
+                ];
+            }
 
-            $presencaTurma = $aulasTurma > 0
-                ? (int) round((1 - ($faltasTurma / $aulasTurma)) * 100)
-                : 100;
-
-            $mediasTurmas[] = [
-                'id' => $turma->id_turma,
-                'turma' => $turma->nome_identificador,
-                'nota' => $mediaTurma,
-            ];
-
-            $frequenciasTurmas[] = [
-                'id' => $turma->id_turma,
-                'turma' => $turma->nome_identificador,
-                'percentual' => $presencaTurma,
-            ];
+            if ($aulasTurma > 0) {
+                $presencaTurma = (1 - ($faltasTurma / $aulasTurma)) * 100;
+                $somaFrequenciasTurmas += $presencaTurma;
+                $turmasComFrequencia++;
+                $frequenciasTurmas[] = [
+                    'id' => $turma->id_turma,
+                    'turma' => $turma->nome_identificador,
+                    'percentual' => round($presencaTurma, 1),
+                ];
+            }
         }
 
         // 3. Consolidação dos KPIs Superiores
@@ -1595,57 +1818,15 @@ class EspecialistaDashboardService
         // Média geral agregada (escala 0-10)
         $mediaGeral = $turmasComNota > 0 ? round($somaMediasTurmas / $turmasComNota, 1) : 0.0;
 
-        // Frequência média global em percentual
-        $frequenciaMediaPercentual = $totalAulasGeral > 0
-            ? round((1 - ($totalFaltasGeral / $totalAulasGeral)) * 100, 1)
-            : 100.0;
+        // A média aritmética dá o mesmo peso a cada turma com registros no período.
+        $frequenciaMediaPercentual = $turmasComFrequencia > 0
+            ? round($somaFrequenciasTurmas / $turmasComFrequencia, 1)
+            : null;
 
         // Total de notícias publicadas no sistema
         $noticiasCount = Noticia::count();
 
-        // 4. Últimas Atualizações Reais (Notícias recentes + Atualizações recentes de notas)
-        $atualizacoes = [];
-
-        // Notícias recentes (até 3)
-        $noticiasRecentes = Noticia::orderByDesc('created_at')->limit(3)->get();
-        foreach ($noticiasRecentes as $noticia) {
-            $atualizacoes[] = [
-                'id' => "noticia-{$noticia->id}",
-                'tipo' => 'noticia',
-                'texto' => "Nova notícia publicada: {$noticia->titulo}",
-                'tempoAtras' => $noticia->created_at ? $noticia->created_at->locale('pt_BR')->diffForHumans() : 'recentemente',
-                'timestamp' => $noticia->created_at?->timestamp ?? 0,
-            ];
-        }
-
-        // Notas recentes (até 3)
-        $notasRecentes = Nota::with(['turma', 'disciplina'])
-            ->whereIn('turma_id', $turmasIdsList)
-            ->orderByDesc('updated_at')
-            ->limit(3)
-            ->get();
-
-        foreach ($notasRecentes as $nota) {
-            $nomeTurma = $nota->turma?->nome_identificador ?? 'Turma';
-            $nomeDisc = $nota->disciplina?->nome ?? 'Disciplina';
-            $atualizacoes[] = [
-                'id' => "nota-{$nota->id_nota}",
-                'tipo' => 'notas',
-                'texto' => "Notas atualizadas — {$nomeTurma} ({$nomeDisc})",
-                'tempoAtras' => $nota->updated_at ? $nota->updated_at->locale('pt_BR')->diffForHumans() : 'recentemente',
-                'timestamp' => $nota->updated_at?->timestamp ?? 0,
-            ];
-        }
-
-        // Ordena atualizações por cronologia decrescente (mais recentes primeiro)
-        usort($atualizacoes, fn ($a, $b) => $b['timestamp'] <=> $a['timestamp']);
-
-        // Remove a chave de ordenação interna antes de entregar
-        $ultimasAtualizacoes = array_map(function ($item) {
-            unset($item['timestamp']);
-
-            return $item;
-        }, array_slice($atualizacoes, 0, 5));
+        $ultimasNotificacoes = $this->obterUltimasNotificacoes();
 
         // Nomes e detalhes das disciplinas sob regência do docente (Item 3.4a)
         $disciplinasDocenteColecao = $isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()
@@ -1739,8 +1920,8 @@ class EspecialistaDashboardService
         return [
             'kpis' => [
                 'total_alunos' => $totalAlunos,
-                'media_geral' => $mediaGeral,
-                'frequencia_media' => "{$frequenciaMediaPercentual}%",
+                'media_geral' => $turmasComNota > 0 ? $mediaGeral : null,
+                'frequencia_media' => $frequenciaMediaPercentual !== null ? "{$frequenciaMediaPercentual}%" : null,
                 'noticias_publicadas' => $noticiasCount,
                 'total_turmas' => count($turmas),
             ],
@@ -1750,23 +1931,86 @@ class EspecialistaDashboardService
             ],
             'disciplinas_docente' => $disciplinasDocenteNomes,
             'disciplinas_detalhadas' => $disciplinasDetalhadas,
-            'ultimas_atualizacoes' => $ultimasAtualizacoes,
+            'ultimas_notificacoes' => $ultimasNotificacoes,
             'periodo_contexto' => [
                 'ano' => $periodoAtivo?->ano ?? (int) date('Y'),
                 'tipo_divisao' => $periodoAtivo?->tipo_divisao ?? 'trimestre',
                 'divisao_selecionada' => $divisaoEfetiva,
                 'pontos_divisao' => $pontosDivisao,
-                'data_inicio' => $periodoAtivo?->data_inicio ? \Carbon\Carbon::parse($periodoAtivo->data_inicio)->format('Y-m-d') : null,
-                'data_fim' => $periodoAtivo?->data_fim ? \Carbon\Carbon::parse($periodoAtivo->data_fim)->format('Y-m-d') : null,
+                'pontos_consolidados' => (float) $pontosConsolidados,
+                'data_inicio' => $periodoAtivo?->data_inicio ? Carbon::parse($periodoAtivo->data_inicio)->format('Y-m-d') : null,
+                'data_fim' => $periodoAtivo?->data_fim ? Carbon::parse($periodoAtivo->data_fim)->format('Y-m-d') : null,
                 'divisoes_disponiveis' => $periodoAtivo?->divisoes->map(fn ($div) => [
                     'id_divisao' => $div->id_divisao,
                     'nome' => $div->nome,
                     'pontos' => (float) $div->pontos,
                     'is_atual' => $div->isVigente(),
-                    'data_inicio' => $div->data_inicio ? \Carbon\Carbon::parse($div->data_inicio)->format('Y-m-d') : null,
-                    'data_fim' => $div->data_fim ? \Carbon\Carbon::parse($div->data_fim)->format('Y-m-d') : null,
+                    'data_inicio' => $div->data_inicio ? Carbon::parse($div->data_inicio)->format('Y-m-d') : null,
+                    'data_fim' => $div->data_fim ? Carbon::parse($div->data_fim)->format('Y-m-d') : null,
                 ])->values()->all() ?? [],
             ],
         ];
+    }
+
+    /**
+     * Agrupa as cópias por destinatário para exibir cada notificação uma única vez.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function obterUltimasNotificacoes(): array
+    {
+        $autoresIds = User::query()
+            ->whereIn('role', [
+                UserRole::PROFESSOR->value,
+                UserRole::ESPECIALISTA->value,
+                UserRole::ADM->value,
+                'admin',
+                UserRole::BIBLIOTECARIA->value,
+                'bibliotecario',
+            ])
+            ->pluck('id');
+        $bibliotecariasIds = User::query()
+            ->whereIn('role', [UserRole::BIBLIOTECARIA->value, 'bibliotecario'])
+            ->pluck('id');
+
+        $eventos = DatabaseNotification::query()
+            ->where('type', NotificacaoPortal::class)
+            ->whereNotNull('data->event_key')
+            ->where(function ($query) use ($autoresIds, $bibliotecariasIds) {
+                $query->where(function ($query) use ($autoresIds) {
+                    $query->where('data->tipo', 'manual')
+                        ->whereIn('data->criador_id', $autoresIds);
+                })->orWhere(function ($query) use ($bibliotecariasIds) {
+                    $query->where('notifiable_type', User::class)
+                        ->whereIn('notifiable_id', $bibliotecariasIds);
+                });
+            })
+            ->selectRaw("MAX(id) as id, MAX(created_at) as created_at, json_extract(data, '$.event_key') as event_key")
+            ->groupByRaw("json_extract(data, '$.event_key')")
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
+        $notificacoes = DatabaseNotification::query()
+            ->whereIn('id', $eventos->pluck('id'))
+            ->get()
+            ->keyBy('id');
+
+        return $eventos->map(function ($evento) use ($notificacoes) {
+            $notificacao = $notificacoes->get($evento->id);
+            $dados = $notificacao?->data ?? [];
+            $titulo = $dados['titulo'] ?? 'Notificação escolar';
+            $criador = $dados['criador_nome'] ?? 'Sistema';
+
+            return [
+                'id' => (string) $evento->event_key,
+                'tipo' => 'notificacao',
+                'texto' => "{$criador}: {$titulo}",
+                'assunto' => $dados['assunto'] ?? '',
+                'tempoAtras' => $notificacao?->created_at
+                    ? $notificacao->created_at->locale('pt_BR')->diffForHumans()
+                    : 'recentemente',
+            ];
+        })->all();
     }
 }

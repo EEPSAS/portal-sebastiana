@@ -1,12 +1,19 @@
 import { api } from "./api";
+import {
+  CicloSchema,
+  ListaCiclosSchema,
+  SalvarCicloInputSchema,
+  validarContratoZod,
+  validarFormularioZod,
+} from "../utils/academicoSchemas";
 
 /**
  * disciplinasService.js - Serviço de Gestão de Disciplinas e Ciclos Escolares (Diretriz 3)
  *
  * Papel Didático:
  * Centraliza as chamadas à API RESTful para os Ciclos Escolares (/api/ciclos)
- * e para o catálogo de Disciplinas (/api/disciplinas), atendendo tanto a visão
- * gerencial do Especialista/Admin quanto a visão consultiva do Aluno e Professor.
+ * e para o catálogo de Disciplinas (/api/disciplinas), aplicando revalidação estrita
+ * via Zod nas respostas e payloads de escrita.
  */
 
 /**
@@ -20,7 +27,8 @@ export const listarCiclos = async ({ signal } = {}) => {
     throw new Error(data?.message || "Não foi possível carregar os ciclos e disciplinas.");
   }
 
-  return Array.isArray(data) ? data : data?.data || data?.ciclos || [];
+  const ciclosBrutos = Array.isArray(data) ? data : data?.data || data?.ciclos || [];
+  return validarContratoZod(ListaCiclosSchema, ciclosBrutos, "GET /ciclos");
 };
 
 /**
@@ -34,7 +42,8 @@ export const listarDisciplinasPorCiclo = async ({ signal } = {}) => {
     throw new Error(data?.message || "Não foi possível carregar os ciclos e disciplinas.");
   }
 
-  const ciclos = Array.isArray(data) ? data : data?.data || data?.ciclos || [];
+  const ciclosBrutos = Array.isArray(data) ? data : data?.data || data?.ciclos || [];
+  const ciclos = validarContratoZod(ListaCiclosSchema, ciclosBrutos, "GET /ciclos (matriz)");
   const disciplinasSemCiclo = data?.disciplinas_sem_ciclo || [];
   const todasDisciplinas = [
     ...ciclos.flatMap((c) => c.disciplinas || []),
@@ -51,35 +60,61 @@ export const listarDisciplinasPorCiclo = async ({ signal } = {}) => {
 };
 
 /**
- * Cria um novo Ciclo Escolar (ex: "1º Ano", "2º Ano", "3º Ano").
+ * Cria um novo Ciclo Escolar (ex: "1º Ano", "2º Ano", "3º Ano") validando entrada e retorno com Zod.
  */
 export const criarCiclo = async (dados) => {
+  const checkEntrada = validarFormularioZod(SalvarCicloInputSchema, dados);
+  if (!checkEntrada.valido) {
+    throw new Error(checkEntrada.mensagem);
+  }
+
   const response = await api("/ciclos", {
     method: "POST",
-    body: dados,
+    body: checkEntrada.dados,
   });
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error((data?.errors ? Object.values(data.errors).flat()[0] : null) || data?.message || "Não foi possível criar o ciclo escolar.");
+    throw new Error(
+      (data?.errors ? Object.values(data.errors).flat()[0] : null) ||
+        data?.message ||
+        "Não foi possível criar o ciclo escolar."
+    );
+  }
+
+  if (data?.data) {
+    validarContratoZod(CicloSchema, data.data, "POST /ciclos");
   }
 
   return data;
 };
 
 /**
- * Atualiza um Ciclo Escolar existente.
+ * Atualiza um Ciclo Escolar existente validando entrada e retorno com Zod.
  */
 export const atualizarCiclo = async (idCiclo, dados) => {
+  const checkEntrada = validarFormularioZod(SalvarCicloInputSchema, dados);
+  if (!checkEntrada.valido) {
+    throw new Error(checkEntrada.mensagem);
+  }
+
   const response = await api(`/ciclos/${encodeURIComponent(idCiclo)}`, {
     method: "PUT",
-    body: dados,
+    body: checkEntrada.dados,
   });
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
     // Prioriza a primeira mensagem de validação (ex: "máx. 256 caracteres")
-    throw new Error((data?.errors ? Object.values(data.errors).flat()[0] : null) || data?.message || "Não foi possível atualizar o ciclo escolar.");
+    throw new Error(
+      (data?.errors ? Object.values(data.errors).flat()[0] : null) ||
+        data?.message ||
+        "Não foi possível atualizar o ciclo escolar."
+    );
+  }
+
+  if (data?.data) {
+    validarContratoZod(CicloSchema, data.data, "PUT /ciclos/:id");
   }
 
   return data;
@@ -88,6 +123,42 @@ export const atualizarCiclo = async (idCiclo, dados) => {
 /**
  * Exclui um Ciclo Escolar.
  */
+/**
+ * Vincula uma disciplina existente a um Ciclo Escolar.
+ */
+export const vincularDisciplinaAoCiclo = async (idCiclo, idDisciplina) => {
+  const response = await api(`/ciclos/${encodeURIComponent(idCiclo)}/disciplinas`, {
+    method: "POST",
+    body: { disciplina_id: Number(idDisciplina) },
+  });
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Não foi possível vincular a disciplina ao ciclo escolar.");
+  }
+
+  return data;
+};
+
+/**
+ * Desvincula uma disciplina de um Ciclo Escolar (sem apagá-la do catálogo escolar).
+ */
+export const desvincularDisciplinaDoCiclo = async (idCiclo, idDisciplina) => {
+  const response = await api(
+    `/ciclos/${encodeURIComponent(idCiclo)}/disciplinas/${encodeURIComponent(idDisciplina)}`,
+    {
+      method: "DELETE",
+    }
+  );
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Não foi possível desvincular a disciplina do ciclo escolar.");
+  }
+
+  return data;
+};
+
 export const excluirCiclo = async (idCiclo) => {
   const response = await api(`/ciclos/${encodeURIComponent(idCiclo)}`, {
     method: "DELETE",
@@ -179,6 +250,8 @@ export const disciplinasService = {
   criarCiclo,
   atualizarCiclo,
   excluirCiclo,
+  vincularDisciplinaAoCiclo,
+  desvincularDisciplinaDoCiclo,
   listarDisciplinas,
   criarDisciplina,
   atualizarDisciplina,

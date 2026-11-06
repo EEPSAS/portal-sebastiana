@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../../../hooks/useAuth";
 import {
   cancelarMatriculaAluno,
@@ -52,6 +52,7 @@ const ABAS = [
  */
 const Turmas = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const role = user?.role || "aluno";
   const podeGerenciar = role === "especialista" || role === "adm";
@@ -66,8 +67,17 @@ const Turmas = () => {
         ]
       : ABAS;
 
-  // Estados de navegação (inicia em 'turmas' para o professor e em 'geral' para gestão)
-  const [abaAtiva, setAbaAtiva] = useState(() => (role === "professor" ? "turmas" : "geral"));
+  const abaSolicitada = searchParams.get("aba");
+  const abaAtiva = abasDisponiveis.some((aba) => aba.id === abaSolicitada)
+    ? abaSolicitada
+    : role === "professor"
+      ? "turmas"
+      : "geral";
+  const selecionarAba = (aba) => {
+    const parametros = new URLSearchParams(searchParams);
+    parametros.set("aba", aba);
+    setSearchParams(parametros, { replace: true });
+  };
 
   // Dados centrais
   const [turmas, setTurmas] = useState([]);
@@ -200,13 +210,13 @@ const Turmas = () => {
    * do estudante selecionado no filtro, garantindo performance e granularidade.
    */
   useEffect(() => {
-    if (!turmaSelecionadaId || !alunoFiltroNota) return;
+    if (!turmaSelecionadaId) return;
 
     let cancelado = false;
 
     fetchTurmaNotas(turmaSelecionadaId, {
-      periodo: periodoFiltro,
-      alunoId: alunoFiltroNota,
+      periodo: periodoFiltro === "todos" ? undefined : periodoFiltro,
+      alunoId: alunoFiltroNota || undefined,
     })
       .then((dadosNotas) => {
         if (!cancelado) {
@@ -251,12 +261,7 @@ const Turmas = () => {
 
   const handleAlunoFiltroChange = (idAluno) => {
     setAlunoFiltroNota(idAluno);
-    if (idAluno) {
-      setLoadingNotas(true);
-    } else {
-      setNotas([]);
-      setLoadingNotas(false);
-    }
+    setLoadingNotas(true);
   };
 
   // Navega para a visão individual do Boletim Escolar passando os identificadores do aluno e turma
@@ -299,7 +304,7 @@ const Turmas = () => {
     setProcessandoExclusaoCsv(true);
     try {
       const resp = await excluirDadosCsv(idTurmaAlvo, {
-        periodo: periodoFiltro,
+        periodo: periodoFiltro === "todos" ? undefined : periodoFiltro,
       });
       dispararNotificacao(resp?.message || "Dados do diário escolar excluídos com sucesso!");
       setModalExcluirCsvAberto(false);
@@ -333,6 +338,11 @@ const Turmas = () => {
   // Sucesso na importação de notas CSV
   const handleSucessoImportacaoCSV = (resultado) => {
     dispararNotificacao(resultado?.message || "Notas importadas e sincronizadas com sucesso!");
+    setRecargaKey((prev) => prev + 1);
+  };
+
+  const handleSucessoLancamentoManual = (tipo) => {
+    dispararNotificacao(tipo === "nota" ? "Nota manual registrada com sucesso." : "Frequência manual registrada com sucesso.");
     setRecargaKey((prev) => prev + 1);
   };
 
@@ -453,7 +463,7 @@ const Turmas = () => {
                 if (turmaAlvo) {
                   handleAbrirVincularAluno(turmaAlvo);
                 } else {
-                  setAbaAtiva("turmas");
+                  selecionarAba("turmas");
                 }
               }}
             >
@@ -472,7 +482,7 @@ const Turmas = () => {
                 <button
                   key={aba.id}
                   type="button"
-                  onClick={() => setAbaAtiva(aba.id)}
+                  onClick={() => selecionarAba(aba.id)}
                   className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 transition-all ${
                     ativa ? "btn-primary text-white shadow-sm" : "btn-light text-muted"
                   }`}
@@ -527,6 +537,7 @@ const Turmas = () => {
         {/* 3. Conteúdo da Aba Notas: Cards de Média e Diário Escolar */}
         {abaAtiva === "notas" && (
           <NotasAba
+            turmas={turmas}
             resumoGeral={resumoGeral}
             turmaSelecionadaId={turmaSelecionadaId}
             onSelecionarTurma={handleSelecionarTurmaNotas}
@@ -540,6 +551,7 @@ const Turmas = () => {
             podeGerenciar={podeGerenciar}
             onAbrirImportarNotas={handleAbrirImportarNotas}
             onAbrirExcluirDadosCsv={handleAbrirExcluirDadosCsv}
+            onManualSave={handleSucessoLancamentoManual}
             loadingNotas={loadingNotas}
             trimestreAtual={obterTrimestreAtual()}
             alunosTurma={alunosTurmaSelecionada}
@@ -694,7 +706,7 @@ const Turmas = () => {
             <p className="text-muted mb-4 small">
               Deseja realmente excluir as notas e faltas carregadas via CSV da turma{" "}
               <strong>"{(turmaParaExcluirCsv || turmaAtivaParaCSV)?.nome_identificador}"</strong>
-              {periodoFiltro ? (
+              {periodoFiltro && periodoFiltro !== "todos" ? (
                 <>
                   {" "}para o período <strong>"{periodoFiltro}"</strong>
                 </>

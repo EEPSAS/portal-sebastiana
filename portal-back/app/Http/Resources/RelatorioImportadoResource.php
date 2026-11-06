@@ -2,11 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Data\Academico\Csv\RelatorioImportadoData;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Resource para resposta do processamento do CSV pelo Especialista.
+ * Delega a tipagem e validação estrutural do envelope ao RelatorioImportadoData (Spatie Laravel Data).
  */
 class RelatorioImportadoResource extends JsonResource
 {
@@ -22,31 +24,14 @@ class RelatorioImportadoResource extends JsonResource
     }
 
     /**
-     * Transforma os dados em resposta estruturada.
+     * Transforma os dados em resposta estruturada 1:1 com RelatorioImportadoSchema (Zod).
      *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
-        return [
-            // Status do processamento: 'sucesso' ou 'pendente_confirmacao'
-            'status' => $this->resource['status'] ?? 'sucesso',
-            // Tipo de pendência: null, 'homonimos' ou 'divergencias_notas'
-            'tipo_pendencia' => $this->resource['tipo_pendencia'] ?? ($this->resource['dados']['tipo_pendencia'] ?? null),
-            'message' => $this->resource['message'] ?? $this->message,
-            'turma' => [
-                'id_turma' => $this->resource['turma']['id_turma'] ?? null,
-                'nome_identificador' => $this->resource['turma']['nome_identificador'] ?? null,
-            ],
-            // Lista de estudantes com nomes homônimos ou similares que necessitam de confirmação manual
-            'ambiguidades' => $this->resource['ambiguidades'] ?? ($this->resource['dados']['ambiguidades'] ?? []),
-            // Lista de notas divergentes detectadas em períodos anteriores
-            'divergencias' => $this->resource['divergencias'] ?? ($this->resource['dados']['divergencias'] ?? []),
-            // Lista de disciplinas da planilha que requerem conciliação manual ou criação pelo Especialista (Item 3.4d)
-            'disciplinas_pendentes' => $this->resource['disciplinas_pendentes'] ?? ($this->resource['dados']['disciplinas_pendentes'] ?? []),
-            'catalogo_disciplinas' => $this->resource['catalogo_disciplinas'] ?? ($this->resource['dados']['catalogo_disciplinas'] ?? []),
-            'catalogo_ciclos' => $this->resource['catalogo_ciclos'] ?? ($this->resource['dados']['catalogo_ciclos'] ?? []),
-            'dados' => $this->resource['dados'] ?? [],
-        ];
+        $payload = is_array($this->resource) ? $this->resource : (array) $this->resource;
+
+        return RelatorioImportadoData::fromResultado($payload, $this->message)->toArray();
     }
 }

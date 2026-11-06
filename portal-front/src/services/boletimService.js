@@ -1,4 +1,20 @@
 import { api } from "./api";
+import {
+  BoletimAlunoConsultaInputSchema,
+  BoletimAlunoSchema,
+  BoletimIdentificadoresInputSchema,
+  ComparativoTurmaSchema,
+  validarContratoZod,
+  validarFormularioZod,
+} from "../utils/academicoSchemas";
+
+/**
+ * boletimService.js - Serviço de consulta do Boletim Escolar e Comparativo do Aluno
+ *
+ * Papel Didático:
+ * Conecta o painel do estudante aos endpoints de desempenho individual, aplicando
+ * revalidação estrita em runtime com Zod (espelhando BoletimAlunoData e ComparativoTurmaData).
+ */
 
 const solicitarJson = async (caminho, { signal } = {}) => {
   const resposta = await api(caminho, { signal });
@@ -25,9 +41,20 @@ const validarIdentificadores = (alunoId, turmaId) => {
   if (!alunoId || !turmaId) {
     throw new Error("Informe o aluno e a turma para consultar o boletim.");
   }
+
+  const check = validarFormularioZod(BoletimIdentificadoresInputSchema, {
+    alunoId,
+    turmaId,
+  });
+
+  if (!check.valido) {
+    throw new Error(check.mensagem);
+  }
+
+  return check.dados;
 };
 
-// Consulta um único trimestre para manter os filtros temporais definidos pela API.
+// Consulta um único trimestre validando parâmetros de entrada e o retorno BoletimAlunoSchema com Zod.
 export const obterBoletim = async (
   alunoId,
   turmaId,
@@ -36,28 +63,51 @@ export const obterBoletim = async (
 ) => {
   validarIdentificadores(alunoId, turmaId);
 
-  if (![1, 2, 3].includes(Number(trimestre))) {
-    throw new Error("O trimestre deve ser 1, 2 ou 3.");
+  const checkConsulta = validarFormularioZod(BoletimAlunoConsultaInputSchema, {
+    alunoId,
+    turmaId,
+    trimestre,
+  });
+
+  if (!checkConsulta.valido) {
+    throw new Error(checkConsulta.mensagem);
   }
 
-  const caminho = `/alunos/${encodeURIComponent(alunoId)}/turmas/${encodeURIComponent(turmaId)}/boletim?trimestre=${Number(trimestre)}`;
-  return solicitarJson(caminho, { signal });
+  const { alunoId: idAluno, turmaId: idTurma, trimestre: numTrimestre } =
+    checkConsulta.dados;
+
+  const caminho = `/alunos/${encodeURIComponent(idAluno)}/turmas/${encodeURIComponent(idTurma)}/boletim?trimestre=${numTrimestre}`;
+  const raw = await solicitarJson(caminho, { signal });
+
+  return validarContratoZod(
+    BoletimAlunoSchema,
+    raw?.data || raw,
+    "GET /alunos/:id/turmas/:id/boletim"
+  );
 };
 
-// O endpoint sem trimestre retorna o comparativo consolidado do ano letivo.
+// O endpoint sem trimestre retorna o comparativo consolidado do ano letivo validado via ComparativoTurmaSchema.
 export const obterComparativoTurma = async (
   alunoId,
   turmaId,
   { signal } = {}
 ) => {
-  validarIdentificadores(alunoId, turmaId);
+  const { alunoId: idAluno, turmaId: idTurma } = validarIdentificadores(
+    alunoId,
+    turmaId
+  );
 
-  const caminho = `/alunos/${encodeURIComponent(alunoId)}/turmas/${encodeURIComponent(turmaId)}/comparativo-turma`;
-  return solicitarJson(caminho, { signal });
+  const caminho = `/alunos/${encodeURIComponent(idAluno)}/turmas/${encodeURIComponent(idTurma)}/comparativo-turma`;
+  const raw = await solicitarJson(caminho, { signal });
+
+  return validarContratoZod(
+    ComparativoTurmaSchema,
+    raw?.data || raw,
+    "GET /alunos/:id/turmas/:id/comparativo-turma"
+  );
 };
 
 export const boletimService = {
   obterBoletim,
   obterComparativoTurma,
 };
-

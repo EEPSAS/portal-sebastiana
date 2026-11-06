@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Services\NotificacaoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 
@@ -29,7 +30,7 @@ class UsuarioController extends Controller
 {
     /**
      * Lista usuários cadastrados com suporte a busca por nome e filtro por Role.
-     * Carregamento padrão limitado aos 15 últimos usuários cadastrados (Itens 1.3.1 a 1.3.4).
+     * Exibe todos os usuários cadastrados (mesmo sem pendências, com pendências ou aguardando aprovação).
      *
      * @return JsonResponse Coleção de usuários formatada pelo UsuarioResource
      */
@@ -37,9 +38,8 @@ class UsuarioController extends Controller
     {
         Gate::authorize('gerenciar_usuarios');
 
-        // Ordena pelos últimos usuários cadastrados para exibir os 15 mais recentes por padrão
+        // Ordena pelos últimos usuários cadastrados para exibir os mais recentes por padrão
         $query = User::with(['roleModel', 'autorizadoPor', 'vinculos.autorizadoPor'])
-            ->where('status_confirmacao', '!=', 'inativo')
             ->orderByDesc('created_at')
             ->orderByDesc('id');
 
@@ -59,6 +59,25 @@ class UsuarioController extends Controller
                 $q->whereHas('roleModel', fn ($r) => $r->where('slug', $roleSlug))
                     ->orWhere('role', $roleSlug);
             });
+        }
+
+        if ($request->filled('status')) {
+            $status = $request->string('status')->toString();
+            if ($status === 'pendente') {
+                $query->where('status_confirmacao', 'pendente');
+            } elseif ($status === 'confirmado') {
+                $query->where(function ($q) {
+                    $q->where('status_confirmacao', 'confirmado')
+                        ->orWhereNull('status_confirmacao');
+                });
+            } elseif ($status === 'inativo') {
+                $query->where(function ($q) {
+                    $q->where('status_confirmacao', 'inativo')
+                        ->orWhere('ativo', false);
+                });
+            } else {
+                $query->where('status_confirmacao', $status);
+            }
         }
 
         if ($request->has('ativo')) {
@@ -93,10 +112,49 @@ class UsuarioController extends Controller
             $dados['role'] = UserRole::ALUNO;
         }
 
+        $turmaId = $dados['turma_id'] ?? null;
+        unset($dados['turma_id']);
+
+        $statusConfirmacao = $dados['status_confirmacao'] ?? 'confirmado';
+        $dados['status_confirmacao'] = $statusConfirmacao;
         $dados['ativo'] = $dados['ativo'] ?? true;
+        $dados['autorizado_por_id'] = $request->user()->id;
+
+        if ($statusConfirmacao === 'confirmado') {
+            $dados['confirmado_em'] = now();
+        }
 
         $usuario = User::create($dados);
-        $usuario->load('roleModel.permissions');
+
+        // Se for aluno e possuir turma informada, matricula o aluno e vincula
+        if ($usuario->isAluno() && ! empty($turmaId)) {
+            $turma = Turma::find($turmaId);
+            if ($turma) {
+                Matricula::create([
+                    'usuario_id' => $usuario->id,
+                    'turma_id' => $turma->id_turma,
+                    'data_matricula' => now()->toDateString(),
+                    'status_matricula' => 'Ativo',
+                ]);
+
+                $usuario->registrarVinculoEscolar(
+                    $request->user()->id,
+                    "Cadastrado diretamente pelo Administrador e vinculado à turma {$turma->nome_identificador}."
+                );
+            }
+        } elseif ($statusConfirmacao === 'confirmado') {
+            $usuario->registrarVinculoEscolar(
+                $request->user()->id,
+                'Cadastrado diretamente pelo Administrador no Controle de Usuários.'
+            );
+        }
+
+        // Sincroniza data de nascimento com a agenda pessoal se fornecida
+        if (! empty($dados['data_nascimento'])) {
+            $usuario->syncEventoAniversario($dados['data_nascimento']);
+        }
+
+        $usuario->load(['roleModel.permissions', 'autorizadoPor', 'vinculos.autorizadoPor']);
 
         return response()->json(new UsuarioResource($usuario), 201);
     }
@@ -121,6 +179,11 @@ class UsuarioController extends Controller
         $dados = $request->validated();
         $isAdm = $request->user()->hasPermissionTo('gerenciar_usuarios') || $request->user()->isAdm();
 
+        // Se turma_id foi informada
+        $turmaId = $dados['turma_id'] ?? null;
+        $turmaFornecida = array_key_exists('turma_id', $dados);
+        unset($dados['turma_id']);
+
         // Remove campo de senha se não tiver sido fornecida
         if (empty($dados['password'])) {
             unset($dados['password']);
@@ -137,7 +200,7 @@ class UsuarioController extends Controller
 
         // Se o usuário não for administrador, impede alteração indevida de papel, status e e-mail
         if (! $isAdm) {
-            unset($dados['role_id'], $dados['role'], $dados['ativo'], $dados['email'], $dados['comentario_admin']);
+            unset($dados['role_id'], $dados['role'], $dados['ativo'], $dados['email'], $dados['comentario_admin'], $dados['status_confirmacao']);
         } else {
             if (! empty($dados['role_id'])) {
                 $roleModel = Role::find($dados['role_id']);
@@ -150,9 +213,49 @@ class UsuarioController extends Controller
                     $dados['role_id'] = $roleModel->id;
                 }
             }
+
+            if (! empty($dados['status_confirmacao']) && $dados['status_confirmacao'] === 'confirmado' && empty($usuario->confirmado_em)) {
+                $dados['confirmado_em'] = now();
+                $dados['autorizado_por_id'] = $request->user()->id;
+            }
         }
 
         $usuario->update($dados);
+
+        // Se for aluno (ou papel alterado para aluno) e turma_id foi informada no payload
+        if ($isAdm && $turmaFornecida && ($usuario->isAluno() || ($dados['role'] ?? null) === UserRole::ALUNO->value)) {
+            if (! empty($turmaId)) {
+                $turma = Turma::find($turmaId);
+                if ($turma) {
+                    // Desativa matrículas ativas em outras turmas
+                    $usuario->matriculas()
+                        ->where('status_matricula', 'Ativo')
+                        ->where('turma_id', '!=', $turma->id_turma)
+                        ->update(['status_matricula' => 'Inativo']);
+
+                    // Ativa ou cria a matrícula na turma escolhida
+                    $matriculaExistente = Matricula::where('usuario_id', $usuario->id)
+                        ->where('turma_id', $turma->id_turma)
+                        ->first();
+
+                    if ($matriculaExistente) {
+                        $matriculaExistente->update(['status_matricula' => 'Ativo']);
+                    } else {
+                        Matricula::create([
+                            'usuario_id' => $usuario->id,
+                            'turma_id' => $turma->id_turma,
+                            'data_matricula' => now()->toDateString(),
+                            'status_matricula' => 'Ativo',
+                        ]);
+                    }
+                }
+            } else {
+                // Se enviou turma_id nulo/vazio, desativa qualquer matrícula ativa
+                $usuario->matriculas()
+                    ->where('status_matricula', 'Ativo')
+                    ->update(['status_matricula' => 'Inativo']);
+            }
+        }
 
         // Se o administrador preencheu uma mensagem de notificação no modal de edição, dispara-a imediatamente
         if ($isAdm && $mensagemNotificacao !== '') {
@@ -173,7 +276,7 @@ class UsuarioController extends Controller
             $usuario->syncEventoAniversario();
         }
 
-        $usuario->load(['roleModel.permissions', 'autorizadoPor', 'vinculos.autorizadoPor']);
+        $usuario->load(['roleModel.permissions', 'autorizadoPor', 'vinculos.autorizadoPor', 'turmas']);
 
         return response()->json(new UsuarioResource($usuario), 200);
     }
@@ -278,9 +381,8 @@ class UsuarioController extends Controller
     }
 
     /**
-     * Inativa o usuário e encerra seu vínculo atual com a escola sem exclusão em cascata (Itens 1.3.6 e 1.3.7).
-     * Força o logoff revogando tokens Sanctum. Caso o usuário faça login novamente no futuro,
-     * o cadastro é reaproveitado e encaminhado para a tela de aprovação de login.
+     * Inativa o usuário ou exclui-o totalmente do banco de dados (quando permanente=true).
+     * Suporta confirmação de nome em duas etapas (estilo GitHub).
      */
     public function destroy(DesvincularUsuarioRequest $request, User $usuario): JsonResponse
     {
@@ -302,6 +404,41 @@ class UsuarioController extends Controller
                     'message' => 'O nome digitado não corresponde exatamente ao nome completo do usuário.',
                 ], 422);
             }
+        }
+
+        $nomeUsuario = $usuario->name;
+
+        // Se o flag permanente foi enviado como true, executa a exclusão física definitiva no banco de dados
+        if ($request->boolean('permanente')) {
+            DB::transaction(function () use ($usuario) {
+                // 1. Revoga todos os tokens ativos
+                $usuario->tokens()->delete();
+
+                // 2. Remove alocações em horários de aulas (evita restrictOnDelete)
+                DB::table('horario_aulas')->where('professor_id', $usuario->id)->delete();
+
+                // 3. Libera referências docentes em turma_disciplinas
+                TurmaDisciplina::where('professor_id', $usuario->id)->update(['professor_id' => null]);
+
+                // 4. Limpa notificações vinculadas
+                DB::table('notifications')
+                    ->where('notifiable_type', User::class)
+                    ->where('notifiable_id', $usuario->id)
+                    ->delete();
+
+                // 5. Se o usuário tiver avatar salvo localmente, exclui o arquivo físico
+                if (! empty($usuario->avatar) && ! str_starts_with($usuario->avatar, 'http') && Storage::disk('public')->exists($usuario->avatar)) {
+                    Storage::disk('public')->delete($usuario->avatar);
+                }
+
+                // 6. Exclui definitivamente o usuário (cascata nas tabelas com FK on delete cascade)
+                $usuario->delete();
+            });
+
+            return response()->json([
+                'message' => "Usuário \"{$nomeUsuario}\" foi excluído definitivamente do banco de dados com sucesso.",
+                'excluido_permanente' => true,
+            ], 200);
         }
 
         // 1. Força o logoff imediato do usuário revogando todos os tokens ativos
@@ -330,7 +467,8 @@ class UsuarioController extends Controller
         ]);
 
         return response()->json([
-            'message' => "Vínculo do usuário {$usuario->name} encerrado com sucesso. O histórico acadêmico foi preservado.",
+            'message' => "Vínculo do usuário {$nomeUsuario} encerrado com sucesso. O histórico acadêmico foi preservado.",
+            'excluido_permanente' => false,
         ], 200);
     }
 

@@ -1,38 +1,50 @@
 import { useEffect, useState } from "react";
-import { formatarDisciplinaCiclo } from "../../../utils/formatters";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { obterPeriodoLetivoAtivo } from "../../../services/periodosLetivosService";
+import { formatarDisciplinaCiclo } from "../../../utils/formatters";
+import ModalGerarBoletim from "./ModalGerarBoletim";
+import ModalLancamentoManual from "./ModalLancamentoManual";
+import VelocimetroPresenca from "./VelocimetroPresenca";
 
 /**
  * NotasAba.jsx - Gestão e Consulta de Notas e Diário Escolar por Turma
  *
  * Papel Didático:
- * 1. Apresenta cards das turmas com média geral para alternância rápida.
- * 2. Disponibiliza botões de ação para o Especialista/Adm (Importação e Exclusão de dados CSV).
- * 3. Implementa filtro individual por estudante para não sobrecarregar a listagem de uma só vez.
- * 4. Fornece conexão direta com a visualização do Boletim Escolar individual do aluno selecionado.
+ * 1. Controle de guias superiores em alto contraste (estilo Access estilizado) exibindo
+ *    `nome_identificador` da turma e abaixo Ciclo, Turno e Contagem de Alunos.
+ * 2. Painel Esquerdo ("Resumo da Turma"):
+ *    - Gráfico Donut de Média Geral no topo (sem legendas inferiores redundantes);
+ *    - Velocímetro / Manômetro semicircular de Faltas logo abaixo, consumindo `taxa_absenteismo`.
+ * 3. Painel Direito:
+ *    - Destaque imediato do nome da turma selecionada (`nome_identificador`) no cabeçalho;
+ *    - Filtros cumulativos (Aluno + Período + Matéria) e tabela inteligente com teto oficial da etapa.
  */
-const NotasAba = ({
+export default function NotasAba({
+  turmas = [],
   resumoGeral = [],
   turmaSelecionadaId = "",
   onSelecionarTurma,
   notas = [],
   periodoFiltro = "",
   onPeriodoFiltroChange,
-  termoBusca = "",
-  onTermoBuscaChange,
   podeGerenciar = false,
   onAbrirImportarNotas,
   onAbrirExcluirDadosCsv,
+  onManualSave,
   loadingNotas = false,
-  trimestreAtual = "",
   alunosTurma = [],
   alunoFiltroId = "",
   onAlunoFiltroChange,
-  onAbrirBoletimAluno,
   divisoesPeriodo = [],
-}) => {
+}) {
   const [periodoAtivoLocal, setPeriodoAtivoLocal] = useState(null);
+  const [disciplinaFiltro, setDisciplinaFiltro] = useState("");
+  const [baseCalculoAnual, setBaseCalculoAnual] = useState("100");
+  const [modalBoletimAberto, setModalBoletimAberto] = useState(false);
+  const [modalManualAberto, setModalManualAberto] = useState(false);
+  const [subAbaPainel, setSubAbaPainel] = useState("notas");
 
+  // Busca o período letivo ativo institucional para compor as etapas oficiais
   useEffect(() => {
     let ativo = true;
     obterPeriodoLetivoAtivo()
@@ -45,364 +57,785 @@ const NotasAba = ({
     };
   }, []);
 
-  const divisoesParaExibir =
-    divisoesPeriodo.length > 0
+  // Divisões do período letivo para o seletor temporal
+  const divisoesDisponiveis =
+    divisoesPeriodo && divisoesPeriodo.length > 0
       ? divisoesPeriodo
-      : periodoAtivoLocal?.divisoes || [];
-  // Localiza o objeto da turma atualmente ativa nos cards
-  const turmaSelecionada =
-    resumoGeral.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) || null;
+      : periodoAtivoLocal?.divisoes && periodoAtivoLocal.divisoes.length > 0
+      ? periodoAtivoLocal.divisoes
+      : [
+          { id_divisao: 1, nome: "1º Trimestre", pontos: 30 },
+          { id_divisao: 2, nome: "2º Trimestre", pontos: 35 },
+          { id_divisao: 3, nome: "3º Trimestre", pontos: 35 },
+        ];
 
-  // Localiza os dados do aluno filtrado no dropdown
-  const alunoSelecionado =
-    alunosTurma.find((a) => String(a.id) === String(alunoFiltroId)) || null;
+  // Turma ativa selecionada (usa resumoGeral como fallback caso turmas esteja sincronizando)
+  const listaBaseTurmas = turmas.length > 0 ? turmas : resumoGeral;
+  const turmaAtiva =
+    listaBaseTurmas.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) ||
+    listaBaseTurmas[0] ||
+    null;
 
-  // Filtra as notas pelo campo de busca textual (disciplina ou período)
-  const termoNormalizado = (termoBusca || "").trim().toLowerCase();
-  const notasFiltradas = !termoNormalizado
-    ? notas
-    : notas.filter((n) => {
-        const alunoNome = (n.aluno?.name || "").toLowerCase();
-        const discNome = (n.disciplina?.nome || "").toLowerCase();
-        const periodo = (n.periodo_letivo || "").toLowerCase();
+  // Resumo analítico da turma ativa validado pelo contrato Zod (TurmaResumoSchema)
+  const resumoTurmaAtiva = turmaAtiva
+    ? resumoGeral.find((r) => String(r.id_turma) === String(turmaAtiva.id_turma)) || null
+    : null;
+
+  const mediaGeralTurma = Number(resumoTurmaAtiva?.media_geral ?? 0);
+  const taxaFaltasTurma = Number(resumoTurmaAtiva?.taxa_absenteismo ?? 0);
+
+  // Dados reais para o Gráfico Donut de Desempenho (ou anel neutro quando ainda sem avaliações)
+  const dist = resumoTurmaAtiva?.distribuicao;
+  const somaDist =
+    Number(dist?.acima ?? 0) + Number(dist?.na_media ?? 0) + Number(dist?.abaixo ?? 0);
+
+  const dadosDonut =
+    somaDist > 0
+      ? [
+          { name: "Acima da Média", value: Math.max(0.1, Number(dist.acima)), color: "#3b82f6" },
+          { name: "Na Média", value: Math.max(0.1, Number(dist.na_media)), color: "#f59e0b" },
+          { name: "Abaixo da Média", value: Math.max(0.1, Number(dist.abaixo)), color: "#ec4899" },
+        ]
+      : [{ name: "Sem Avaliações", value: 100, color: "#e2e8f0" }];
+
+  // Relação única de disciplinas disponíveis para o filtro da turma selecionada
+  const mapaDisciplinas = new Map();
+  notas.forEach((n) => {
+    if (n.disciplina_id && n.disciplina?.nome) {
+      mapaDisciplinas.set(String(n.disciplina_id), n.disciplina.nome);
+    }
+  });
+  const disciplinasDisponiveis = Array.from(mapaDisciplinas.entries()).map(([id, nome]) => ({
+    id,
+    nome,
+  }));
+
+  const temFiltroAluno = Boolean(alunoFiltroId);
+
+  // Formatação segura de datas no padrão brasileiro DD/MM/AAAA
+  const formatarData = (dataStr) => {
+    if (!dataStr) return "-";
+    try {
+      const d = new Date(dataStr.includes("T") ? dataStr : `${dataStr}T00:00:00`);
+      if (Number.isNaN(d.getTime())) return dataStr;
+      return d.toLocaleDateString("pt-BR");
+    } catch {
+      return dataStr;
+    }
+  };
+
+  // Filtragem cumulativa (Aluno + Disciplina + Período)
+  let notasFiltradas = [...notas];
+
+  if (alunoFiltroId) {
+    notasFiltradas = notasFiltradas.filter(
+      (n) => String(n.usuario_id) === String(alunoFiltroId)
+    );
+  }
+
+  if (disciplinaFiltro) {
+    notasFiltradas = notasFiltradas.filter(
+      (n) => String(n.disciplina_id) === String(disciplinaFiltro)
+    );
+  }
+
+  let notasExibidas;
+
+  if (periodoFiltro && periodoFiltro !== "todos") {
+    const porEtapa = notasFiltradas.filter(
+      (n) => String(n.periodo_letivo).toLowerCase() === String(periodoFiltro).toLowerCase()
+    );
+
+    notasExibidas = porEtapa.map((n) => {
+      const notaValor = Number(n.valor_nota ?? 0);
+      const maximo = Number(n.valor_maximo_periodo ?? 30.0);
+      const percentual = maximo > 0 ? (notaValor / maximo) * 100 : 0;
+
+      const situacaoCalculada =
+        n.situacao ||
+        (percentual >= 80
+          ? "Acima da Média"
+          : percentual >= 60
+          ? "Na Média"
+          : "Abaixo da Média");
+
+      return {
+        id: n.id_nota || `${n.usuario_id}_${n.disciplina_id}_${n.periodo_letivo}`,
+        aluno_id: n.usuario_id,
+        aluno_nome: n.aluno?.name || "Aluno",
+        disciplina_id: n.disciplina_id,
+        disciplina_nome: n.disciplina?.nome || "Disciplina",
+        periodo_letivo: n.periodo_letivo || periodoFiltro,
+        nota: notaValor,
+        valor_maximo_periodo: maximo,
+        situacao: situacaoCalculada,
+        percentual_faltas: Number(n.percentual_faltas ?? 0),
+        total_faltas: Number(n.total_faltas ?? 0),
+        data_registro: formatarData(n.data_registro),
+      };
+    });
+  } else {
+    // Consolidação em "Todos os Períodos": agrupa por disciplina (e aluno) somando notas e pegando data mais recente
+    const agrupado = {};
+
+    notasFiltradas.forEach((n) => {
+      const chave = alunoFiltroId
+        ? `disc_${n.disciplina_id}`
+        : `aluno_${n.usuario_id}_disc_${n.disciplina_id}`;
+
+      if (!agrupado[chave]) {
+        agrupado[chave] = {
+          id: chave,
+          aluno_id: n.usuario_id,
+          aluno_nome: n.aluno?.name || "Aluno",
+          disciplina_id: n.disciplina_id,
+          disciplina_nome: n.disciplina?.nome || "Disciplina",
+          periodo_letivo: "Todos os Períodos",
+          somaNotas: 0,
+          pontosConcluidos: 0,
+          percentual_faltas: Number(n.percentual_faltas ?? 0),
+          total_faltas: Number(n.total_faltas ?? 0),
+          data_mais_recente: n.data_registro || "",
+        };
+      }
+
+      const valorNota = Number(n.valor_nota ?? 0);
+      const maximoEtapa = Number(n.valor_maximo_periodo ?? 30.0);
+
+      agrupado[chave].somaNotas += valorNota;
+      agrupado[chave].pontosConcluidos += maximoEtapa;
+
+      if (
+        n.data_registro &&
+        (!agrupado[chave].data_mais_recente ||
+          new Date(n.data_registro) > new Date(agrupado[chave].data_mais_recente))
+      ) {
+        agrupado[chave].data_mais_recente = n.data_registro;
+      }
+
+      if (n.percentual_faltas !== undefined && n.percentual_faltas !== null) {
+        agrupado[chave].percentual_faltas = Number(n.percentual_faltas);
+      }
+    });
+
+    notasExibidas = Object.values(agrupado).map((item) => {
+      const divisorTotal = baseCalculoAnual === "100" ? 100.0 : item.pontosConcluidos || 100.0;
+      const percentual = divisorTotal > 0 ? (item.somaNotas / divisorTotal) * 100 : 0;
+
+      const situacao =
+        percentual >= 80
+          ? "Acima da Média"
+          : percentual >= 60
+          ? "Na Média"
+          : "Abaixo da Média";
+
+      return {
+        id: item.id,
+        aluno_id: item.aluno_id,
+        aluno_nome: item.aluno_nome,
+        disciplina_id: item.disciplina_id,
+        disciplina_nome: item.disciplina_nome,
+        periodo_letivo: item.periodo_letivo,
+        nota: item.somaNotas,
+        valor_maximo_periodo: divisorTotal,
+        situacao,
+        percentual_faltas: item.percentual_faltas,
+        total_faltas: item.total_faltas,
+        data_registro: formatarData(item.data_mais_recente),
+      };
+    });
+  }
+
+  // Badge semântica de situação do estudante
+  const renderBadgeSituacao = (situacao) => {
+    switch (situacao) {
+      case "Acima da Média":
         return (
-          alunoNome.includes(termoNormalizado) ||
-          discNome.includes(termoNormalizado) ||
-          periodo.includes(termoNormalizado)
+          <span className="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-semibold">
+            Acima da Média
+          </span>
         );
-      });
+      case "Na Média":
+        return (
+          <span className="badge rounded-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1 fw-semibold">
+            Na Média
+          </span>
+        );
+      default:
+        return (
+          <span className="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 fw-semibold">
+            Abaixo da Média
+          </span>
+        );
+    }
+  };
+
+  // Metadados da turma ativa validados via contrato (nome_identificador, ciclo_nome, turno, total_alunos)
+  const nomeTurmaAtiva =
+    turmaAtiva?.nome_identificador || resumoTurmaAtiva?.nome_identificador || "Nenhuma turma cadastrada";
+  const cicloNomeAtivo =
+    turmaAtiva?.ciclo_nome || resumoTurmaAtiva?.ciclo_nome || "Sem Ciclo Vinculado";
+  const turnoNomeAtivo = turmaAtiva?.turno || resumoTurmaAtiva?.turno || "Integral";
+  const totalAlunosAtivo =
+    turmaAtiva?.total_alunos ?? resumoTurmaAtiva?.total_alunos ?? alunosTurma.length ?? 0;
 
   return (
-    <div>
-      {/* 1. Cabeçalho com Apresentação da Seção */}
-      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
-        <div>
-          <h4 className="fw-bold mb-1 text-dark fs-5">Aproveitamento e Notas</h4>
-          <p className="text-muted mb-0 small">
-            Selecione uma turma para consultar o diário escolar consolidado ou gerenciar lançamentos via CSV da turma.
-          </p>
-        </div>
+    <div className="notas-aba-container">
+      {/* 1. Controle de Guias Horizontais das Turmas em Alto Destaque (Estilo Access) */}
+      <div className="turmas-tab-bar" role="tablist" aria-label="Guias de turmas escolares">
+        {listaBaseTurmas.map((t) => {
+          const ativa = String(t.id_turma) === String(turmaAtiva?.id_turma);
+          const nomeGuia = t.nome_identificador || `Turma #${t.id_turma}`;
+          const cNome = t.ciclo_nome || "Sem Ciclo";
+          const tNome = t.turno || "Integral";
+          const countAlunos = t.total_alunos ?? 0;
+
+          return (
+            <button
+              key={t.id_turma}
+              type="button"
+              role="tab"
+              aria-selected={ativa}
+              onClick={() => onSelecionarTurma && onSelecionarTurma(String(t.id_turma))}
+              className={`turmas-tab-item text-start ${ativa ? "is-active" : ""}`}
+            >
+              <div className="turmas-tab-title d-flex align-items-center gap-1.5">
+                <i className={`bi ${ativa ? "bi-mortarboard-fill text-primary" : "bi-mortarboard text-secondary"}`}></i>
+                <span className="text-truncate">{nomeGuia}</span>
+              </div>
+              <div className="turmas-tab-subtitle">
+                {cNome} • {tNome} • {countAlunos} {countAlunos === 1 ? "aluno" : "alunos"}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* 2. Cards com a Média Geral por Turma (Clicáveis) */}
-      <div className="mb-4">
-        <small className="text-muted fw-bold text-uppercase d-block mb-2" style={{ fontSize: "0.75rem" }}>
-          Médias Gerais por Turma (clique para alternar a turma ativa)
-        </small>
-
-        <div className="row g-3">
-          {resumoGeral.map((turma) => {
-            const isSelecionada = String(turma.id_turma) === String(turmaSelecionadaId);
-            const mediaNum = Number(turma.media_geral || 0);
-            const temNota = mediaNum > 0;
-
-            return (
-              <div key={turma.id_turma} className="col-12 col-sm-6 col-lg-4 col-xl-3">
+      {/* 2. Painel Central da Turma Selecionada */}
+      <div className="row g-3">
+        {/* Painel Esquerdo: Resumo da Turma (Donut de Média + Velocímetro logo abaixo com altura estática fixa no topo) */}
+        <div className="col-12 col-lg-4 col-xl-3 align-self-start">
+          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-column">
+            <div>
+              {/* Título do Card */}
+              <div className="d-flex align-items-center gap-2 mb-2">
                 <div
-                  className={`turma-card p-3 h-100 ${isSelecionada ? "is-selected" : ""}`}
-                  style={{ cursor: "pointer" }}
-                  onClick={() => onSelecionarTurma(String(turma.id_turma))}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      onSelecionarTurma(String(turma.id_turma));
-                    }
-                  }}
+                  className="d-flex align-items-center justify-content-center rounded-3 bg-primary-subtle text-primary"
+                  style={{ width: 34, height: 34 }}
                 >
-                  <div className="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                      <strong className="d-block text-dark small text-truncate" style={{ maxWidth: "160px" }}>
-                        {turma.nome_identificador}
-                      </strong>
-                      <small className="text-muted" style={{ fontSize: "0.75rem" }}>
-                        {turma.turno} • {turma.total_alunos || 0} alunos
-                      </small>
-                    </div>
+                  <i className="bi bi-people-fill fs-6"></i>
+                </div>
+                <h6 className="fw-bold mb-0 text-dark">Resumo da Turma</h6>
+              </div>
 
-                    <div
-                      className="rounded-3 px-2 py-1 text-center"
-                      style={{
-                        backgroundColor: isSelecionada ? "var(--dashboard-pink-soft)" : "var(--dashboard-gray-soft)",
-                        border: isSelecionada ? "1px solid var(--dashboard-pink)" : "1px solid var(--dashboard-gray-border)",
-                      }}
+              {/* Gráfico 1: Donut de Média Geral de Notas */}
+              <div
+                className="position-relative d-flex justify-content-center align-items-center"
+                style={{ height: 170 }}
+              >
+                <ResponsiveContainer width="100%" height={170}>
+                  <PieChart>
+                    <Pie
+                      data={dadosDonut}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={somaDist > 0 ? 3 : 0}
+                      dataKey="value"
+                      stroke="none"
                     >
-                      <span
-                        className="fw-bold d-block"
-                        style={{
-                          fontSize: "1rem",
-                          color: isSelecionada ? "var(--dashboard-pink)" : temNota ? "var(--dashboard-navy)" : "var(--dashboard-gray)",
-                        }}
-                      >
-                        {temNota ? mediaNum.toFixed(1) : "—"}
-                      </span>
-                      <small style={{ fontSize: "0.65rem", color: "var(--dashboard-ink-muted)" }}>Média</small>
-                    </div>
-                  </div>
+                      {dadosDonut.map((entry, index) => (
+                        <Cell key={`donut-cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="position-absolute text-center" style={{ pointerEvents: "none" }}>
+                  <span className="d-block fw-bolder fs-3 text-dark lh-1">
+                    {mediaGeralTurma.toFixed(1)}
+                  </span>
+                  <small className="text-muted fw-semibold" style={{ fontSize: "0.75rem" }}>
+                    Média Geral
+                  </small>
+                </div>
+              </div>
+            </div>
 
-                  <div className="d-flex justify-content-between align-items-center pt-2 border-top mt-2">
-                    <small className="text-muted" style={{ fontSize: "0.7rem" }}>
-                      {turma.total_avaliados || 0} avaliados
-                    </small>
-                    {isSelecionada && (
-                      <span className="badge rounded-pill" style={{ backgroundColor: "var(--dashboard-pink)", fontSize: "0.65rem" }}>
-                        Ativa
-                      </span>
-                    )}
+            <hr className="my-2 border-secondary-subtle" />
+
+            {/* Gráfico 2: Velocímetro / Manômetro de Faltas (fixado diretamente abaixo do Donut) */}
+            <div className="pt-1 pb-1">
+              <VelocimetroPresenca taxaFaltas={taxaFaltasTurma} />
+            </div>
+          </div>
+        </div>
+
+        {/* Painel Direito: Turma Selecionada em Destaque e Diário Escolar */}
+        <div className="col-12 col-lg-8 col-xl-9">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+            {/* Cabeçalho de Identificação da Turma Selecionada */}
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+              <div className="d-flex align-items-center gap-3">
+                <div
+                  className="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white shadow-sm"
+                  style={{ width: 48, height: 48 }}
+                >
+                  <i className="bi bi-mortarboard-fill fs-4"></i>
+                </div>
+                <div>
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <h4 className="fw-bolder mb-0 text-primary">
+                      {nomeTurmaAtiva}
+                    </h4>
+                    <span className="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle fw-semibold">
+                      Turma Selecionada
+                    </span>
+                  </div>
+                  <div className="small text-secondary fw-medium mt-0.5">
+                    {cicloNomeAtivo} • {turnoNomeAtivo} • {totalAlunosAtivo}{" "}
+                    {totalAlunosAtivo === 1 ? "aluno" : "alunos"}
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 3. Painel de Consulta e Diário Escolar da Turma */}
-      <div className="turma-stat-card p-2 p-md-3">
-        {/* Barra de Filtros: Filtro por Aluno (Evita sobrecarga) + Período + Busca */}
-        <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-              <h4 className="fw-bold mb-0 text-dark fs-6">
-                Notas da Turma:{" "}
-                <span style={{ color: "var(--dashboard-pink)" }}>
-                  {turmaSelecionada?.nome_identificador || "Selecione uma turma"}
-                </span>
-              </h4>
-              {podeGerenciar && turmaSelecionada && (
-                <div className="d-flex align-items-center gap-2 ms-sm-2">
-                  <button
-                    type="button"
-                    className="btn btn-sm turmas-btn-primario px-3 py-1 rounded-pill d-flex align-items-center gap-1"
-                    onClick={() => onAbrirImportarNotas(turmaSelecionada)}
-                    title={`Cadastrar notas via CSV para a turma ${turmaSelecionada.nome_identificador}`}
-                  >
-                    <i className="bi bi-file-earmark-arrow-up-fill"></i>
-                    <span>Cadastrar Notas (CSV)</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-danger px-3 py-1 rounded-pill d-flex align-items-center gap-1 fw-semibold"
-                    onClick={() => onAbrirExcluirDadosCsv(turmaSelecionada)}
-                    title={`Excluir notas e faltas do CSV da turma ${turmaSelecionada.nome_identificador}`}
-                  >
-                    <i className="bi bi-trash3-fill"></i>
-                    <span>Excluir dados do CSV</span>
-                  </button>
-                </div>
-              )}
-            </div>
-            <small className="text-muted">
-              {alunoSelecionado
-                ? `Exibindo lançamentos de ${alunoSelecionado.name} (${notasFiltradas.length} notas no período).`
-                : "Selecione um estudante abaixo para carregar as notas correspondentes."}
-            </small>
-          </div>
-
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            {/* Seletor Individual de Aluno */}
-            <div className="d-flex align-items-center gap-1">
-              <label htmlFor="filtro-aluno-select" className="visually-hidden">
-                Filtrar por Estudante
-              </label>
-              <select
-                id="filtro-aluno-select"
-                className="form-select form-select-sm fw-semibold"
-                style={{ minWidth: "220px", maxWidth: "260px" }}
-                value={alunoFiltroId}
-                onChange={(e) => onAlunoFiltroChange(e.target.value)}
-                aria-label="Filtrar por estudante"
-              >
-                <option value="">Selecione um aluno da turma...</option>
-                {alunosTurma.map((aluno) => (
-                  <option key={aluno.id} value={String(aluno.id)}>
-                    {aluno.name}
-                  </option>
-                ))}
-              </select>
+              <span className="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-3 py-1.5 fw-semibold">
+                {turmaAtiva?.status || "Ativa"}
+              </span>
             </div>
 
-            {/* Filtro de Período Letivo Dinâmico */}
-            <select
-              className="form-select form-select-sm"
-              style={{ width: "auto" }}
-              value={periodoFiltro}
-              onChange={(e) => onPeriodoFiltroChange(e.target.value)}
-              aria-label="Filtrar por período letivo"
-            >
-              <option value="">Todos os Períodos</option>
-              {divisoesParaExibir.length > 0 ? (
-                divisoesParaExibir.map((div) => (
-                  <option key={div.id_divisao || div.nome} value={div.nome}>
-                    {div.nome} ({div.pontos} pts){div.is_atual || div.nome === trimestreAtual ? " (Atual)" : ""}
-                  </option>
-                ))
-              ) : (
-                <>
-                  <option value="1º Trimestre">1º Trimestre (Atual)</option>
-                  <option value="2º Trimestre">2º Trimestre</option>
-                  <option value="3º Trimestre">3º Trimestre</option>
-                </>
-              )}
-            </select>
-
-            {/* Campo de Pesquisa Textual */}
-            <div className="position-relative">
-              <input
-                type="text"
-                className="form-control form-control-sm ps-4"
-                placeholder="Buscar matéria..."
-                value={termoBusca}
-                onChange={(e) => onTermoBuscaChange(e.target.value)}
-                style={{ width: "170px" }}
-                disabled={!alunoFiltroId}
-              />
-              <i
-                className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2 text-muted"
-                style={{ fontSize: "0.8rem" }}
-              ></i>
-            </div>
-
-            {/* Conexão com o Boletim do Aluno */}
-            {alunoFiltroId && onAbrirBoletimAluno && (
+            {/* Sub-abas de Navegação: Notas | Alunos | Informações */}
+            <div className="d-flex align-items-center gap-4 mb-4 border-bottom">
               <button
                 type="button"
-                className="btn btn-sm btn-outline-primary px-3 rounded-pill d-flex align-items-center gap-1 fw-semibold"
-                onClick={() => onAbrirBoletimAluno(alunoFiltroId)}
-                title="Consultar boletim escolar consolidado deste estudante"
+                onClick={() => setSubAbaPainel("notas")}
+                className={`btn btn-link text-decoration-none px-1 pb-2 pt-0 fw-semibold position-relative border-0 ${
+                  subAbaPainel === "notas" ? "text-primary" : "text-muted"
+                }`}
+                style={{ fontSize: "0.95rem" }}
               >
-                <i className="bi bi-file-earmark-spreadsheet-fill"></i>
-                <span>Ver Boletim</span>
+                <i className="bi bi-file-earmark-text me-1.5"></i>
+                Notas
+                {subAbaPainel === "notas" && (
+                  <span
+                    className="position-absolute bottom-0 start-0 w-100 bg-primary"
+                    style={{ height: 2, borderRadius: 2 }}
+                  ></span>
+                )}
               </button>
+
+              <button
+                type="button"
+                onClick={() => setSubAbaPainel("alunos")}
+                className={`btn btn-link text-decoration-none px-1 pb-2 pt-0 fw-semibold position-relative border-0 ${
+                  subAbaPainel === "alunos" ? "text-primary" : "text-muted"
+                }`}
+                style={{ fontSize: "0.95rem" }}
+              >
+                <i className="bi bi-person-lines-fill me-1.5"></i>
+                Alunos ({alunosTurma.length})
+                {subAbaPainel === "alunos" && (
+                  <span
+                    className="position-absolute bottom-0 start-0 w-100 bg-primary"
+                    style={{ height: 2, borderRadius: 2 }}
+                  ></span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubAbaPainel("informacoes")}
+                className={`btn btn-link text-decoration-none px-1 pb-2 pt-0 fw-semibold position-relative border-0 ${
+                  subAbaPainel === "informacoes" ? "text-primary" : "text-muted"
+                }`}
+                style={{ fontSize: "0.95rem" }}
+              >
+                <i className="bi bi-info-circle me-1.5"></i>
+                Informações
+                {subAbaPainel === "informacoes" && (
+                  <span
+                    className="position-absolute bottom-0 start-0 w-100 bg-primary"
+                    style={{ height: 2, borderRadius: 2 }}
+                  ></span>
+                )}
+              </button>
+            </div>
+
+            {/* CONTEÚDO 1: SUB-ABA NOTAS */}
+            {subAbaPainel === "notas" && (
+              <>
+                {/* Linha de Título e Botões de Ação */}
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <div
+                      className="d-flex align-items-center justify-content-center rounded-2 bg-primary-subtle text-primary"
+                      style={{ width: 28, height: 28 }}
+                    >
+                      <i className="bi bi-card-checklist fs-6"></i>
+                    </div>
+                    <h5 className="fw-bold mb-0 text-dark">Notas da Turma</h5>
+                  </div>
+
+                  <div className="d-flex flex-wrap align-items-center gap-2">
+                    {/* Botão Gerar Boletim Técnico */}
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-dark rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1.5"
+                      onClick={() => setModalBoletimAberto(true)}
+                      disabled={!turmaAtiva}
+                      title="Gerar Boletim Escolar em PDF técnico ou planilha Excel"
+                    >
+                      <i className="bi bi-printer"></i>
+                      Gerar Boletim
+                    </button>
+
+                    {/* Botão Importar Notas CSV */}
+                    {podeGerenciar && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary rounded-pill px-3 fw-bold d-inline-flex align-items-center gap-1.5 shadow-sm"
+                        onClick={onAbrirImportarNotas}
+                        disabled={!turmaAtiva}
+                        title="Importar planilha consolidada CSV de notas e faltas"
+                      >
+                        <i className="bi bi-upload"></i>
+                        Cadastrar Notas (CSV)
+                      </button>
+                    )}
+
+                    {podeGerenciar && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1.5"
+                        onClick={() => setModalManualAberto(true)}
+                        disabled={!turmaAtiva || alunosTurma.length === 0}
+                        title="Registrar nota ou frequência manual para um aluno"
+                      >
+                        <i className="bi bi-pencil-square"></i>
+                        Lançamento manual
+                      </button>
+                    )}
+
+                    {/* Botão Excluir Diário CSV */}
+                    {podeGerenciar && notas.length > 0 && onAbrirExcluirDadosCsv && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger rounded-pill px-2.5"
+                        onClick={onAbrirExcluirDadosCsv}
+                        title="Excluir dados importados via CSV da turma e período selecionados"
+                      >
+                        <i className="bi bi-trash"></i>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Barra de Filtros Cumulativos (Aluno + Período + Disciplina) */}
+                <div className="row g-2 mb-3 align-items-center">
+                  {/* Filtro 1: Seleção de Aluno */}
+                  <div className="col-12 col-sm-4">
+                    <div className="input-group input-group-sm">
+                      <span className="input-group-text bg-light border-end-0 text-muted">
+                        <i className="bi bi-person"></i>
+                      </span>
+                      <select
+                        className="form-select border-start-0 ps-1"
+                        value={alunoFiltroId}
+                        onChange={(e) => onAlunoFiltroChange && onAlunoFiltroChange(e.target.value)}
+                        aria-label="Filtrar por estudante"
+                      >
+                        <option value="">Todos os Alunos</option>
+                        {alunosTurma.map((aluno) => (
+                          <option key={aluno.id} value={aluno.id}>
+                            {aluno.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Filtro 2: Período Letivo */}
+                  <div className="col-12 col-sm-4">
+                    <div className="input-group input-group-sm">
+                      <span className="input-group-text bg-light border-end-0 text-muted">
+                        <i className="bi bi-calendar3"></i>
+                      </span>
+                      <select
+                        className="form-select border-start-0 ps-1"
+                        value={periodoFiltro}
+                        onChange={(e) => onPeriodoFiltroChange && onPeriodoFiltroChange(e.target.value)}
+                        aria-label="Filtrar por etapa do período letivo"
+                      >
+                        <option value="todos">Todos os Períodos</option>
+                        {divisoesDisponiveis.map((div) => (
+                          <option key={div.id_divisao || div.id || div.nome} value={div.nome}>
+                            {div.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Filtro 3: Select de Disciplinas da Turma */}
+                  <div className="col-12 col-sm-4">
+                    <div className="input-group input-group-sm">
+                      <span className="input-group-text bg-light border-end-0 text-muted">
+                        <i className="bi bi-journal-bookmark"></i>
+                      </span>
+                      <select
+                        className="form-select border-start-0 ps-1"
+                        value={disciplinaFiltro}
+                        onChange={(e) => setDisciplinaFiltro(e.target.value)}
+                        aria-label="Filtrar por matéria da turma"
+                      >
+                        <option value="">Todas as Matérias</option>
+                        {disciplinasDisponiveis.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Toggle Pill de Base de Cálculo Anual (quando "Todos os Períodos" está ativo) */}
+                {periodoFiltro === "todos" && (
+                  <div className="d-flex align-items-center justify-content-between p-2 mb-3 bg-light rounded-3 border">
+                    <div className="small text-muted d-flex align-items-center gap-1.5">
+                      <i className="bi bi-calculator text-primary"></i>
+                      <span>Base de totalização dos pontos:</span>
+                    </div>
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        onClick={() => setBaseCalculoAnual("100")}
+                        className={`btn btn-xs px-2.5 py-0.5 rounded-pill fw-semibold ${
+                          baseCalculoAnual === "100"
+                            ? "btn-primary text-white shadow-xs"
+                            : "btn-outline-secondary"
+                        }`}
+                      >
+                        Total Anual (100 pts)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBaseCalculoAnual("concluidas")}
+                        className={`btn btn-xs px-2.5 py-0.5 rounded-pill ms-1 fw-semibold ${
+                          baseCalculoAnual === "concluidas"
+                            ? "btn-primary text-white shadow-xs"
+                            : "btn-outline-secondary"
+                        }`}
+                      >
+                        Etapas Concluídas
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tabela de Notas e Diário Escolar */}
+                <div className="table-responsive rounded-3 border">
+                  <table className="table table-hover align-middle mb-0" style={{ fontSize: "0.88rem" }}>
+                    <thead className="table-light text-muted small fw-bold">
+                      <tr>
+                        {!temFiltroAluno && <th className="ps-3 py-2.5">ALUNO</th>}
+                        <th className="py-2.5">DISCIPLINA</th>
+                        {temFiltroAluno && <th className="py-2.5 text-center">% FALTAS</th>}
+                        <th className="py-2.5">PERÍODO LETIVO</th>
+                        <th className="py-2.5 text-center">NOTA</th>
+                        <th className="py-2.5 text-center">SITUAÇÃO</th>
+                        <th className="pe-3 py-2.5 text-end">DATA REGISTRO</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loadingNotas ? (
+                        <tr>
+                          <td colSpan={6} className="text-center py-4 text-muted">
+                            <span
+                              className="spinner-border spinner-border-sm me-2 text-primary"
+                              role="status"
+                            ></span>
+                            Carregando notas da turma...
+                          </td>
+                        </tr>
+                      ) : notasExibidas.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="text-center py-5 text-muted">
+                            <i className="bi bi-inbox fs-2 d-block mb-2 text-secondary opacity-50"></i>
+                            Nenhum registro de nota encontrado para os filtros selecionados.
+                          </td>
+                        </tr>
+                      ) : (
+                        notasExibidas.map((item) => (
+                          <tr key={item.id}>
+                            {!temFiltroAluno && (
+                              <td className="ps-3 fw-bold text-dark text-nowrap">
+                                {item.aluno_nome}
+                              </td>
+                            )}
+
+                            <td>
+                              <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 fw-semibold text-wrap text-start">
+                                {formatarDisciplinaCiclo(item.disciplina_nome, cicloNomeAtivo)}
+                              </span>
+                            </td>
+
+                            {temFiltroAluno && (
+                              <td className="text-center">
+                                <span
+                                  className={`badge rounded-pill px-2 py-1 fw-semibold ${
+                                    Number(item.percentual_faltas) >= 20
+                                      ? "bg-danger-subtle text-danger border border-danger-subtle"
+                                      : Number(item.percentual_faltas) >= 10
+                                      ? "bg-warning-subtle text-warning-emphasis border border-warning-subtle"
+                                      : "bg-success-subtle text-success border border-success-subtle"
+                                  }`}
+                                >
+                                  {Number(item.percentual_faltas || 0).toFixed(1)}%
+                                </span>
+                              </td>
+                            )}
+
+                            <td className="text-muted text-nowrap">{item.periodo_letivo}</td>
+
+                            <td className="text-center text-nowrap">
+                              <span
+                                className={`fw-bolder ${
+                                  item.situacao === "Abaixo da Média"
+                                    ? "text-danger"
+                                    : "text-primary"
+                                }`}
+                              >
+                                {Number(item.nota).toFixed(1)}
+                              </span>
+                              <span className="text-muted small ms-1">
+                                / {Number(item.valor_maximo_periodo).toFixed(0)}
+                              </span>
+                            </td>
+
+                            <td className="text-center text-nowrap">
+                              {renderBadgeSituacao(item.situacao)}
+                            </td>
+
+                            <td className="pe-3 text-end text-muted small text-nowrap">
+                              {item.data_registro}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {/* CONTEÚDO 2: SUB-ABA ALUNOS DA TURMA */}
+            {subAbaPainel === "alunos" && (
+              <div>
+                <div className="d-flex align-items-center justify-content-between mb-3">
+                  <h6 className="fw-bold mb-0 text-dark">
+                    Estudantes Matriculados ({alunosTurma.length})
+                  </h6>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary rounded-pill px-3"
+                    onClick={() => {
+                      setSubAbaPainel("notas");
+                      onAlunoFiltroChange && onAlunoFiltroChange("");
+                    }}
+                  >
+                    Ver Todas as Notas
+                  </button>
+                </div>
+                <div className="list-group list-group-flush rounded-3 border">
+                  {alunosTurma.map((aluno) => (
+                    <div
+                      key={aluno.id}
+                      className="list-group-item d-flex align-items-center justify-content-between py-2.5 px-3"
+                    >
+                      <div className="d-flex align-items-center gap-2.5">
+                        <div
+                          className="rounded-circle bg-light text-secondary d-flex align-items-center justify-content-center fw-bold"
+                          style={{ width: 34, height: 34 }}
+                        >
+                          {aluno.name ? aluno.name.charAt(0).toUpperCase() : "A"}
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark small">{aluno.name}</div>
+                          <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                            {aluno.email}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-outline-secondary rounded-pill px-2.5 py-1"
+                        onClick={() => {
+                          onAlunoFiltroChange && onAlunoFiltroChange(String(aluno.id));
+                          setSubAbaPainel("notas");
+                        }}
+                      >
+                        Filtrar Notas
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CONTEÚDO 3: SUB-ABA INFORMAÇÕES DA TURMA */}
+            {subAbaPainel === "informacoes" && (
+              <div className="row g-3">
+                <div className="col-12 col-sm-6">
+                  <div className="p-3 bg-light rounded-3 border">
+                    <div className="small text-muted mb-1">Nome da Turma</div>
+                    <div className="fw-bold text-dark">{nomeTurmaAtiva}</div>
+                  </div>
+                </div>
+                <div className="col-12 col-sm-6">
+                  <div className="p-3 bg-light rounded-3 border">
+                    <div className="small text-muted mb-1">Ciclo Escolar</div>
+                    <div className="fw-bold text-dark">{cicloNomeAtivo}</div>
+                  </div>
+                </div>
+                <div className="col-12 col-sm-6">
+                  <div className="p-3 bg-light rounded-3 border">
+                    <div className="small text-muted mb-1">Turno</div>
+                    <div className="fw-bold text-dark">{turnoNomeAtivo}</div>
+                  </div>
+                </div>
+                <div className="col-12 col-sm-6">
+                  <div className="p-3 bg-light rounded-3 border">
+                    <div className="small text-muted mb-1">Ano Letivo</div>
+                    <div className="fw-bold text-dark">{turmaAtiva?.ano_letivo || "-"}</div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
-
-        {/* 4. Conteúdo: Estado sem Seleção vs Carregando vs Tabela */}
-        {!alunoFiltroId ? (
-          /* Estado Inicial Didático: Solicita a seleção do aluno para não sobrecarregar */
-          <div className="text-center py-5 border rounded-3 bg-light">
-            <div className="fs-1 text-primary mb-2">
-              <i className="bi bi-person-lines-fill"></i>
-            </div>
-            <h6 className="fw-bold text-dark mb-1">Selecione um Aluno para Consultar as Notas</h6>
-            <p className="text-muted small mb-0" style={{ maxWidth: "480px", margin: "0 auto" }}>
-              Para garantir agilidade e evitar o carregamento simultâneo de todos os alunos de uma vez,
-              escolha um estudante no seletor acima para visualizar seus lançamentos e boletim escolar.
-            </p>
-          </div>
-        ) : loadingNotas ? (
-          /* Carregamento pontual das notas do aluno */
-          <div className="text-center py-5">
-            <div className="spinner-border spinner-border-sm text-primary me-2"></div>
-            <span className="text-muted small">Carregando notas do estudante...</span>
-          </div>
-        ) : notasFiltradas.length === 0 ? (
-          /* Nenhuma nota encontrada */
-          <div className="text-center py-5 border rounded-3 bg-light">
-            <i className="bi bi-journal-x fs-1 text-muted d-block mb-2"></i>
-            <h6 className="fw-bold text-dark mb-1">Nenhuma nota encontrada</h6>
-            <p className="text-muted small mb-3">
-              {termoBusca || periodoFiltro
-                ? `Nenhum resultado corresponde aos filtros aplicados${
-                    periodoFiltro ? ` (${periodoFiltro})` : ""
-                  }.`
-                : "Este aluno ainda não possui notas lançadas no diário para a turma selecionada."}
-            </p>
-            <div className="d-flex justify-content-center gap-2">
-              {periodoFiltro && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary px-3 py-1 rounded-pill"
-                  onClick={() => onPeriodoFiltroChange("")}
-                >
-                  <i className="bi bi-calendar3 me-1"></i> Ver todos os períodos
-                </button>
-              )}
-              {podeGerenciar && (
-                <button
-                  type="button"
-                  className="btn btn-sm turmas-btn-primario px-3 py-1 rounded-pill"
-                  onClick={onAbrirImportarNotas}
-                >
-                  <i className="bi bi-file-earmark-plus me-1"></i> Cadastrar Notas via CSV
-                </button>
-              )}
-            </div>
-          </div>
-        ) : (
-          /* Tabela de Notas do Estudante Selecionado */
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
-                <tr className="small text-muted text-uppercase" style={{ fontSize: "0.75rem" }}>
-                  <th scope="col">Aluno</th>
-                  <th scope="col">Disciplina</th>
-                  <th scope="col">Período Letivo</th>
-                  <th scope="col" className="text-center">Nota</th>
-                  <th scope="col" className="text-center">Situação</th>
-                  <th scope="col" className="text-end">Data Registro</th>
-                </tr>
-              </thead>
-              <tbody>
-                {notasFiltradas.map((nota) => {
-                  const valor = Number(nota.valor_nota || 0);
-                  const valorMax = Number(
-                    nota.valor_maximo ||
-                      (nota.periodo_letivo?.includes("3º") ? 40 : 30)
-                  );
-                  const isAprovado = valor >= valorMax * 0.6;
-
-                  return (
-                    <tr key={nota.id_nota}>
-                      <td>
-                        <strong className="d-block text-dark small">{nota.aluno?.name || "Estudante"}</strong>
-                        <small className="text-muted" style={{ fontSize: "0.75rem" }}>
-                          {nota.aluno?.email}
-                        </small>
-                      </td>
-                      <td>
-                        <span className="badge bg-light text-dark border fw-semibold">
-                          {formatarDisciplinaCiclo(nota.disciplina, turmaSelecionada?.ciclo || turmaSelecionada?.ciclo_nome) || "Geral"}
-                        </span>
-                      </td>
-                      <td>
-                        <small className="text-secondary fw-semibold">{nota.periodo_letivo}</small>
-                      </td>
-                      <td className="text-center">
-                        <span className={`fw-bold ${isAprovado ? "text-dark" : "text-danger"}`}>
-                          {valor.toFixed(1)}
-                        </span>
-                        <small className="text-muted"> / {valorMax.toFixed(0)}</small>
-                      </td>
-                      <td className="text-center">
-                        <span
-                          className={`badge rounded-pill small ${
-                            isAprovado
-                              ? "bg-success-subtle text-success border border-success-subtle"
-                              : "bg-danger-subtle text-danger border border-danger-subtle"
-                          }`}
-                        >
-                          {isAprovado ? "Aproveitamento Adequado" : "Abaixo da Média"}
-                        </span>
-                      </td>
-                      <td className="text-end">
-                        <small className="text-muted">
-                          {nota.data_registro
-                            ? new Date(nota.data_registro + "T00:00:00").toLocaleDateString("pt-BR")
-                            : "—"}
-                        </small>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
+
+      {/* 3. Modal Oficial de Geração de Boletim Técnico (PDF A4 e Excel) */}
+      <ModalGerarBoletim
+        isOpen={modalBoletimAberto}
+        onClose={() => setModalBoletimAberto(false)}
+        turma={turmaAtiva}
+        alunos={alunosTurma}
+        notas={notas}
+        periodosDisponiveis={divisoesDisponiveis}
+        alunoPreSelecionadoId={alunoFiltroId}
+      />
+      {modalManualAberto && turmaAtiva && (
+        <ModalLancamentoManual
+          turmaId={turmaAtiva.id_turma}
+          alunos={alunosTurma}
+          periodos={divisoesDisponiveis}
+          periodoInicial={periodoFiltro}
+          alunoInicial={alunoFiltroId}
+          onClose={() => setModalManualAberto(false)}
+          onSuccess={onManualSave}
+        />
+      )}
     </div>
   );
-};
-
-export default NotasAba;
+}

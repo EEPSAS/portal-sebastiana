@@ -92,6 +92,7 @@ export const listarTodos = async (filtros = {}, { signal } = {}) => {
   if (filtros.busca) params.set('busca', filtros.busca);
   if (filtros.q) params.set('q', filtros.q);
   if (filtros.role) params.set('role', filtros.role);
+  if (filtros.status) params.set('status', filtros.status);
   if (filtros.ativo !== undefined) params.set('ativo', String(filtros.ativo));
   if (filtros.page) params.set('page', String(filtros.page));
   params.set('per_page', String(filtros.per_page || 15));
@@ -111,10 +112,13 @@ export const listarTodos = async (filtros = {}, { signal } = {}) => {
  * DELETE /api/usuarios/{id} — Encerra o vínculo do usuário em duas etapas (estilo GitHub)
  * preservando o histórico acadêmico e forçando o logoff imediato (Itens 1.3.6 e 1.3.7).
  */
-export const desvincularUsuario = async (id, confirmacaoNome) => {
+export const desvincularUsuario = async (id, confirmacaoNome, { permanente = false } = {}) => {
   const response = await api(`/usuarios/${encodeURIComponent(id)}`, {
     method: 'DELETE',
-    body: { confirmacao_nome: confirmacaoNome },
+    body: {
+      confirmacao_nome: confirmacaoNome,
+      permanente: Boolean(permanente),
+    },
   });
 
   const data = await response.json().catch(() => null);
@@ -124,6 +128,13 @@ export const desvincularUsuario = async (id, confirmacaoNome) => {
   }
 
   return data;
+};
+
+/**
+ * Exclui fisicamente e de forma definitiva o usuário do banco de dados (Item 6).
+ */
+export const excluirUsuarioTotalmente = async (id, confirmacaoNome) => {
+  return desvincularUsuario(id, confirmacaoNome, { permanente: true });
 };
 
 /**
@@ -197,6 +208,32 @@ export const alterarPapel = async (id, role) => {
   return data;
 };
 
+/**
+ * POST /api/usuarios — Cria e cadastra um novo usuário no sistema (StoreUsuarioRequest).
+ *
+ * @param {object} dados Dados validados para cadastro do usuário
+ */
+export const cadastrarUsuario = async (dados) => {
+  const response = await api('/usuarios', {
+    method: 'POST',
+    body: dados,
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const error = new Error(data?.message || 'Não foi possível cadastrar o usuário.');
+    error.status = response.status;
+    error.errors = data?.errors || null;
+    throw error;
+  }
+
+  notificarAtualizacaoPendencias();
+  return data;
+};
+
+export const criarUsuario = cadastrarUsuario;
+
 export const listarUsuarios = listarTodos;
 export const atualizarUsuario = atualizarPerfil;
 
@@ -208,8 +245,11 @@ export const usuarioService = {
   listarTodos,
   listarUsuarios,
   desvincularUsuario,
+  excluirUsuarioTotalmente,
   obterPendentesResumo,
   confirmarVinculoAluno,
   alternarBloqueio,
   alterarPapel,
+  cadastrarUsuario,
+  criarUsuario,
 };

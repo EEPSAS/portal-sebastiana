@@ -47,23 +47,27 @@ class AlunoDashboardService
      */
     public function calcularFrequenciaGlobalAluno(int|string $alunoId, int|string $turmaId, ?string $trimestre = null): float
     {
+        $turma = Turma::find($turmaId);
         $query = Frequencia::where('turma_id', $turmaId)
             ->where('usuario_id', $alunoId);
 
         $this->aplicarFiltroDataFrequencia($query, $trimestre);
 
         $totalAulas = (int) (clone $query)->sum('quantidade_aulas');
-        if ($totalAulas === 0) {
-            return 100.0;
-        }
-
         $totalFaltas = (int) (clone $query)
             ->where('status_presenca', 'Falta')
             ->sum('quantidade_aulas');
 
-        // Projeção proporcional didática caso apenas registros de faltas tenham sido sincronizados via CSV
-        if ($totalFaltas > 0 && $totalAulas <= $totalFaltas) {
-            $totalAulas = max($totalFaltas, 100);
+        // Projeção proporcional didática baseada na carga horária anual quando alimentado via CSV
+        $cargaTotal = $turma ? (int) $turma->disciplinas()->sum('carga_horaria_anual') : 0;
+        if ($cargaTotal <= 0) {
+            $cargaTotal = 800; // Carga horária anual mínima legal da Educação Básica (LDB Art. 24)
+        }
+        $divisorPeriodo = $trimestre ? 3 : 1;
+        $aulasPrevistas = max(50, (int) round($cargaTotal / $divisorPeriodo));
+
+        if ($totalAulas === 0 || $totalAulas <= $totalFaltas) {
+            $totalAulas = max($totalFaltas, $aulasPrevistas);
         }
 
         $percentualPresenca = (($totalAulas - $totalFaltas) / $totalAulas) * 100;
@@ -223,11 +227,15 @@ class AlunoDashboardService
             $totalAulas = (int) (clone $queryFreq)->sum('quantidade_aulas');
             $totalFaltas = (int) (clone $queryFreq)->where('status_presenca', 'Falta')->sum('quantidade_aulas');
 
+            $temLancamento = $queryNotas->count() > 0 || (clone $queryFreq)->count() > 0;
+
             // Quando as faltas são sincronizadas via diário escolar consolidado CSV (sem chamadas diárias avulsas),
             // projeta o total de aulas do trimestre com base na carga horária anual da matéria para calcular a presença real
-            if ($totalFaltas > 0 && $totalAulas <= $totalFaltas) {
-                $aulasPrevistasTrimestre = max(20, (int) round(($disciplina->carga_horaria_anual ?: 80) / 3));
-                $totalAulas = max($totalFaltas, $aulasPrevistasTrimestre);
+            if ($temLancamento) {
+                $aulasPrevistasTrimestre = max(20, (int) round(($disciplina->carga_horaria_anual ?: ($disciplina->aulas_semanais ? $disciplina->aulas_semanais * 40 : 80)) / ($trimestre ? 3 : 1)));
+                if ($totalAulas === 0 || $totalAulas <= $totalFaltas || $totalAulas < $aulasPrevistasTrimestre) {
+                    $totalAulas = max($totalFaltas, $aulasPrevistasTrimestre);
+                }
             }
 
             // Determinação do status semântico
@@ -291,6 +299,11 @@ class AlunoDashboardService
             ->pluck('usuario_id')
             ->all();
 
+        // Garante que o aluno consultado esteja presente na lista de avaliação
+        if (! in_array((int) $alunoId, array_map('intval', $alunosAtivosIds), true)) {
+            $alunosAtivosIds[] = (int) $alunoId;
+        }
+
         $totalAlunosMatriculados = max(1, count($alunosAtivosIds));
 
         // Consulta agregada de frequência para todos os alunos ativos da turma
@@ -339,23 +352,30 @@ class AlunoDashboardService
             $frequenciaAluno = null;
             $frequenciaTurma = null;
 
-            if ($freqAlunosDisc->isNotEmpty()) {
+            if ($freqAlunosDisc->isNotEmpty() || $queryNotaTurma->count() > 0) {
                 $percentuaisIndividuais = [];
 
-                foreach ($freqAlunosDisc as $reg) {
-                    $aulas = (int) $reg->total_aulas;
-                    $faltas = (int) $reg->total_faltas;
+                foreach ($alunosAtivosIds as $idMatriculado) {
+                    $reg = $freqAlunosDisc->firstWhere('usuario_id', $idMatriculado);
+                    if ($reg) {
+                        $aulas = (int) $reg->total_aulas;
+                        $faltas = (int) $reg->total_faltas;
 
-                    // Ajuste de projeção de aulas caso apenas faltas tenham sido sincronizadas via CSV
-                    if ($faltas > 0 && $aulas <= $faltas) {
-                        $aulasPrevistas = max(20, (int) round(($disciplina->carga_horaria_anual ?: 80) / ($trimestre ? 3 : 1)));
-                        $aulas = max($faltas, $aulasPrevistas);
+                        // Ajuste de projeção de aulas caso apenas faltas tenham sido sincronizadas via CSV
+                        $aulasPrevistas = max(20, (int) round(($disciplina->carga_horaria_anual ?: ($disciplina->aulas_semanais ? $disciplina->aulas_semanais * 40 : 80)) / ($trimestre ? 3 : 1)));
+                        if ($aulas <= $faltas || $aulas < $aulasPrevistas) {
+                            $aulas = max($faltas, $aulasPrevistas);
+                        }
+
+                        $pct = $aulas > 0 ? max(0.0, min(100.0, (($aulas - $faltas) / $aulas) * 100)) : 100.0;
+                    } else {
+                        // Sem faltas registradas na matéria: 100% de presença
+                        $pct = 100.0;
                     }
 
-                    $pct = $aulas > 0 ? max(0.0, min(100.0, (($aulas - $faltas) / $aulas) * 100)) : 100.0;
                     $percentuaisIndividuais[] = $pct;
 
-                    if ((int) $reg->usuario_id === (int) $alunoId) {
+                    if ((int) $idMatriculado === (int) $alunoId) {
                         $frequenciaAluno = round($pct, 1);
                     }
                 }
@@ -391,22 +411,37 @@ class AlunoDashboardService
         $frequenciaTurmaGlobal = null;
         $frequenciaAlunoGlobal = null;
 
-        if ($dadosFreqAgrupados->isNotEmpty()) {
+        $temDadosGerais = $dadosFreqAgrupados->isNotEmpty() || Nota::where('turma_id', $turmaId)->exists();
+
+        if ($temDadosGerais) {
             $alunosGlobais = $dadosFreqAgrupados->flatten(1)->groupBy('usuario_id');
             $percentuaisGlobaisAlunos = [];
 
-            foreach ($alunosGlobais as $idUsuario => $registrosDoAluno) {
-                $aulasTotal = (int) $registrosDoAluno->sum('total_aulas');
-                $faltasTotal = (int) $registrosDoAluno->sum('total_faltas');
+            $cargaTotalTurma = (int) $turma->disciplinas()->sum('carga_horaria_anual');
+            if ($cargaTotalTurma <= 0) {
+                $cargaTotalTurma = 800;
+            }
+            $aulasPrevistasGlobal = max(50, (int) round($cargaTotalTurma / ($trimestre ? 3 : 1)));
 
-                if ($faltasTotal > 0 && $aulasTotal <= $faltasTotal) {
-                    $aulasTotal = max($faltasTotal, 100);
+            foreach ($alunosAtivosIds as $idMatriculado) {
+                $registrosDoAluno = $alunosGlobais->get($idMatriculado);
+                if ($registrosDoAluno && $registrosDoAluno->isNotEmpty()) {
+                    $aulasTotal = (int) $registrosDoAluno->sum('total_aulas');
+                    $faltasTotal = (int) $registrosDoAluno->sum('total_faltas');
+
+                    if ($aulasTotal <= $faltasTotal || $aulasTotal < $aulasPrevistasGlobal) {
+                        $aulasTotal = max($faltasTotal, $aulasPrevistasGlobal);
+                    }
+
+                    $pctGlobal = $aulasTotal > 0 ? max(0.0, min(100.0, (($aulasTotal - $faltasTotal) / $aulasTotal) * 100)) : 100.0;
+                } else {
+                    // Sem registros de faltas no diário: 100% de presença
+                    $pctGlobal = 100.0;
                 }
 
-                $pctGlobal = $aulasTotal > 0 ? max(0.0, min(100.0, (($aulasTotal - $faltasTotal) / $aulasTotal) * 100)) : 100.0;
                 $percentuaisGlobaisAlunos[] = $pctGlobal;
 
-                if ((int) $idUsuario === (int) $alunoId) {
+                if ((int) $idMatriculado === (int) $alunoId) {
                     $frequenciaAlunoGlobal = round($pctGlobal, 1);
                 }
             }
@@ -594,7 +629,7 @@ class AlunoDashboardService
         // 3. Leitura atual do aluno (módulo de biblioteca — filtra apenas empréstimos ativos/solicitados via Enum)
         $ultimoEmprestimo = Emprestimo::where('usuario_id', $aluno->id)
             ->whereIn('status', [
-                EmprestimoStatus::APROVADO->value,
+                EmprestimoStatus::ENTREGUE->value,
                 EmprestimoStatus::RENOVADO->value,
                 EmprestimoStatus::ATRASADO->value,
                 EmprestimoStatus::SOLICITADO->value,

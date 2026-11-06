@@ -104,10 +104,10 @@ test('bibliotecaria pode gerenciar livros e emprestimos mas nao tem acesso a ges
     $respEmp->assertCreated();
     $empId = $respEmp->json('id_emprestimo');
 
-    // 3. Bibliotecária aprova o empréstimo
-    $this->actingAs($biblio, 'sanctum')->patchJson("/api/emprestimos/{$empId}/aprovar")
+    // 3. Bibliotecária entrega fisicamente o exemplar ao aluno
+    $this->actingAs($biblio, 'sanctum')->patchJson("/api/emprestimos/{$empId}/entregar")
         ->assertOk()
-        ->assertJsonPath('status', 'aprovado');
+        ->assertJsonPath('status', 'entregue');
 
     // 4. Bibliotecária é bloqueada ao tentar criar turmas (módulo acadêmico)
     $this->actingAs($biblio, 'sanctum')->postJson('/api/turmas', [

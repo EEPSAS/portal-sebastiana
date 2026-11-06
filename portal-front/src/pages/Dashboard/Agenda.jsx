@@ -33,9 +33,12 @@ const ABAS_AGENDA = [
 const feriadosNacionais = createImportantDates();
 
 const AgendaPage = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const role = String(user?.role || '').toLowerCase();
   const podeGerenciar = ['especialista', 'adm', 'admin'].includes(role);
+  const podeAlterarEvento = (event) => (
+    podeGerenciar || String(event.creatorId) === String(user?.id)
+  );
   // Qualquer usuário autenticado pode criar eventos na própria agenda.
   const podeCriarEvento = Boolean(user?.id);
 
@@ -60,7 +63,7 @@ const AgendaPage = () => {
     saving,
     mutationError,
     clearMutationError,
-    } = useEventos({ publico: false });
+    } = useEventos({ token, publico: false });
 
   // Estados locais do diálogo modal unitário, em massa e notificações
   const [modalOpen, setModalOpen] = useState(false);
@@ -110,7 +113,7 @@ const AgendaPage = () => {
     if (result.success) {
       setModalEmMassaOpen(false);
       const total = Array.isArray(result.data) ? result.data.length : listaEventos.length;
-      exibirNotificacao(`${total} data(s) escolar(es) cadastrada(s) com sucesso em lote!`);
+      exibirNotificacao(`Cadastro realizado com sucesso: ${total} data(s).`);
     }
   };
 
@@ -200,8 +203,9 @@ const AgendaPage = () => {
               eventos={eventos}
               loading={loading}
               error={error}
-              onEditEvent={podeGerenciar ? handleOpenEdit : null}
-              onDeleteEvent={podeGerenciar ? handleDelete : null}
+              canModifyEvent={podeAlterarEvento}
+              onEditEvent={handleOpenEdit}
+              onDeleteEvent={handleDelete}
             />
           </div>
         )}

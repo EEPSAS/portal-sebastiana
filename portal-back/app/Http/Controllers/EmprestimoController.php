@@ -8,8 +8,10 @@ use App\Http\Requests\SolicitarEmprestimoRequest;
 use App\Http\Resources\EmprestimoResource;
 use App\Models\Emprestimo;
 use App\Models\Livro;
+use App\Services\NotificacaoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -17,6 +19,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class EmprestimoController extends Controller
 {
+    public function __construct(private readonly NotificacaoService $notificacaoService) {}
+
     /**
      * Lista empréstimos de acordo com o papel do usuário (aluno vê os seus, bibliotecário vê todos).
      *
@@ -25,7 +29,7 @@ class EmprestimoController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $query = Emprestimo::query()->with(['livro', 'usuario:id,name,email']);
+        $query = Emprestimo::query()->with(['livro', 'usuario:id,name,email,role']);
 
         // Usuário sem permissão de gestão de biblioteca vê apenas suas próprias retiradas
         if (! $user->canManageLibrary()) {
@@ -53,7 +57,7 @@ class EmprestimoController extends Controller
     public function meusEmprestimos(Request $request): JsonResponse
     {
         $emprestimos = Emprestimo::where('usuario_id', $request->user()->id)
-            ->with(['livro', 'usuario:id,name,email'])
+            ->with(['livro', 'usuario:id,name,email,role'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -67,13 +71,14 @@ class EmprestimoController extends Controller
     {
         Gate::authorize('view', $emprestimo);
 
-        $emprestimo->load(['livro', 'usuario:id,name,email']);
+        $emprestimo->load(['livro', 'usuario:id,name,email,role']);
 
         return response()->json(new EmprestimoResource($emprestimo), 200);
     }
 
     /**
-     * Realiza uma nova solicitação de retirada de livro.
+     * Realiza uma nova solicitação de retirada de livro, reservando o exemplar no estoque
+     * sem iniciar a contagem do prazo de devolução até a entrega física no balcão.
      *
      * @param  SolicitarEmprestimoRequest  $request  Form Request validada
      */
@@ -81,85 +86,126 @@ class EmprestimoController extends Controller
     {
         Gate::authorize('solicitar', Emprestimo::class);
 
-        $livro = Livro::findOrFail($request->integer('livro_id'));
+        $emprestimo = DB::transaction(function () use ($request) {
+            // O bloqueio serializa solicitações concorrentes para o último exemplar.
+            $livro = Livro::query()->lockForUpdate()->findOrFail($request->integer('livro_id'));
 
-        if (! $livro->verificarDisponibilidade()) {
-            return response()->json([
-                'message' => 'Este livro não possui exemplares disponíveis no momento.',
-            ], 422);
-        }
+            if (! $livro->verificarDisponibilidade()) {
+                abort(422, 'Este livro não possui exemplares disponíveis no momento.');
+            }
 
-        $jaSolicitou = Emprestimo::where('usuario_id', $request->user()->id)
-            ->where('livro_id', $livro->id_livro ?? $livro->id)
-            ->whereIn('status', [
-                EmprestimoStatus::SOLICITADO,
-                EmprestimoStatus::APROVADO,
-                EmprestimoStatus::RENOVADO,
-            ])
-            ->exists();
+            $jaSolicitou = Emprestimo::query()
+                ->where('usuario_id', $request->user()->id)
+                ->where('livro_id', $livro->id_livro)
+                ->whereIn('status', [
+                    EmprestimoStatus::SOLICITADO,
+                    EmprestimoStatus::ENTREGUE,
+                    EmprestimoStatus::RENOVADO,
+                    EmprestimoStatus::ATRASADO,
+                ])
+                ->exists();
 
-        if ($jaSolicitou) {
-            return response()->json([
-                'message' => 'Você já possui uma solicitação ou empréstimo em andamento para este livro.',
-            ], 422);
-        }
+            if ($jaSolicitou) {
+                abort(422, 'Você já possui uma solicitação ou empréstimo em andamento para este livro.');
+            }
 
-        $emprestimo = Emprestimo::create([
-            'livro_id' => $livro->id_livro ?? $livro->id,
-            'usuario_id' => $request->user()->id,
-            'status' => EmprestimoStatus::SOLICITADO,
-            'observacoes' => $request->filled('observacoes') ? $request->string('observacoes')->toString() : null,
-        ]);
+            // Reserva o exemplar físico no acervo imediatamente para evitar dupla retirada
+            $livro->decrement('quantidade_disponivel');
 
-        $emprestimo->load(['livro', 'usuario:id,name,email']);
+            $emprestimo = Emprestimo::create([
+                'livro_id' => $livro->id_livro,
+                'usuario_id' => $request->user()->id,
+                'status' => EmprestimoStatus::SOLICITADO,
+                'reserva_ativa' => true,
+                'observacoes' => $request->filled('observacoes') ? $request->string('observacoes')->toString() : null,
+            ]);
+
+            $this->notificacaoService->notificarSolicitacaoEmprestimo($emprestimo);
+
+            return $emprestimo;
+        });
+
+        $emprestimo->load(['livro', 'usuario:id,name,email,role']);
 
         return response()->json(new EmprestimoResource($emprestimo), 201);
     }
 
     /**
-     * Aprova uma solicitação de empréstimo e reserva o exemplar físico.
+     * Cancela uma solicitação pendente e devolve o exemplar reservado ao estoque.
      */
-    public function aprovar(Request $request, Emprestimo $emprestimo): JsonResponse
+    public function cancelarSolicitacao(Emprestimo $emprestimo): JsonResponse
     {
-        Gate::authorize('aprovar', $emprestimo);
+        $emprestimo = DB::transaction(function () use ($emprestimo) {
+            $emprestimo = Emprestimo::query()
+                ->lockForUpdate()
+                ->findOrFail($emprestimo->id_emprestimo);
+            Gate::authorize('cancelar', $emprestimo);
 
-        if ($emprestimo->status !== EmprestimoStatus::SOLICITADO) {
-            return response()->json([
-                'message' => 'Apenas empréstimos com status "solicitado" podem ser aprovados.',
-            ], 422);
-        }
+            if ($emprestimo->reserva_ativa) {
+                Livro::query()->lockForUpdate()->findOrFail($emprestimo->livro_id)
+                    ->increment('quantidade_disponivel');
+            }
 
-        $livro = $emprestimo->livro;
+            $emprestimo->update([
+                'status' => EmprestimoStatus::RECUSADO,
+                'reserva_ativa' => false,
+            ]);
 
-        if ($livro->quantidade_disponivel <= 0) {
-            return response()->json([
-                'message' => 'Não há exemplares disponíveis para aprovar este empréstimo.',
-            ], 422);
-        }
-
-        $livro->decrement('quantidade_disponivel');
-
-        $emprestimo->update([
-            'status' => EmprestimoStatus::APROVADO,
-            'data_emprestimo' => now(),
-            'data_prevista_devolucao' => now()->addDays(14),
-        ]);
-
-        $emprestimo->load(['livro', 'usuario:id,name,email']);
+            return $emprestimo->load(['livro', 'usuario:id,name,email,role']);
+        });
 
         return response()->json(new EmprestimoResource($emprestimo), 200);
     }
 
     /**
-     * Renova o prazo de devolução de um empréstimo ativo.
+     * Registra a entrega física do exemplar ao aluno no balcão da biblioteca,
+     * iniciando a posse do livro e a contagem oficial do prazo de 14 dias.
+     */
+    public function entregar(Request $request, Emprestimo $emprestimo): JsonResponse
+    {
+        $emprestimo = DB::transaction(function () use ($emprestimo) {
+            $emprestimo = Emprestimo::query()
+                ->lockForUpdate()
+                ->findOrFail($emprestimo->id_emprestimo);
+            Gate::authorize('entregar', $emprestimo);
+
+            if ($emprestimo->status !== EmprestimoStatus::SOLICITADO) {
+                abort(422, 'Apenas empréstimos com status "solicitado" podem ser registrados como entregues.');
+            }
+
+            // Garante baixa única de estoque caso seja um pedido legado criado sem reserva prévia
+            if (! $emprestimo->reserva_ativa) {
+                $livro = Livro::query()->lockForUpdate()->findOrFail($emprestimo->livro_id);
+                if (! $livro->verificarDisponibilidade()) {
+                    abort(422, 'Não há exemplares disponíveis para entregar este empréstimo.');
+                }
+                $livro->decrement('quantidade_disponivel');
+            }
+
+            // Inicia a contagem oficial do tempo no momento em que o livro passa à posse do aluno
+            $emprestimo->update([
+                'status' => EmprestimoStatus::ENTREGUE,
+                'reserva_ativa' => true,
+                'data_emprestimo' => now(),
+                'data_prevista_devolucao' => now()->addDays(14),
+            ]);
+
+            return $emprestimo->load(['livro', 'usuario:id,name,email,role']);
+        });
+
+        return response()->json(new EmprestimoResource($emprestimo), 200);
+    }
+
+    /**
+     * Renova o prazo de devolução de um empréstimo ativo (entregue ou já renovado).
      */
     public function renovar(Request $request, Emprestimo $emprestimo): JsonResponse
     {
         Gate::authorize('renovar', $emprestimo);
 
-        if (! in_array($emprestimo->status, [EmprestimoStatus::APROVADO, EmprestimoStatus::RENOVADO])) {
+        if (! in_array($emprestimo->status, [EmprestimoStatus::ENTREGUE, EmprestimoStatus::RENOVADO])) {
             return response()->json([
-                'message' => 'Apenas empréstimos aprovados ou renovados podem ser renovados.',
+                'message' => 'Apenas empréstimos entregues ou renovados podem ser renovados.',
             ], 422);
         }
 
@@ -175,7 +221,7 @@ class EmprestimoController extends Controller
             'data_prevista_devolucao' => $dataBase->addDays(14),
         ]);
 
-        $emprestimo->load(['livro', 'usuario:id,name,email']);
+        $emprestimo->load(['livro', 'usuario:id,name,email,role']);
 
         return response()->json(new EmprestimoResource($emprestimo), 200);
     }
@@ -185,22 +231,28 @@ class EmprestimoController extends Controller
      */
     public function registrarDevolucao(Request $request, Emprestimo $emprestimo): JsonResponse
     {
-        Gate::authorize('devolver', $emprestimo);
+        $emprestimo = DB::transaction(function () use ($emprestimo) {
+            $emprestimo = Emprestimo::query()
+                ->lockForUpdate()
+                ->findOrFail($emprestimo->id_emprestimo);
+            Gate::authorize('devolver', $emprestimo);
 
-        if (! in_array($emprestimo->status, [EmprestimoStatus::APROVADO, EmprestimoStatus::RENOVADO, EmprestimoStatus::ATRASADO])) {
-            return response()->json([
-                'message' => 'Este empréstimo não está ativo para registro de devolução.',
-            ], 422);
-        }
+            if (! in_array($emprestimo->status, [EmprestimoStatus::ENTREGUE, EmprestimoStatus::RENOVADO, EmprestimoStatus::ATRASADO])) {
+                abort(422, 'Este empréstimo não está ativo para registro de devolução.');
+            }
 
-        $emprestimo->livro->increment('quantidade_disponivel');
+            if ($emprestimo->reserva_ativa) {
+                Livro::query()->lockForUpdate()->findOrFail($emprestimo->livro_id)
+                    ->increment('quantidade_disponivel');
+            }
+            $emprestimo->update([
+                'status' => EmprestimoStatus::DEVOLVIDO,
+                'reserva_ativa' => false,
+                'data_devolucao_real' => now(),
+            ]);
 
-        $emprestimo->update([
-            'status' => EmprestimoStatus::DEVOLVIDO,
-            'data_devolucao_real' => now(),
-        ]);
-
-        $emprestimo->load(['livro', 'usuario:id,name,email']);
+            return $emprestimo->load(['livro', 'usuario:id,name,email,role']);
+        });
 
         return response()->json(new EmprestimoResource($emprestimo), 200);
     }
@@ -212,42 +264,68 @@ class EmprestimoController extends Controller
      */
     public function atualizarStatus(AtualizarStatusEmprestimoRequest $request, Emprestimo $emprestimo): JsonResponse
     {
-        Gate::authorize('atualizarStatus', $emprestimo);
+        $dados = $request->validated();
 
-        $novoStatus = EmprestimoStatus::from($request->string('status')->toString());
-        $statusAntigo = $emprestimo->status;
+        $emprestimo = DB::transaction(function () use ($request, $emprestimo, $dados) {
+            $emprestimo = Emprestimo::query()
+                ->lockForUpdate()
+                ->findOrFail($emprestimo->id_emprestimo);
+            Gate::authorize('atualizarStatus', $emprestimo);
 
-        $eraAtivo = in_array($statusAntigo, [EmprestimoStatus::APROVADO, EmprestimoStatus::RENOVADO, EmprestimoStatus::ATRASADO]);
-        $seraAtivo = in_array($novoStatus, [EmprestimoStatus::APROVADO, EmprestimoStatus::RENOVADO, EmprestimoStatus::ATRASADO]);
+            $novoStatus = EmprestimoStatus::from($dados['status']);
+            $estoqueAntigoReservado = (bool) $emprestimo->reserva_ativa;
+            $estoqueNovoReservado = $this->estoqueReservado($novoStatus);
 
-        if (! $eraAtivo && $seraAtivo) {
-            if ($emprestimo->livro->quantidade_disponivel <= 0) {
-                return response()->json([
-                    'message' => 'Não há exemplares disponíveis para ativar este empréstimo.',
-                ], 422);
+            // Ajusta o estoque atomicamente apenas quando há transição entre reservado e livre
+            if (! $estoqueAntigoReservado && $estoqueNovoReservado) {
+                $livro = Livro::query()->lockForUpdate()->findOrFail($emprestimo->livro_id);
+                if (! $livro->verificarDisponibilidade()) {
+                    abort(422, 'Não há exemplares disponíveis para ativar este empréstimo.');
+                }
+                $livro->decrement('quantidade_disponivel');
+            } elseif ($estoqueAntigoReservado && ! $estoqueNovoReservado) {
+                Livro::query()->lockForUpdate()->findOrFail($emprestimo->livro_id)
+                    ->increment('quantidade_disponivel');
             }
-            $emprestimo->livro->decrement('quantidade_disponivel');
-        } elseif ($eraAtivo && ! $seraAtivo) {
-            $emprestimo->livro->increment('quantidade_disponivel');
-        }
 
-        $dadosAtualizacao = ['status' => $novoStatus];
+            $dadosAtualizacao = [
+                'status' => $novoStatus,
+                'reserva_ativa' => $estoqueNovoReservado,
+            ];
 
-        if ($request->filled('observacoes')) {
-            $dadosAtualizacao['observacoes'] = $request->string('observacoes')->toString();
-        }
+            if ($request->filled('observacoes')) {
+                $dadosAtualizacao['observacoes'] = $request->string('observacoes')->toString();
+            }
 
-        if ($request->filled('data_prevista_devolucao')) {
-            $dadosAtualizacao['data_prevista_devolucao'] = $request->string('data_prevista_devolucao')->toString();
-        }
+            // Ao marcar manualmente como entregue, inicia a contagem de tempo se ainda não houver data de retirada
+            if ($novoStatus === EmprestimoStatus::ENTREGUE && ! $emprestimo->data_emprestimo) {
+                $dadosAtualizacao['data_emprestimo'] = now();
+                $dadosAtualizacao['data_prevista_devolucao'] = now()->addDays(14);
+            }
 
-        if ($novoStatus === EmprestimoStatus::DEVOLVIDO && ! $emprestimo->data_devolucao_real) {
-            $dadosAtualizacao['data_devolucao_real'] = now();
-        }
+            if ($request->filled('data_prevista_devolucao')) {
+                $dadosAtualizacao['data_prevista_devolucao'] = $request->string('data_prevista_devolucao')->toString();
+            }
 
-        $emprestimo->update($dadosAtualizacao);
-        $emprestimo->load(['livro', 'usuario:id,name,email']);
+            if ($novoStatus === EmprestimoStatus::DEVOLVIDO && ! $emprestimo->data_devolucao_real) {
+                $dadosAtualizacao['data_devolucao_real'] = now();
+            }
+
+            $emprestimo->update($dadosAtualizacao);
+
+            return $emprestimo->load(['livro', 'usuario:id,name,email,role']);
+        });
 
         return response()->json(new EmprestimoResource($emprestimo), 200);
+    }
+
+    private function estoqueReservado(EmprestimoStatus $status): bool
+    {
+        return in_array($status, [
+            EmprestimoStatus::SOLICITADO,
+            EmprestimoStatus::ENTREGUE,
+            EmprestimoStatus::RENOVADO,
+            EmprestimoStatus::ATRASADO,
+        ]);
     }
 }

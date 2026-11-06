@@ -10,7 +10,7 @@ const NavBar = () => {
       <div className="portal-header__topbar">
         <div className="container d-flex justify-content-end">
           <Link className="portal-header__student-link" to="login">
-            Portal do Aluno
+            Sistema EEPSAS
           </Link>
         </div>
       </div>

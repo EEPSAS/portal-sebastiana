@@ -2,11 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Data\Academico\Boletim\BoletimAlunoData;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Resource para formatação do Boletim Escolar consolidado do Aluno.
+ * Delega a serialização tipada ao BoletimAlunoData (Spatie Laravel Data), espelhado com BoletimAlunoSchema (Zod).
  */
 class BoletimResource extends JsonResource
 {
@@ -17,12 +19,8 @@ class BoletimResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return [
-            'turma_id' => $this->resource['turma_id'] ?? null,
-            'aluno_id' => $this->resource['aluno_id'] ?? null,
-            'periodo_selecionado' => $this->resource['periodo_selecionado'] ?? null,
-            'boletim' => $this->resource['boletim'] ?? [],
-            'grafico_boletim' => $this->resource['grafico_boletim'] ?? [],
-        ];
+        $dados = is_array($this->resource) ? $this->resource : (array) $this->resource;
+
+        return BoletimAlunoData::fromServiceArray($dados)->toArray();
     }
 }

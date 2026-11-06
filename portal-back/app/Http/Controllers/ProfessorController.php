@@ -46,7 +46,7 @@ class ProfessorController extends Controller
         $this->autorizarGestao($request);
 
         $query = User::where('role', UserRole::PROFESSOR)
-            ->with(['disciplinasDocente', 'turmaDisciplinasDocente.turma']);
+            ->with(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
 
         // Filtro por termo de busca (nome ou e-mail institucional)
         if ($request->filled('q')) {
@@ -107,7 +107,7 @@ class ProfessorController extends Controller
             abort(404, 'Usuário informado não é um professor.');
         }
 
-        $professor->load(['disciplinasDocente', 'turmaDisciplinasDocente.turma']);
+        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
 
         return response()->json(new ProfessorResource($professor), 200);
     }
@@ -134,7 +134,9 @@ class ProfessorController extends Controller
 
         // Coleta as disciplinas informadas no ato da aprovação (Item 2.3.2)
         $validated = $request->validated();
-        $disciplinaIds = collect($validated['disciplina_ids'] ?? [])
+        /** @var array<int|string> $idsInformados */
+        $idsInformados = (array) ($validated['disciplina_ids'] ?? []);
+        $disciplinaIds = collect($idsInformados)
             ->when(! empty($validated['disciplina_id']), fn ($c) => $c->push((int) $validated['disciplina_id']))
             ->map(fn ($id) => (int) $id)
             ->unique()
@@ -144,7 +146,7 @@ class ProfessorController extends Controller
             $this->aplicarVinculoDisciplina($professor, $disciplinaId);
         }
 
-        $professor->load(['disciplinasDocente', 'turmaDisciplinasDocente.turma']);
+        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
 
         return response()->json([
             'message' => "Professor(a) {$professor->name} confirmado(a) com sucesso na instituição.",
@@ -174,7 +176,7 @@ class ProfessorController extends Controller
         $professor->disciplinasDocente()->detach();
         TurmaDisciplina::where('professor_id', $professor->id)->update(['professor_id' => null]);
 
-        $professor->load(['disciplinasDocente', 'turmaDisciplinasDocente.turma']);
+        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
 
         return response()->json([
             'message' => "Acesso institucional do professor(a) {$professor->name} recusado.",
@@ -208,7 +210,7 @@ class ProfessorController extends Controller
 
         $this->aplicarVinculoDisciplina($professor, $disciplinaId);
 
-        $professor->load(['disciplinasDocente', 'turmaDisciplinasDocente.turma']);
+        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
 
         return response()->json([
             'message' => "Disciplina '{$disciplina->nome}' vinculada com sucesso ao professor {$professor->name}.",
@@ -238,9 +240,10 @@ class ProfessorController extends Controller
             : Turma::where('status', 'Ativa')->get();
 
         foreach ($turmasAlvo as $turma) {
+            $idTurma = $turma instanceof Turma ? $turma->id_turma : $turma->getKey();
             TurmaDisciplina::firstOrCreate(
                 [
-                    'turma_id' => $turma->id_turma,
+                    'turma_id' => $idTurma,
                     'disciplina_id' => $disciplinaId,
                 ],
                 [
@@ -271,7 +274,7 @@ class ProfessorController extends Controller
             ->where('professor_id', $professor->id)
             ->update(['professor_id' => null]);
 
-        $professor->load(['disciplinasDocente', 'turmaDisciplinasDocente.turma']);
+        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
 
         return response()->json([
             'message' => "Disciplina '{$disciplina->nome}' desvinculada com sucesso do professor {$professor->name}.",

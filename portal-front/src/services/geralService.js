@@ -26,15 +26,15 @@ export function montarCardsKpis(kpis = {}) {
     {
       id: 'media-geral',
       titulo: 'Média Geral de Notas',
-      valor: kpis.media_geral ?? 0,
+      valor: kpis.media_geral ?? '—',
       bgIcone: 'bg-success-subtle',
       textIcone: 'text-success',
       tipoIcone: 'notas',
     },
     {
       id: 'frequencia',
-      titulo: 'Frequência Média',
-      valor: kpis.frequencia_media ?? '100%',
+      titulo: 'Média de Frequência Geral',
+      valor: kpis.frequencia_media ?? '—',
       bgIcone: 'bg-warning-subtle',
       textIcone: 'text-warning',
       tipoIcone: 'frequencia',
@@ -97,7 +97,7 @@ export async function fetchResumoTurmas() {
  */
 export async function fetchLatestUpdates() {
   const payload = await fetchDashboardGeral();
-  return payload?.ultimas_atualizacoes || [];
+  return payload?.ultimas_notificacoes || [];
 }
 
 /**

@@ -45,6 +45,8 @@ class UpdateUsuarioRequest extends FormRequest
             $rules['role_id'] = ['nullable', 'exists:roles,id'];
             $rules['role'] = ['nullable', 'string', new Enum(UserRole::class)];
             $rules['ativo'] = ['nullable', 'boolean'];
+            $rules['status_confirmacao'] = ['nullable', 'string', 'in:confirmado,pendente,recusado,inativo'];
+            $rules['turma_id'] = ['nullable', 'integer', 'exists:turmas,id_turma'];
             $rules['comentario_admin'] = ['nullable', 'string', 'max:2000'];
             $rules['mensagem_notificacao'] = ['nullable', 'string', 'max:2000'];
             $rules['titulo_notificacao'] = ['nullable', 'string', 'max:150'];

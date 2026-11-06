@@ -28,7 +28,8 @@ class EmprestimoFactory extends Factory
             'data_emprestimo' => now(),
             'data_prevista_devolucao' => now()->addDays(14),
             'data_devolucao_real' => null,
-            'status' => EmprestimoStatus::APROVADO,
+            'status' => EmprestimoStatus::ENTREGUE,
+            'reserva_ativa' => true,
             'observacoes' => null,
         ];
     }
@@ -39,6 +40,7 @@ class EmprestimoFactory extends Factory
             'status' => EmprestimoStatus::SOLICITADO,
             'data_emprestimo' => null,
             'data_prevista_devolucao' => null,
+            'reserva_ativa' => false,
         ]);
     }
 
@@ -47,6 +49,7 @@ class EmprestimoFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status' => EmprestimoStatus::DEVOLVIDO,
             'data_devolucao_real' => now(),
+            'reserva_ativa' => false,
         ]);
     }
 

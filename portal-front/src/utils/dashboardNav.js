@@ -109,6 +109,15 @@ export const NAV_STRUCTURE = [
         descricao:
           "Configuração do ano letivo, ciclos de divisão (bimestres/trimestres), pontuações e marcos escolares.",
       },
+      {
+        id: "ciclos",
+        label: "Ciclos",
+        path: "/dashboard/ciclos",
+        icon: "bi-arrow-repeat",
+        roles: ["especialista", "adm"],
+        descricao:
+          "Configuração integrada de Ciclos Curriculares e Turnos Escolares da instituição.",
+      },
     ],
   },
   {

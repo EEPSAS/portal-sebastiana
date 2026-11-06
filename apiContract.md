@@ -144,15 +144,19 @@ Suporta envio tanto em `application/json` quanto em `multipart/form-data` (quand
 |---|---|---|---|---|---|---|
 | `GET` | `/api/livros` | Público / Logado (Leitura para Aluno e Prof) | N/A | `LivroResource` (Coleção) | `bibliotecaService.listarLivros()` | Catálogo da biblioteca (pré-carrega os 5 últimos cadastrados; busca completa via `?q=`) |
 | `GET` | `/api/livros/{id}` | Público / Logado | N/A | `LivroResource` | `bibliotecaService.detalharLivro()` | Detalhes e disponibilidade do livro |
-| `GET` | `/api/emprestimos` | Logado (gestores da biblioteca recebem histórico global; demais usuários recebem apenas os próprios registros) | N/A | `EmprestimoResource` (Coleção) | `bibliotecaService.listarEmprestimos()` | Histórico usado no Geral da Bibliotecária para circulação, devoluções e destaque mensal |
+| `GET` | `/api/emprestimos` | Logado (gestores da biblioteca recebem histórico global; demais usuários recebem apenas os próprios registros) | N/A | `EmprestimoResource` (Coleção) | `bibliotecaService.listarEmprestimos()` | Histórico usado no Geral da Bibliotecária para circulação, devoluções e destaque mensal; `usuario.role` identifica estudantes elegíveis para notificação |
 | `GET` | `/api/dashboard/biblioteca/top-livros` | Bibliotecária / Especialista / Adm | N/A | `TopLivrosEmprestadosResource` (proposto) | `bibliotecaService.obterTopLivrosMaisEmprestados()` (pendente) | **Solicitação à equipe backend:** retornar os três livros mais emprestados de todo o histórico; rota ainda não implementada |
 | `POST` | `/api/livros` | Bibliotecária / Especialista / Adm | `StoreLivroRequest` | `LivroResource` | `bibliotecaService.cadastrarLivro()` | Cadastra exemplar no acervo (`codigo_livro`, `titulo`, `editora`, `autor`, `genero`, `data_lancamento`, `capa`, `quantidade_total`, `prateleira_localizacao`) |
 | `POST` | `/api/livros/importar-csv` | Bibliotecária / Especialista / Adm | `ImportarLivrosCsvRequest` | `LivroResource` (Coleção) | `bibliotecaService.importarLivrosCSV()` | **Mass Assignment via CSV** (`titulo`, `editora`, `autor`, `genero`, `data_lancamento`, `codigo_livro`) |
 | `PUT` | `/api/livros/{id}` | Bibliotecária / Especialista / Adm | `UpdateLivroRequest` | `LivroResource` | `bibliotecaService.editarLivro()` | Atualiza dados do exemplar |
 | `DELETE` | `/api/livros/{id}` | Bibliotecária / Especialista / Adm | N/A | Mensagem 200/204 | `bibliotecaService.excluirLivro()` | Exclui exemplar do acervo |
-| `POST` | `/api/emprestimos/solicitar` | Logado | `SolicitarEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.solicitarEmprestimo()` | Solicita retirada de livro |
+| `POST` | `/api/emprestimos/solicitar` | Logado | `SolicitarEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.solicitarEmprestimo()` | Cria a solicitação (`status: "solicitado"`, sem iniciar contagem de prazo) e reserva atomicamente um exemplar disponível; avisa a Bibliotecária com notificação interna importante contendo aluno, livro e número do pedido |
 | `GET` | `/api/emprestimos/meus-emprestimos` | Logado | N/A | `EmprestimoResource` (Coleção)| `bibliotecaService.meusEmprestimos()` | Consulta histórico pessoal |
-| `PATCH`| `/api/emprestimos/{id}/status` | Bibliotecária / Especialista / Adm | `AtualizarStatusEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.atualizarEmprestimo()` | Aprova, renova ou registra devolução |
+| `PATCH` | `/api/emprestimos/{id}/entregar` | Bibliotecária / Especialista / Adm | N/A | `EmprestimoResource` | `bibliotecaService.entregarEmprestimo()` | Registra a entrega física do exemplar ao leitor (`status: "entregue"`), iniciando `data_emprestimo` e `data_prevista_devolucao` (+14 dias). *(Mantém `/aprovar` como alias de compatibilidade)* |
+| `PATCH` | `/api/emprestimos/{id}/cancelar` | Titular da solicitação pendente | N/A | `EmprestimoResource` | `bibliotecaService.cancelarSolicitacaoEmprestimo()` | Cancela somente solicitação em status `solicitado` e libera o exemplar reservado |
+| `PATCH`| `/api/emprestimos/{id}/status` | Bibliotecária / Especialista / Adm | `AtualizarStatusEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.atualizarEmprestimo()` | Atualiza status (`solicitado`, `entregue`, `renovado`, `atrasado`, `devolvido`, `recusado`) |
+
+**Reserva e entrega de exemplares:** a disponibilidade é decrementada no momento da solicitação (`status: "solicitado"`), mas `data_emprestimo` e `data_prevista_devolucao` permanecem nulos até a retirada física no balcão. O estado interno `reserva_ativa` distingue solicitações antigas (ainda sem baixa de estoque) das novas; a migration converte registros antigos `'aprovado'` para `'entregue'` com reserva ativa. Registrar a entrega (`entregar`) define `status: "entregue"`, inicia a contagem de 14 dias e não decrementa novamente uma reserva já ativa (descontando o estoque apenas em pedidos legados sem reserva). Recusar/cancelar libera somente reservas ativas, e registrar devolução libera o exemplar emprestado. As mudanças de estoque e status são transacionais para evitar solicitações concorrentes do último exemplar.
 
 #### Solicitação pendente: Top 3 de livros mais emprestados
 O endpoint proposto ainda não está disponível e fica registrado para implementação futura pela equipe backend. Deve contar os empréstimos de todo o histórico, ordenar pela quantidade decrescente e retornar até três livros:
@@ -217,12 +221,14 @@ Enquanto a rota não estiver pronta, o frontend apresenta dados demonstrativos a
 |---|---|---|---|---|---|---|
 | `GET` | `/api/eventos` | Público / Logado (`sanctum` opcional) | N/A | `EventoResource` (Coleção) | `eventosService.listar()` | No Portal Público: retorna eventos institucionais (Especialista/Adm). Logado: retorna eventos institucionais + eventos de Professores + eventos pessoais do próprio usuário |
 | `GET` | `/api/eventos/datas-importantes`| Público / Logado (`sanctum` opcional) | N/A | `EventoResource` (Coleção) | `eventosService.datasImportantes()` | Destaques importantes no topo do painel/portal |
-| POST | /api/eventos | Logado (Qualquer perfil) | StoreEventoRequest | EventoResource | eventosService.criar() | Especialista/Adm cria evento institucional ou categorias restritas (Provas, S�bados Letivos, Feriados e Recessos) e pode destacar como importante (disparando notifica��o super-importante para toda a escola); Professor e Aluno criam exclusivamente eventos do tipo 'Eventos' |
+| POST | /api/eventos | Logado (Qualquer perfil) | StoreEventoRequest | EventoResource | eventosService.criar() | Especialista/Adm cria evento institucional ou categorias restritas (Provas, Sábados Letivos, Feriados e Recessos) e pode destacar como importante (disparando notificação super-importante para toda a escola); Professor e Aluno criam exclusivamente eventos do tipo 'Eventos' |
 | POST | /api/eventos/em-massa | Especialista / Adm | StoreEventoEmMassaRequest | EventoResource (Cole��o) | eventosService.criarEmMassa() | Cadastro em lote em transa��o �nica de S�bados Letivos e Feriados/Recessos via modal de tabela |
-| `PUT` | `/api/eventos/{id}` | Logado (Dono / Especialista / Adm) | `UpdateEventoRequest` | `EventoResource` | `eventosService.atualizar()` | Atualiza evento (próprio ou institucional) |
-| `DELETE`| `/api/eventos/{id}` | Logado (Dono / Especialista / Adm) | N/A | Mensagem 200/204 | `eventosService.excluir()` | Remove evento (próprio ou institucional) |
+| `PUT` | `/api/eventos/{id}` | Logado (Dono / Especialista / Adm) | `UpdateEventoRequest` | `EventoResource` | `eventosService.atualizar()` | Atualiza evento próprio ou institucional; o criador é identificado pelo `criador.id` retornado no Resource |
+| `DELETE`| `/api/eventos/{id}` | Logado (Dono / Especialista / Adm) | N/A | Mensagem 200/204 | `eventosService.excluir()` | Remove evento próprio ou institucional autorizado; a tela apresenta ações ao criador e a gestores |
 
 > **Regra de Visibilidade dos Calendários:** O calendário do Portal Público é uma visão *read-only* alimentada pelos eventos que o **Especialista / Adm** cadastra. No Dashboard, qualquer usuário logado pode criar eventos. Eventos criados por **Professores** são visíveis a todos os usuários autenticados; eventos de **Alunos** e **Bibliotecárias** ficam visíveis somente ao autor. Eventos do Especialista/Adm continuam institucionais e visíveis para toda a comunidade escolar. A visibilidade compartilhada não concede permissão para editar ou excluir eventos de terceiros.
+>
+> **Cadastro em massa:** `POST /api/eventos/em-massa` recebe `eventos[]` com `data_inicio`, `titulo`, `tipo` (`Sábados Letivos` ou `Feriados e Recessos`) e `descricao`. O frontend envia essas chaves diretamente conforme a `StoreEventoEmMassaRequest`.
 
 #### Horários semanais
 *Grades por turma e ano letivo, consultadas na Agenda do Dashboard.*
@@ -265,33 +271,37 @@ As respostas seguem a configuração global `JsonResource::withoutWrapping()`: o
 ---
 
 ### Módulo 5: Turmas / Boletim (Escopo Enxuto via CSV)
-*Notas e Frequência alimentadas exclusivamente por arquivo CSV. Sem tarefas manuais ou correções avulsas.*
+*A importação consolidada por CSV permanece disponível. Como contingência aprovada, Especialista/Adm também podem lançar nota e frequência individualmente nas tabelas existentes; Professor continua estritamente consultivo.*
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
 |---|---|---|---|---|---|---|
-| `GET` | `/api/turmas/resumo-geral` | Especialista / Prof / Adm | N/A | `TurmaResumoResource` (Coleção) | `turmasService.obterResumoGeral()` | Indicadores agregados e KPIs de todas as turmas (suporta `?ano_letivo=`, defaultando para o ano ativo) |
-| `GET` | `/api/turmas` | Especialista / Prof / Adm | N/A | `TurmaResource` (Coleção) | `turmasService.listarTurmas()` | Listagem de turmas para consulta |
-| `POST` | `/api/turmas` | Especialista / Adm | `StoreTurmaRequest` | `TurmaResource` | `turmasService.criarTurma()` | Cadastra nova turma escolar vinculada obrigatoriamente a um Período Letivo cadastrado |
-| `PUT` | `/api/turmas/{turma_id}` | Especialista / Adm | `UpdateTurmaRequest` | `TurmaResource` | `turmasService.atualizarTurma()` | Atualiza dados cadastrais da turma |
+| `GET` | `/api/turmas/resumo-geral` | Especialista / Prof / Adm | N/A | `TurmaResumoResource` + `TurmaResumoData` (Coleção) | `turmasService.obterResumoGeral()` | Indicadores agregados e KPIs de todas as turmas (suporta `?ano_letivo=`, defaultando para o ano ativo; inclui `ciclo_id`, `ciclo_nome`, `taxa_absenteismo` e `distribuicao`) |
+| `GET` | `/api/turmas` | Especialista / Prof / Adm | N/A | `TurmaResource` + `TurmaData` (Coleção) | `turmasService.listarTurmas()` | Listagem de turmas para consulta (inclui `periodo_letivo_id`, `ciclo_id` e `ciclo_nome`) |
+| `POST` | `/api/turmas` | Especialista / Adm | `StoreTurmaRequest` + `SalvarTurmaData` | `TurmaResource` + `TurmaData` | `turmasService.criarTurma()` | Cadastra nova turma escolar vinculada obrigatoriamente a um Período Letivo cadastrado |
+| `PUT` | `/api/turmas/{turma_id}` | Especialista / Adm | `UpdateTurmaRequest` + `SalvarTurmaData` | `TurmaResource` + `TurmaData` | `turmasService.atualizarTurma()` | Atualiza dados cadastrais da turma |
 | `DELETE`| `/api/turmas/{turma_id}` | Especialista / Adm | N/A | Mensagem 204/422 | `turmasService.excluirTurma()` | Exclui turma (bloqueia se houver alunos ativos) |
 | `GET` | `/api/turmas/{turma_id}/alunos` | Especialista / Prof / Adm | N/A | `AlunoTurmaResource` (Coleção) | `turmasService.listarAlunosTurma()` | Alunos matriculados na turma (consulta) |
 | `GET` | `/api/turmas/{turma_id}/alunos-disponiveis` | Especialista / Adm | N/A | `UsuarioResource` (Coleção) | `turmasService.listarAlunosDisponiveis()` | Alunos elegíveis para matrícula na turma (sem matrícula ativa no mesmo ano letivo) |
 | `GET` | `/api/matriculas` | Especialista / Prof / Adm | N/A | `MatriculaResource` (Coleção) | `turmasService.listarMatriculas()` | Relação nominal de todos os matriculados ativos |
 | `POST` | `/api/matriculas` | Especialista / Adm | `StoreMatriculaRequest` | `MatriculaResource` | `turmasService.vincularAluno()` | Matricula/vincula aluno na turma |
-| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista / Adm | `ImportarRelatorioTurmaRequest` | `RelatorioImportadoResource` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com notas/faltas consolidadas; exige estritamente arquivo no formato `.csv` (outros formatos retornam 422 de incompatibilidade); importa exclusivamente alunos previamente cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`) e matrícula ativa na turma (alunos não cadastrados são ignorados sem auto-cadastro). Suporta desambiguação de homônimos (`mapeamentos_alunos`) e conciliação de disciplinas com catálogo/ciclos escolares (`mapeamentos_disciplinas`, `ciclo_id` e retorno de `catalogo_ciclos`), bem como reconhecimento automático de múltiplos períodos letivos por coluna (1º, 2º e 3º Trimestres, EIR e descarte da coluna TOTAL). Detecta divergências de notas com períodos já cadastrados e suporta decisão do usuário via `decisao_divergencias` (`'atualizar'` ou `'manter'`), retornando `status: 'pendente_confirmacao'`, `tipo_pendencia: 'divergencias_notas'` e a lista `divergencias` caso haja conflitos não confirmados. |
+| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista / Adm | `ImportarRelatorioTurmaRequest` + `ImportarRelatorioInputData` + `RegistroNotaCsvData` | `RelatorioImportadoResource` + `RelatorioImportadoData` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com notas/faltas consolidadas; exige estritamente arquivo no formato `.csv` (outros formatos retornam 422 de incompatibilidade); valida cada célula via `RegistroNotaCsvData` (descartando células inválidas com aviso em `dados.alertas`) e importa exclusivamente alunos previamente cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`) e matrícula ativa na turma. Suporta desambiguação de homônimos (`mapeamentos_alunos`) e conciliação de disciplinas (`mapeamentos_disciplinas` com `disciplina_id`, `ciclo_id`, `sugestao_disciplina_id`, `sugestao_disciplina_nome` e retorno de `catalogo_ciclos`), além de reconhecimento automático de múltiplos períodos letivos e resolução de divergências via `decisao_divergencias` (`'atualizar'` ou `'manter'`). |
+| `POST` | `/api/notas` | Especialista / Adm | `StoreNotaRequest` | `NotaResource` + `NotaDiarioData` | `turmasService.lancarNotaManual()` | Registra nota individual existente na tabela `notas`; exige turma, aluno matriculado ativo, disciplina vinculada, período, avaliação, nota e valor máximo; data e observações são opcionais. Dispara os alertas acadêmicos aplicáveis. |
+| `POST` | `/api/frequencias` | Especialista / Adm | `StoreFrequenciaManualRequest` | `FrequenciaResource` | `turmasService.lancarFrequenciaManual()` | Registra/atualiza a frequência de um aluno por turma, disciplina e data, com quantidade de aulas, situação e justificativa opcional; usa a tabela `frequencias` existente e atualiza os alertas acadêmicos aplicáveis. |
 | `DELETE`| `/api/turmas/{turma_id}/dados-csv` | Especialista / Adm | N/A | Mensagem 200 | `turmasService.excluirDadosCsv()` | Exclui notas e faltas carregadas via CSV da turma (suporta ?periodo_letivo=) |
-| `GET` | `/api/turmas/{turma_id}/notas` | Especialista / Prof / Adm | N/A | `NotaResource` (Coleção) | `turmasService.listarNotasTurma()` | Consulta notas lançadas na turma; blindado para exibir exclusivamente notas de alunos cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`), com filtros de período, disciplina e aluno (`aluno_id`). |
-| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/boletim` | Aluno / Prof / Esp / Adm | N/A | `BoletimResource` | `boletimService.obterBoletim()` | Boletim consolidado de notas e faltas por trimestre |
-| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/comparativo-turma` | Aluno / Prof / Esp / Adm | N/A | `ComparativoTurmaResource` | `boletimService.obterComparativoTurma()` | Dados comparativos do aluno vs média oficial da turma por disciplina (inclui `frequencia_aluno_global`, `frequencia_turma_global`, e por matéria `frequencia_aluno` e `frequencia_turma` calculados via média aritmética simples dos alunos ativos, com `null` quando não houver registros consolidados) |
-| `GET` | `/api/professores` | Especialista / Adm | N/A | `ProfessorResource` (Coleção + `meta.pendentes_count`) | `professoresService.listarProfessores()` | Lista professores cadastrados, status de confirmação e disciplinas vinculadas |
+| `GET` | `/api/turmas/{turma_id}/notas` | Especialista / Prof / Adm | `FiltroNotasTurmaData` | `NotaResource` + `NotaDiarioData` (Coleção) | `turmasService.listarNotasTurma()` | Consulta notas lançadas na turma; blindado para exibir exclusivamente notas de alunos cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`), com filtros combinados de período (`periodo_letivo`), disciplina (`disciplina_id`) e aluno (`aluno_id`). Inclui `percentual_faltas`, `total_faltas`, `valor_maximo_periodo` e `situacao`. |
+| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/boletim` | Aluno / Prof / Esp / Adm | N/A | `BoletimResource` + `BoletimAlunoData` | `boletimService.obterBoletim()` | Boletim consolidado de notas e faltas por trimestre validado ponta a ponta com `BoletimAlunoSchema` |
+| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/comparativo-turma` | Aluno / Prof / Esp / Adm | N/A | `ComparativoTurmaResource` + `ComparativoTurmaData` | `boletimService.obterComparativoTurma()` | Dados comparativos do aluno vs média oficial da turma por disciplina validados com `ComparativoTurmaSchema` (inclui `frequencia_aluno_global`, `frequencia_turma_global`, e por matéria `frequencia_aluno` e `frequencia_turma`) |
+| `GET` | `/api/professores` | Especialista / Adm | N/A | `ProfessorResource` (Coleção + `meta.pendentes_count`) | `professoresService.listarProfessores()` | Lista professores cadastrados, status de confirmação e disciplinas vinculadas; cada item de `disciplinas` inclui `ciclos: [{ id_ciclo, nome }]` para o front exibir `Nome - Ciclo` (ex.: "Filosofia - 2º Ano regular") |
 | `GET` | `/api/professores/{professor}` | Especialista / Adm | N/A | `ProfessorResource` | `professoresService.obterProfessor()` | Detalhes de um professor e suas disciplinas |
 | `PATCH` | `/api/professores/{professor}/confirmar` | Especialista / Adm | `ConfirmarProfessorRequest` | `ProfessorResource` | `professoresService.confirmarProfessor()` | Confirma o vínculo institucional do professor exigindo vínculo a ao menos 1 disciplina (`disciplina_ids`) |
 | `PATCH` | `/api/professores/{professor}/recusar` | Especialista / Adm | N/A | `UsuarioResource` | `professoresService.recusarProfessor()` | Recusa a solicitação docente, revertendo o papel para `aluno` |
 | `POST` | `/api/professores/{professor}/vincular-disciplina` | Especialista / Adm | `VincularProfessorDisciplinaRequest` | `ProfessorResource` | `professoresService.vincularDisciplinaProfessor()` | Vincula disciplina (existente ou recém-criada) ao professor confirmado |
 | `DELETE` | `/api/professores/{professor}/desvincular-disciplina/{disciplina}` | Especialista / Adm | N/A | `ProfessorResource` | `professoresService.desvincularDisciplinaProfessor()` | Remove o vínculo de regência entre o professor e a disciplina |
-| `GET` | `/api/ciclos` | Aluno / Prof / Esp / Adm | N/A | `CicloResource` (Coleção + `disciplinas_sem_ciclo`) | `disciplinasService.listarDisciplinasPorCiclo()` | Especialista/Adm: lista todos os Ciclos Escolares com disciplinas e turmas completas. Professor: lista estritamente os ciclos, turmas e disciplinas sob sua regência docente. |
-| `POST` | `/api/ciclos` | Especialista / Adm | `StoreCicloRequest` | `CicloResource` | `disciplinasService.criarCiclo()` | Cria um novo Ciclo Escolar (`nome` obrigatório até 100 e único; `descricao` opcional, **máx. 256 caracteres**, exibida abaixo do rótulo do ciclo) |
-| `PUT` | `/api/ciclos/{ciclo}` | Especialista / Adm | `StoreCicloRequest` | `CicloResource` | `disciplinasService.atualizarCiclo()` | Renomeia o Ciclo e/ou altera o comentário (`nome`, `descricao` máx. 256) |
+| `GET` | `/api/ciclos` | Aluno / Prof / Esp / Adm | N/A | `CicloResource` + `CicloData` (Coleção + `disciplinas_sem_ciclo`) | `disciplinasService.listarDisciplinasPorCiclo()` | Especialista/Adm: lista todos os Ciclos Escolares com disciplinas e turmas completas. Professor: lista estritamente os ciclos, turmas e disciplinas sob sua regência docente. |
+| `POST` | `/api/ciclos` | Especialista / Adm | `StoreCicloRequest` + `SalvarCicloData` | `CicloResource` + `CicloData` | `disciplinasService.criarCiclo()` | Cria um novo Ciclo Escolar (`nome` obrigatório até 100 e único; `descricao` opcional, **máx. 256 caracteres**, exibida abaixo do rótulo do ciclo) |
+| `PUT` | `/api/ciclos/{ciclo}` | Especialista / Adm | `StoreCicloRequest` + `SalvarCicloData` | `CicloResource` + `CicloData` | `disciplinasService.atualizarCiclo()` | Renomeia o Ciclo e/ou altera o comentário (`nome`, `descricao` máx. 256) |
+| `POST` | `/api/ciclos/{ciclo}/disciplinas` | Especialista / Adm | `disciplina_id: integer` | `CicloResource` | `disciplinasService.vincularDisciplinaAoCiclo()` | Vincula uma disciplina existente ao ciclo curricular e sincroniza turmas |
+| `DELETE` | `/api/ciclos/{ciclo}/disciplinas/{disciplina}` | Especialista / Adm | N/A | `CicloResource` | `disciplinasService.desvincularDisciplinaDoCiclo()` | Remove a disciplina do ciclo curricular sem apagá-la do catálogo escolar |
 | `DELETE` | `/api/ciclos/{ciclo}` | Especialista / Adm | N/A | Sem conteúdo (`204`) | `disciplinasService.excluirCiclo()` | Remove o Ciclo **sem exclusão em cascata**: as disciplinas viram não vinculadas (retornam em `disciplinas_sem_ciclo` no `GET /api/ciclos`) e as turmas ficam com `ciclo_id = null`, preservando alocações, notas e frequência |
 | `GET` | `/api/disciplinas` | Aluno / Prof / Esp / Adm | N/A | `DisciplinaResource` (Coleção) | `disciplinasService.listarDisciplinas()` | Lista disciplinas curriculares (para Professor: restrito às matérias sob sua regência; para Aluno: filtrado por ?vinculadas=1) |
 | `POST` | `/api/disciplinas` | Especialista / Adm | `StoreDisciplinaRequest` | `DisciplinaResource` | `disciplinasService.criarDisciplina()` | Cadastra disciplina vinculando a ciclos existentes (`ciclo_ids`) e/ou criando novo ciclo (`novo_ciclo_nome`) |
@@ -306,7 +316,124 @@ As respostas seguem a configuração global `JsonResource::withoutWrapping()`: o
 | `DELETE`| `/api/periodos-letivos/{id}` | Especialista / Adm | N/A | Mensagem 200 | `periodosLetivosService.excluirPeriodoLetivo()` | Exclui período letivo (bloqueia se houver turmas no ano) |
 | `POST` | `/api/periodos-letivos/{id}/sincronizar-agenda` | Especialista / Adm | N/A | Mensagem 200 | `periodosLetivosService.sincronizarAgendaPeriodo()` | Força a sincronização dos marcos escolares com o calendário institucional |
 
-> **Regra de Escopo:** O Professor possui acesso **estritamente consultivo e isolado** aos dados das suas turmas e dos seus alunos (rotulada no frontend como **"Minhas Turmas"**). No módulo acadêmico, o professor visualiza única e exclusivamente as turmas e disciplinas a ele vinculadas, sem botões de criação, edição ou exclusão. Não há telas nem rotas para cadastro diário de tarefas ou chamada manual. A criação de turmas e a vinculação de alunos são privativas do Especialista e Administrador. A importação de CSV é privativa do Especialista. No frontend, as disciplinas exibem obrigatoriamente a concatenação **`NOME + CICLO`**.
+> **Regra de Escopo:** O Professor possui acesso **estritamente consultivo e isolado** aos dados das suas turmas e dos seus alunos (rotulada no frontend como **"Minhas Turmas"**). No módulo acadêmico, o professor visualiza única e exclusivamente as turmas e disciplinas a ele vinculadas, sem botões de criação, edição ou exclusão. Como contingência aprovada, Especialista/Adm podem lançar nota e frequência de um aluno individualmente; isso não habilita o professor nem cria uma chamada diária em lote. Cadastro manual de atividades e consolidação diária de chamada continuam fora de escopo. A criação de turmas e a vinculação de alunos são privativas do Especialista e Administrador. A importação de CSV é privativa do Especialista. No frontend, as disciplinas exibem obrigatoriamente a concatenação **`NOME + CICLO`**.
+
+#### Especificação de Contratos Tipados (Spatie Laravel Data ↔ Zod)
+Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spatie Laravel Data** (`app/Data/Academico/*`) na entrada/saída do Laravel e **Zod** (`src/utils/academicoSchemas.js`) nos serviços e formulários do React:
+
+* **`TurmaResource` (`TurmaData` ↔ `TurmaSchema`)**:
+  ```json
+  {
+    "id_turma": 1,
+    "nome_identificador": "3º Ano - ADS",
+    "ciclo_id": 3,
+    "ciclo_nome": "3º Ano - Ensino Médio",
+    "periodo_letivo_id": 1,
+    "ano_letivo": 2026,
+    "turno": "Integral",
+    "capacidade_maxima": 40,
+    "status": "Ativa",
+    "total_alunos": 5,
+    "total_disciplinas": 12
+  }
+  ```
+* **`TurmaResumoResource` (`TurmaResumoData` ↔ `TurmaResumoSchema`)**:
+  ```json
+  {
+    "id_turma": 1,
+    "nome_identificador": "3º Ano - ADS",
+    "ciclo_id": 3,
+    "ciclo_nome": "3º Ano - Ensino Médio",
+    "turno": "Integral",
+    "ano_letivo": 2026,
+    "status": "Ativa",
+    "total_alunos": 5,
+    "media_geral": 74.5,
+    "taxa_presenca": 94.0,
+    "taxa_absenteismo": 6.0,
+    "total_avaliados": 5,
+    "distribuicao": {
+      "acima": 40.0,
+      "na_media": 40.0,
+      "abaixo": 20.0
+    }
+  }
+  ```
+* **`NotaResource` (`NotaDiarioData` ↔ `NotaDiarioSchema`)**:
+  ```json
+  {
+    "id_nota": 10,
+    "turma_id": 1,
+    "disciplina_id": 4,
+    "usuario_id": 12,
+    "periodo_letivo": "1º Trimestre",
+    "tipo_avaliacao": "Consolidado CSV",
+    "valor_nota": 24.5,
+    "valor_maximo": 30.0,
+    "valor_maximo_periodo": 30.0,
+    "percentual_faltas": 5.0,
+    "total_faltas": 2,
+    "situacao": "Acima da Média",
+    "data_registro": "2026-05-15",
+    "observacoes": null,
+    "aluno": { "id": 12, "name": "Ana Ramos", "email": "ana.ramos@aluno.mg.gov.br" },
+    "disciplina": { "id_disciplina": 4, "nome": "Desenvolvimento de Aplicativos" }
+  }
+  ```
+* **`RelatorioImportadoResource` (`RelatorioImportadoData` ↔ `RelatorioImportadoSchema`)**:
+  ```json
+  {
+    "status": "sucesso",
+    "tipo_pendencia": null,
+    "message": "Relatório da turma importado e sincronizado com sucesso.",
+    "turma": { "id_turma": 1, "nome_identificador": "3º Ano - ADS" },
+    "ambiguidades": [],
+    "divergencias": [],
+    "disciplinas_pendentes": [],
+    "catalogo_disciplinas": [],
+    "catalogo_ciclos": [],
+    "dados": {
+      "status": "sucesso",
+      "tipo_pendencia": null,
+      "message": "Relatório da turma importado e sincronizado com sucesso.",
+      "linhas_lidas": 6,
+      "periodo_aplicado": "1º Trimestre",
+      "data_referencia": "2026-04-15",
+      "alunos_identificados": 5,
+      "alunos_ignorados": [],
+      "total_ignorados": 0,
+      "notas_sincronizadas": 10,
+      "frequencias_sincronizadas": 5,
+      "alertas": []
+    }
+  }
+  ```
+* **`BoletimResource` (`BoletimAlunoData` ↔ `BoletimAlunoSchema`)**:
+  ```json
+  {
+    "turma_id": 1,
+    "aluno_id": 12,
+    "periodo_selecionado": "1º Trimestre",
+    "boletim": [
+      {
+        "disciplina_id": 4,
+        "nome_disciplina": "Desenvolvimento de Aplicativos",
+        "nota_obtida": 25.5,
+        "valor_maximo": 30.0,
+        "somatorio_faltas": 2,
+        "total_aulas": 20,
+        "status": "Aprovado",
+        "id": 4,
+        "materia": "Desenvolvimento de Aplicativos",
+        "pontos": 25.5,
+        "cor": "#0d6efd"
+      }
+    ],
+    "grafico_boletim": [
+      { "id": 4, "materia": "Desenvolvimento de Aplicativos", "pontos": 25.5, "cor": "#0d6efd" }
+    ]
+  }
+  ```
 
 ---
 
@@ -315,11 +442,12 @@ As respostas seguem a configuração global `JsonResource::withoutWrapping()`: o
 
 | Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front | Descrição |
 |---|---|---|---|---|---|---|
-| `PUT` | `/api/usuarios/{id}` | Logado (próprio perfil) / Adm | `UpdateUsuarioRequest` | `UsuarioResource` | `usuarioService.atualizarPerfil()` / `atualizarUsuario()` | Usuário comum atualiza nickname, telefone, data de nascimento e senha. Adm altera `role`, `comentario_admin` e emite notificação direta (`mensagem_notificacao` + `super_importante`) |
+| `PUT` | `/api/usuarios/{id}` | Logado (próprio perfil) / Adm | `UpdateUsuarioRequest` | `UsuarioResource` | `usuarioService.atualizarPerfil()` / `atualizarUsuario()` | Usuário comum atualiza nickname, telefone, data de nascimento e senha. Adm altera nome, e-mail, senha/redefinição, `role`, `turma_id`, `status_confirmacao`, `ativo`, `comentario_admin` e emite notificação direta (`mensagem_notificacao` + `super_importante`) |
 | `POST` | `/api/usuarios/{id}/avatar` | Logado (próprio perfil) | `UploadAvatarRequest` | `UsuarioResource` | `usuarioService.uploadAvatar()` | Envia e atualiza a foto de perfil (avatar) |
 | `DELETE` | `/api/usuarios/{id}/avatar` | Logado (próprio perfil) | N/A | `UsuarioResource` | `usuarioService.removerAvatar()` | Remove a foto de perfil atual do usuário |
-| `GET` | `/api/usuarios` | Adm | N/A | `UsuarioResource` (Coleção paginada, padrão 15 últimos) | `usuarioService.listarUsuarios()` | Lista os 15 últimos usuários cadastrados com filtro por `role`, `busca` por nome, autorizador e data de vínculo |
-| `DELETE` | `/api/usuarios/{id}` | Adm | `DesvincularUsuarioRequest` | `UsuarioResource` | `usuarioService.desvincularUsuario()` | Exclusão lógica em 2 etapas (exige `confirmacao_nome` idêntico ao nome completo): inativa usuário, encerra vínculo ativo preservando histórico e revoga tokens Sanctum (logoff forçado) |
+| `GET` | `/api/usuarios` | Adm | N/A | `UsuarioResource` (Coleção paginada) | `usuarioService.listarUsuarios()` | Lista todos os usuários cadastrados (inclusive com pendências, aguardando aprovação, confirmados ou inativos) com suporte a filtros por `role`, `status` (`confirmado`, `pendente`, `inativo`), `busca`/`q` por nome e paginação dinâmica (`per_page`) |
+| `POST` | `/api/usuarios` | Adm | `StoreUsuarioRequest` | `UsuarioResource` | `usuarioService.cadastrarUsuario()` | Cadastra novo usuário diretamente pelo painel administrativo (suporta `name`, `email`, `password`, `role`, `turma_id`, `status_confirmacao`, `ativo`, `telefone`, `data_nascimento`) |
+| `DELETE` | `/api/usuarios/{id}` | Adm | `DesvincularUsuarioRequest` | `UsuarioResource` | `usuarioService.desvincularUsuario()` / `excluirUsuarioTotalmente()` | Suporta confirmação de nome em 2 etapas (estilo GitHub). Por padrão (`permanente: false`), inativa o usuário, encerra vínculo preservando histórico acadêmico e revoga tokens Sanctum. Quando `permanente: true`, remove o usuário fisicamente e definitivamente do banco de dados |
 | `GET` | `/api/usuarios/pendentes-resumo` | Especialista / Adm | N/A | Envelope JSON (`alunos_pendentes`, `professores_pendentes`, `total_pendentes`) | `usuarioService.obterPendentesResumo()` | Retorna contadores e lista de aprovações de login pendentes (`@aluno` e `@educacao`) |
 | `PATCH` | `/api/usuarios/{id}/confirmar-vinculo-aluno` | Especialista / Adm | `ConfirmarAlunoVinculoRequest` | `UsuarioResource` | `usuarioService.confirmarVinculoAluno()` | Aprova login institucional de estudante (`@aluno`) vinculando-o a uma turma (`turma_id`) |
 | `PATCH`| `/api/usuarios/{id}/bloquear` | Adm | N/A | `UsuarioResource` | `usuarioService.alternarBloqueio()` | Ativa ou desativa acesso do usuário |
@@ -332,7 +460,7 @@ As respostas seguem a configuração global `JsonResource::withoutWrapping()`: o
 
 | Método | Endpoint | Acesso | API Resource (Back) | Serviço Front | Dados Retornados por Perfil |
 |---|---|---|---|---|---|
-| `GET` | `/api/dashboard/geral` | Especialista / Prof / Adm | `DashboardGeralResource` | `geralService()` / `fetchDashboardGeral()` | Indicadores agregados (KPIs), médias por turma (0-10), disciplinas do docente e últimas atualizações reais |
+| `GET` | `/api/dashboard/geral?divisao={nome|todos}` | Especialista / Prof / Adm | `DashboardGeralResource` | `geralService()` / `fetchDashboardGeral()` | KPIs e médias/frequências por turma filtrados pela etapa ou pelo ano consolidado, disciplinas do docente e cinco últimas notificações únicas |
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/resumo-global` | Aluno / Prof / Esp / Adm | `AlunoResumoGlobalResource` | `dashboardService.obterResumoAluno()` | Média geral, percentual de frequência e avisos |
 | `GET` | `/api/turmas/{turma_id}/resumo-gerencial` | Especialista / Adm | `EspecialistaResumoGerencialResource` | `dashboardService.obterResumoEspecialista()` | Médias por componente, evasão e índice de frequência |
 | `GET` | `/api/turmas/{turma_id}/alunos-criticos` | Especialista / Adm | `AlunoCriticoResource` | `dashboardService.obterAlunosCriticos()` | Alunos com risco de retenção por falta ou nota |
@@ -360,23 +488,23 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
     ]
   },
   "disciplinas_docente": ["Matemática", "Física"],
-  "ultimas_atualizacoes": [
+  "ultimas_notificacoes": [
     {
-      "id": "noticia-1",
-      "tipo": "noticia",
-      "texto": "Nova notícia publicada: Feira de Ciências 2026",
+      "id": "manual:...",
+      "tipo": "notificacao",
+      "texto": "Clara Mendes: Comunicado escolar",
+      "assunto": "Atenção ao cronograma.",
       "tempoAtras": "há 2 horas"
-    },
-    {
-      "id": "nota-1",
-      "tipo": "notas",
-      "texto": "Notas atualizadas — 1º Ano A - Ensino Médio",
-      "tempoAtras": "há 1 dia"
     }
-  ]
+  ],
+  "periodo_contexto": {
+    "divisao_selecionada": "2º Trimestre",
+    "pontos_divisao": 30,
+    "pontos_consolidados": 30
+  }
 }
 ```
-* **Nota sobre Escopo**: Para o `especialista` e `adm`, os dados abrangem todas as turmas ativas da instituição. Para o `professor`, os KPIs e listagens de turmas são calculados dinamicamente com base nas turmas e disciplinas sob sua regência docente (com fallback automático para a visão da escola caso ainda não possua turmas atribuídas).
+* **Nota sobre Escopo**: Para o `especialista` e `adm`, os dados abrangem todas as turmas ativas da instituição. Para o `professor`, os KPIs e listagens de turmas são calculados dinamicamente com base nas turmas e disciplinas sob sua regência docente (com fallback automático para a visão da escola caso ainda não possua turmas atribuídas). O parâmetro `divisao` aceita o nome de uma etapa ou `todos`; notas filtram pelo período letivo e frequências pelo intervalo de datas. As médias gerais são médias aritméticas das turmas com dados no período; sem dados, o valor do KPI é `null`. `pontos_consolidados` soma somente as etapas cuja data final já passou. `ultimas_notificacoes` lista até cinco eventos únicos, sem filtrar por leitura: inclui mensagens manuais criadas por Professor, Especialista, Adm ou Bibliotecária e eventos destinados a Bibliotecárias.
 
 ---
 
@@ -387,7 +515,7 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
 |---|---|---|---|---|---|---|
 | `GET` | `/api/notificacoes?page={n}&per_page={n}` | Logado | N/A | `NotificacaoResource` (paginada) | `notificacoesService.listarNotificacoes()` | Lista notificações não confirmadas do próprio usuário, da mais recente para a mais antiga; `per_page` é limitado a 100 |
 | `GET` | `/api/notificacoes/super-importantes` | Logado | N/A | `NotificacaoResource` (Array JSON na raiz) | `notificacoesService.listarSuperImportantes()` | Lista notificações super-importantes não confirmadas para exibição no login |
-| `POST` | `/api/notificacoes` | Professor / Especialista / Adm | `StoreNotificacaoRequest` | `NotificacaoResource` (Array JSON na raiz) | `notificacoesService.criarNotificacao()` | Cria mensagens para aluno, turma ou comunidade escolar; professor só pode alcançar alunos/turmas sob sua regência; comunicado geral é restrito a Especialista/Adm |
+| `POST` | `/api/notificacoes` | Professor / Especialista / Adm / Bibliotecária | `StoreNotificacaoRequest` | `NotificacaoResource` (Array JSON na raiz) | `notificacoesService.criarNotificacao()` | Cria mensagens para aluno, turma ou comunidade escolar; professor só pode alcançar alunos/turmas sob sua regência; comunicado geral é restrito a Especialista/Adm; Bibliotecária só pode notificar individualmente estudantes com devolução atrasada, de hoje ou nos próximos três dias |
 | `PATCH` | `/api/notificacoes/{id}/lida` | Destinatário | N/A | `NotificacaoResource` | `notificacoesService.marcarNotificacaoLida()` | Confirma individualmente e retira a notificação da caixa pendente |
 | `PATCH` | `/api/notificacoes/marcar-padrao-lidas` | Logado | N/A | Sem conteúdo (`204`) | `notificacoesService.marcarPadraoComoLidas()` | Confirma em massa somente notificações padrão; importantes/super-importantes exigem confirmação individual |
 
@@ -402,7 +530,7 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
   "super_importante": "boolean (opcional, padrão false)"
 }
 ```
-Para cada destinatário, o canal de banco nativo do Laravel cria um registro individual com `id`, `titulo`, `assunto`, `tipo`, `origem`, `prioridade`, `criador_id`, `criador_nome`, `destinatario_id`, `event_key`, `read_at` e `created_at`. O estado `read_at` é individual, mesmo quando a mensagem foi enviada para uma turma/comunidade.
+Para cada destinatário, o canal de banco nativo do Laravel cria um registro individual com `id`, `titulo`, `assunto`, `tipo`, `origem`, `prioridade`, `criador_id`, `criador_nome`, `destinatario_id`, `event_key`, `read_at` e `created_at`. O estado `read_at` é individual, mesmo quando a mensagem foi enviada para uma turma/comunidade. Bibliotecárias podem enviar somente para um aluno com empréstimo atrasado, vencendo hoje ou nos próximos três dias; o painel limita essa ação ao estudante da linha selecionada.
 
 #### Saída: `NotificacaoResource`
 ```json

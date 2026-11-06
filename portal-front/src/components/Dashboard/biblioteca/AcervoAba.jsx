@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AcervoAba.jsx - Aba de Gestão e Consulta do Acervo de Livros Físicos
  *
  * Papel Didático:
@@ -28,13 +28,25 @@ const ESTADO_LIVRO_INICIAL = {
   capa: '',
 };
 
+// Mapeia os status técnicos da API para rótulos amigáveis na listagem do estudante
+const ROTULOS_STATUS_EMPRESTIMO = {
+  solicitado: 'Solicitado (aguardando retirada)',
+  entregue: 'Entregue (em posse do leitor)',
+  renovado: 'Renovado',
+  atrasado: 'Em atraso',
+  devolvido: 'Devolvido',
+  recusado: 'Cancelado / Recusado',
+};
+
 const AcervoAba = ({
   livros = [],
+  emprestimos = [],
   buscaAtiva = false,
   onSalvarLivro,
   onImportarCsv,
   onExcluirLivro,
   onSolicitarEmprestimo,
+  onCancelarEmprestimo,
   onAviso,
   onAdicionarAoPlano,
   onRegistrarAcoes,
@@ -53,11 +65,14 @@ const AcervoAba = ({
   const [modalFormAberto, setModalFormAberto] = useState(false);
   const [modalCsvAberto, setModalCsvAberto] = useState(false);
   const [modalEmprestimoAberto, setModalEmprestimoAberto] = useState(false);
+  const [livroIndisponivelModal, setLivroIndisponivelModal] = useState(null);
+  const [filtroDisponibilidade, setFiltroDisponibilidade] = useState('todos');
   const [livroSelecionado, setLivroSelecionado] = useState(null);
   const [formData, setFormData] = useState(ESTADO_LIVRO_INICIAL);
   const [arquivoCsv, setArquivoCsv] = useState(null);
   const [observacaoEmprestimo, setObservacaoEmprestimo] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [emprestimoCancelandoId, setEmprestimoCancelandoId] = useState(null);
 
   // Estados da busca na web (Google Books API) para autopreenchimento do cadastro
   const [termoBuscaWeb, setTermoBuscaWeb] = useState('');
@@ -205,6 +220,12 @@ const AcervoAba = ({
     }
   };
 
+  const handleCancelarEmprestimo = async (emprestimo) => {
+    setEmprestimoCancelandoId(emprestimo.id);
+    await onCancelarEmprestimo?.(emprestimo.id);
+    setEmprestimoCancelandoId(null);
+  };
+
     useEffect(() => {
     if (onRegistrarAcoes) {
       onRegistrarAcoes({
@@ -217,22 +238,88 @@ const AcervoAba = ({
     }
   }, [onRegistrarAcoes]);
 
+  // Filtra os livros exibidos de acordo com o botão de disponibilidade selecionado
+  const livrosExibidos = (Array.isArray(livros) ? livros : []).filter((livro) => {
+    if (filtroDisponibilidade === 'disponiveis') {
+      return (
+        livro.disponivel ??
+        (livro.quantidade_disponivel !== undefined
+          ? livro.quantidade_disponivel > 0
+          : livro.status === 'Disponível')
+      );
+    }
+    return true;
+  });
+
   return (
     <section aria-label="Acervo de Livros">
-      {/* Barra Informativa de Contagem de Livros */}
+      {/* Barra Informativa de Contagem e Filtro de Disponibilidade */}
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div>
           <span className="text-muted small">
             {buscaAtiva
-              ? `${livros.length} título(s) encontrado(s) na pesquisa`
-              : `Exibindo os ${livros.length} último(s) livro(s) cadastrado(s) no acervo`}
+              ? `${livrosExibidos.length} título(s) encontrado(s) na pesquisa`
+              : `Exibindo ${livrosExibidos.length} de ${livros.length} livro(s) no acervo`}
           </span>
+        </div>
+
+        <div className="btn-group btn-group-sm rounded-pill border p-1 bg-light" role="group" aria-label="Filtro de disponibilidade">
+          <button
+            type="button"
+            className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold ${
+              filtroDisponibilidade === 'todos'
+                ? 'btn-white bg-white shadow-sm text-dark'
+                : 'text-muted border-0 bg-transparent'
+            }`}
+            onClick={() => setFiltroDisponibilidade('todos')}
+          >
+            Todos ({livros.length})
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold ${
+              filtroDisponibilidade === 'disponiveis'
+                ? 'btn-white bg-white shadow-sm text-success'
+                : 'text-muted border-0 bg-transparent'
+            }`}
+            onClick={() => setFiltroDisponibilidade('disponiveis')}
+          >
+            Apenas Disponíveis ({livros.filter((l) => (l.disponivel ?? l.quantidade_disponivel > 0)).length})
+          </button>
         </div>
       </div>
 
+      {emprestimos.length > 0 && (
+        <section className="card border-0 shadow-sm rounded-4 p-3 mb-4" aria-labelledby="meus-emprestimos-titulo">
+          <h2 className="h6 fw-bold mb-3" id="meus-emprestimos-titulo">Minhas solicitações e empréstimos</h2>
+          <div className="d-flex flex-column gap-2">
+            {emprestimos.map((emprestimo) => (
+              <div key={emprestimo.id} className="d-flex flex-wrap justify-content-between align-items-center gap-2 border rounded-3 p-2">
+                <div>
+                  <strong>{emprestimo.livro?.titulo || "Livro"}</strong>
+                  <div className="small text-muted">
+                    Situação: {ROTULOS_STATUS_EMPRESTIMO[emprestimo.status] || emprestimo.status}
+                  </div>
+                </div>
+                {emprestimo.status === "solicitado" && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-danger rounded-pill"
+                    onClick={() => handleCancelarEmprestimo(emprestimo)}
+                    disabled={emprestimoCancelandoId === emprestimo.id}
+                  >
+                    {emprestimoCancelandoId === emprestimo.id ? "Cancelando..." : "Cancelar solicitação"}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Grade de Livros Redimensionada para 5 Cards em Uma Linha no Desktop (row-cols-xl-5) */}
       <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-5 g-3">
-        {livros.map((livro) => {
+        {livrosExibidos.map((livro) => {
           const disponivel =
             livro.disponivel ??
             (livro.quantidade_disponivel !== undefined
@@ -316,19 +403,25 @@ const AcervoAba = ({
                       )}
                     </div>
 
-                    {/* Botão de Solicitar Empréstimo */}
-                    <button
-                      type="button"
-                      disabled={!disponivel}
-                      onClick={() => abrirModalEmprestimo(livro)}
-                      className={`btn btn-sm w-100 rounded-pill mb-2 fw-semibold ${
-                        disponivel
-                          ? 'btn-primary'
-                          : 'btn-outline-secondary'
-                      }`}
-                    >
-                      <span>{disponivel ? 'Solicitar Empréstimo' : 'Indisponível'}</span>
-                    </button>
+                    {/* Botão de Solicitar Empréstimo ou Ver Opções Disponíveis */}
+                    {disponivel ? (
+                      <button
+                        type="button"
+                        onClick={() => abrirModalEmprestimo(livro)}
+                        className="btn btn-sm w-100 rounded-pill mb-2 fw-semibold btn-primary"
+                      >
+                        <span>Solicitar Empréstimo</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setLivroIndisponivelModal(livro)}
+                        className="btn btn-sm w-100 rounded-pill mb-2 fw-semibold btn-outline-danger"
+                        title="Exemplar esgotado. Clique para ver opções disponíveis."
+                      >
+                        <span>⚠️ Indisponível (Ver opções)</span>
+                      </button>
+                    )}
 
                     {/* Botão de Adicionar aos Planos de Estudos */}
                     <button
@@ -834,6 +927,134 @@ const AcervoAba = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= Modal: Exemplar Indisponível e Sugestões ================= */}
+      {livroIndisponivelModal && (
+        <div
+          className="biblioteca-modal-overlay"
+          onClick={() => setLivroIndisponivelModal(null)}
+          role="presentation"
+        >
+          <div
+            className="biblioteca-modal-dialog biblioteca-modal-dialog--lg p-4 position-relative"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-indisponivel-titulo"
+          >
+            <button
+              type="button"
+              onClick={() => setLivroIndisponivelModal(null)}
+              className="btn-close position-absolute top-0 end-0 m-3"
+              aria-label="Fechar modal"
+            />
+            <div className="d-flex align-items-center gap-2 mb-2 text-danger">
+              <span className="fs-4">⚠️</span>
+              <h5 id="modal-indisponivel-titulo" className="fw-bold mb-0 text-dark">
+                Exemplar Indisponível no Momento
+              </h5>
+            </div>
+
+            <div className="alert alert-warning py-2 px-3 small rounded-3 mb-3">
+              Todos os exemplares de <strong>"{livroIndisponivelModal.titulo}"</strong> ({livroIndisponivelModal.autor})
+              estão atualmente emprestados. Assim que um exemplar for devolvido à biblioteca escolar, ele voltará a ficar disponível para empréstimo.
+            </div>
+
+            <h6 className="fw-bold text-dark small mb-2">
+              📚 Sugestões de Livros Disponíveis no Acervo:
+            </h6>
+
+            {(() => {
+              // Busca livros disponíveis, priorizando mesmo gênero ou autor
+              const disponiveisGerais = (Array.isArray(livros) ? livros : []).filter(
+                (l) =>
+                  (l.disponivel ?? l.quantidade_disponivel > 0) &&
+                  l.id !== livroIndisponivelModal.id
+              );
+
+              const mesmoGenero = disponiveisGerais.filter(
+                (l) => l.genero && l.genero.toLowerCase() === (livroIndisponivelModal.genero || '').toLowerCase()
+              );
+
+              const outrosDisponiveis = disponiveisGerais.filter(
+                (l) => !mesmoGenero.some((m) => m.id === l.id)
+              );
+
+              const sugestoes = [...mesmoGenero, ...outrosDisponiveis].slice(0, 4);
+
+              if (sugestoes.length === 0) {
+                return (
+                  <p className="text-muted small py-3 text-center">
+                    Não há outros exemplares disponíveis cadastrados no momento.
+                  </p>
+                );
+              }
+
+              return (
+                <div className="row row-cols-1 row-cols-sm-2 g-2 mb-3">
+                  {sugestoes.map((sugestao) => (
+                    <div key={sugestao.id} className="col">
+                      <div className="card h-100 p-2 border rounded-3 bg-light-subtle d-flex flex-row align-items-center gap-2">
+                        {sugestao.capa || sugestao.capa_url ? (
+                          <img
+                            src={sugestao.capa || sugestao.capa_url}
+                            alt=""
+                            className="rounded object-fit-cover flex-shrink-0"
+                            style={{ width: '48px', height: '64px' }}
+                          />
+                        ) : (
+                          <div
+                            className="bg-white rounded border d-flex align-items-center justify-content-center flex-shrink-0"
+                            style={{ width: '48px', height: '64px', fontSize: '20px' }}
+                          >
+                            📖
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-grow-1">
+                          <h6 className="fw-bold text-dark mb-0 small text-truncate" title={sugestao.titulo}>
+                            {sugestao.titulo}
+                          </h6>
+                          <small className="text-muted d-block text-truncate">
+                            {sugestao.autor}
+                          </small>
+                          {sugestao.genero && (
+                            <span className="badge bg-secondary-subtle text-secondary-emphasis" style={{ fontSize: '10px' }}>
+                              {sugestao.genero}
+                            </span>
+                          )}
+                          <div className="mt-2">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-primary rounded-pill px-3 py-0 fw-semibold"
+                              style={{ fontSize: '11px' }}
+                              onClick={() => {
+                                setLivroIndisponivelModal(null);
+                                abrirModalEmprestimo(sugestao);
+                              }}
+                            >
+                              Solicitar este livro
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            <div className="d-flex justify-content-end pt-2 border-top">
+              <button
+                type="button"
+                className="btn btn-sm btn-secondary rounded-pill px-4"
+                onClick={() => setLivroIndisponivelModal(null)}
+              >
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}

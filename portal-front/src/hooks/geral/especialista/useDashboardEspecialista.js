@@ -14,6 +14,8 @@ export function useDashboardEspecialista() {
   const [frequencias, setFrequencias] = useState([]);
   const [disciplinasDocente, setDisciplinasDocente] = useState([]);
   const [updates, setUpdates] = useState([]);
+  const [divisaoSelecionada, setDivisaoSelecionada] = useState("");
+  const [periodoContexto, setPeriodoContexto] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -26,7 +28,7 @@ export function useDashboardEspecialista() {
         setError(null);
 
         // Realiza uma única chamada ao backend e distribui as fatias do payload para os estados locais
-        const payload = await fetchDashboardGeral();
+        const payload = await fetchDashboardGeral({ divisao: divisaoSelecionada });
 
         if (!isMounted) return;
 
@@ -34,7 +36,8 @@ export function useDashboardEspecialista() {
         setMedias(payload?.resumo_turmas?.medias || []);
         setFrequencias(payload?.resumo_turmas?.frequencias || []);
         setDisciplinasDocente(payload?.disciplinas_docente || []);
-        setUpdates(payload?.ultimas_atualizacoes || []);
+        setUpdates(payload?.ultimas_notificacoes || []);
+        setPeriodoContexto(payload?.periodo_contexto || null);
       } catch (err) {
         if (isMounted) {
           setError(err.message || "Erro ao carregar os indicadores do painel geral.");
@@ -51,7 +54,7 @@ export function useDashboardEspecialista() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [divisaoSelecionada]);
 
   return {
     cards,
@@ -59,6 +62,9 @@ export function useDashboardEspecialista() {
     frequencias,
     disciplinasDocente,
     updates,
+    divisaoSelecionada,
+    setDivisaoSelecionada,
+    periodoContexto,
     loading,
     error,
   };

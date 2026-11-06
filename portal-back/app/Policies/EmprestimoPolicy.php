@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\EmprestimoStatus;
 use App\Models\Emprestimo;
 use App\Models\User;
 
@@ -44,12 +45,29 @@ class EmprestimoPolicy
     }
 
     /**
-     * Autoriza a aprovação de retirada física apenas para gestores da biblioteca.
+     * Autoriza o titular a liberar somente uma solicitação ainda pendente.
      */
-    public function aprovar(User $user, Emprestimo $emprestimo): bool
+    public function cancelar(User $user, Emprestimo $emprestimo): bool
+    {
+        return $emprestimo->usuario_id === $user->id
+            && $emprestimo->status === EmprestimoStatus::SOLICITADO;
+    }
+
+    /**
+     * Autoriza o registro de entrega física do exemplar apenas para gestores da biblioteca.
+     */
+    public function entregar(User $user, Emprestimo $emprestimo): bool
     {
         return $user->hasPermissionTo('gerenciar_emprestimos')
             || $user->hasPermissionTo('gerenciar_biblioteca');
+    }
+
+    /**
+     * Mantém alias de compatibilidade apontando para a mesma regra de entrega física.
+     */
+    public function aprovar(User $user, Emprestimo $emprestimo): bool
+    {
+        return $this->entregar($user, $emprestimo);
     }
 
     /**

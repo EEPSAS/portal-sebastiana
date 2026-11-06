@@ -121,7 +121,20 @@ export const solicitarEmprestimo = (dados) =>
   requestJson('/emprestimos/solicitar', { method: 'POST', body: dados });
 
 /**
- * Atualiza o status do empréstimo (Aprovar, Devolver, Renovar - Bibliotecária / Adm).
+ * Cancela uma solicitação pendente pertencente ao usuário autenticado.
+ */
+export const cancelarSolicitacaoEmprestimo = (id) =>
+  requestJson(`/emprestimos/${id}/cancelar`, { method: 'PATCH' });
+
+/**
+ * Registra a entrega física do livro ao aluno e inicia a contagem do prazo de devolução.
+ * @param {number|string} id Identificador do empréstimo.
+ */
+export const entregarEmprestimo = (id) =>
+  requestJson(`/emprestimos/${id}/entregar`, { method: 'PATCH' });
+
+/**
+ * Atualiza o status do empréstimo (Entregar, Devolver, Renovar - Bibliotecária / Adm).
  * @param {number|string} id Identificador do empréstimo.
  * @param {object} dados Objeto com novo status e observações.
  */
@@ -138,6 +151,8 @@ export const bibliotecaService = {
   meusEmprestimos,
   listarEmprestimos,
   solicitarEmprestimo,
+  cancelarSolicitacaoEmprestimo,
+  entregarEmprestimo,
   atualizarEmprestimo,
 };
 

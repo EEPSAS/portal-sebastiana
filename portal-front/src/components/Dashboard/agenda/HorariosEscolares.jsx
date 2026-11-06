@@ -37,7 +37,7 @@ const DIAS = [
 /**
  * Componente Draggable (@dnd-kit) para o card da aula dentro da célula do horário.
  */
-const AulaDraggableCard = ({ aula, habilitado }) => {
+const AulaDraggableCard = ({ aula, habilitado, cicloNome }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `aula-${aula.id}`,
     data: { aula },
@@ -62,7 +62,9 @@ const AulaDraggableCard = ({ aula, habilitado }) => {
         habilitado ? 'horario-aula-draggable' : ''
       }`}
     >
-      <span className="d-block fw-semibold text-dark">{formatarDisciplinaCiclo(aula.disciplina)}</span>
+      <span className="d-block fw-semibold text-dark">{/* Ciclo da turma selecionada concatenado ao nome (ex.: "Filosofia - 2º Ano regular") */}
+        {formatarDisciplinaCiclo(aula.disciplina, cicloNome)}
+      </span>
       <span className="d-block small text-muted">{aula.professor?.name}</span>
       {aulasSemanais && (
         <span
@@ -87,6 +89,7 @@ const CelulaHorarioDroppable = ({
   editando,
   podeEditar,
   salvandoAula,
+  cicloNome,
   onNativeDragStart,
   onNativeDrop,
   onNativeDragEnd,
@@ -123,7 +126,7 @@ const CelulaHorarioDroppable = ({
       }`}
     >
       {aula ? (
-        <AulaDraggableCard aula={aula} habilitado={habilitadoDrag} />
+        <AulaDraggableCard aula={aula} habilitado={habilitadoDrag} cicloNome={cicloNome} />
       ) : (
         <span className="text-muted">—</span>
       )}
@@ -183,6 +186,8 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
     ({ turma }) => String(turma.id_turma) === turmaSelecionadaId
   );
   const horario = turmaSelecionada?.horario;
+  // Ciclo da turma escolhida, concatenado ao nome das disciplinas na grade e no resumo
+  const cicloNomeTurma = turmaSelecionada?.turma?.ciclo_nome;
   const aulasPorPosicao = new Map(
     (horario?.aulas || []).map((aula) => [`${aula.dia_semana}-${aula.aula_numero}`, aula])
   );
@@ -195,7 +200,8 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
       if (!disc?.id_disciplina) return;
       const atual = mapa.get(disc.id_disciplina) || {
         id_disciplina: disc.id_disciplina,
-        nome: disc.nome,
+        // Rótulo já concatenado com o ciclo da turma (ex.: "Filosofia - 2º Ano regular")
+        nome: formatarDisciplinaCiclo(disc, cicloNomeTurma),
         aulas_semanais: disc.aulas_semanais || 0,
         carga_horaria_anual: disc.carga_horaria_anual || (disc.aulas_semanais || 0) * 40,
         alocadas: 0,
@@ -204,7 +210,7 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
       mapa.set(disc.id_disciplina, atual);
     });
     return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [horario]);
+  }, [horario, cicloNomeTurma]);
 
   const atualizarHorarioSelecionado = (horarioAtualizado) => {
     setTurmas((atuais) =>
@@ -418,7 +424,7 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
                   key={disc.id_disciplina}
                   className="badge bg-white text-dark border rounded-pill px-3 py-1 fw-normal"
                 >
-                  <strong className="text-primary">{formatarDisciplinaCiclo(disc)}:</strong> {disc.alocadas} aula(s)/sem
+                  <strong className="text-primary">{disc.nome}:</strong> {disc.alocadas} aula(s)/sem
                   {disc.carga_horaria_anual ? ` (${disc.carga_horaria_anual}h/ano)` : ''}
                 </span>
               ))}
@@ -463,6 +469,7 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
                               editando={editando}
                               podeEditar={podeEditar}
                               salvandoAula={salvandoAula}
+                              cicloNome={cicloNomeTurma}
                               onNativeDragStart={(aulaItem) => setAulaArrastada(aulaItem)}
                               onNativeDrop={(destDia, destPeriodo) => {
                                 if (aulaArrastada) {

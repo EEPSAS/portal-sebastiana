@@ -1,11 +1,17 @@
 import { api } from "./api";
+import {
+  ListaPeriodosLetivosSchema,
+  PeriodoLetivoSchema,
+  validarContratoZod,
+} from "../utils/academicoSchemas";
 
 /**
  * periodosLetivosService.js - Serviço de Integração do Período Letivo
  *
  * Papel Didático:
- * Centraliza as operações HTTP da nova funcionalidade do módulo acadêmico:
- * - Listagem de períodos cadastrados e suas divisões (Bimestres/Trimestres)
+ * Centraliza as operações HTTP da funcionalidade de Período Letivo,
+ * validando estritamente os contratos de retorno via Zod:
+ * - Listagem de períodos cadastrados e suas divisões (Bimestres/Trimestres/Semestres)
  * - Consulta do período letivo atualmente ativo
  * - Criação, atualização e ativação de anos letivos
  * - Sincronização oficial de marcos com o calendário escolar institucional
@@ -19,7 +25,8 @@ export const listarPeriodosLetivos = async ({ signal } = {}) => {
     throw new Error(data?.message || "Não foi possível carregar os períodos letivos.");
   }
 
-  return Array.isArray(data) ? data : data?.data || [];
+  const listaBruta = Array.isArray(data) ? data : data?.data || [];
+  return validarContratoZod(ListaPeriodosLetivosSchema, listaBruta, "GET /periodos-letivos");
 };
 
 export const obterPeriodoLetivoAtivo = async ({ signal } = {}) => {
@@ -31,7 +38,10 @@ export const obterPeriodoLetivoAtivo = async ({ signal } = {}) => {
     throw new Error(data?.message || "Não foi possível carregar o período letivo ativo.");
   }
 
-  return data?.data || data || null;
+  const registro = data?.data || data || null;
+  if (!registro) return null;
+
+  return validarContratoZod(PeriodoLetivoSchema, registro, "GET /periodos-letivos/ativo");
 };
 
 export const obterPeriodoLetivo = async (id, { signal } = {}) => {
@@ -42,7 +52,8 @@ export const obterPeriodoLetivo = async (id, { signal } = {}) => {
     throw new Error(data?.message || "Não foi possível carregar os detalhes do período letivo.");
   }
 
-  return data?.data || data;
+  const registro = data?.data || data;
+  return validarContratoZod(PeriodoLetivoSchema, registro, "GET /periodos-letivos/:id");
 };
 
 export const criarPeriodoLetivo = async (dados) => {
@@ -59,7 +70,7 @@ export const criarPeriodoLetivo = async (dados) => {
     throw new Error(`${errorMsg} ${errors}`.trim());
   }
 
-  return data?.data || data;
+  return validarContratoZod(PeriodoLetivoSchema, data?.data || data, "POST /periodos-letivos");
 };
 
 export const atualizarPeriodoLetivo = async (id, dados) => {
@@ -76,7 +87,7 @@ export const atualizarPeriodoLetivo = async (id, dados) => {
     throw new Error(`${errorMsg} ${errors}`.trim());
   }
 
-  return data?.data || data;
+  return validarContratoZod(PeriodoLetivoSchema, data?.data || data, "PUT /periodos-letivos/:id");
 };
 
 export const ativarPeriodoLetivo = async (id) => {
@@ -89,7 +100,11 @@ export const ativarPeriodoLetivo = async (id) => {
     throw new Error(data?.message || "Erro ao ativar período letivo.");
   }
 
-  return data?.data || data;
+  return validarContratoZod(
+    PeriodoLetivoSchema,
+    data?.data || data,
+    "PATCH /periodos-letivos/:id/ativar"
+  );
 };
 
 export const excluirPeriodoLetivo = async (id) => {

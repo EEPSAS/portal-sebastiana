@@ -12,6 +12,7 @@ const ModalCriarNotificacao = ({
   matriculas,
   turmas,
   role,
+  somenteAluno = false,
   onClose,
   onCreated,
 }) => {
@@ -137,7 +138,7 @@ const ModalCriarNotificacao = ({
                   onChange={(event) => setDestinatarioTipo(event.target.value)}
                 >
                   <option value="aluno">Um aluno</option>
-                  <option value="turma">Uma turma</option>
+                  {!somenteAluno && <option value="turma">Uma turma</option>}
                   {podeEnviarGeral && <option value="geral">Toda a comunidade escolar</option>}
                 </select>
               </div>

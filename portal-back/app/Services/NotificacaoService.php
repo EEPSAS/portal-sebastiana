@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\EmprestimoStatus;
 use App\Enums\UserRole;
 use App\Models\Disciplina;
+use App\Models\Emprestimo;
 use App\Models\Evento;
 use App\Models\Frequencia;
 use App\Models\Matricula;
@@ -78,6 +80,37 @@ class NotificacaoService
 
         if ($destinatarios->isNotEmpty()) {
             Notification::send($destinatarios, new NotificacaoPortal($payload));
+        }
+    }
+
+    /**
+     * Avisa a equipe da biblioteca sobre uma nova solicitação sem expor o pedido a outros perfis.
+     */
+    public function notificarSolicitacaoEmprestimo(Emprestimo $emprestimo): void
+    {
+        $emprestimo->loadMissing(['livro', 'usuario']);
+        $eventKey = "emprestimo:solicitacao:{$emprestimo->id_emprestimo}";
+        $payload = [
+            'titulo' => "Livro solicitado: {$emprestimo->livro->titulo}",
+            'assunto' => "{$emprestimo->usuario->name} solicitou o livro \"{$emprestimo->livro->titulo}\". Pedido #{$emprestimo->id_emprestimo}.",
+            'tipo' => 'emprestimo',
+            'origem' => 'sistema',
+            'prioridade' => 'importante',
+            'criador_id' => $emprestimo->usuario_id,
+            'criador_nome' => $emprestimo->usuario->name,
+            'event_key' => $eventKey,
+        ];
+
+        $bibliotecarias = User::query()
+            ->where('ativo', true)
+            ->where(function ($query) {
+                $query->where('role', UserRole::BIBLIOTECARIA->value)
+                    ->orWhereHas('roleModel', fn ($roleQuery) => $roleQuery->whereIn('slug', ['bibliotecaria', 'bibliotecario']));
+            })
+            ->get();
+
+        foreach ($bibliotecarias as $bibliotecaria) {
+            $this->enviarUmaVez($bibliotecaria, $payload);
         }
     }
 
@@ -345,6 +378,10 @@ class NotificacaoService
     {
         $tipo = $dados['destinatario_tipo'];
 
+        if ($autor->isBibliotecaria() && $tipo !== 'aluno') {
+            abort(403, 'A Bibliotecária só pode notificar individualmente os estudantes da lista de devoluções.');
+        }
+
         if ($tipo === 'geral' && ! ($autor->isEspecialista() || $autor->isAdm())) {
             abort(403, 'Somente Especialista ou Administrador pode enviar comunicados gerais.');
         }
@@ -368,6 +405,27 @@ class NotificacaoService
             throw ValidationException::withMessages([
                 'aluno_id' => 'As notificações individuais desta tela devem ser enviadas a um aluno.',
             ]);
+        }
+
+        if ($autor->isBibliotecaria()) {
+            $prazoLimite = now()->addDays(3)->toDateString();
+            // Considera como empréstimo em posse do aluno os status ativos de retirada (entregue, renovado e atrasado)
+            $temDevolucaoProxima = Emprestimo::query()
+                ->where('usuario_id', $aluno->id)
+                ->whereIn('status', [
+                    EmprestimoStatus::ENTREGUE->value,
+                    EmprestimoStatus::RENOVADO->value,
+                    EmprestimoStatus::ATRASADO->value,
+                ])
+                ->where(function ($query) use ($prazoLimite) {
+                    $query->where('status', EmprestimoStatus::ATRASADO->value)
+                        ->orWhereDate('data_prevista_devolucao', '<=', $prazoLimite);
+                })
+                ->exists();
+
+            if (! $temDevolucaoProxima) {
+                abort(403, 'A Bibliotecária só pode notificar estudantes listados nas devoluções próximas.');
+            }
         }
 
         $turmasAtivas = Matricula::query()
