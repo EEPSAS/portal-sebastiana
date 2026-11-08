@@ -8,7 +8,7 @@
  */
 
 import { Link } from "react-router";
-import { obterCategoriaPorId } from "../../content/wiki/categorias";
+import { obterCategoriaPorId } from "../../../content/wiki/categorias";
 
 export default function WikiContent({
   artigo,

@@ -17,7 +17,7 @@ import {
   listarTodosArtigos,
   obterArtigoPorId,
   buscarArtigos,
-} from "../../content/wiki";
+} from "../../../content/wiki";
 import "./wiki.css";
 
 export default function WikiContainer({ roleUsuario = "aluno", modoPublico = false }) {

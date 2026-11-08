@@ -6,7 +6,7 @@
  * e sinalizando se é um tópico prioritário para a role atual do usuário.
  */
 
-import { obterCategoriaPorId } from "../../content/wiki/categorias";
+import { obterCategoriaPorId } from "../../../content/wiki/categorias";
 
 export default function WikiCardResumo({ artigo, onAbrirArtigo, roleUsuario = "aluno" }) {
   const categoria = obterCategoriaPorId(artigo.categoriaId);
