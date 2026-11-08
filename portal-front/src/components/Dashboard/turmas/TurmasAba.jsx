@@ -17,12 +17,6 @@ const CORES_PONTOS_TURMA = [
 ];
 
 /**
- * Itens por página na relação de alunos matriculados para manter a tabela
- * perfeitamente enxuta e sem necessidade de barra de rolagem na página.
- */
-const ALUNOS_POR_PAGINA = 8;
-
-/**
  * TurmasAba.jsx - Quadro de Turmas e Alunos Matriculados
  *
  * Papel Didático:
@@ -30,13 +24,18 @@ const ALUNOS_POR_PAGINA = 8;
  * 1. Painel Esquerdo ("Turmas"):
  *    - Cabeçalho com botão "+ Nova" para criação ágil de turmas;
  *    - Campo de busca em tempo real com filtro por nome e turno;
- *    - Lista empilhada de cartões slim com indicador colorido e contagem de alunos;
+ *    - Ações rápidas de "Marcar todas" e "Desmarcar";
+ *    - Lista empilhada de cartões slim com checkbox visual e indicador colorido;
+ *    - Permite marcar e desmarcar turmas individualmente (seleção múltipla);
  *    - Scroll vertical interno confinado que nunca transborda a viewport.
  *
- * 2. Painel Direito ("Todos os Alunos Matriculados"):
- *    - Cabeçalho com identificação da turma selecionada e ações rápidas ("Notas CSV" e "Ações");
- *    - Barra de filtros com busca por nome/matrícula e filtro por status;
- *    - Tabela de alunos com avatar, email institucional, status e ações rápidas;
+ * 2. Painel Direito ("Alunos Matriculados"):
+ *    - Quando nenhuma turma está selecionada: tabela aparece vazia;
+ *    - Quando 1 turma está selecionada: exibe o rótulo de identificação padronizado
+ *      de 'Notas e Diário' (Nome da Turma + Badge "Turma Selecionada" + Ciclo • Turno • Alunos);
+ *    - Quando mais de 1 turma está selecionada: concatena o nome das turmas e exibe
+ *      os alunos de todas as turmas selecionadas;
+ *    - Seletor de quantidade de alunos por página (10, 25, 50 - padrão 25);
  *    - Paginação e scroll interno confinado com thead sticky, mantendo a página fixa.
  */
 export default function TurmasAba({
@@ -59,11 +58,13 @@ export default function TurmasAba({
   const [termoBuscaAluno, setTermoBuscaAluno] = useState("");
   const [filtroStatusAluno, setFiltroStatusAluno] = useState("todos");
 
-  // 2. Estado para a turma selecionada na lista esquerda
-  const [turmaSelecionadaId, setTurmaSelecionadaId] = useState("");
+  // 2. Estado para as turmas selecionadas (suporta marcar e desmarcar múltiplas turmas)
+  // Inicialmente vazio: se nenhuma turma selecionada, a tabela aparece vazia.
+  const [turmasSelecionadasIds, setTurmasSelecionadasIds] = useState([]);
 
-  // 3. Estado de paginação da tabela de alunos
+  // 3. Estado de paginação e quantidade de itens por página (padrão 25)
   const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(25);
 
   // 4. Estados para menus dropdown de ações
   const [menuAcoesTurmaAberto, setMenuAcoesTurmaAberto] = useState(false);
@@ -98,6 +99,16 @@ export default function TurmasAba({
     return mapa;
   }, [turmas, matriculasArray]);
 
+  // Mapa rápido de id_turma -> nome da turma para exibir badge quando múltiplas turmas
+  const mapaNomesTurmas = useMemo(() => {
+    const mapa = {};
+    turmas.forEach((t) => {
+      const tid = String(t.id_turma ?? t.id);
+      if (tid) mapa[tid] = t.nome_identificador || `Turma #${tid}`;
+    });
+    return mapa;
+  }, [turmas]);
+
   // Turmas filtradas pelo campo de busca da coluna esquerda
   const turmasFiltradas = useMemo(() => {
     if (!termoBuscaTurma.trim()) return turmas;
@@ -116,20 +127,37 @@ export default function TurmasAba({
     });
   }, [turmas, termoBuscaTurma]);
 
-  // Objeto da turma atualmente selecionada (derivação pura sem setState em effect)
-  const turmaAtiva = useMemo(() => {
-    if (turmaSelecionadaId) {
-      const encontrada = turmas.find(
-        (t) => String(t.id_turma ?? t.id) === String(turmaSelecionadaId)
-      );
-      if (encontrada) return encontrada;
-    }
-    return turmas[0] || null;
-  }, [turmas, turmaSelecionadaId]);
+  // Relação de objetos de turmas atualmente ativas/marcadas
+  const turmasAtivas = useMemo(() => {
+    if (turmasSelecionadasIds.length === 0) return [];
+    return turmas.filter((t) =>
+      turmasSelecionadasIds.includes(String(t.id_turma ?? t.id))
+    );
+  }, [turmas, turmasSelecionadasIds]);
 
-  // Handlers que combinam alteração de filtros com reset de paginação (padrão React 19)
-  const handleSelecionarTurma = (tId) => {
-    setTurmaSelecionadaId(tId);
+  const isUmaTurma = turmasAtivas.length === 1;
+  const isMultiplasTurmas = turmasAtivas.length > 1;
+  const turmaUnica = isUmaTurma ? turmasAtivas[0] : null;
+
+  // Handlers para marcar/desmarcar turmas
+  const handleToggleTurma = (tId) => {
+    setTurmasSelecionadasIds((prev) => {
+      if (prev.includes(tId)) {
+        return prev.filter((id) => id !== tId);
+      }
+      return [...prev, tId];
+    });
+    setPaginaAtual(1);
+  };
+
+  const handleMarcarTodas = () => {
+    const todosIds = turmasFiltradas.map((t) => String(t.id_turma ?? t.id));
+    setTurmasSelecionadasIds(todosIds);
+    setPaginaAtual(1);
+  };
+
+  const handleDesmarcarTodas = () => {
+    setTurmasSelecionadasIds([]);
     setPaginaAtual(1);
   };
 
@@ -157,18 +185,16 @@ export default function TurmasAba({
     return () => document.removeEventListener("mousedown", handleClickFora);
   }, []);
 
-  // Alunos filtrados pela turma ativa, termo de busca e status
+  // Alunos filtrados: se nenhuma turma selecionada, retorna vazio.
   const alunosFiltrados = useMemo(() => {
-    let lista = matriculasArray;
-
-    // Filtra pela turma selecionada
-    if (turmaAtiva) {
-      const idAlvo = String(turmaAtiva.id_turma ?? turmaAtiva.id);
-      lista = lista.filter((m) => {
-        const tId = String(m.turma_id ?? m.turma?.id_turma ?? "");
-        return tId === idAlvo;
-      });
+    if (turmasSelecionadasIds.length === 0) {
+      return [];
     }
+
+    let lista = matriculasArray.filter((m) => {
+      const tId = String(m.turma_id ?? m.turma?.id_turma ?? "");
+      return turmasSelecionadasIds.includes(tId);
+    });
 
     // Filtro textual por nome ou matrícula
     if (termoBuscaAluno.trim()) {
@@ -192,18 +218,18 @@ export default function TurmasAba({
     }
 
     return lista;
-  }, [matriculasArray, turmaAtiva, termoBuscaAluno, filtroStatusAluno]);
+  }, [matriculasArray, turmasSelecionadasIds, termoBuscaAluno, filtroStatusAluno]);
 
-  // Paginação dos alunos
+  // Paginação dos alunos conforme itensPorPagina configurável (10, 25, 50)
   const totalAlunosFiltrados = alunosFiltrados.length;
   const totalPaginas = Math.max(
     1,
-    Math.ceil(totalAlunosFiltrados / ALUNOS_POR_PAGINA)
+    Math.ceil(totalAlunosFiltrados / itensPorPagina)
   );
   const paginaValida = Math.min(paginaAtual, totalPaginas);
-  const indiceInicio = (paginaValida - 1) * ALUNOS_POR_PAGINA;
+  const indiceInicio = (paginaValida - 1) * itensPorPagina;
   const indiceFim = Math.min(
-    indiceInicio + ALUNOS_POR_PAGINA,
+    indiceInicio + itensPorPagina,
     totalAlunosFiltrados
   );
   const alunosPaginados = alunosFiltrados.slice(indiceInicio, indiceFim);
@@ -243,11 +269,18 @@ export default function TurmasAba({
     );
   }
 
+  // Dados para o cabeçalho concatenado de múltiplas turmas
+  const nomesConcatenados = turmasAtivas.map((t) => t.nome_identificador).join(", ");
+  const totalAlunosSomados = turmasAtivas.reduce((acc, t) => {
+    const tid = t.id_turma ?? t.id;
+    return acc + Number(contagemPorTurma[tid] ?? t.total_alunos ?? 0);
+  }, 0);
+
   return (
     <div className="quadro-turmas-viewport-lock">
       <div className="row gx-3 gy-3 gy-lg-0 quadro-turmas-row">
         {/* =========================================================================
-            COLUNA ESQUERDA: LISTA SLIM DE TURMAS (com scroll interno na viewport)
+            COLUNA ESQUERDA: LISTA SLIM DE TURMAS (com marcar/desmarcar na viewport)
             ========================================================================= */}
         <div className="col-12 col-lg-4 col-xl-3 quadro-turmas-col-esquerda">
           <div className="card border-0 shadow-sm rounded-4 p-3 bg-white quadro-turmas-card-esquerdo">
@@ -284,12 +317,43 @@ export default function TurmasAba({
               </div>
             </div>
 
+            {/* Barra de Seleção Rápida: Marcar Todas e Desmarcar */}
+            <div className="d-flex align-items-center justify-content-between px-1 mb-2 small text-muted flex-shrink-0">
+              <span style={{ fontSize: "0.72rem" }}>
+                <strong>{turmasSelecionadasIds.length}</strong> de{" "}
+                {turmasFiltradas.length} marcadas
+              </span>
+              <div className="d-flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-decoration-none small text-primary fw-semibold"
+                  style={{ fontSize: "0.72rem" }}
+                  onClick={handleMarcarTodas}
+                  disabled={turmasFiltradas.length === 0}
+                  title="Marcar todas as turmas filtradas"
+                >
+                  Marcar todas
+                </button>
+                <span className="text-secondary opacity-50">•</span>
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-decoration-none small text-secondary"
+                  style={{ fontSize: "0.72rem" }}
+                  onClick={handleDesmarcarTodas}
+                  disabled={turmasSelecionadasIds.length === 0}
+                  title="Desmarcar todas as turmas"
+                >
+                  Desmarcar
+                </button>
+              </div>
+            </div>
+
             {/* Lista Empilhada de Cartões Slim com Scroll Confinado */}
             <div
               className="quadro-turmas-lista-scroll d-flex flex-column gap-2"
               tabIndex={0}
               role="region"
-              aria-label="Lista de turmas escolares"
+              aria-label="Lista de turmas escolares para marcar e filtrar"
             >
               {turmasFiltradas.length === 0 ? (
                 <div className="text-center py-4 text-muted small">
@@ -299,7 +363,7 @@ export default function TurmasAba({
               ) : (
                 turmasFiltradas.map((turma, index) => {
                   const tId = String(turma.id_turma ?? turma.id);
-                  const isSelecionada = String(turmaAtiva?.id_turma ?? turmaAtiva?.id) === tId;
+                  const isSelecionada = turmasSelecionadasIds.includes(tId);
                   const totalAlunos =
                     contagemPorTurma[tId] ?? turma.total_alunos ?? 0;
                   const corPonto =
@@ -311,23 +375,35 @@ export default function TurmasAba({
                       className={`turma-slim-card ${
                         isSelecionada ? "is-active" : ""
                       }`}
-                      onClick={() => handleSelecionarTurma(tId)}
-                      role="button"
+                      onClick={() => handleToggleTurma(tId)}
+                      role="checkbox"
+                      aria-checked={isSelecionada}
                       tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          handleSelecionarTurma(tId);
+                          handleToggleTurma(tId);
                         }
                       }}
-                      aria-pressed={isSelecionada}
-                      title={`Selecionar turma ${turma.nome_identificador}`}
+                      title={`${
+                        isSelecionada ? "Desmarcar" : "Marcar"
+                      } turma ${turma.nome_identificador}`}
                     >
-                      <div className="d-flex align-items-center gap-2.5 min-w-0">
+                      <div className="d-flex align-items-center gap-2 min-w-0">
+                        {/* Checkbox visual integrado */}
+                        <div className="turma-slim-checkbox flex-shrink-0">
+                          {isSelecionada ? (
+                            <i className="bi bi-check-square-fill text-primary fs-6"></i>
+                          ) : (
+                            <i className="bi bi-square text-secondary fs-6 opacity-60"></i>
+                          )}
+                        </div>
+
                         <span
                           className="turma-slim-dot"
                           style={{ backgroundColor: corPonto }}
                         ></span>
+
                         <div className="text-truncate">
                           <div className="turma-slim-title text-truncate">
                             {turma.nome_identificador}
@@ -339,6 +415,7 @@ export default function TurmasAba({
                           </div>
                         </div>
                       </div>
+
                       <i
                         className={`bi bi-chevron-right turma-slim-chevron ${
                           isSelecionada
@@ -355,41 +432,124 @@ export default function TurmasAba({
         </div>
 
         {/* =========================================================================
-            COLUNA DIREITA: TABELA DE ALUNOS MATRICULADOS NA TURMA SELECIONADA
+            COLUNA DIREITA: TABELA DE ALUNOS CONFORME AS TURMAS MARCADAS
             ========================================================================= */}
         <div className="col-12 col-lg-8 col-xl-9 quadro-turmas-col-direita">
           <div className="card border-0 shadow-sm rounded-4 p-3 bg-white quadro-turmas-card-direito">
-            {/* Cabeçalho da Tabela com Nome da Turma e Ações no Topo Direito */}
+            {/* Cabeçalho de Identificação com Rótulo Dinâmico no Padrão de 'Notas e Diário' */}
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom flex-shrink-0">
-              <div>
-                <h5 className="fw-bolder mb-0 text-dark">
-                  {turmaAtiva
-                    ? "Todos os Alunos Matriculados"
-                    : "Estudantes Matriculados"}
-                </h5>
-                <p className="text-muted small mb-0 mt-0.5">
-                  {turmaAtiva
-                    ? `Relação completa de estudantes da turma selecionada (${turmaAtiva.nome_identificador}).`
-                    : "Selecione uma turma à esquerda para visualizar seus estudantes."}
-                </p>
+              <div className="min-w-0">
+                {turmasAtivas.length === 0 ? (
+                  // Caso 1: Nenhuma turma selecionada
+                  <div className="d-flex align-items-center gap-2.5">
+                    <div
+                      className="d-flex align-items-center justify-content-center rounded-circle bg-secondary-subtle text-secondary shadow-sm flex-shrink-0"
+                      style={{ width: 40, height: 40 }}
+                    >
+                      <i className="bi bi-mortarboard fs-5"></i>
+                    </div>
+                    <div>
+                      <h5 className="fw-bolder mb-0 text-dark">
+                        Nenhuma Turma Selecionada
+                      </h5>
+                      <div className="small text-muted fw-medium mt-0.5">
+                        Marque uma ou mais turmas à esquerda para visualizar seus estudantes.
+                      </div>
+                    </div>
+                  </div>
+                ) : isUmaTurma ? (
+                  // Caso 2: Exatamente 1 turma selecionada (rótulo idêntico ao de 'Notas e Diário')
+                  <div className="d-flex align-items-center gap-2.5">
+                    <div
+                      className="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white shadow-sm flex-shrink-0"
+                      style={{ width: 40, height: 40 }}
+                    >
+                      <i className="bi bi-mortarboard-fill fs-5"></i>
+                    </div>
+                    <div>
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <h5 className="fw-bolder mb-0 text-primary">
+                          {turmaUnica.nome_identificador}
+                        </h5>
+                        <span
+                          className="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle fw-semibold"
+                          style={{ fontSize: "0.72rem" }}
+                        >
+                          Turma Selecionada
+                        </span>
+                      </div>
+                      <div className="small text-secondary fw-medium mt-0.5">
+                        {turmaUnica.ciclo_nome || "Regular"} •{" "}
+                        {turmaUnica.turno || "Integral"} •{" "}
+                        {contagemPorTurma[turmaUnica.id_turma ?? turmaUnica.id] ??
+                          turmaUnica.total_alunos ??
+                          0}{" "}
+                        {Number(
+                          contagemPorTurma[
+                            turmaUnica.id_turma ?? turmaUnica.id
+                          ] ??
+                            turmaUnica.total_alunos ??
+                            0
+                        ) === 1
+                          ? "aluno"
+                          : "alunos"}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Caso 3: Múltiplas turmas selecionadas (rótulo concatenado)
+                  <div className="d-flex align-items-center gap-2.5 min-w-0">
+                    <div
+                      className="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white shadow-sm flex-shrink-0"
+                      style={{ width: 40, height: 40 }}
+                    >
+                      <i className="bi bi-mortarboard-fill fs-5"></i>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <h5
+                          className="fw-bolder mb-0 text-primary text-truncate"
+                          title={nomesConcatenados}
+                        >
+                          {nomesConcatenados}
+                        </h5>
+                        <span
+                          className="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle fw-semibold"
+                          style={{ fontSize: "0.72rem" }}
+                        >
+                          {turmasAtivas.length} Turmas Selecionadas
+                        </span>
+                      </div>
+                      <div className="small text-secondary fw-medium mt-0.5">
+                        {totalAlunosSomados}{" "}
+                        {totalAlunosSomados === 1 ? "aluno" : "alunos"} no
+                        total consolidado
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Botões de Ação da Turma (Notas CSV e Dropdown Ações) */}
+              {/* Botões de Ação Contextuais */}
               <div className="d-flex align-items-center gap-2">
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-dark rounded-3 px-3 fw-semibold d-inline-flex align-items-center gap-1.5"
                   onClick={() =>
-                    onImportarNotas && onImportarNotas(turmaAtiva || turmas[0])
+                    onImportarNotas && onImportarNotas(turmaUnica || turmasAtivas[0])
                   }
-                  disabled={!turmaAtiva}
-                  title="Importar diário de notas via CSV para a turma selecionada"
+                  disabled={!isUmaTurma}
+                  title={
+                    isUmaTurma
+                      ? `Importar notas CSV para ${turmaUnica.nome_identificador}`
+                      : "Selecione exatamente uma turma para importar CSV"
+                  }
                 >
                   <i className="bi bi-file-earmark-arrow-up text-primary"></i>
                   <span>Notas (CSV)</span>
                 </button>
 
-                {podeGerenciar && turmaAtiva && (
+                {podeGerenciar && isUmaTurma && (
                   <div className="turmas-dropdown-wrapper" ref={menuTurmaRef}>
                     <button
                       type="button"
@@ -411,7 +571,7 @@ export default function TurmasAba({
                           className="turmas-dropdown-item"
                           onClick={() => {
                             setMenuAcoesTurmaAberto(false);
-                            onVincularAluno(turmaAtiva);
+                            onVincularAluno(turmaUnica);
                           }}
                         >
                           <i className="bi bi-person-check-fill text-primary"></i>
@@ -422,7 +582,7 @@ export default function TurmasAba({
                           className="turmas-dropdown-item"
                           onClick={() => {
                             setMenuAcoesTurmaAberto(false);
-                            onEditarTurma(turmaAtiva);
+                            onEditarTurma(turmaUnica);
                           }}
                         >
                           <i className="bi bi-pencil text-secondary"></i>
@@ -434,7 +594,7 @@ export default function TurmasAba({
                           className="turmas-dropdown-item turmas-dropdown-item--danger"
                           onClick={() => {
                             setMenuAcoesTurmaAberto(false);
-                            onExcluirTurma(turmaAtiva);
+                            onExcluirTurma(turmaUnica);
                           }}
                         >
                           <i className="bi bi-trash"></i>
@@ -460,6 +620,7 @@ export default function TurmasAba({
                     placeholder="Buscar aluno por nome ou matricula..."
                     value={termoBuscaAluno}
                     onChange={(e) => handleBuscaAlunoChange(e.target.value)}
+                    disabled={turmasSelecionadasIds.length === 0}
                     aria-label="Buscar aluno por nome ou matrícula"
                   />
                 </div>
@@ -474,6 +635,7 @@ export default function TurmasAba({
                     className="form-select border-start-0 ps-1"
                     value={filtroStatusAluno}
                     onChange={(e) => handleStatusAlunoChange(e.target.value)}
+                    disabled={turmasSelecionadasIds.length === 0}
                     aria-label="Filtrar por status da matrícula"
                   >
                     <option value="todos">Todos os status</option>
@@ -516,13 +678,21 @@ export default function TurmasAba({
                   </tr>
                 </thead>
                 <tbody>
-                  {alunosPaginados.length === 0 ? (
+                  {turmasSelecionadasIds.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-5 text-muted">
+                        <i className="bi bi-inbox fs-2 d-block mb-2 text-secondary opacity-50"></i>
+                        Nenhuma turma selecionada. Clique em uma ou mais turmas
+                        na coluna ao lado para exibir seus alunos.
+                      </td>
+                    </tr>
+                  ) : alunosPaginados.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-5 text-muted">
                         <i className="bi bi-people fs-2 d-block mb-2 text-secondary opacity-50"></i>
                         {termoBuscaAluno || filtroStatusAluno !== "todos"
                           ? "Nenhum aluno encontrado para os filtros selecionados."
-                          : "Nenhum aluno matriculado nesta turma."}
+                          : "Nenhum aluno matriculado na(s) turma(s) selecionada(s)."}
                       </td>
                     </tr>
                   ) : (
@@ -530,6 +700,14 @@ export default function TurmasAba({
                       const matId = mat.id_matricula ?? mat.id;
                       const alunoNome = mat.aluno?.name || mat.name || "Estudante";
                       const alunoEmail = mat.aluno?.email || mat.email || "";
+                      const turmaDoAlunoId = String(
+                        mat.turma_id ?? mat.turma?.id_turma ?? ""
+                      );
+                      const turmaDoAlunoNome =
+                        mat.turma?.nome_identificador ||
+                        mat.turma_nome ||
+                        mapaNomesTurmas[turmaDoAlunoId] ||
+                        "";
                       const dataFormatada = formatarData(
                         mat.data_matricula || mat.created_at
                       );
@@ -558,9 +736,19 @@ export default function TurmasAba({
                                 {(alunoNome || "A").charAt(0).toUpperCase()}
                               </div>
                               <div className="overflow-hidden">
-                                <strong className="d-block text-dark small aluno-nome-destaque text-truncate">
-                                  {alunoNome}
-                                </strong>
+                                <div className="d-flex align-items-center gap-2 flex-wrap">
+                                  <strong className="d-block text-dark small aluno-nome-destaque text-truncate">
+                                    {alunoNome}
+                                  </strong>
+                                  {isMultiplasTurmas && turmaDoAlunoNome && (
+                                    <span
+                                      className="badge bg-primary-subtle text-primary border border-primary-subtle py-0.5 px-1.5 fw-semibold"
+                                      style={{ fontSize: "0.66rem" }}
+                                    >
+                                      {turmaDoAlunoNome}
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="d-flex align-items-center gap-2">
                                   <small
                                     className="text-muted text-truncate"
@@ -673,16 +861,44 @@ export default function TurmasAba({
               </table>
             </div>
 
-            {/* Rodapé da Tabela: Contagem e Paginação */}
+            {/* Rodapé da Tabela: Contagem, Seletor de Itens por Página e Paginação */}
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-2 mt-auto border-top flex-shrink-0">
-              <span className="small text-muted">
-                Mostrando{" "}
-                <strong>
-                  {totalAlunosFiltrados > 0 ? indiceInicio + 1 : 0}
-                </strong>
-                -<strong>{indiceFim}</strong> de{" "}
-                <strong>{totalAlunosFiltrados}</strong> alunos
-              </span>
+              <div className="d-flex align-items-center gap-3 flex-wrap">
+                <span className="small text-muted">
+                  Mostrando{" "}
+                  <strong>
+                    {totalAlunosFiltrados > 0 ? indiceInicio + 1 : 0}
+                  </strong>
+                  -<strong>{indiceFim}</strong> de{" "}
+                  <strong>{totalAlunosFiltrados}</strong> alunos
+                </span>
+
+                {/* Seletor configurável de itens por página: 10, 25 (padrão) e 50 */}
+                <div className="d-inline-flex align-items-center gap-1.5">
+                  <label
+                    htmlFor="select-itens-por-pagina"
+                    className="small text-muted mb-0"
+                    style={{ fontSize: "0.76rem" }}
+                  >
+                    Exibir:
+                  </label>
+                  <select
+                    id="select-itens-por-pagina"
+                    className="form-select form-select-sm py-0 px-2 border-secondary-subtle fw-semibold"
+                    style={{ width: "auto", fontSize: "0.78rem", height: "26px" }}
+                    value={itensPorPagina}
+                    onChange={(e) => {
+                      setItensPorPagina(Number(e.target.value));
+                      setPaginaAtual(1);
+                    }}
+                    aria-label="Quantidade de alunos exibidos por página"
+                  >
+                    <option value={10}>10 por página</option>
+                    <option value={25}>25 por página</option>
+                    <option value={50}>50 por página</option>
+                  </select>
+                </div>
+              </div>
 
               {totalPaginas > 1 && (
                 <div

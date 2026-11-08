@@ -284,11 +284,11 @@ As respostas seguem a configuração global `JsonResource::withoutWrapping()`: o
 | `GET` | `/api/turmas/{turma_id}/alunos-disponiveis` | Especialista / Adm | N/A | `UsuarioResource` (Coleção) | `turmasService.listarAlunosDisponiveis()` | Alunos elegíveis para matrícula na turma (sem matrícula ativa no mesmo ano letivo) |
 | `GET` | `/api/matriculas` | Especialista / Prof / Adm | N/A | `MatriculaResource` (Coleção) | `turmasService.listarMatriculas()` | Relação nominal de todos os matriculados ativos |
 | `POST` | `/api/matriculas` | Especialista / Adm | `StoreMatriculaRequest` | `MatriculaResource` | `turmasService.vincularAluno()` | Matricula/vincula aluno na turma |
-| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista / Adm | `ImportarRelatorioTurmaRequest` + `ImportarRelatorioInputData` + `RegistroNotaCsvData` | `RelatorioImportadoResource` + `RelatorioImportadoData` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com notas/faltas consolidadas; exige estritamente arquivo no formato `.csv` (outros formatos retornam 422 de incompatibilidade); valida cada célula via `RegistroNotaCsvData` (descartando células inválidas com aviso em `dados.alertas`) e importa exclusivamente alunos previamente cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`) e matrícula ativa na turma. Suporta desambiguação de homônimos (`mapeamentos_alunos`) e conciliação de disciplinas (`mapeamentos_disciplinas` com `disciplina_id`, `ciclo_id`, `sugestao_disciplina_id`, `sugestao_disciplina_nome` e retorno de `catalogo_ciclos`), além de reconhecimento automático de múltiplos períodos letivos e resolução de divergências via `decisao_divergencias` (`'atualizar'` ou `'manter'`). |
+| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista / Adm | `ImportarRelatorioTurmaRequest` + `ImportarRelatorioInputData` + `RegistroNotaCsvData` | `RelatorioImportadoResource` + `RelatorioImportadoData` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com notas/faltas consolidadas; exige estritamente arquivo no formato `.csv` (outros formatos retornam 422 de incompatibilidade); valida cada célula de nota e falta via `RegistroNotaCsvData` (descartando células inválidas com aviso em `dados.alertas`) e importa exclusivamente alunos previamente cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`) e matrícula ativa na turma. Suporta desambiguação de homônimos (`mapeamentos_alunos`), conciliação de disciplinas (`mapeamentos_disciplinas` com `disciplina_id`, `ciclo_id`, `sugestao_disciplina_id`, `sugestao_disciplina_nome` e retorno de `catalogo_ciclos`), reconhecimento automático de múltiplos períodos letivos e detecção/resolução de divergências de notas e/ou faltas (`tipo_divergencia: 'nota' | 'falta' | 'ambos'`, `faltas_atuais`, `novas_faltas`) via `decisao_divergencias` (`'atualizar'` ou `'manter'`). |
 | `POST` | `/api/notas` | Especialista / Adm | `StoreNotaRequest` | `NotaResource` + `NotaDiarioData` | `turmasService.lancarNotaManual()` | Registra nota individual existente na tabela `notas`; exige turma, aluno matriculado ativo, disciplina vinculada, período, avaliação, nota e valor máximo; data e observações são opcionais. Dispara os alertas acadêmicos aplicáveis. |
 | `POST` | `/api/frequencias` | Especialista / Adm | `StoreFrequenciaManualRequest` | `FrequenciaResource` | `turmasService.lancarFrequenciaManual()` | Registra/atualiza a frequência de um aluno por turma, disciplina e data, com quantidade de aulas, situação e justificativa opcional; usa a tabela `frequencias` existente e atualiza os alertas acadêmicos aplicáveis. |
 | `DELETE`| `/api/turmas/{turma_id}/dados-csv` | Especialista / Adm | N/A | Mensagem 200 | `turmasService.excluirDadosCsv()` | Exclui notas e faltas carregadas via CSV da turma (suporta ?periodo_letivo=) |
-| `GET` | `/api/turmas/{turma_id}/notas` | Especialista / Prof / Adm | `FiltroNotasTurmaData` | `NotaResource` + `NotaDiarioData` (Coleção) | `turmasService.listarNotasTurma()` | Consulta notas lançadas na turma; blindado para exibir exclusivamente notas de alunos cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`), com filtros combinados de período (`periodo_letivo`), disciplina (`disciplina_id`) e aluno (`aluno_id`). Inclui `percentual_faltas`, `total_faltas`, `valor_maximo_periodo` e `situacao`. |
+| `GET` | `/api/turmas/{turma_id}/notas` | Especialista / Prof / Adm | `FiltroNotasTurmaData` | `NotaResource` + `NotaDiarioData` (Coleção) | `turmasService.listarNotasTurma()` | Consulta notas e frequência consolidada na turma; blindado para exibir exclusivamente alunos cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`), com filtros combinados de período (`periodo_letivo`), disciplina (`disciplina_id`) e aluno (`aluno_id`). Filtra as faltas estritamente pelo período de cada nota sobre a carga horária prevista da disciplina (LDB Art. 24), incluindo `percentual_faltas`, `total_faltas`, `total_aulas_previstas`, `valor_maximo_periodo` e `situacao` (incluindo `"Risco por Falta"` acima de `25%`). |
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/boletim` | Aluno / Prof / Esp / Adm | N/A | `BoletimResource` + `BoletimAlunoData` | `boletimService.obterBoletim()` | Boletim consolidado de notas e faltas por trimestre validado ponta a ponta com `BoletimAlunoSchema` |
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/comparativo-turma` | Aluno / Prof / Esp / Adm | N/A | `ComparativoTurmaResource` + `ComparativoTurmaData` | `boletimService.obterComparativoTurma()` | Dados comparativos do aluno vs média oficial da turma por disciplina validados com `ComparativoTurmaSchema` (inclui `frequencia_aluno_global`, `frequencia_turma_global`, e por matéria `frequencia_aluno` e `frequencia_turma`) |
 | `GET` | `/api/professores` | Especialista / Adm | N/A | `ProfessorResource` (Coleção + `meta.pendentes_count`) | `professoresService.listarProfessores()` | Lista professores cadastrados, status de confirmação e disciplinas vinculadas; cada item de `disciplinas` inclui `ciclos: [{ id_ciclo, nome }]` para o front exibir `Nome - Ciclo` (ex.: "Filosofia - 2º Ano regular") |
@@ -373,11 +373,12 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
     "valor_maximo_periodo": 30.0,
     "percentual_faltas": 5.0,
     "total_faltas": 2,
+    "total_aulas_previstas": 40,
     "situacao": "Acima da Média",
     "data_registro": "2026-05-15",
     "observacoes": null,
     "aluno": { "id": 12, "name": "Ana Ramos", "email": "ana.ramos@aluno.mg.gov.br" },
-    "disciplina": { "id_disciplina": 4, "nome": "Desenvolvimento de Aplicativos" }
+    "disciplina": { "id_disciplina": 4, "nome": "Desenvolvimento de Aplicativos", "carga_horaria_anual": 120, "aulas_semanais": 3 }
   }
   ```
 * **`RelatorioImportadoResource` (`RelatorioImportadoData` ↔ `RelatorioImportadoSchema`)**:
@@ -388,7 +389,20 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
     "message": "Relatório da turma importado e sincronizado com sucesso.",
     "turma": { "id_turma": 1, "nome_identificador": "3º Ano - ADS" },
     "ambiguidades": [],
-    "divergencias": [],
+    "divergencias": [
+      {
+        "usuario_id": 12,
+        "nome_aluno": "Ana Ramos",
+        "disciplina_id": 4,
+        "nome_disciplina": "Desenvolvimento de Aplicativos",
+        "periodo_letivo": "1º Trimestre",
+        "nota_atual": 24.5,
+        "nova_nota": 24.5,
+        "tipo_divergencia": "falta",
+        "faltas_atuais": 2,
+        "novas_faltas": 6
+      }
+    ],
     "disciplinas_pendentes": [],
     "catalogo_disciplinas": [],
     "catalogo_ciclos": [],

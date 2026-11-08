@@ -533,3 +533,234 @@ test('BoletimAlunoData e ComparativoTurmaData garantem paridade 1:1 com BoletimA
         ->and($resComparativo->json('comparativo.0.media_turma'))->toEqual(21.0)
         ->and($resComparativo->json('comparativo.0.valor_maximo'))->toEqual(30.0);
 });
+
+test('calcula faltas isoladas por periodo com denominador LDB, Risco por Falta (>25%) e taxa realista no velocimetro apos CSV multi-periodo', function () {
+    Storage::fake('local');
+
+    $especialista = User::factory()->create([
+        'role' => 'especialista',
+        'email' => 'especialista.faltas.ldb@educacao.mg.gov.br',
+    ]);
+
+    $aluno = User::factory()->create([
+        'role' => 'aluno',
+        'name' => 'ANA RAMOS',
+        'email' => 'ana.faltas.ldb@aluno.mg.gov.br',
+    ]);
+
+    $periodo = PeriodoLetivo::create([
+        'ano' => 2026,
+        'tipo_divisao' => 'trimestre',
+        'total_pontos' => 100,
+        'data_inicio' => '2026-02-01',
+        'data_fim' => '2026-12-15',
+        'ativo' => true,
+    ]);
+
+    PeriodoLetivoDivisao::create([
+        'periodo_letivo_id' => $periodo->id_periodo_letivo,
+        'numero' => 1,
+        'ordem' => 1,
+        'nome' => '1º Trimestre',
+        'pontos' => 30.00,
+        'data_inicio' => '2026-02-01',
+        'data_fim' => '2026-05-15',
+    ]);
+
+    PeriodoLetivoDivisao::create([
+        'periodo_letivo_id' => $periodo->id_periodo_letivo,
+        'numero' => 2,
+        'ordem' => 2,
+        'nome' => '2º Trimestre',
+        'pontos' => 30.00,
+        'data_inicio' => '2026-05-16',
+        'data_fim' => '2026-08-31',
+    ]);
+
+    PeriodoLetivoDivisao::create([
+        'periodo_letivo_id' => $periodo->id_periodo_letivo,
+        'numero' => 3,
+        'ordem' => 3,
+        'nome' => '3º Trimestre',
+        'pontos' => 40.00,
+        'data_inicio' => '2026-09-01',
+        'data_fim' => '2026-12-15',
+    ]);
+
+    // 90h anuais / 3 divisões = 30 aulas previstas por trimestre
+    $disciplina = Disciplina::create([
+        'nome' => 'Matemática Aplicada',
+        'carga_horaria_anual' => 90,
+        'aulas_semanais' => 3,
+    ]);
+
+    $turma = Turma::create([
+        'nome_identificador' => '3º Ano - LDB',
+        'periodo_letivo_id' => $periodo->id_periodo_letivo,
+        'ano_letivo' => 2026,
+        'turno' => 'Integral',
+        'status' => 'Ativa',
+    ]);
+
+    $turma->alunos()->attach($aluno->id, [
+        'data_matricula' => '2026-02-01',
+        'status_matricula' => 'Ativo',
+    ]);
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
+
+    // 1º Trimestre: nota 24.0, 3 faltas de 30 (10.0% -> Acima da Média)
+    // 2º Trimestre: nota 25.0, 9 faltas de 30 (30.0% > 25% -> Risco por Falta)
+    $csvContent = implode("\n", [
+        'ESCOLA ESTADUAL PROFESSORA SEBASTIANA DE ALMEIDA E SILVA',
+        'ALUNO,Matemática Aplicada,,,',
+        ',1º Trimestre,FALTAS,2º Trimestre,FALTAS',
+        'ANA RAMOS,24.0,3,25.0,9',
+    ]);
+
+    $resImport = $this->actingAs($especialista)
+        ->postJson("/api/turmas/{$turma->id_turma}/importar-relatorio", [
+            'arquivo' => UploadedFile::fake()->createWithContent('multi_trimestre_faltas.csv', $csvContent),
+        ]);
+
+    $resImport->assertOk();
+    expect($resImport->json('status'))->toBe('sucesso')
+        ->and($resImport->json('dados.notas_sincronizadas'))->toBe(2)
+        ->and($resImport->json('dados.frequencias_sincronizadas'))->toBe(2);
+
+    // 1. Verifica filtro estrito do 1º Trimestre (não vaza as 9 faltas do 2º Trimestre!)
+    $resNotasT1 = $this->actingAs($especialista)
+        ->getJson("/api/turmas/{$turma->id_turma}/notas?periodo_letivo=".urlencode('1º Trimestre'));
+    $resNotasT1->assertOk();
+    $notaT1 = $resNotasT1->json('0');
+
+    expect($notaT1)->not->toBeNull()
+        ->and($notaT1['total_faltas'])->toBe(3)
+        ->and($notaT1['total_aulas_previstas'])->toBe(30)
+        ->and($notaT1['percentual_faltas'])->toEqual(10.0)
+        ->and($notaT1['situacao'])->toBe('Acima da Média')
+        ->and($notaT1['disciplina']['carga_horaria_anual'])->toBe(90);
+
+    // 2. Verifica filtro estrito do 2º Trimestre e regra LDB Art. 24 (> 25% -> Risco por Falta)
+    $resNotasT2 = $this->actingAs($especialista)
+        ->getJson("/api/turmas/{$turma->id_turma}/notas?periodo_letivo=".urlencode('2º Trimestre'));
+    $resNotasT2->assertOk();
+    $notaT2 = $resNotasT2->json('0');
+
+    expect($notaT2)->not->toBeNull()
+        ->and($notaT2['total_faltas'])->toBe(9)
+        ->and($notaT2['total_aulas_previstas'])->toBe(30)
+        ->and($notaT2['percentual_faltas'])->toEqual(30.0)
+        ->and($notaT2['situacao'])->toBe('Risco por Falta');
+
+    // 3. Verifica que o Velocímetro (GET /api/turmas/resumo-geral) projeta LDB (12 / 60 = 20.0%, e não 100%!)
+    $resResumo = $this->actingAs($especialista)->getJson('/api/turmas/resumo-geral');
+    $resResumo->assertOk();
+    $resumoTurma = collect($resResumo->json())->firstWhere('id_turma', $turma->id_turma);
+
+    expect($resumoTurma)->not->toBeNull()
+        ->and($resumoTurma['taxa_absenteismo'])->toEqual(20.0)
+        ->and($resumoTurma['taxa_presenca'])->toEqual(80.0);
+});
+
+test('DivergenciaNotaCsvData detecta divergencia exclusiva de faltas e respeita decisao manter ou atualizar', function () {
+    Storage::fake('local');
+
+    $especialista = User::factory()->create([
+        'role' => 'especialista',
+        'email' => 'especialista.div.faltas@educacao.mg.gov.br',
+    ]);
+
+    $aluno = User::factory()->create([
+        'role' => 'aluno',
+        'name' => 'CARLOS MENDES',
+        'email' => 'carlos.div.faltas@aluno.mg.gov.br',
+    ]);
+
+    $disciplina = Disciplina::create([
+        'nome' => 'Redes de Computadores',
+        'carga_horaria_anual' => 120,
+        'aulas_semanais' => 3,
+    ]);
+
+    $turma = Turma::create([
+        'nome_identificador' => '3º Ano - Redes',
+        'ano_letivo' => 2026,
+        'turno' => 'Matutino',
+        'status' => 'Ativa',
+    ]);
+
+    $turma->alunos()->attach($aluno->id, [
+        'data_matricula' => '2026-02-01',
+        'status_matricula' => 'Ativo',
+    ]);
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
+
+    // 1ª Importação: 1º Trimestre com nota 25.0 e 2 faltas
+    $csvInicial = implode("\n", [
+        'ALUNO,Redes de Computadores,',
+        ',1º Trimestre,FALTAS',
+        'CARLOS MENDES,25.0,2',
+    ]);
+
+    $this->actingAs($especialista)
+        ->postJson("/api/turmas/{$turma->id_turma}/importar-relatorio", [
+            'arquivo' => UploadedFile::fake()->createWithContent('t1_inicial.csv', $csvInicial),
+        ])
+        ->assertOk()
+        ->assertJsonPath('status', 'sucesso');
+
+    // 2ª Importação: 1º Trimestre mantém nota 25.0 mas altera faltas de 2 -> 7, e inclui 2º Trimestre (nota 26.0, 1 falta)
+    $csvRetificado = implode("\n", [
+        'ALUNO,Redes de Computadores,,,',
+        ',1º Trimestre,FALTAS,2º Trimestre,FALTAS',
+        'CARLOS MENDES,25.0,7,26.0,1',
+    ]);
+
+    $resPendente = $this->actingAs($especialista)
+        ->postJson("/api/turmas/{$turma->id_turma}/importar-relatorio", [
+            'arquivo' => UploadedFile::fake()->createWithContent('t1_t2_retificado.csv', $csvRetificado),
+        ]);
+
+    $resPendente->assertOk();
+    expect($resPendente->json('status'))->toBe('pendente_confirmacao')
+        ->and($resPendente->json('tipo_pendencia'))->toBe('divergencias_notas')
+        ->and($resPendente->json('divergencias.0.tipo_divergencia'))->toBe('falta')
+        ->and($resPendente->json('divergencias.0.faltas_atuais'))->toBe(2)
+        ->and($resPendente->json('divergencias.0.novas_faltas'))->toBe(7)
+        ->and($resPendente->json('divergencias.0.nota_atual'))->toEqual(25.0)
+        ->and($resPendente->json('divergencias.0.nova_nota'))->toEqual(25.0);
+
+    // 3ª Tentativa com decisao_divergencias = 'manter' -> preserva 2 faltas no 1º Trimestre e importa o 2º Trimestre
+    $resManter = $this->actingAs($especialista)
+        ->postJson("/api/turmas/{$turma->id_turma}/importar-relatorio", [
+            'arquivo' => UploadedFile::fake()->createWithContent('t1_t2_manter.csv', $csvRetificado),
+            'decisao_divergencias' => 'manter',
+        ]);
+
+    $resManter->assertOk()->assertJsonPath('status', 'sucesso');
+
+    $notaT1Mantida = $this->actingAs($especialista)
+        ->getJson("/api/turmas/{$turma->id_turma}/notas?periodo_letivo=".urlencode('1º Trimestre'))
+        ->json('0');
+    $notaT2Importada = $this->actingAs($especialista)
+        ->getJson("/api/turmas/{$turma->id_turma}/notas?periodo_letivo=".urlencode('2º Trimestre'))
+        ->json('0');
+
+    expect($notaT1Mantida['total_faltas'])->toBe(2)
+        ->and($notaT2Importada['total_faltas'])->toBe(1);
+
+    // 4ª Tentativa com decisao_divergencias = 'atualizar' -> atualiza as faltas do 1º Trimestre para 7
+    $resAtualizar = $this->actingAs($especialista)
+        ->postJson("/api/turmas/{$turma->id_turma}/importar-relatorio", [
+            'arquivo' => UploadedFile::fake()->createWithContent('t1_t2_atualizar.csv', $csvRetificado),
+            'decisao_divergencias' => 'atualizar',
+        ]);
+
+    $resAtualizar->assertOk()->assertJsonPath('status', 'sucesso');
+
+    $notaT1Atualizada = $this->actingAs($especialista)
+        ->getJson("/api/turmas/{$turma->id_turma}/notas?periodo_letivo=".urlencode('1º Trimestre'))
+        ->json('0');
+
+    expect($notaT1Atualizada['total_faltas'])->toBe(7);
+});

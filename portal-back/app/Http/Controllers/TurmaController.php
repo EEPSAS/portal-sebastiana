@@ -305,10 +305,10 @@ class TurmaController extends Controller
     }
 
     /**
-     * Consulta as notas consolidadas registradas para a turma via CSV.
-     * Suporta filtros por período letivo, disciplina e estudante individual.
+     * Consulta as notas e as faltas consolidadas registradas para a turma.
+     * Suporta filtros cumulativos por período letivo, disciplina e estudante individual.
      */
-    public function notas(Request $request, Turma $turma): JsonResponse
+    public function notas(Request $request, Turma $turma, EspecialistaDashboardService $dashboardService): JsonResponse
     {
         Gate::authorize('view', $turma);
 
@@ -320,7 +320,7 @@ class TurmaController extends Controller
             })
             ->with([
                 'aluno:id,name,email',
-                'disciplina:id_disciplina,nome',
+                'disciplina:id_disciplina,nome,carga_horaria_anual,aulas_semanais',
             ]);
 
         // Revalida e normaliza os filtros cumulativos via Spatie Laravel Data
@@ -344,12 +344,12 @@ class TurmaController extends Controller
 
         $notasColecao = $query->orderByDesc('id_nota')->get();
 
-        // Carrega frequências da turma para enriquecer as notas com taxa de faltas
+        // Carrega frequências da turma agrupadas por aluno e disciplina para contextualização por etapa
         $frequencias = Frequencia::where('turma_id', $turma->id_turma)
             ->get()
             ->groupBy(fn (Frequencia $f) => "{$f->usuario_id}_{$f->disciplina_id}");
 
-        // Obtém o período letivo da turma (ou do ano letivo equivalente) para recuperar o valor oficial das divisões
+        // Obtém o período letivo da turma (ou do ano letivo equivalente) para pontuação e carga horária oficial
         $periodoLetivoTurma = $turma->periodoLetivo()->with('divisoes')->first()
             ?? PeriodoLetivo::where('ano', $turma->ano_letivo)->with('divisoes')->first();
         $mapaDivisoes = [];
@@ -358,19 +358,45 @@ class TurmaController extends Controller
                 $mapaDivisoes[$div->nome] = (float) $div->pontos;
             }
         }
+        $totalDivisoes = max(1, $periodoLetivoTurma?->divisoes?->count() ?: 3);
 
         foreach ($notasColecao as $nota) {
             $chaveFreq = "{$nota->usuario_id}_{$nota->disciplina_id}";
             $freqsDoAluno = $frequencias->get($chaveFreq, collect());
-            $totalFaltas = (int) $freqsDoAluno->where('status_presenca', 'Falta')->sum('quantidade_aulas');
-            $totalAulas = (int) $freqsDoAluno->sum('quantidade_aulas');
-            if ($totalFaltas > 0 && $totalAulas <= $totalFaltas) {
-                $totalAulas = max($totalFaltas, 100);
+
+            // Filtra estritamente as faltas/presenças correspondentes ao período letivo desta nota
+            $freqsEtapa = $freqsDoAluno->filter(
+                fn (Frequencia $f) => $dashboardService->pertenceAoPeriodoFrequencia(
+                    $f,
+                    (string) $nota->periodo_letivo,
+                    $periodoLetivoTurma
+                )
+            );
+
+            $totalFaltas = (int) $freqsEtapa
+                ->whereIn('status_presenca', ['Falta', 'Falta Justificada'])
+                ->sum('quantidade_aulas');
+            $aulasRegistradas = (int) $freqsEtapa->sum('quantidade_aulas');
+            $temOrigemCsv = $freqsEtapa->contains(
+                fn (Frequencia $f) => str_contains((string) $f->justificativa, 'via diário escolar')
+            );
+
+            $aulasPrevistasEtapa = $nota->disciplina
+                ? $dashboardService->calcularAulasPrevistasDisciplina($nota->disciplina, $totalDivisoes, false)
+                : max(15, (int) round(80 / $totalDivisoes));
+
+            // Usa chamadas diárias reais quando disponíveis; caso contrário (CSV consolidado), usa carga horária prevista LDB
+            if (! $temOrigemCsv && $aulasRegistradas > $totalFaltas) {
+                $totalAulas = $aulasRegistradas;
+            } else {
+                $totalAulas = max($totalFaltas, $aulasPrevistasEtapa);
             }
+
             $percentualFaltas = $totalAulas > 0 ? round(($totalFaltas / $totalAulas) * 100, 1) : 0.0;
 
             $nota->percentual_faltas = $percentualFaltas;
             $nota->total_faltas = $totalFaltas;
+            $nota->total_aulas_previstas = $totalAulas;
 
             // Se a divisão estiver mapeada no Período Letivo da Turma, utiliza sua pontuação oficial
             if (isset($mapaDivisoes[$nota->periodo_letivo])) {
@@ -388,7 +414,7 @@ class TurmaController extends Controller
      * Exclui os dados acadêmicos (notas e frequências) carregados via CSV para a turma.
      * Permite filtrar opcionalmente por período letivo (ex: '1º Trimestre').
      */
-    public function excluirDadosCsv(Request $request, Turma $turma): JsonResponse
+    public function excluirDadosCsv(Request $request, Turma $turma, EspecialistaDashboardService $dashboardService): JsonResponse
     {
         // Autorização didática: restrito a usuários com privilégios de gestão acadêmica (Especialista ou Adm)
         $user = $request->user();
@@ -408,19 +434,23 @@ class TurmaController extends Controller
         }
         $notasRemovidas = $queryNotas->delete();
 
-        // 2. Exclusão das faltas/frequências registradas para a turma
+        // 2. Exclusão das faltas/frequências registradas para a turma respeitando o período exato
         $queryFreq = Frequencia::where('turma_id', $turma->id_turma);
         if ($periodoLetivo !== null) {
-            // Mapeia o trimestre escolar para os meses de realização das aulas
-            if (str_contains($periodoLetivo, '1º')) {
-                $queryFreq->whereMonth('data_aula', '<=', 4);
-            } elseif (str_contains($periodoLetivo, '2º')) {
-                $queryFreq->whereMonth('data_aula', '>=', 5)->whereMonth('data_aula', '<=', 8);
-            } elseif (str_contains($periodoLetivo, '3º')) {
-                $queryFreq->whereMonth('data_aula', '>=', 9);
-            }
+            $periodoLetivoTurma = $turma->periodoLetivo()->with('divisoes')->first()
+                ?? PeriodoLetivo::where('ano', $turma->ano_letivo)->with('divisoes')->first();
+
+            $idsFreqParaRemover = $queryFreq->get()
+                ->filter(fn (Frequencia $f) => $dashboardService->pertenceAoPeriodoFrequencia($f, $periodoLetivo, $periodoLetivoTurma))
+                ->pluck('id_frequencia')
+                ->all();
+
+            $frequenciasRemovidas = ! empty($idsFreqParaRemover)
+                ? Frequencia::whereIn('id_frequencia', $idsFreqParaRemover)->delete()
+                : 0;
+        } else {
+            $frequenciasRemovidas = $queryFreq->delete();
         }
-        $frequenciasRemovidas = $queryFreq->delete();
 
         $mensagemPeriodo = $periodoLetivo !== null ? " do período '{$periodoLetivo}'" : ' de todos os períodos';
 

@@ -8,7 +8,7 @@
  *    caso alguma disciplina não seja localizada automaticamente, solicita aprovação do Especialista
  *    para correlacionar manualmente a uma disciplina existente OU criar uma nova disciplina no Ciclo da turma;
  * 3. Confirmação e desambiguação inteligente caso sejam detectados homônimos na turma/escola;
- * 4. Resolução de divergências de notas em períodos letivos anteriores.
+ * 4. Resolução de divergências de notas e/ou faltas em períodos letivos anteriores.
  */
 
 import { useEffect, useState } from "react";
@@ -43,7 +43,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
   const [modalCicloAberto, setModalCicloAberto] = useState(false);
   const [disciplinaChaveParaNovoCiclo, setDisciplinaChaveParaNovoCiclo] = useState(null);
 
-  // Estados de resolução de homônimos e divergências de notas
+  // Estados de resolução de homônimos e divergências de notas/faltas
   const [ambiguidades, setAmbiguidades] = useState([]);
   const [mapeamentos, setMapeamentos] = useState({});
   const [divergencias, setDivergencias] = useState([]);
@@ -191,7 +191,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
         return;
       }
 
-      // Prioridade 3: Divergências de notas em períodos anteriores
+      // Prioridade 3: Divergências de notas e/ou faltas em períodos anteriores
       if (
         resposta.tipo_pendencia === "divergencias_notas" ||
         resposta.divergencias?.length > 0
@@ -358,7 +358,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     }
   };
 
-  // Envio da decisão sobre notas divergentes de períodos anteriores ('atualizar' ou 'manter')
+  // Envio da decisão sobre registros divergentes de períodos anteriores ('atualizar' ou 'manter')
   const handleConfirmarDivergencias = async (decisao) => {
     setErro("");
     setResultado(null);
@@ -372,7 +372,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
       processarRespostaImportacao(resposta);
     } catch (err) {
       setErro(
-        err.message || "Ocorreu um erro ao aplicar a decisão sobre as notas divergentes."
+        err.message || "Ocorreu um erro ao aplicar a decisão sobre os registros divergentes."
       );
     } finally {
       setLoading(false);
@@ -461,7 +461,8 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                       Linhas lidas: <strong>{resultado.dados.linhas_lidas}</strong> | Alunos
                       identificados: <strong>{resultado.dados.alunos_identificados}</strong> |
                       Notas sincronizadas:{" "}
-                      <strong>{resultado.dados.notas_sincronizadas}</strong>
+                      <strong>{resultado.dados.notas_sincronizadas}</strong> | Faltas/Frequências
+                      sincronizadas: <strong>{resultado.dados.frequencias_sincronizadas}</strong>
                     </div>
                     {resultado.dados.total_ignorados > 0 && (
                       <div className="text-warning-emphasis fw-semibold mt-1 d-flex align-items-center gap-1">
@@ -591,7 +592,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                 ) : (
                   <>
                     <i className="bi bi-cloud-arrow-up-fill"></i>
-                    Enviar e Sincronizar Notas
+                    Enviar e Sincronizar Notas e Faltas
                   </>
                 )}
               </button>
@@ -1005,7 +1006,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
           </form>
         )}
 
-        {/* ETAPA 3: Resolução de Divergências em Notas de Períodos Anteriores */}
+        {/* ETAPA 3: Resolução de Divergências em Notas e/ou Faltas de Períodos Anteriores */}
         {etapa === "divergencias" && (
           <div>
             {erro && (
@@ -1025,28 +1026,28 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
               <i className="bi bi-exclamation-octagon-fill fs-4 flex-shrink-0 text-warning"></i>
               <div>
                 <strong className="d-block text-dark">
-                  Divergência detectada em notas de períodos anteriores
+                  Divergência detectada em notas e/ou faltas de períodos anteriores
                 </strong>
                 <small className="text-muted">
-                  Identificamos que as notas deste arquivo para períodos já cadastrados diferem
-                  dos valores atualmente registrados no banco de dados. Compare os lançamentos
-                  abaixo e confirme como deseja proceder:
+                  Identificamos que notas e/ou faltas deste arquivo para períodos já cadastrados
+                  diferem dos valores atualmente registrados no banco de dados. Compare os
+                  lançamentos abaixo e confirme como deseja proceder:
                 </small>
               </div>
             </div>
 
             <div
-              className="dashboard-table-scroll border rounded-3 mb-4"
+              className="turmas-notas-tabela-scroll border rounded-3 mb-4"
               tabIndex={0}
               role="region"
-              aria-label="Tabela de divergências de notas"
+              aria-label="Tabela de divergências de notas e faltas"
               style={{ maxHeight: "320px" }}
             >
               <table
                 className="table table-sm table-hover align-middle mb-0"
                 style={{ fontSize: "0.875rem" }}
               >
-                <thead className="table-light sticky-top">
+                <thead className="table-light">
                   <tr>
                     <th scope="col" className="ps-3">
                       Aluno
@@ -1059,32 +1060,71 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                     <th scope="col" className="text-center">
                       Nova Nota (Arquivo)
                     </th>
+                    <th scope="col" className="text-center">
+                      Faltas (Atual → Nova)
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {divergencias.map((div, dIdx) => (
-                    <tr key={dIdx}>
-                      <th scope="row" className="ps-3 fw-semibold text-dark">
-                        {div.nome_aluno}
-                      </th>
-                      <td className="text-muted">{div.nome_disciplina}</td>
-                      <td>
-                        <span className="badge bg-secondary-subtle text-secondary border">
-                          {div.periodo_letivo}
-                        </span>
-                      </td>
-                      <td className="text-center">
-                        <span className="badge bg-light text-danger border border-danger-subtle px-2 py-1">
-                          {Number(div.nota_atual).toFixed(2).replace(".", ",")}
-                        </span>
-                      </td>
-                      <td className="text-center">
-                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold">
-                          {Number(div.nova_nota).toFixed(2).replace(".", ",")}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {divergencias.map((div, dIdx) => {
+                    const mudouNota = div.tipo_divergencia !== "falta";
+                    const temFaltasComparaveis =
+                      div.faltas_atuais !== null &&
+                      div.faltas_atuais !== undefined &&
+                      div.novas_faltas !== null &&
+                      div.novas_faltas !== undefined;
+                    const mudouFalta =
+                      temFaltasComparaveis && Number(div.faltas_atuais) !== Number(div.novas_faltas);
+
+                    return (
+                      <tr key={dIdx}>
+                        <th scope="row" className="ps-3 fw-semibold text-dark text-nowrap">
+                          {div.nome_aluno}
+                        </th>
+                        <td className="text-muted">{div.nome_disciplina}</td>
+                        <td className="text-nowrap">
+                          <span className="badge bg-secondary-subtle text-secondary border">
+                            {div.periodo_letivo}
+                          </span>
+                        </td>
+                        <td className="text-center text-nowrap">
+                          <span
+                            className={`badge px-2 py-1 ${
+                              mudouNota
+                                ? "bg-light text-danger border border-danger-subtle"
+                                : "bg-light text-secondary border"
+                            }`}
+                          >
+                            {Number(div.nota_atual).toFixed(2).replace(".", ",")}
+                          </span>
+                        </td>
+                        <td className="text-center text-nowrap">
+                          <span
+                            className={`badge px-2 py-1 ${
+                              mudouNota
+                                ? "bg-primary-subtle text-primary border border-primary-subtle fw-bold"
+                                : "bg-light text-secondary border"
+                            }`}
+                          >
+                            {Number(div.nova_nota).toFixed(2).replace(".", ",")}
+                          </span>
+                        </td>
+                        <td className="text-center text-nowrap">
+                          {mudouFalta ? (
+                            <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1 fw-bold">
+                              {div.faltas_atuais} → {div.novas_faltas}
+                            </span>
+                          ) : temFaltasComparaveis ? (
+                            <span className="text-muted small">
+                              {div.faltas_atuais} (sem alteração)
+                            </span>
+                          ) : (
+                            <span className="text-muted small">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1116,7 +1156,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                   disabled={loading}
                 >
                   <i className="bi bi-arrow-repeat"></i>
-                  <span>Atualizar Notas Anteriores</span>
+                  <span>Atualizar Registros Anteriores</span>
                 </button>
               </div>
             </div>
