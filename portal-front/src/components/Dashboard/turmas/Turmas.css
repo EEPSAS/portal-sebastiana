@@ -387,34 +387,147 @@
 }
 
 /* ==========================================================================
-   10. Confinamento de Scroll da Tabela de Notas e Listas de Alunos (Viewport Lock)
+   10. Confinamento de Scroll na Viewport (Apenas a Tabela Rola, Página Fixa)
+   Papel Didático:
+   Em vez de estimar alturas fixas em pixels (calc(100vh - Xpx)), em telas desktop
+   (>= 992px) propagamos uma cadeia Flexbox contínua com flex: 1 1 0% e min-height: 0
+   desde .dashboard-panel até .turmas-notas-tabela-scroll. Assim, os cards mantêm
+   exatamente a mesma altura externa em qualquer filtro e a página nunca cria scroll.
    ========================================================================== */
 
+/* Regra base (mobile/tablet empilhado < 992px): limita a tabela localmente com dvh */
 .turmas-notas-tabela-scroll {
-  max-height: clamp(260px, calc(100vh - 430px), 580px);
-  overflow-y: auto;
-  overflow-x: auto;
+  max-block-size: min(420px, 60dvh);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background-color: #ffffff;
 }
 
+.turmas-notas-tabela-scroll:focus-visible,
+.turmas-alunos-lista-scroll:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+/* border-collapse: separate preserva as bordas inferiores do cabeçalho sticky durante o scroll */
+.turmas-notas-tabela-scroll table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
 .turmas-notas-tabela-scroll thead th {
   position: sticky;
-  top: 0;
+  inset-block-start: 0;
   z-index: 2;
   background-color: #f8fafc;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .turmas-alunos-lista-scroll {
-  max-height: clamp(260px, calc(100vh - 430px), 580px);
+  max-block-size: min(420px, 60dvh);
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
+  background-color: #ffffff;
+}
+
+/* Em desktop (>= 992px): cadeia Flexbox travada na altura da viewport (zero scroll na página) */
+@media (min-width: 992px) {
+  .dashboard-panel:has(.notas-aba-viewport-lock) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .turmas-page-viewport-lock,
+  .painel-modulo-viewport-lock,
+  .painel-modulo-conteudo-viewport-lock,
+  .notas-aba-viewport-lock {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+
+  .turmas-page-viewport-lock > :not(.painel-modulo-viewport-lock) {
+    flex-shrink: 0;
+  }
+
+  .painel-modulo-viewport-lock {
+    margin-bottom: 0;
+  }
+
+  .painel-modulo-viewport-lock > :not(.painel-modulo-conteudo) {
+    flex-shrink: 0;
+  }
+
+  .painel-modulo-conteudo-viewport-lock {
+    padding-top: 0.5rem;
+  }
+
+  .notas-aba-viewport-lock > .turmas-tab-bar {
+    flex-shrink: 0;
+  }
+
+  .notas-painel-row {
+    flex: 1 1 0%;
+    min-height: 0;
+    flex-wrap: nowrap;
+  }
+
+  .notas-col-esquerda,
+  .notas-col-direita {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .notas-card-esquerdo {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    justify-content: space-evenly;
+  }
+
+  .notas-card-direito {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .notas-subaba-flex-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+
+  .notas-subaba-info-scroll {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .turmas-notas-tabela-scroll,
+  .turmas-alunos-lista-scroll {
+    flex: 1 1 0%;
+    min-height: 0;
+    max-block-size: none;
+  }
 }
 
 /* ==========================================================================

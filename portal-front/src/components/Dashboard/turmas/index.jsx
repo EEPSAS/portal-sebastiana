@@ -409,8 +409,15 @@ const Turmas = () => {
   const turmaAtivaParaCSV =
     turmas.find((t) => String(t.id_turma) === String(turmaSelecionadaId)) || turmas[0] || null;
 
+  // Na aba de Notas e Diário Escolar, trava o layout na altura da viewport para rolar apenas a tabela
+  const isAbaNotasViewportLock = abaAtiva === "notas";
+
   return (
-    <div className="position-relative">
+    <div
+      className={`position-relative ${
+        isAbaNotasViewportLock ? "turmas-page-viewport-lock" : ""
+      }`.trim()}
+    >
       {/* Toast Flutuante no padrão da Biblioteca */}
       {notificacao && <div className="turmas-toast">✓ {notificacao}</div>}
 
@@ -435,11 +442,18 @@ const Turmas = () => {
       )}
 
       {/* Envelope de Superfície Branca */}
-      <PainelModulo>
+      <PainelModulo
+        className={isAbaNotasViewportLock ? "painel-modulo-viewport-lock" : ""}
+        conteudoClassName={
+          isAbaNotasViewportLock ? "painel-modulo-conteudo-viewport-lock" : ""
+        }
+      >
         {/* Banner de Alunos Pendentes de Aprovação e Vínculo com Turma (Diretriz 2.3.1) */}
         {podeGerenciar && alunosPendentesCount > 0 && (
           <div
-            className="alert alert-info d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 rounded-4 border-0 shadow-sm"
+            className={`alert alert-info d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 rounded-4 border-0 shadow-sm flex-shrink-0 ${
+              isAbaNotasViewportLock ? "mb-2 py-2 px-3" : "mb-4"
+            }`}
             role="status"
           >
             <div className="d-flex align-items-center gap-3">
@@ -474,7 +488,11 @@ const Turmas = () => {
         )}
 
         {/* Sub-abas de 2º Nível: Segmentadas e Compactas */}
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 p-1 bg-light rounded-3 border mb-3">
+        <div
+          className={`d-flex flex-wrap align-items-center justify-content-between gap-2 p-1 bg-light rounded-3 border flex-shrink-0 ${
+            isAbaNotasViewportLock ? "mb-2" : "mb-3"
+          }`}
+        >
           <div className="d-flex flex-wrap align-items-center gap-1">
             {abasDisponiveis.map((aba) => {
               const ativa = abaAtiva === aba.id;

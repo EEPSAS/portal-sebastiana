@@ -280,7 +280,7 @@ export default function NotasAba({
     turmaAtiva?.total_alunos ?? resumoTurmaAtiva?.total_alunos ?? alunosTurma.length ?? 0;
 
   return (
-    <div className="notas-aba-container">
+    <div className="notas-aba-container notas-aba-viewport-lock">
       {/* 1. Controle de Guias Horizontais das Turmas em Alto Destaque (Estilo Access) */}
       <div className="turmas-tab-bar" role="tablist" aria-label="Guias de turmas escolares">
         {listaBaseTurmas.map((t) => {
@@ -311,17 +311,17 @@ export default function NotasAba({
         })}
       </div>
 
-      {/* 2. Painel Central da Turma Selecionada */}
-      <div className="row g-3">
-        {/* Painel Esquerdo: Resumo da Turma (Donut de Média + Velocímetro logo abaixo com altura estática fixa no topo) */}
-        <div className="col-12 col-lg-4 col-xl-3 align-self-start">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-column">
+      {/* 2. Painel Central da Turma Selecionada (travado na altura da viewport em desktop) */}
+      <div className="row gx-3 gy-3 gy-lg-0 notas-painel-row">
+        {/* Painel Esquerdo: Resumo da Turma (Donut de Média + Velocímetro alinhados à altura do painel) */}
+        <div className="col-12 col-lg-4 col-xl-3 notas-col-esquerda">
+          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-column notas-card-esquerdo">
             <div>
               {/* Título do Card */}
-              <div className="d-flex align-items-center gap-2 mb-2">
+              <div className="d-flex align-items-center gap-2 mb-1">
                 <div
                   className="d-flex align-items-center justify-content-center rounded-3 bg-primary-subtle text-primary"
-                  style={{ width: 34, height: 34 }}
+                  style={{ width: 32, height: 32 }}
                 >
                   <i className="bi bi-people-fill fs-6"></i>
                 </div>
@@ -331,16 +331,16 @@ export default function NotasAba({
               {/* Gráfico 1: Donut de Média Geral de Notas */}
               <div
                 className="position-relative d-flex justify-content-center align-items-center"
-                style={{ height: 170 }}
+                style={{ height: 146 }}
               >
-                <ResponsiveContainer width="100%" height={170}>
+                <ResponsiveContainer width="100%" height={146}>
                   <PieChart>
                     <Pie
                       data={dadosDonut}
                       cx="50%"
                       cy="50%"
-                      innerRadius={50}
-                      outerRadius={70}
+                      innerRadius={43}
+                      outerRadius={62}
                       paddingAngle={somaDist > 0 ? 3 : 0}
                       dataKey="value"
                       stroke="none"
@@ -362,26 +362,26 @@ export default function NotasAba({
               </div>
             </div>
 
-            <hr className="my-2 border-secondary-subtle" />
+            <hr className="my-1 border-secondary-subtle" />
 
             {/* Gráfico 2: Velocímetro / Manômetro de Faltas (fixado diretamente abaixo do Donut) */}
-            <div className="pt-1 pb-1">
+            <div>
               <VelocimetroPresenca taxaFaltas={taxaFaltasTurma} />
             </div>
           </div>
         </div>
 
         {/* Painel Direito: Turma Selecionada em Destaque e Diário Escolar */}
-        <div className="col-12 col-lg-8 col-xl-9">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+        <div className="col-12 col-lg-8 col-xl-9 notas-col-direita">
+          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white notas-card-direito">
             {/* Cabeçalho de Identificação da Turma Selecionada */}
-            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
-              <div className="d-flex align-items-center gap-3">
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom flex-shrink-0">
+              <div className="d-flex align-items-center gap-2">
                 <div
                   className="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white shadow-sm"
-                  style={{ width: 48, height: 48 }}
+                  style={{ width: 40, height: 40 }}
                 >
-                  <i className="bi bi-mortarboard-fill fs-4"></i>
+                  <i className="bi bi-mortarboard-fill fs-5"></i>
                 </div>
                 <div>
                   <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -404,7 +404,7 @@ export default function NotasAba({
             </div>
 
             {/* Sub-abas de Navegação: Notas | Alunos | Informações */}
-            <div className="d-flex align-items-center gap-4 mb-4 border-bottom">
+            <div className="d-flex align-items-center gap-4 mb-2 border-bottom flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setSubAbaPainel("notas")}
@@ -464,7 +464,7 @@ export default function NotasAba({
             {subAbaPainel === "notas" && (
               <>
                 {/* Linha de Título e Botões de Ação */}
-                <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 flex-shrink-0">
                   <div className="d-flex align-items-center gap-2">
                     <div
                       className="d-flex align-items-center justify-content-center rounded-2 bg-primary-subtle text-primary"
@@ -530,7 +530,7 @@ export default function NotasAba({
                 </div>
 
                 {/* Barra de Filtros Cumulativos (Aluno + Período + Disciplina) */}
-                <div className="row g-2 mb-3 align-items-center">
+                <div className="row g-2 mb-2 align-items-center flex-shrink-0">
                   {/* Filtro 1: Seleção de Aluno */}
                   <div className="col-12 col-sm-4">
                     <div className="input-group input-group-sm">
@@ -600,7 +600,7 @@ export default function NotasAba({
 
                 {/* Toggle Pill de Base de Cálculo Anual (quando "Todos os Períodos" está ativo) */}
                 {periodoFiltro === "todos" && (
-                  <div className="d-flex align-items-center justify-content-between p-2 mb-3 bg-light rounded-3 border">
+                  <div className="d-flex align-items-center justify-content-between py-1 px-2 mb-2 bg-light rounded-3 border flex-shrink-0">
                     <div className="small text-muted d-flex align-items-center gap-1.5">
                       <i className="bi bi-calculator text-primary"></i>
                       <span>Base de totalização dos pontos:</span>
@@ -632,8 +632,13 @@ export default function NotasAba({
                   </div>
                 )}
 
-                {/* Tabela de Notas e Diário Escolar com Scroll Confinado na Viewport */}
-                <div className="table-responsive turmas-notas-tabela-scroll">
+                {/* Tabela de Notas e Diário Escolar com Scroll Exclusivo e Confinado */}
+                <div
+                  className="turmas-notas-tabela-scroll"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Tabela de notas e diário escolar da turma"
+                >
                   <table className="table table-hover align-middle mb-0" style={{ fontSize: "0.88rem" }}>
                     <thead className="table-light text-muted small fw-bold">
                       <tr>
@@ -730,8 +735,8 @@ export default function NotasAba({
 
             {/* CONTEÚDO 2: SUB-ABA ALUNOS DA TURMA */}
             {subAbaPainel === "alunos" && (
-              <div>
-                <div className="d-flex align-items-center justify-content-between mb-3">
+              <div className="notas-subaba-flex-body">
+                <div className="d-flex align-items-center justify-content-between mb-2 flex-shrink-0">
                   <h6 className="fw-bold mb-0 text-dark">
                     Estudantes Matriculados ({alunosTurma.length})
                   </h6>
@@ -746,7 +751,12 @@ export default function NotasAba({
                     Ver Todas as Notas
                   </button>
                 </div>
-                <div className="list-group list-group-flush turmas-alunos-lista-scroll">
+                <div
+                  className="list-group list-group-flush turmas-alunos-lista-scroll"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Lista de estudantes matriculados na turma"
+                >
                   {alunosTurma.map((aluno) => (
                     <div
                       key={aluno.id}
@@ -784,7 +794,8 @@ export default function NotasAba({
 
             {/* CONTEÚDO 3: SUB-ABA INFORMAÇÕES DA TURMA */}
             {subAbaPainel === "informacoes" && (
-              <div className="row g-3">
+              <div className="notas-subaba-info-scroll">
+                <div className="row g-3 m-0">
                 <div className="col-12 col-sm-6">
                   <div className="p-3 bg-light rounded-3 border">
                     <div className="small text-muted mb-1">Nome da Turma</div>
@@ -808,6 +819,7 @@ export default function NotasAba({
                     <div className="small text-muted mb-1">Ano Letivo</div>
                     <div className="fw-bold text-dark">{turmaAtiva?.ano_letivo || "-"}</div>
                   </div>
+                </div>
                 </div>
               </div>
             )}
