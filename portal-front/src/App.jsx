@@ -20,6 +20,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import PublicHome from "./pages/Portal/Home";
 import NoticiaPage from "./pages/Portal/Noticia";
 import Login from "./pages/Portal/Login";
+import WikiPublica from "./pages/Portal/WikiPublica";
 import NotFound from "./pages/NotFound";
 
 // Páginas da Área Logada (Dashboard)
@@ -40,6 +41,7 @@ import UsuariosPage from "./pages/Dashboard/Usuarios";
 import DisciplinasPage from "./pages/Dashboard/Disciplinas";
 import PeriodoLetivoPage from "./pages/Dashboard/PeriodoLetivo";
 import CiclosPage from "./pages/Dashboard/Ciclos";
+import WikiDashboardPage from "./pages/Dashboard/Wiki";
 
 const App = () => {
   return (
@@ -56,6 +58,7 @@ const App = () => {
           <Route path="noticias/:id" element={<NoticiaPage />} />
           <Route path="noticia/:id" element={<NoticiaPage />} />
           <Route path="login" element={<Login />} />
+          <Route path="wiki" element={<WikiPublica />} />
         </Route>
 
         {/* ======================================================== */}
@@ -76,6 +79,7 @@ const App = () => {
             <Route path="agenda" element={<AgendaPage />} />
             <Route path="configuracoes" element={<ConfiguracoesPage />} />
             <Route path="dona-nana" element={<DonaNanaPage />} />
+            <Route path="wiki" element={<WikiDashboardPage />} />
 
             {/* Rota restrita: Boletim (alunos e administradores) */}
             <Route element={<ProtectedRoute allowedRoles={["aluno", "adm", "padrao"]} />}>

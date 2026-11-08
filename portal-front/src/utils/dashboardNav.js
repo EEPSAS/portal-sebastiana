@@ -331,6 +331,25 @@ export const NAV_STRUCTURE = [
       "Patrona da escola e mentora pedagógica virtual — sempre com orientações e apoio afetuoso.",
   },
   {
+    id: "wiki",
+    type: "item",
+    footerOnly: true,
+    label: "Ajuda",
+    path: "/dashboard/wiki",
+    icon: "bi-question-circle-fill",
+    roles: [
+      "aluno",
+      "professor",
+      "bibliotecaria",
+      "bibliotecario",
+      "especialista",
+      "adm",
+      "padrao",
+    ],
+    descricao:
+      "Consulte manuais, guias passo a passo de cada módulo e a história da EEPSAS.",
+  },
+  {
     id: "configuracoes",
     type: "item",
     footerOnly: true,

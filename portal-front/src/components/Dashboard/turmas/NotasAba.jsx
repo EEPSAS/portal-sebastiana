@@ -632,8 +632,8 @@ export default function NotasAba({
                   </div>
                 )}
 
-                {/* Tabela de Notas e Diário Escolar */}
-                <div className="table-responsive rounded-3 border">
+                {/* Tabela de Notas e Diário Escolar com Scroll Confinado na Viewport */}
+                <div className="table-responsive turmas-notas-tabela-scroll">
                   <table className="table table-hover align-middle mb-0" style={{ fontSize: "0.88rem" }}>
                     <thead className="table-light text-muted small fw-bold">
                       <tr>
@@ -746,7 +746,7 @@ export default function NotasAba({
                     Ver Todas as Notas
                   </button>
                 </div>
-                <div className="list-group list-group-flush rounded-3 border">
+                <div className="list-group list-group-flush turmas-alunos-lista-scroll">
                   {alunosTurma.map((aluno) => (
                     <div
                       key={aluno.id}

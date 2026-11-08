@@ -149,6 +149,22 @@
   padding: 0.35rem 0;
 }
 
+.portal-scope .portal-header__wiki-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color var(--portal-transition);
+}
+
+.portal-scope .portal-header__wiki-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
 .portal-scope .portal-header__student-link {
   display: inline-flex;
   align-items: center;

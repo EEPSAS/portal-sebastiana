@@ -8,8 +8,13 @@ const NavBar = () => {
   return (
     <header className="portal-header">
       <div className="portal-header__topbar">
-        <div className="container d-flex justify-content-end">
-          <Link className="portal-header__student-link" to="login">
+        <div className="container d-flex justify-content-end align-items-center gap-3">
+          <Link className="portal-header__wiki-link" to="/wiki">
+            <i className="bi bi-question-circle me-1" aria-hidden="true"></i>
+            Wiki & Ajuda
+          </Link>
+          <span className="text-white-50 small" aria-hidden="true">|</span>
+          <Link className="portal-header__student-link" to="/login">
             Sistema EEPSAS
           </Link>
         </div>

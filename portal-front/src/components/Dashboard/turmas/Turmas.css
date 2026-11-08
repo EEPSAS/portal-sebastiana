@@ -307,19 +307,20 @@
 }
 
 /* ==========================================================================
-   9. Controle de Guias de Turmas (Estilo Tab Control do Access com Alto Destaque)
+   9. Controle de Guias de Turmas (Estilo Tab Control do Access em Formato Slim)
    ========================================================================== */
 
 .turmas-tab-bar {
   display: flex;
   align-items: flex-end;
-  gap: 6px;
+  gap: 5px;
   overflow-x: auto;
-  padding: 6px 8px 0 8px;
+  overflow-y: hidden;
+  padding: 3px 6px 0 6px;
   background-color: #f1f5f9;
-  border-radius: 12px 12px 0 0;
+  border-radius: 10px 10px 0 0;
   border-bottom: 2px solid #2563eb;
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.5rem;
   scrollbar-width: thin;
 }
 
@@ -328,13 +329,13 @@
   background-color: #e2e8f0;
   border: 1px solid #94a3b8;
   border-bottom: none;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
-  padding: 8px 16px 7px 16px;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  padding: 4px 12px 3px 12px;
   cursor: pointer;
-  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
-  min-width: 165px;
-  max-width: 260px;
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  min-width: 130px;
+  max-width: 210px;
   white-space: nowrap;
   user-select: none;
   margin-bottom: -2px;
@@ -343,40 +344,39 @@
 .turmas-tab-item:hover:not(.is-active) {
   background-color: #dbeafe;
   border-color: #3b82f6;
-  transform: translateY(-1px);
 }
 
 .turmas-tab-item.is-active {
   background-color: #ffffff;
   border-left: 2px solid #2563eb;
   border-right: 2px solid #2563eb;
-  border-top: 4px solid #2563eb;
+  border-top: 3px solid #2563eb;
   border-bottom: 2px solid #ffffff;
   z-index: 3;
-  box-shadow: 0 -4px 12px rgba(37, 99, 235, 0.16);
+  box-shadow: 0 -2px 8px rgba(37, 99, 235, 0.14);
 }
 
 .turmas-tab-title {
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: #1e293b;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .turmas-tab-item.is-active .turmas-tab-title {
-  font-size: 0.92rem;
+  font-size: 0.84rem;
   font-weight: 800;
   color: #1d4ed8;
 }
 
 .turmas-tab-subtitle {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 500;
   color: #475569;
-  line-height: 1.15;
-  margin-top: 2px;
+  line-height: 1.1;
+  margin-top: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -387,7 +387,38 @@
 }
 
 /* ==========================================================================
-   10. Diálogo Nativo do Boletim Técnico (Top-Layer & Scroll Containment)
+   10. Confinamento de Scroll da Tabela de Notas e Listas de Alunos (Viewport Lock)
+   ========================================================================== */
+
+.turmas-notas-tabela-scroll {
+  max-height: clamp(260px, calc(100vh - 430px), 580px);
+  overflow-y: auto;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #ffffff;
+}
+
+.turmas-notas-tabela-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: #f8fafc;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.turmas-alunos-lista-scroll {
+  max-height: clamp(260px, calc(100vh - 430px), 580px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+/* ==========================================================================
+   11. Diálogo Nativo do Boletim Técnico (Top-Layer & Scroll Containment)
    ========================================================================== */
 dialog.boletim-native-dialog:modal {
   overscroll-behavior: contain;

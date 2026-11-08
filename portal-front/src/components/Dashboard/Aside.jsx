@@ -285,7 +285,7 @@ const Aside = () => {
 
       <hr className="my-2" />
 
-      {/* Seção Inferior Fixa: Dona Nana (acima de Configurações) e Configurações */}
+      {/* Seção Inferior Fixa: Dona Nana, Ajuda e Configurações */}
       <ul className="nav nav-pills flex-column gap-2 mb-2">
         <li className="nav-item">
           <NavLink
@@ -301,6 +301,31 @@ const Aside = () => {
                 <div className="d-flex align-items-center">
                   <i className="bi bi-chat-heart-fill me-3 fs-5 text-warning"></i>
                   <span>Dona Nana</span>
+                </div>
+                {isActive && (
+                  <i
+                    className="bi bi-caret-left-fill dashboard-aside-active-arrow"
+                    aria-hidden="true"
+                  ></i>
+                )}
+              </>
+            )}
+          </NavLink>
+        </li>
+        <li className="nav-item">
+          <NavLink
+            to="/dashboard/wiki"
+            className={({ isActive }) =>
+              `nav-link d-flex align-items-center justify-content-between fw-semibold ${
+                isActive ? "active dashboard-aside-link-active text-white" : "link-dark"
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <div className="d-flex align-items-center">
+                  <i className="bi bi-question-circle-fill me-3 fs-5 text-primary"></i>
+                  <span>Ajuda</span>
                 </div>
                 {isActive && (
                   <i
