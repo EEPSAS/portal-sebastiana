@@ -1,20 +1,18 @@
 /**
- * ModalImportarNotas.jsx - Upload e Conciliação Inteligente de Diário Escolar (CSV)
+ * ModalImportarNotas.jsx - Upload e Conciliação Estrita de Diário Escolar (CSV)
  *
  * Papel Didático:
- * Atende à Diretriz 3.4d (28/10/2026) além das etapas existentes:
- * 1. Upload do arquivo CSV com download de modelo pré-formatado;
- * 2. Conciliação de Disciplinas (`etapa === "disciplinas"`): sanitiza os cabeçalhos do CSV e,
- *    caso alguma disciplina não seja localizada automaticamente, solicita aprovação do Especialista
- *    para correlacionar manualmente a uma disciplina existente OU criar uma nova disciplina no Ciclo da turma;
+ * Garante que a importação do CSV atue exclusivamente no lançamento de Notas e Faltas,
+ * sem jamais criar disciplinas/ciclos/usuários nem alterar vínculos curriculares:
+ * 1. Upload do arquivo CSV (bloqueado preventivamente se a turma não possuir disciplinas vinculadas);
+ * 2. Conciliação de Disciplinas (`etapa === "disciplinas"`): correlaciona colunas não reconhecidas
+ *    estritamente às disciplinas já vinculadas à turma (`fetchTurmaDisciplinas`) ou ignora a coluna;
  * 3. Confirmação e desambiguação inteligente caso sejam detectados homônimos na turma/escola;
  * 4. Resolução de divergências de notas em períodos letivos anteriores.
  */
 
 import { useEffect, useState } from "react";
-import { listarCiclos } from "../../../services/disciplinasService";
-import ModalCiclo from "../disciplinas/ModalCiclo";
-import { importarNotasCSV } from "../../../services/turmasService";
+import { fetchTurmaDisciplinas, importarNotasCSV } from "../../../services/turmasService";
 import {
   ArquivoCsvUploadSchema,
   MapeamentosAlunosCsvSchema,
@@ -22,6 +20,12 @@ import {
   validarFormularioZod,
 } from "../../../utils/academicoSchemas";
 import { formatarDisciplinaCiclo } from "../../../utils/formatters";
+
+const ESTADO_INICIAL_DISCIPLINAS_TURMA = {
+  turmaIdCarregada: null,
+  lista: [],
+  erroCarregamento: "",
+};
 
 const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
   const [arquivo, setArquivo] = useState(null);
@@ -34,94 +38,77 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
   // Etapas: 'upload' | 'disciplinas' | 'confirmacao' | 'divergencias'
   const [etapa, setEtapa] = useState("upload");
 
-  // Estados da Etapa de Conciliação de Disciplinas (Diretriz 3.4d)
+  // Estados da Etapa de Conciliação Estrita de Disciplinas (restrita à grade da turma)
   const [disciplinasPendentes, setDisciplinasPendentes] = useState([]);
   const [disciplinasCatalogo, setDisciplinasCatalogo] = useState([]);
   const [mapeamentosDisciplinas, setMapeamentosDisciplinas] = useState({});
-  // Estados dos Ciclos Escolares para conciliação e criação dinâmica (+)
-  const [ciclos, setCiclos] = useState([]);
-  const [modalCicloAberto, setModalCicloAberto] = useState(false);
-  const [disciplinaChaveParaNovoCiclo, setDisciplinaChaveParaNovoCiclo] = useState(null);
+  const [estadoDisciplinasTurma, setEstadoDisciplinasTurma] = useState(
+    ESTADO_INICIAL_DISCIPLINAS_TURMA
+  );
 
   // Estados de resolução de homônimos e divergências de notas
   const [ambiguidades, setAmbiguidades] = useState([]);
   const [mapeamentos, setMapeamentos] = useState({});
   const [divergencias, setDivergencias] = useState([]);
 
-  // Carrega a listagem de ciclos escolares para alimentar os seletores de conciliação
+  const turmaId = turma?.id_turma ? Number(turma.id_turma) : null;
+
+  // Deriva os 3 estados assíncronos (Carregando, Erro e Vazio) sem setState síncrono no effect
+  const carregandoDisciplinas = Boolean(
+    isOpen && turmaId && estadoDisciplinasTurma.turmaIdCarregada !== turmaId
+  );
+  const disciplinasVinculadasTurma =
+    estadoDisciplinasTurma.turmaIdCarregada === turmaId ? estadoDisciplinasTurma.lista : [];
+  const erroDisciplinasTurma =
+    estadoDisciplinasTurma.turmaIdCarregada === turmaId
+      ? estadoDisciplinasTurma.erroCarregamento
+      : "";
+  const turmaSemDisciplinas =
+    !carregandoDisciplinas &&
+    !erroDisciplinasTurma &&
+    Boolean(turmaId) &&
+    disciplinasVinculadasTurma.length === 0;
+
+  // Carrega apenas as disciplinas já vinculadas à turma para blindar o upload e a conciliação
   useEffect(() => {
     let ativo = true;
-    if (isOpen) {
-      listarCiclos()
-        .then((dados) => {
-          if (ativo && Array.isArray(dados)) {
-            setCiclos(dados);
+    if (isOpen && turmaId) {
+      fetchTurmaDisciplinas(turmaId)
+        .then((lista) => {
+          if (ativo) {
+            setEstadoDisciplinasTurma({
+              turmaIdCarregada: turmaId,
+              lista: Array.isArray(lista) ? lista : [],
+              erroCarregamento: "",
+            });
           }
         })
-        .catch(() => {});
+        .catch((error) => {
+          if (ativo) {
+            setEstadoDisciplinasTurma({
+              turmaIdCarregada: turmaId,
+              lista: [],
+              erroCarregamento:
+                error?.message ||
+                "Não foi possível carregar as disciplinas vinculadas à turma.",
+            });
+          }
+        });
     }
     return () => {
       ativo = false;
     };
-  }, [isOpen]);
-
-  // Abre o modal de criação rápida de Ciclo vinculado opcionalmente a uma linha de disciplina
-  const handleAbrirCriarCiclo = (chaveDisciplina = null) => {
-    setDisciplinaChaveParaNovoCiclo(chaveDisciplina);
-    setModalCicloAberto(true);
-  };
-
-  // Callback chamado pelo ModalCiclo após persistir com sucesso no banco de dados
-  const handleNovoCicloSalvo = (cicloSalvo) => {
-    if (cicloSalvo?.id_ciclo) {
-      const novoId = Number(cicloSalvo.id_ciclo);
-      const novoCiclo = {
-        id_ciclo: novoId,
-        nome: cicloSalvo.nome,
-        descricao: cicloSalvo.descricao || "",
-      };
-
-      // 1. Atualiza a lista forçando re-renderização do select com o novo ciclo
-      setCiclos((prev) => {
-        const existe = prev.some((c) => Number(c.id_ciclo) === novoId);
-        return existe ? prev : [...prev, novoCiclo];
-      });
-
-      // 2. Preenche automaticamente o novo ciclo como selecionado por padrão
-      if (disciplinaChaveParaNovoCiclo) {
-        setMapeamentosDisciplinas((prev) => ({
-          ...prev,
-          [disciplinaChaveParaNovoCiclo]: {
-            ...prev[disciplinaChaveParaNovoCiclo],
-            ciclo_id: novoId,
-          },
-        }));
-      } else {
-        setMapeamentosDisciplinas((prev) => {
-          const atualizado = { ...prev };
-          Object.keys(atualizado).forEach((k) => {
-            if (atualizado[k]?.acao === "criar_nova") {
-              atualizado[k] = { ...atualizado[k], ciclo_id: novoId };
-            }
-          });
-          return atualizado;
-        });
-      }
-    }
-    setModalCicloAberto(false);
-    setDisciplinaChaveParaNovoCiclo(null);
-  };
+  }, [isOpen, turmaId]);
 
   if (!isOpen) return null;
 
-  // Fecha o modal e redefine todos os estados internos para o padrão inicial
+  // Fecha o modal e redefine todos os estados internos (forçando recarga fresca na próxima abertura)
   const handleFecharModal = () => {
     setEtapa("upload");
     setDisciplinasPendentes([]);
     setDisciplinasCatalogo([]);
     setMapeamentosDisciplinas({});
-    setModalCicloAberto(false);
-    setDisciplinaChaveParaNovoCiclo(null);
+    setEstadoDisciplinasTurma(ESTADO_INICIAL_DISCIPLINAS_TURMA);
     setAmbiguidades([]);
     setMapeamentos({});
     setDivergencias([]);
@@ -133,41 +120,46 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
   // Roteador central da resposta da API para avançar entre as etapas de aprovação
   const processarRespostaImportacao = (resposta) => {
     if (resposta.status === "pendente_confirmacao") {
-      // Prioridade 1: Conciliação de Disciplinas não localizadas (Diretriz 3.4d)
+      // Prioridade 1: Conciliação de colunas não reconhecidas estritamente contra disciplinas da turma
       if (
         resposta.tipo_pendencia === "conciliacao_disciplinas" ||
         (resposta.disciplinas_pendentes && resposta.disciplinas_pendentes.length > 0)
       ) {
         const listaPend = resposta.disciplinas_pendentes || [];
-        const catalogo = resposta.catalogo_disciplinas || resposta.disciplinas_catalogo || [];
-        if (Array.isArray(resposta.catalogo_ciclos) && resposta.catalogo_ciclos.length > 0) {
-          setCiclos(resposta.catalogo_ciclos);
-        }
-        setDisciplinasPendentes(listaPend);
-        setDisciplinasCatalogo(catalogo);
+        const catalogoRecebido = Array.isArray(resposta.catalogo_disciplinas)
+          ? resposta.catalogo_disciplinas
+          : [];
 
-        const cicloPadraoId = turma?.ciclo_id || (resposta.catalogo_ciclos?.[0]?.id_ciclo ?? "");
+        // Filtra o catálogo exibido exclusivamente pelas disciplinas já vinculadas à turma ativa
+        const idsVinculados = new Set(
+          disciplinasVinculadasTurma.map((d) => Number(d.id_disciplina))
+        );
+        const catalogoFiltrado =
+          idsVinculados.size > 0
+            ? catalogoRecebido.filter((d) => idsVinculados.has(Number(d.id_disciplina)))
+            : catalogoRecebido;
+        const opcoesTurma =
+          catalogoFiltrado.length > 0 ? catalogoFiltrado : disciplinasVinculadasTurma;
+        const idsPermitidos = new Set(opcoesTurma.map((d) => Number(d.id_disciplina)));
+
+        setDisciplinasPendentes(listaPend);
+        setDisciplinasCatalogo(opcoesTurma);
 
         const mapaInicial = {};
         listaPend.forEach((item) => {
           const chave = item.nome_sanitizado || item.nome_csv;
-          // Contrato canônico: sugestao_disciplina_id -> disciplina_id
-          const sugestaoId = item.sugestao_disciplina_id ?? item.sugestao_id;
-          if (sugestaoId) {
+          const sugestaoId = Number(item.sugestao_disciplina_id ?? item.sugestao_id);
+
+          // Se houver sugestão aproximada pertencente à própria turma, pré-seleciona 'vincular'; caso contrário, 'ignorar'
+          if (Number.isInteger(sugestaoId) && sugestaoId > 0 && idsPermitidos.has(sugestaoId)) {
             mapaInicial[chave] = {
               acao: "vincular",
-              disciplina_id: Number(sugestaoId),
-              nome_nova: item.nome_sanitizado || item.nome_csv,
-              aulas_semanais: 4,
-              ciclo_id: cicloPadraoId,
+              disciplina_id: sugestaoId,
             };
           } else {
             mapaInicial[chave] = {
-              acao: "criar_nova",
-              disciplina_id: catalogo[0]?.id_disciplina || "",
-              nome_nova: item.nome_sanitizado || item.nome_csv,
-              aulas_semanais: 4,
-              ciclo_id: cicloPadraoId,
+              acao: "ignorar",
+              disciplina_id: "",
             };
           }
         });
@@ -214,7 +206,6 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
   const construirFormDataBase = () => {
     const formData = new FormData();
     formData.append("arquivo", arquivo);
-    formData.append("exigir_conciliacao_disciplinas", "1");
     if (periodoLetivo) {
       formData.append("periodo_letivo", periodoLetivo);
     }
@@ -436,13 +427,46 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
         {/* ETAPA 1: Formulário de Upload do CSV */}
         {etapa === "upload" && (
           <form onSubmit={handleSubmit}>
-            {erro && (
+            {(erro || erroDisciplinasTurma) && (
               <div
                 className="alert alert-danger d-flex align-items-center gap-2 mb-3"
                 role="alert"
               >
                 <i className="bi bi-exclamation-triangle-fill fs-5"></i>
-                <div>{erro}</div>
+                <div>{erro || erroDisciplinasTurma}</div>
+              </div>
+            )}
+
+            {carregandoDisciplinas && (
+              <div
+                className="alert alert-light border d-flex align-items-center gap-2 mb-3 small text-muted"
+                role="status"
+              >
+                <span
+                  className="spinner-border spinner-border-sm text-primary"
+                  aria-hidden="true"
+                ></span>
+                <span>Verificando disciplinas vinculadas à turma...</span>
+              </div>
+            )}
+
+            {turmaSemDisciplinas && (
+              <div
+                className="alert alert-warning d-flex align-items-start gap-2 mb-3"
+                role="alert"
+              >
+                <i className="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0 text-warning"></i>
+                <div>
+                  <strong className="d-block text-dark">
+                    Turma sem disciplinas vinculadas
+                  </strong>
+                  <small className="text-muted">
+                    Esta turma ainda não possui disciplinas na sua grade curricular. Como a
+                    importação de CSV lança apenas notas e faltas (sem criar nem vincular
+                    disciplinas ou ciclos automaticamente), vincule primeiro o Ciclo Escolar e
+                    as Disciplinas da turma antes de enviar a planilha.
+                  </small>
+                </div>
               </div>
             )}
 
@@ -499,7 +523,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                   </strong>
                   <small className="text-muted">
                     Aceita arquivos delimitados por vírgula ou ponto-e-vírgula com colunas de
-                    Aluno e Disciplinas (conciliadas com o Ciclo da turma).
+                    Aluno e Disciplinas já vinculadas à turma (sem alterar vínculos curriculares).
                   </small>
                 </div>
                 <button
@@ -524,7 +548,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                   accept=".csv"
                   onChange={handleArquivoChange}
                   required
-                  disabled={loading}
+                  disabled={loading || carregandoDisciplinas || turmaSemDisciplinas}
                 />
                 <div className="form-text">Tamanho máximo suportado: 10MB.</div>
               </div>
@@ -538,7 +562,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                   className="form-select"
                   value={periodoLetivo}
                   onChange={(e) => setPeriodoLetivo(e.target.value)}
-                  disabled={loading}
+                  disabled={loading || carregandoDisciplinas || turmaSemDisciplinas}
                 >
                   <option value="1º Trimestre">1º Trimestre</option>
                   <option value="2º Trimestre">2º Trimestre</option>
@@ -560,7 +584,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                   className="form-control"
                   value={dataAula}
                   onChange={(e) => setDataAula(e.target.value)}
-                  disabled={loading}
+                  disabled={loading || carregandoDisciplinas || turmaSemDisciplinas}
                 />
               </div>
             </div>
@@ -577,7 +601,13 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
               <button
                 type="submit"
                 className="btn btn-sm turmas-btn-primario px-4 rounded-pill d-flex align-items-center gap-2"
-                disabled={loading || !arquivo}
+                disabled={
+                  loading ||
+                  !arquivo ||
+                  carregandoDisciplinas ||
+                  Boolean(erroDisciplinasTurma) ||
+                  turmaSemDisciplinas
+                }
               >
                 {loading ? (
                   <>
@@ -599,7 +629,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
           </form>
         )}
 
-        {/* ETAPA 1.5: Conciliação e Aprovação de Disciplinas do CSV (Diretriz 3.4d) */}
+        {/* ETAPA 1.5: Conciliação Estrita de Disciplinas da Turma (sem criação/vínculo automático) */}
         {etapa === "disciplinas" && (
           <form onSubmit={handleConfirmarDisciplinas}>
             {erro && (
@@ -619,12 +649,13 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
               <i className="bi bi-journal-check fs-4 flex-shrink-0 text-primary"></i>
               <div>
                 <strong className="d-block text-dark">
-                  Conciliação de Disciplinas do CSV (Aprovação do Especialista)
+                  Conciliação de Colunas com Disciplinas da Turma
                 </strong>
                 <small className="text-muted">
-                  Algumas colunas de disciplinas da planilha não foram localizadas de forma
-                  exata no sistema. Aprove a correlação manual para uma disciplina já
-                  existente OU autorize a criação de uma nova disciplina no Ciclo da turma:
+                  Algumas colunas da planilha não coincidiram exatamente com os nomes das
+                  disciplinas vinculadas a esta turma. Correlacione cada coluna a uma disciplina
+                  já vinculada à turma ou opte por ignorá-la (nenhum vínculo curricular será
+                  criado ou alterado):
                 </small>
               </div>
             </div>
@@ -637,10 +668,8 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                 const chave = item.nome_sanitizado || item.nome_csv;
                 const sugestaoNome = item.sugestao_disciplina_nome ?? item.sugestao_nome;
                 const decisao = mapeamentosDisciplinas[chave] || {
-                  acao: "criar_nova",
+                  acao: "ignorar",
                   disciplina_id: "",
-                  nome_nova: chave,
-                  aulas_semanais: 4,
                 };
 
                 return (
@@ -660,14 +689,14 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                       </div>
                       {sugestaoNome && (
                         <span className="badge bg-warning-subtle text-dark border">
-                          Sugestão aproximada: {sugestaoNome}
+                          Sugestão na turma: {sugestaoNome}
                         </span>
                       )}
                     </div>
 
-                    {/* Escolha de Ação */}
+                    {/* Escolha de Ação restrita a correlacionar disciplina da turma ou ignorar */}
                     <div className="row g-2 align-items-end">
-                      <div className={decisao.acao === "criar_nova" ? "col-12 col-md-4" : "col-12 col-md-5"}>
+                      <div className="col-12 col-md-5">
                         <label
                           htmlFor={`conciliar-acao-${idx}`}
                           className="form-label small fw-bold text-dark mb-1"
@@ -679,15 +708,18 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                           className="form-select form-select-sm"
                           value={decisao.acao}
                           onChange={(e) =>
-                            atualizarDecisaoDisciplina(chave, { acao: e.target.value })
+                            atualizarDecisaoDisciplina(chave, {
+                              acao: e.target.value,
+                              disciplina_id:
+                                e.target.value === "ignorar"
+                                  ? ""
+                                  : decisao.disciplina_id || "",
+                            })
                           }
                           disabled={loading}
                         >
                           <option value="vincular">
-                            Correlacionar a disciplina existente
-                          </option>
-                          <option value="criar_nova">
-                            Criar nova disciplina a partir do CSV
+                            Correlacionar a disciplina vinculada à turma
                           </option>
                           <option value="ignorar">Ignorar esta coluna</option>
                         </select>
@@ -699,7 +731,7 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                             htmlFor={`conciliar-disc-sel-${idx}`}
                             className="form-label small fw-bold text-dark mb-1"
                           >
-                            Selecionar Disciplina do Sistema:
+                            Disciplina Vinculada à Turma:
                           </label>
                           <select
                             id={`conciliar-disc-sel-${idx}`}
@@ -707,13 +739,13 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                             value={decisao.disciplina_id || ""}
                             onChange={(e) =>
                               atualizarDecisaoDisciplina(chave, {
-                                disciplina_id: Number(e.target.value),
+                                disciplina_id: e.target.value ? Number(e.target.value) : "",
                               })
                             }
                             disabled={loading}
                             required
                           >
-                            <option value="">Selecione uma disciplina...</option>
+                            <option value="">Selecione uma disciplina da turma...</option>
                             {disciplinasCatalogo.map((d) => (
                               <option key={d.id_disciplina} value={d.id_disciplina}>
                                 {formatarDisciplinaCiclo(d)} ({d.aulas_semanais || 4} aulas/sem)
@@ -721,93 +753,6 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                             ))}
                           </select>
                         </div>
-                      )}
-
-                      {decisao.acao === "criar_nova" && (
-                        <>
-                          <div className="col-12 col-md-3">
-                            <label
-                              htmlFor={`conciliar-disc-nome-${idx}`}
-                              className="form-label small fw-bold text-dark mb-1"
-                            >
-                              Nome da Disciplina:
-                            </label>
-                            <input
-                              id={`conciliar-disc-nome-${idx}`}
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={decisao.nome_nova || ""}
-                              onChange={(e) =>
-                                atualizarDecisaoDisciplina(chave, {
-                                  nome_nova: e.target.value,
-                                })
-                              }
-                              disabled={loading}
-                              required
-                            />
-                          </div>
-                          <div className="col-4 col-md-2">
-                            <label
-                              htmlFor={`conciliar-disc-aulas-${idx}`}
-                              className="form-label small fw-bold text-dark mb-1"
-                            >
-                              Aulas/Sem:
-                            </label>
-                            <input
-                              id={`conciliar-disc-aulas-${idx}`}
-                              type="number"
-                              min={1}
-                              max={20}
-                              className="form-control form-control-sm"
-                              value={decisao.aulas_semanais || 4}
-                              onChange={(e) =>
-                                atualizarDecisaoDisciplina(chave, {
-                                  aulas_semanais: Number(e.target.value),
-                                })
-                              }
-                              disabled={loading}
-                              required
-                            />
-                          </div>
-                          <div className="col-8 col-md-3">
-                            <label
-                              htmlFor={`conciliar-disc-ciclo-${idx}`}
-                              className="form-label small fw-bold text-dark mb-1"
-                            >
-                              Ciclo Escolar:
-                            </label>
-                            <div className="input-group input-group-sm">
-                              <select
-                                id={`conciliar-disc-ciclo-${idx}`}
-                                className="form-select form-select-sm"
-                                value={decisao.ciclo_id || ""}
-                                onChange={(e) =>
-                                  atualizarDecisaoDisciplina(chave, {
-                                    ciclo_id: Number(e.target.value),
-                                  })
-                                }
-                                disabled={loading}
-                                required
-                              >
-                                <option value="">Selecione o Ciclo...</option>
-                                {ciclos.map((c) => (
-                                  <option key={c.id_ciclo} value={c.id_ciclo}>
-                                    {c.nome}
-                                  </option>
-                                ))}
-                              </select>
-                              <button
-                                type="button"
-                                className="btn btn-outline-primary"
-                                title="Cadastrar novo ciclo"
-                                onClick={() => handleAbrirCriarCiclo(chave)}
-                                disabled={loading}
-                              >
-                                <i className="bi bi-plus-lg"></i>
-                              </button>
-                            </div>
-                          </div>
-                        </>
                       )}
                     </div>
                   </div>
@@ -1123,20 +1068,6 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
           </div>
         )}
       </div>
-
-      {/* Modal Sobreposto para Criação Instantânea de Ciclo (+) */}
-      {modalCicloAberto && (
-        <div style={{ position: "relative", zIndex: 1065 }}>
-          <ModalCiclo
-            ciclo={null}
-            onFechar={() => {
-              setModalCicloAberto(false);
-              setDisciplinaChaveParaNovoCiclo(null);
-            }}
-            onSalvo={handleNovoCicloSalvo}
-          />
-        </div>
-      )}
     </div>
   );
 };

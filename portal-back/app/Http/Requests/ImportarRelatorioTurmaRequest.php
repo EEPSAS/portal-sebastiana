@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 /**
  * Validação para o upload de relatório/planilha consolidada do diário escolar (Item 3.4d).
@@ -21,7 +22,7 @@ class ImportarRelatorioTurmaRequest extends FormRequest
         return $user !== null && (
             $user->isAdm()
             || $user->isEspecialista()
-            || (method_exists($user, 'canManageAcademic') && $user->canManageAcademic())
+            || $user->canManageAcademic()
         );
     }
 
@@ -62,10 +63,8 @@ class ImportarRelatorioTurmaRequest extends FormRequest
             'data_aula' => ['nullable', 'date'],
             // Mapeamento opcional de confirmação manual em caso de homônimos [nome_csv => id_usuario|'ignorar']
             'mapeamentos_alunos' => ['nullable', 'array'],
-            // Mapeamento/conciliação de disciplinas do CSV com o catálogo escolar (Item 3.4d)
+            // Correlação de colunas do CSV estritamente com disciplinas já vinculadas à turma (ou 'ignorar')
             'mapeamentos_disciplinas' => ['nullable', 'array'],
-            // Ciclo escolar opcional associado à conciliação da turma e disciplinas
-            'ciclo_id' => ['nullable', 'integer', 'exists:ciclos,id_ciclo'],
             // Decisão sobre notas divergentes de períodos já cadastrados ('atualizar' ou 'manter')
             'decisao_divergencias' => ['nullable', 'string', 'in:atualizar,manter'],
         ];
@@ -74,9 +73,9 @@ class ImportarRelatorioTurmaRequest extends FormRequest
     /**
      * Validações adicionais de segurança para o arquivo CSV enviado.
      */
-    public function withValidator($validator): void
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function ($validator) {
+        $validator->after(function (Validator $validator): void {
             $arquivo = $this->file('arquivo') ?: $this->file('planilha');
             if (! $arquivo || ! $arquivo->isValid()) {
                 return;
@@ -101,7 +100,7 @@ class ImportarRelatorioTurmaRequest extends FormRequest
 
             // Proteção contra payload excessivo (DoS em lote)
             $linhas = preg_split('/\r\n|\r|\n/', trim($conteudo));
-            if (count($linhas) > 1500) {
+            if (is_array($linhas) && count($linhas) > 1500) {
                 $validator->errors()->add('arquivo', 'A planilha excede o limite máximo permitido de 1500 linhas.');
             }
         });

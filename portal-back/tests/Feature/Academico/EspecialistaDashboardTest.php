@@ -227,6 +227,8 @@ test('especialista importa relatorio em planilha CSV consolidada e sincroniza re
 
     $discPortugues = Disciplina::factory()->create(['nome' => 'Português']);
     $discMatematica = Disciplina::factory()->create(['nome' => 'Matemática']);
+    // Vincula previamente as disciplinas à turma (o CSV apenas lança notas/faltas)
+    $turma->disciplinas()->attach([$discPortugues->id_disciplina, $discMatematica->id_disciplina]);
 
     $aluno1 = User::factory()->create(['name' => 'Carlos Silva', 'email' => 'carlos@aluno.mg.gov.br']);
     $aluno2 = User::factory()->create(['name' => 'Daniela Ramos', 'email' => 'daniela@aluno.mg.gov.br']);
@@ -299,6 +301,36 @@ test('especialista processa o arquivo oficial de diario escolar da EEPSAS com ca
         'nome_identificador' => '3º DESENV DE SISTEMAS EM INT 1 (2026)',
     ]);
 
+    // Cadastra e vincula previamente as 22 disciplinas curriculares da turma (incluindo o cabeçalho multilinha reconstruído)
+    $nomesDisciplinasTurma = [
+        'LÍNGUA PORTUGUESA',
+        'MATEMÁTICA',
+        'FÍSICA',
+        'HISTÓRIA',
+        'PRÁTICA PROFISSIONAL E EMPREENDEDORA',
+        'GEOGRAFIA',
+        'EDUCAÇÃO FÍSICA',
+        'ESTUDOS ORIENTADOS',
+        'QUÍMICA',
+        'BIOLOGIA',
+        'CONCEITOS AVANÇADOS EM ARQUITETURA DE SISTEMAS',
+        'LÍNGUA INGLESA',
+        'FILOSOFIA',
+        'PROJETO DE VIDA',
+        'SOCIOLOGIA',
+        'ARTE',
+        'ELETIVA',
+        'DESENVOLVIMENTO FRONT-END II',
+        'DESENVOLVIMENTO DE SOFTWARES',
+        'FUNDAMENTOS DE SEGURANÇA DE SOFTWARES',
+        'DESENVOLVIMENTO BACK-END',
+        'DESENVOLVIMENTO DE APLICATIVOS',
+    ];
+    $idsDisciplinas = collect($nomesDisciplinasTurma)
+        ->map(fn (string $nome) => Disciplina::factory()->create(['nome' => $nome])->id_disciplina)
+        ->all();
+    $turma->disciplinas()->attach($idsDisciplinas);
+
     $csvOficial = <<<'CSV'
 ESCOLA: 361453 - EE PROFESSORA SEBASTIANA DE ALMEIDA E SILVA - SRE CORONEL FABRICIANO,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 "TURMA: 3º DESENV DE SISTEMAS EM INT 1 (2026) - 2049481 - INTEGRAL - R SÃO JOSÉ ,30",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
@@ -350,9 +382,10 @@ CSV;
         ->assertJsonPath('dados.periodo_aplicado', '1º TRIMESTRE')
         ->assertJsonPath('dados.data_referencia', '2026-10-08');
 
-    // Valida que a disciplina multilinha "CONCEITOS AVANÇADOS EM ARQUITETURA DE SISTEMAS" foi criada e vinculada
+    // Valida que o cabeçalho multilinha "CONCEITOS AVANÇADOS EM ARQUITETURA DE SISTEMAS" foi reconhecido sem criar duplicatas
     $discMultilinha = Disciplina::where('nome', 'CONCEITOS AVANÇADOS EM ARQUITETURA DE SISTEMAS')->first();
-    expect($discMultilinha)->not->toBeNull();
+    expect($discMultilinha)->not->toBeNull()
+        ->and(Disciplina::count())->toBe(22);
 
     // Valida a nota de Ana Lívia na disciplina multilinha (30.0)
     $anaLivia = User::where('name', 'ANA LÍVIA DE SOUZA RAMOS')->first();
@@ -413,7 +446,8 @@ test('especialista lista as notas detalhadas registradas para uma turma', functi
 test('importacao de csv ignora aluno nao cadastrado e nao cria usuario no banco sem permissao do admin', function () {
     $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
     $turma = Turma::factory()->create();
-    Disciplina::factory()->create(['nome' => 'Matemática']);
+    $discMat = Disciplina::factory()->create(['nome' => 'Matemática']);
+    $turma->disciplinas()->attach($discMat->id_disciplina);
 
     $totalUsuariosAntes = User::count();
 
@@ -445,7 +479,8 @@ test('importacao de csv ignora aluno nao cadastrado e nao cria usuario no banco 
 test('importacao de csv ignora aluno cadastrado mas sem matricula ativa na turma', function () {
     $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
     $turma = Turma::factory()->create();
-    Disciplina::factory()->create(['nome' => 'História']);
+    $discHist = Disciplina::factory()->create(['nome' => 'História']);
+    $turma->disciplinas()->attach($discHist->id_disciplina);
 
     // Aluno cadastrado com e-mail institucional oficial, mas SEM matrícula nesta turma
     $alunoSemMatricula = User::factory()->create([
@@ -480,6 +515,7 @@ test('endpoint de notas lista apenas notas de alunos com e-mail institucional of
     $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
     $turma = Turma::factory()->create();
     $disciplina = Disciplina::factory()->create(['nome' => 'Física']);
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
 
     // 1. Aluno válido com e-mail institucional oficial
     $alunoInstitucional = User::factory()->create([
@@ -583,6 +619,10 @@ test('importacao de relatorio reconhece multiplos trimestres e descarta coluna t
         'status_matricula' => 'Ativo',
     ]);
 
+    $discPort = Disciplina::factory()->create(['nome' => 'LÍNGUA PORTUGUESA']);
+    $discMat = Disciplina::factory()->create(['nome' => 'MATEMÁTICA']);
+    $turma->disciplinas()->attach([$discPort->id_disciplina, $discMat->id_disciplina]);
+
     // CSV no formato DED MG com múltiplos trimestres, EIR e coluna TOTAL
     $csvContent = implode("\n", [
         'ESCOLA: 361453 - EE PROFESSORA SEBASTIANA DE ALMEIDA E SILVA',
@@ -631,6 +671,7 @@ test('importacao de relatorio detecta divergencias em periodos anteriores e soli
     ]);
 
     $disciplina = Disciplina::factory()->create(['nome' => 'Física']);
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
 
     // Nota prévia já cadastrada no 1º Trimestre = 20.0
     Nota::factory()->create([
@@ -691,6 +732,7 @@ test('especialista confirma atualizacao de notas divergentes de periodos anterio
     ]);
 
     $disciplina = Disciplina::factory()->create(['nome' => 'Física']);
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
 
     Nota::factory()->create([
         'turma_id' => $turma->id_turma,
@@ -747,6 +789,7 @@ test('especialista opta por manter notas anteriores e importar apenas novos peri
     ]);
 
     $disciplina = Disciplina::factory()->create(['nome' => 'Física']);
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
 
     Nota::factory()->create([
         'turma_id' => $turma->id_turma,
@@ -803,6 +846,7 @@ test('notas de periodos anteriores identicas sao sincronizadas sem interrupcao',
     ]);
 
     $disciplina = Disciplina::factory()->create(['nome' => 'Física']);
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
 
     // Nota prévia com o MESMO valor da planilha (25.0)
     Nota::factory()->create([
@@ -845,6 +889,7 @@ test('importacao de csv atribui valor_maximo de 30 para 1º e 2º trimestres e 4
     ]);
 
     $disciplina = Disciplina::factory()->create(['nome' => 'História']);
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
 
     $csvContent = implode("\n", [
         'ALUNO,HISTÓRIA,,,',

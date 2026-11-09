@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Models\Disciplina;
 use App\Models\Emprestimo;
 use App\Models\Evento;
-use App\Models\Emprestimo;
 use App\Models\Frequencia;
 use App\Models\Matricula;
 use App\Models\Nota;

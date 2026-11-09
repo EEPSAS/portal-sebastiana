@@ -422,7 +422,8 @@ test('aluno comum nao pode excluir dados do csv de uma turma (403)', function ()
 test('importacao csv reconhece aluno com nome completo quando email institucional tem apenas primeiro e ultimo nome', function () {
     $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
     $turma = Turma::factory()->create(['nome_identificador' => '3º Ano Informática', 'ano_letivo' => 2026]);
-    Disciplina::factory()->create(['nome' => 'Matemática']);
+    $disciplina = Disciplina::factory()->create(['nome' => 'Matemática']);
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
 
     // Aluno já cadastrado no sistema com e-mail institucional primeiro.ultimo e nome civil
     $aluno = User::factory()->create([
@@ -467,7 +468,8 @@ test('importacao csv reconhece aluno com nome completo quando email instituciona
 test('importacao csv detecta homonimos e retorna status pendente_confirmacao com candidatos', function () {
     $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
     $turma = Turma::factory()->create(['nome_identificador' => '3º Ano B', 'ano_letivo' => 2026]);
-    Disciplina::factory()->create(['nome' => 'História']);
+    $disciplina = Disciplina::factory()->create(['nome' => 'História']);
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
 
     // Dois alunos com primeiro nome Lucas e último Lima na mesma turma (homônimos parciais)
     $aluno1 = User::factory()->create([
@@ -506,7 +508,8 @@ test('importacao csv detecta homonimos e retorna status pendente_confirmacao com
 test('importacao csv com mapeamentos_alunos resolve homonimos e sincroniza notas com aluno confirmado', function () {
     $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
     $turma = Turma::factory()->create(['nome_identificador' => '3º Ano C', 'ano_letivo' => 2026]);
-    Disciplina::factory()->create(['nome' => 'Física']);
+    $disciplina = Disciplina::factory()->create(['nome' => 'Física']);
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
 
     $aluno1 = User::factory()->create(['name' => 'Lucas Ferreira Lima', 'email' => 'lucas.lima1@aluno.mg.gov.br', 'role' => UserRole::ALUNO]);
     $aluno2 = User::factory()->create(['name' => 'Lucas Gabriel Lima', 'email' => 'lucas.lima2@aluno.mg.gov.br', 'role' => UserRole::ALUNO]);

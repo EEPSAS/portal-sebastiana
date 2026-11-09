@@ -13,6 +13,7 @@ use App\Models\Turma;
 use App\Services\EspecialistaDashboardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Controller que gerencia as operações analíticas e de inteligência pedagógica
@@ -39,15 +40,17 @@ class EspecialistaDashboardController extends Controller
 
         $turma = Turma::findOrFail($turma_id);
 
+        // Exige que o vínculo entre Turma e Disciplinas/Ciclo já tenha sido realizado manualmente pelo usuário
+        if (! $turma->disciplinas()->exists()) {
+            throw ValidationException::withMessages([
+                'disciplinas' => 'Esta turma ainda não possui disciplinas vinculadas. Vincule o Ciclo Escolar ou as Disciplinas à turma antes de importar notas e faltas.',
+            ]);
+        }
+
         $arquivo = $request->file('arquivo') ?? $request->file('planilha');
 
-        // Revalida e normaliza os parâmetros e mapeamentos de conciliação via Spatie Laravel Data
-        $inputValidado = ImportarRelatorioInputData::fromFormRequest($request, $turma->ciclo_id !== null);
-
-        // Caso um ciclo_id explícito tenha sido enviado na conciliação e a turma ainda não possua ciclo, vincula
-        if ($inputValidado->ciclo_id !== null && $turma->ciclo_id === null) {
-            $turma->update(['ciclo_id' => $inputValidado->ciclo_id]);
-        }
+        // Revalida e normaliza os parâmetros e mapeamentos estritamente contra as disciplinas da própria turma
+        $inputValidado = ImportarRelatorioInputData::fromFormRequest($request, $turma);
 
         $resultado = $this->dashboardService->processarPlanilhaConsolidada(
             $turma,
@@ -56,8 +59,7 @@ class EspecialistaDashboardController extends Controller
             $inputValidado->data_aula,
             $inputValidado->mapeamentos_alunos,
             $inputValidado->decisao_divergencias,
-            $inputValidado->mapeamentos_disciplinas,
-            $inputValidado->exigir_conciliacao_disciplinas
+            $inputValidado->mapeamentos_disciplinas
         );
 
         return (new RelatorioImportadoResource([
@@ -72,7 +74,6 @@ class EspecialistaDashboardController extends Controller
             'divergencias' => $resultado['divergencias'] ?? [],
             'disciplinas_pendentes' => $resultado['disciplinas_pendentes'] ?? [],
             'catalogo_disciplinas' => $resultado['catalogo_disciplinas'] ?? [],
-            'catalogo_ciclos' => $resultado['catalogo_ciclos'] ?? [],
             'dados' => $resultado,
         ]))->response()->setStatusCode(200);
     }

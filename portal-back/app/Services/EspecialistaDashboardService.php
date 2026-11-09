@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Data\Academico\Csv\RegistroNotaCsvData;
 use App\Enums\UserRole;
-use App\Models\Ciclo;
 use App\Models\Disciplina;
 use App\Models\Frequencia;
 use App\Models\Matricula;
@@ -35,14 +34,18 @@ class EspecialistaDashboardService
     /**
      * Processa uma planilha consolidada do diário escolar (formato padrão EEPSAS / DED MG),
      * detectando automaticamente metadados, cabeçalhos de disciplinas (inclusive em múltiplas linhas),
-     * colunas de notas/faltas, e sincronizando no banco de dados.
+     * colunas de notas/faltas, e sincronizando exclusivamente notas e frequências no banco de dados.
+     *
+     * Regra de Isolamento Curricular: nunca cria disciplinas nem altera vínculos entre
+     * Ciclos, Disciplinas, Professores, Turmas e Alunos.
      *
      * @param  Turma  $turma  Turma que receberá os lançamentos acadêmicos
      * @param  UploadedFile|string  $arquivo  Arquivo enviado via upload ou caminho em disco
      * @param  string|null  $periodoLetivo  Período dos lançamentos (ex: '1º Trimestre' ou '1º Bimestre')
      * @param  string|null  $dataAula  Data de referência para as faltas (formato Y-m-d)
-     * @param  array  $mapeamentosManuais  Mapeamento de homônimos confirmados pelo Especialista [nome_csv => id_usuario|'novo']
+     * @param  array  $mapeamentosManuais  Mapeamento de homônimos confirmados pelo Especialista [nome_csv => id_usuario|'ignorar']
      * @param  string|null  $decisaoDivergencias  Decisão do usuário para notas divergentes ('atualizar' ou 'manter')
+     * @param  array  $mapeamentosDisciplinas  Correlação manual de colunas com disciplinas já vinculadas à turma
      * @return array Resumo com quantidade de registros processados e alertas
      */
     public function processarPlanilhaConsolidada(
@@ -52,9 +55,17 @@ class EspecialistaDashboardService
         ?string $dataAula = null,
         array $mapeamentosManuais = [],
         ?string $decisaoDivergencias = null,
-        array $mapeamentosDisciplinas = [],
-        bool $exigirConciliacaoDisciplinas = false
+        array $mapeamentosDisciplinas = []
     ): array {
+        // Carrega estritamente as disciplinas já vinculadas à turma pelo usuário (garante isolamento entre Ciclos)
+        $disciplinasDaTurma = $turma->disciplinas()->with('ciclos')->orderBy('nome')->get();
+
+        if ($disciplinasDaTurma->isEmpty()) {
+            throw ValidationException::withMessages([
+                'arquivo' => 'Esta turma ainda não possui disciplinas vinculadas. Vincule o Ciclo Escolar ou as Disciplinas à turma antes de importar notas e faltas.',
+            ]);
+        }
+
         // Lê o conteúdo bruto do arquivo
         $conteudo = $arquivo instanceof UploadedFile
             ? file_get_contents($arquivo->getRealPath())
@@ -97,22 +108,20 @@ class EspecialistaDashboardService
 
         $data = $dataAula ?: ($dataExtracaoDetectada ?: $dataPadraoPeriodo);
 
-        // Extrai os dados estruturados de notas e faltas por aluno com suporte a múltiplos períodos, desambiguação e conciliação de disciplinas
+        // Extrai os dados estruturados de notas e faltas conferindo colunas apenas contra as disciplinas da turma
         $dadosExtraidos = $this->extrairNotasEFaltasPorAluno(
             $linhas,
             $turma,
             $mapeamentosManuais,
             $periodo,
             $mapeamentosDisciplinas,
-            $exigirConciliacaoDisciplinas
+            $disciplinasDaTurma
         );
 
-        // Diretriz 3.4d: Se houver disciplinas no CSV que não puderam ser conciliadas automaticamente,
-        // interrompe a gravação e solicita ao Especialista que faça a correlação manual ou aprove a criação.
+        // Se houver colunas de disciplinas no CSV sem correspondência exata na grade da turma,
+        // interrompe a gravação para que o Especialista correlacione a uma disciplina da turma ou ignore a coluna.
         if (! empty($dadosExtraidos['disciplinas_pendentes'])) {
-            $catalogoExistente = Disciplina::with('ciclos')
-                ->orderBy('nome')
-                ->get()
+            $catalogoDaTurma = $disciplinasDaTurma
                 ->map(fn (Disciplina $d) => [
                     'id_disciplina' => $d->id_disciplina,
                     'nome' => $d->nome,
@@ -124,10 +133,9 @@ class EspecialistaDashboardService
             return [
                 'status' => 'pendente_confirmacao',
                 'tipo_pendencia' => 'conciliacao_disciplinas',
-                'message' => 'Identificamos disciplinas na planilha que precisam ser conciliadas com o catálogo escolar ou criadas no Ciclo da turma.',
+                'message' => 'Identificamos colunas de disciplinas na planilha que não correspondem exatamente à grade desta turma. Correlacione-as a uma disciplina já vinculada à turma ou ignore a coluna.',
                 'disciplinas_pendentes' => array_values($dadosExtraidos['disciplinas_pendentes']),
-                'catalogo_disciplinas' => $catalogoExistente,
-                'catalogo_ciclos' => Ciclo::orderBy('nome')->get(['id_ciclo', 'nome', 'descricao'])->values()->all(),
+                'catalogo_disciplinas' => $catalogoDaTurma,
                 'ambiguidades' => [],
                 'divergencias' => [],
                 'linhas_lidas' => count($linhas),
@@ -474,9 +482,11 @@ class EspecialistaDashboardService
      *
      * @param  array  $linhas  Linhas de texto do CSV
      * @param  Turma  $turma  Turma que está sendo processada
-     * @param  array  $mapeamentosManuais  Mapeamentos de homônimos resolvidos pelo especialista [nome_csv => id_usuario|'novo']
+     * @param  array  $mapeamentosManuais  Mapeamentos de homônimos resolvidos pelo especialista [nome_csv => id_usuario|'ignorar']
      * @param  string|null  $periodoPadrao  Período padrão caso o arquivo não contenha sub-cabeçalhos de trimestres
-     * @return array Dados estruturados contendo 'alunos_dados', 'ambiguidades' e 'alertas'
+     * @param  array  $mapeamentosDisciplinas  Correlação manual de cabeçalhos com disciplinas da turma
+     * @param  Collection<int, Disciplina>|null  $disciplinasDaTurma  Disciplinas previamente vinculadas à turma
+     * @return array Dados estruturados contendo 'alunos_dados', 'ambiguidades', 'disciplinas_pendentes' e 'alertas'
      */
     public function extrairNotasEFaltasPorAluno(
         array $linhas,
@@ -484,13 +494,18 @@ class EspecialistaDashboardService
         array $mapeamentosManuais = [],
         ?string $periodoPadrao = null,
         array $mapeamentosDisciplinas = [],
-        bool $exigirConciliacaoDisciplinas = false
+        ?Collection $disciplinasDaTurma = null
     ): array {
         $alertas = [];
         $alunosDados = [];
         $ambiguidades = [];
         $alunosIgnorados = [];
         $disciplinasPendentes = [];
+        $colunasIgnoradasAvisadas = [];
+
+        // Garante que a conferência utilize estritamente as disciplinas vinculadas à turma alvo
+        $disciplinasVinculadas = $disciplinasDaTurma
+            ?? $turma->disciplinas()->with('ciclos')->orderBy('nome')->get();
 
         // 1. Detectar o delimitador predominante do arquivo (; ou , ou tab)
         $delimitador = ',';
@@ -582,9 +597,6 @@ class EspecialistaDashboardService
             $ultimoPeriodoDetectado = $periodoPadrao ?: '1º Trimestre';
             $maxCols = max(count($cabecalhos), count($subCabecalhos));
 
-            // Carrega disciplinas existentes para busca resiliente insensível a maiúsculas e acentos
-            $todasDisciplinas = Disciplina::all();
-
             for ($c = 0; $c < $maxCols; $c++) {
                 if ($c === $indiceAluno) {
                     continue;
@@ -612,14 +624,15 @@ class EspecialistaDashboardService
 
                 $isFalta = str_contains($subTexto, 'FALTA') || str_contains($subTexto, 'AUSENCIA');
 
-                // Sanitiza e concilia a disciplina do CSV com o catálogo escolar (Item 3.4d)
+                // Sanitiza e confere a disciplina do CSV exclusivamente contra as disciplinas já vinculadas à turma
                 $disciplinaModel = $this->conciliarDisciplinaCsv(
                     $disciplinaAtualNome,
                     $turma,
-                    $todasDisciplinas,
+                    $disciplinasVinculadas,
                     $mapeamentosDisciplinas,
-                    $exigirConciliacaoDisciplinas,
-                    $disciplinasPendentes
+                    $disciplinasPendentes,
+                    $alertas,
+                    $colunasIgnoradasAvisadas
                 );
 
                 if (! $disciplinaModel) {
@@ -650,8 +663,6 @@ class EspecialistaDashboardService
             $primeiraLinhaAlunosIdx = $subCabecalhoIdx + 1;
         } else {
             // Formato tabular tradicional (uma única linha de cabeçalho)
-            $todasDisciplinas = Disciplina::all();
-
             foreach ($cabecalhos as $colIdx => $nomeColuna) {
                 if ($colIdx === $indiceAluno) {
                     continue;
@@ -673,10 +684,11 @@ class EspecialistaDashboardService
                 $disciplinaModel = $this->conciliarDisciplinaCsv(
                     $nomeLimpoDisciplina ?: $nomeColuna,
                     $turma,
-                    $todasDisciplinas,
+                    $disciplinasVinculadas,
                     $mapeamentosDisciplinas,
-                    $exigirConciliacaoDisciplinas,
-                    $disciplinasPendentes
+                    $disciplinasPendentes,
+                    $alertas,
+                    $colunasIgnoradasAvisadas
                 );
 
                 if ($disciplinaModel) {
@@ -690,6 +702,8 @@ class EspecialistaDashboardService
                         'periodo_letivo' => $periodoDaColuna,
                         'tipo_avaliacao' => $isRecuperacao ? 'Recuperação (EIR)' : 'Diário Consolidado',
                     ];
+                } else {
+                    $mapaColunas[$colIdx] = ['tipo' => 'ignorar'];
                 }
             }
 
@@ -741,13 +755,13 @@ class EspecialistaDashboardService
                 continue;
             }
 
-            // Localiza ou cadastra o aluno dinamicamente através da heurística inteligente
+            // Localiza o aluno previamente cadastrado através da desambiguação manual ou heurística resiliente
             $alunoEncontrado = null;
 
             // 1. Caso o Especialista já tenha resolvido a ambiguidade manualmente pelo modal
             if (isset($mapeamentosManuais[$identificadorAluno])) {
                 $opcaoEscolhida = $mapeamentosManuais[$identificadorAluno];
-                if ($opcaoEscolhida !== 'novo' && $opcaoEscolhida !== 'criar_novo' && $opcaoEscolhida !== 'ignorar' && $opcaoEscolhida !== 'nenhum') {
+                if ($opcaoEscolhida !== 'ignorar' && $opcaoEscolhida !== 'nenhum') {
                     $alunoEncontrado = User::find((int) $opcaoEscolhida);
                 }
             } else {
@@ -946,16 +960,24 @@ class EspecialistaDashboardService
     }
 
     /**
-     * Sanitiza o cabeçalho de disciplina do CSV e realiza a conciliação automática ou manual
-     * com o módulo de Disciplinas e Ciclos Escolares (Item 3.4d).
+     * Sanitiza o cabeçalho de disciplina do CSV e confere estritamente contra as disciplinas
+     * já vinculadas à própria turma, sem criar disciplinas nem modificar vínculos de Ciclos,
+     * Professores ou Turmas.
+     *
+     * @param  Collection<int, Disciplina>  $disciplinasDaTurma
+     * @param  array<string, mixed>  $mapeamentosDisciplinas
+     * @param  array<string, array<string, mixed>>  $disciplinasPendentes
+     * @param  array<int, string>  $alertas
+     * @param  array<string, bool>  $colunasIgnoradasAvisadas
      */
     private function conciliarDisciplinaCsv(
         string $nomeBrutoCsv,
         Turma $turma,
-        Collection $todasDisciplinas,
+        Collection $disciplinasDaTurma,
         array $mapeamentosDisciplinas,
-        bool $exigirConciliacaoDisciplinas,
-        array &$disciplinasPendentes
+        array &$disciplinasPendentes,
+        array &$alertas,
+        array &$colunasIgnoradasAvisadas
     ): ?Disciplina {
         // Sanitiza espaços múltiplos e caracteres de controle
         $nomeSanitizado = trim((string) preg_replace('/\s+/', ' ', $nomeBrutoCsv));
@@ -966,119 +988,70 @@ class EspecialistaDashboardService
         $normCsv = Str::lower(Str::ascii($nomeSanitizado));
         $decisaoManual = $mapeamentosDisciplinas[$nomeBrutoCsv] ?? $mapeamentosDisciplinas[$nomeSanitizado] ?? null;
 
-        $disciplinaEscolhida = null;
-
         // 1. Verifica se o Especialista já informou a decisão manual no modal de conciliação
         if ($decisaoManual !== null) {
-            $acao = is_array($decisaoManual) ? ($decisaoManual['acao'] ?? '') : (string) $decisaoManual;
+            $acao = is_array($decisaoManual) ? (string) ($decisaoManual['acao'] ?? '') : (string) $decisaoManual;
 
             if ($acao === 'ignorar') {
+                // Emite um único aviso informativo por coluna descartada no resumo da importação
+                if (! isset($colunasIgnoradasAvisadas[$nomeSanitizado])) {
+                    $colunasIgnoradasAvisadas[$nomeSanitizado] = true;
+                    $alertas[] = "Coluna '{$nomeSanitizado}' ignorada conforme seleção na conciliação.";
+                }
+
                 return null;
             }
 
-            if ($acao === 'criar_nova' || $acao === 'nova') {
-                $aulasSemanais = is_array($decisaoManual) && ! empty($decisaoManual['aulas_semanais'])
-                    ? max(1, (int) $decisaoManual['aulas_semanais'])
-                    : 2;
-                $nomeParaCriar = is_array($decisaoManual) && ! empty($decisaoManual['nome'])
-                    ? trim((string) $decisaoManual['nome'])
-                    : (is_array($decisaoManual) && ! empty($decisaoManual['nome_nova'])
-                        ? trim((string) $decisaoManual['nome_nova'])
-                        : $nomeSanitizado);
-
-                $disciplinaEscolhida = $todasDisciplinas->first(
-                    fn (Disciplina $d) => Str::lower(Str::ascii($d->nome)) === Str::lower(Str::ascii($nomeParaCriar))
-                );
-
-                if (! $disciplinaEscolhida) {
-                    $disciplinaEscolhida = Disciplina::create([
-                        'nome' => $nomeParaCriar,
-                        'aulas_semanais' => $aulasSemanais,
-                        'carga_horaria_anual' => $aulasSemanais * 40,
-                    ]);
-                    $todasDisciplinas->push($disciplinaEscolhida);
-                }
-            } else {
-                $idManual = is_array($decisaoManual)
-                    ? (int) ($decisaoManual['disciplina_id'] ?? $decisaoManual['id_disciplina'] ?? 0)
-                    : (int) $acao;
-
-                if ($idManual > 0) {
-                    $disciplinaEscolhida = $todasDisciplinas->firstWhere('id_disciplina', $idManual)
-                        ?? Disciplina::find($idManual);
-                }
-            }
-        }
-
-        // 2. Caso não haja mapeamento manual prévio, tenta conciliação automática exata
-        if (! $disciplinaEscolhida) {
-            $disciplinaEscolhida = $todasDisciplinas->first(function (Disciplina $d) use ($normCsv) {
-                return Str::lower(Str::ascii(trim($d->nome))) === $normCsv;
-            });
-        }
-
-        // 3. Caso não haja correspondência exata, busca sugestão por similaridade/contenção
-        $sugestaoSimilar = null;
-        if (! $disciplinaEscolhida) {
-            $sugestaoSimilar = $todasDisciplinas->first(function (Disciplina $d) use ($normCsv) {
-                $discNorm = Str::lower(Str::ascii(trim($d->nome)));
-
-                return $discNorm !== '' && (str_contains($normCsv, $discNorm) || str_contains($discNorm, $normCsv));
-            });
-
-            // No modo sem flag de conciliação explícita e sem ciclo vinculado, cria a disciplina com seu nome exato
-            if (! $exigirConciliacaoDisciplinas && $turma->ciclo_id === null) {
-                $disciplinaEscolhida = Disciplina::create([
-                    'nome' => $nomeSanitizado,
-                    'aulas_semanais' => 2,
-                    'carga_horaria_anual' => 80,
+            // Bloqueia tentativas de criar disciplinas via CSV: o cadastro e vínculo são exclusivos do usuário
+            if ($acao !== 'vincular' && ! is_numeric($acao)) {
+                throw ValidationException::withMessages([
+                    "mapeamentos_disciplinas.{$nomeSanitizado}.acao" => "Ação inválida para '{$nomeSanitizado}'. A importação CSV permite apenas correlacionar a uma disciplina já vinculada à turma ou ignorar a coluna.",
                 ]);
-                $todasDisciplinas->push($disciplinaEscolhida);
-            }
-        }
-
-        // 4. Se exigir conciliação e a disciplina não foi localizada automaticamente, registra pendência para o modal
-        if (! $disciplinaEscolhida) {
-            if (! isset($disciplinasPendentes[$nomeSanitizado])) {
-                $disciplinasPendentes[$nomeSanitizado] = [
-                    'nome_csv' => $nomeSanitizado,
-                    'sugestao_disciplina_id' => $sugestaoSimilar?->id_disciplina,
-                    'sugestao_disciplina_nome' => $sugestaoSimilar?->nome,
-                ];
             }
 
-            return null;
-        }
+            $idManual = is_array($decisaoManual)
+                ? (int) ($decisaoManual['disciplina_id'] ?? $decisaoManual['id_disciplina'] ?? 0)
+                : (int) $acao;
 
-        // 5. Vincula a disciplina conciliada ao Ciclo informado manualmente ou ao Ciclo da Turma
-        $cicloIdInformado = is_array($decisaoManual) && ! empty($decisaoManual['ciclo_id'])
-            ? (int) $decisaoManual['ciclo_id']
-            : null;
+            // Busca exclusivamente na coleção de disciplinas já vinculadas à turma (impede cruzar ciclos)
+            $disciplinaEscolhida = $disciplinasDaTurma->firstWhere('id_disciplina', $idManual);
 
-        if ($cicloIdInformado) {
-            $disciplinaEscolhida->ciclos()->syncWithoutDetaching([$cicloIdInformado]);
-            // Requisito pedagógico: se a Turma não possuir ciclo definido, associa também a turma a este Ciclo
-            if ($turma->ciclo_id === null) {
-                $turma->update(['ciclo_id' => $cicloIdInformado]);
+            if (! $disciplinaEscolhida) {
+                throw ValidationException::withMessages([
+                    "mapeamentos_disciplinas.{$nomeSanitizado}.disciplina_id" => "A disciplina selecionada para '{$nomeSanitizado}' não está vinculada à turma '{$turma->nome_identificador}'.",
+                ]);
             }
-        } elseif ($turma->ciclo_id !== null) {
-            $disciplinaEscolhida->ciclos()->syncWithoutDetaching([$turma->ciclo_id]);
+
+            return $disciplinaEscolhida;
         }
 
-        if (! $turma->disciplinas()->where('disciplinas.id_disciplina', $disciplinaEscolhida->id_disciplina)->exists()) {
-            $professorPadraoId = $disciplinaEscolhida->professores()->first()?->id;
-            TurmaDisciplina::firstOrCreate(
-                [
-                    'turma_id' => $turma->id_turma,
-                    'disciplina_id' => $disciplinaEscolhida->id_disciplina,
-                ],
-                [
-                    'professor_id' => $professorPadraoId,
-                ]
-            );
+        // 2. Conciliação automática exata restrita às disciplinas já vinculadas à turma
+        $correspondenciasExatas = $disciplinasDaTurma->filter(function (Disciplina $d) use ($normCsv) {
+            return Str::lower(Str::ascii(trim($d->nome))) === $normCsv;
+        })->values();
+
+        // Retorna imediatamente a disciplina da turma sem alterar nenhum vínculo de ciclo, turma ou professor
+        if ($correspondenciasExatas->count() === 1) {
+            return $correspondenciasExatas->first();
         }
 
-        return $disciplinaEscolhida;
+        // 3. Sem correspondência exata única na turma: busca sugestão por similaridade apenas na grade da turma
+        $sugestaoSimilar = $correspondenciasExatas->first() ?? $disciplinasDaTurma->first(function (Disciplina $d) use ($normCsv) {
+            $discNorm = Str::lower(Str::ascii(trim($d->nome)));
+
+            return $discNorm !== '' && (str_contains($normCsv, $discNorm) || str_contains($discNorm, $normCsv));
+        });
+
+        // 4. Registra pendência para o Especialista correlacionar a uma disciplina da turma ou ignorar a coluna
+        if (! isset($disciplinasPendentes[$nomeSanitizado])) {
+            $disciplinasPendentes[$nomeSanitizado] = [
+                'nome_csv' => $nomeSanitizado,
+                'sugestao_disciplina_id' => $sugestaoSimilar?->id_disciplina,
+                'sugestao_disciplina_nome' => $sugestaoSimilar?->nome,
+            ];
+        }
+
+        return null;
     }
 
     /**

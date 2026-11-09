@@ -279,6 +279,8 @@ test('CSV import creates individual grade and attendance alerts after successful
         'nome' => 'Física',
         'carga_horaria_anual' => 60,
     ]);
+    // A disciplina deve estar previamente vinculada à turma para receber notas/faltas via CSV
+    $turma->disciplinas()->attach($disciplina->id_disciplina);
     $aluno = User::factory()->aluno()->create([
         'name' => 'Aluno Alerta CSV',
         'email' => 'aluno.alerta.csv@aluno.mg.gov.br',

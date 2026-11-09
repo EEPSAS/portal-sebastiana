@@ -315,16 +315,14 @@ export const ArquivoCsvUploadSchema = z
     message: "O arquivo não pode exceder 10MB.",
   });
 
-// Valida cada decisão de conciliação de disciplina no modal (contrato canônico disciplina_id)
+// Valida cada decisão de conciliação de disciplina no modal (restrito a disciplinas já vinculadas à turma ou ignorar coluna)
 export const DecisaoDisciplinaCsvSchema = z
   .object({
-    acao: z.enum(["vincular", "criar_nova", "nova", "ignorar"], {
+    // Bloqueia 'criar_nova': o importador CSV nunca cria disciplinas nem altera vínculos curriculares
+    acao: z.enum(["vincular", "ignorar"], {
       error: "Selecione uma ação de conciliação válida.",
     }),
     disciplina_id: z.union([z.literal(""), z.coerce.number().int().positive()]).nullable().optional(),
-    nome_nova: z.string().optional(),
-    aulas_semanais: z.coerce.number().int().min(1).max(20).optional(),
-    ciclo_id: z.union([z.literal(""), z.coerce.number().int().positive()]).nullable().optional(),
   })
   .superRefine((decisao, ctx) => {
     if (decisao.acao === "vincular") {
@@ -333,25 +331,7 @@ export const DecisaoDisciplinaCsvSchema = z
         ctx.addIssue({
           code: "custom",
           path: ["disciplina_id"],
-          message: "Selecione uma disciplina válida do catálogo para vincular.",
-        });
-      }
-    }
-
-    if (decisao.acao === "criar_nova" || decisao.acao === "nova") {
-      if (!decisao.nome_nova || !decisao.nome_nova.trim()) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["nome_nova"],
-          message: "Informe o nome da nova disciplina a ser criada.",
-        });
-      }
-      const cicloNum = Number(decisao.ciclo_id);
-      if (!Number.isInteger(cicloNum) || cicloNum <= 0) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["ciclo_id"],
-          message: "Selecione o Ciclo Escolar para vincular a nova disciplina.",
+          message: "Selecione uma disciplina vinculada à turma para correlacionar.",
         });
       }
     }
@@ -448,7 +428,6 @@ export const RelatorioImportadoSchema = z.object({
   divergencias: z.array(DivergenciaNotaCsvSchema),
   disciplinas_pendentes: z.array(DisciplinaPendenteCsvSchema),
   catalogo_disciplinas: z.array(z.any()),
-  catalogo_ciclos: z.array(z.any()),
   dados: ResumoDadosRelatorioCsvSchema,
 });
 

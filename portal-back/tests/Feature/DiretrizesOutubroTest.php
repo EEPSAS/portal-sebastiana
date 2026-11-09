@@ -3,6 +3,7 @@
 use App\Enums\UserRole;
 use App\Models\Ciclo;
 use App\Models\Disciplina;
+use App\Models\Nota;
 use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -198,23 +199,22 @@ test('diretriz 3: disciplinas por ciclos calculam carga anual (40 semanas), prop
     ]);
     $arquivo = UploadedFile::fake()->createWithContent('notas.csv', $csvConteudo);
 
-    // Primeira chamada com exigir_conciliacao_disciplinas = 1 deve detectar "Robótica Educacional" como pendente
+    // Primeira chamada deve detectar "Robótica Educacional" como pendente e expor apenas disciplinas vinculadas à turma
     $resCsvPendente = $this->post("/api/turmas/{$turmaId}/importar-relatorio", [
         'arquivo' => $arquivo,
         'periodo_letivo' => '1º Trimestre',
-        'exigir_conciliacao_disciplinas' => '1',
     ], ['Accept' => 'application/json']);
 
     $resCsvPendente->assertOk()
         ->assertJsonPath('status', 'pendente_confirmacao')
-        ->assertJsonPath('tipo_pendencia', 'conciliacao_disciplinas');
+        ->assertJsonPath('tipo_pendencia', 'conciliacao_disciplinas')
+        ->assertJsonCount(1, 'catalogo_disciplinas')
+        ->assertJsonPath('catalogo_disciplinas.0.nome', 'Biologia Molecular');
 
-    // Segunda chamada aprovando a criação da nova disciplina "Robótica Educacional"
-    $arquivoConfirmado = UploadedFile::fake()->createWithContent('notas.csv', $csvConteudo);
-    $resCsvAprovado = $this->post("/api/turmas/{$turmaId}/importar-relatorio", [
-        'arquivo' => $arquivoConfirmado,
+    // Tentativa de criar nova disciplina via CSV deve ser bloqueada com 422
+    $resCriarBloqueado = $this->post("/api/turmas/{$turmaId}/importar-relatorio", [
+        'arquivo' => UploadedFile::fake()->createWithContent('notas.csv', $csvConteudo),
         'periodo_letivo' => '1º Trimestre',
-        'exigir_conciliacao_disciplinas' => '1',
         'mapeamentos_disciplinas' => json_encode([
             'Robótica Educacional' => [
                 'acao' => 'criar_nova',
@@ -223,58 +223,125 @@ test('diretriz 3: disciplinas por ciclos calculam carga anual (40 semanas), prop
             ],
         ]),
     ], ['Accept' => 'application/json']);
+    $resCriarBloqueado->assertStatus(422);
+
+    // Segunda chamada ignorando a coluna não pertencente à turma lança apenas a nota da disciplina vinculada
+    $arquivoConfirmado = UploadedFile::fake()->createWithContent('notas.csv', $csvConteudo);
+    $resCsvAprovado = $this->post("/api/turmas/{$turmaId}/importar-relatorio", [
+        'arquivo' => $arquivoConfirmado,
+        'periodo_letivo' => '1º Trimestre',
+        'mapeamentos_disciplinas' => json_encode([
+            'Robótica Educacional' => [
+                'acao' => 'ignorar',
+            ],
+        ]),
+    ], ['Accept' => 'application/json']);
 
     $resCsvAprovado->assertOk()
-        ->assertJsonPath('status', 'sucesso');
+        ->assertJsonPath('status', 'sucesso')
+        ->assertJsonPath('dados.notas_sincronizadas', 1);
 
-    $novaDisc = Disciplina::where('nome', 'Robótica Educacional')->first();
-    expect($novaDisc)->not->toBeNull()
-        ->and($novaDisc->aulas_semanais)->toBe(2)
-        ->and($novaDisc->carga_horaria_anual)->toBe(80);
+    // Garante que nenhuma disciplina nova foi criada nem vínculo curricular alterado pelo CSV
+    expect(Disciplina::where('nome', 'Robótica Educacional')->exists())->toBeFalse()
+        ->and($turma->fresh()->turmaDisciplinas()->count())->toBe(1);
 });
 
-test('conciliacao csv de disciplinas vincula a nova disciplina ao ciclo_id e atualiza a turma', function () {
+test('importacao csv mantem isolamento estrito entre disciplinas homonimas de ciclos distintos e nunca altera vinculos curriculares', function () {
     $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA->value]);
+    $profVitoria = User::factory()->create(['name' => 'Vitoria', 'role' => UserRole::PROFESSOR->value, 'status_confirmacao' => 'confirmado']);
+    $profCarlos = User::factory()->create(['name' => 'Carlos', 'role' => UserRole::PROFESSOR->value, 'status_confirmacao' => 'confirmado']);
+    $aluno = User::factory()->create([
+        'name' => 'Mariana Costa',
+        'email' => 'mariana.costa@aluno.mg.gov.br',
+        'role' => UserRole::ALUNO->value,
+        'status_confirmacao' => 'confirmado',
+    ]);
+
     Sanctum::actingAs($especialista);
 
-    $ciclo = Ciclo::create(['nome' => 'Ensino Fundamental II']);
+    // Dois ciclos distintos, cada um com sua própria disciplina "Arte" (ementa e BNCC específicas)
+    $ciclo1 = Ciclo::create(['nome' => '1º Ano - Regular']);
+    $ciclo2 = Ciclo::create(['nome' => '2º Ano - Regular']);
 
-    // Turma sem ciclo inicial
-    $turma = Turma::create([
-        'nome_identificador' => 'Turma 701 Teste',
+    $arteCiclo1 = Disciplina::create([
+        'nome' => 'Arte',
+        'aulas_semanais' => 1,
+        'carga_horaria_anual' => 40,
+        'ementa' => 'Arte 1º Ano',
+        'habilidades_bncc' => 'EM13LGG101',
+    ]);
+    $arteCiclo1->ciclos()->sync([$ciclo1->id_ciclo]);
+    $arteCiclo1->professores()->sync([$profVitoria->id]);
+
+    $arteCiclo2 = Disciplina::create([
+        'nome' => 'Arte',
+        'aulas_semanais' => 1,
+        'carga_horaria_anual' => 40,
+        'ementa' => 'Arte 2º Ano',
+        'habilidades_bncc' => 'EM13LGG201',
+    ]);
+    $arteCiclo2->ciclos()->sync([$ciclo2->id_ciclo]);
+    $arteCiclo2->professores()->sync([$profCarlos->id]);
+
+    $turma2Ano = Turma::create([
+        'nome_identificador' => '2º Ano A - Regular',
+        'ciclo_id' => $ciclo2->id_ciclo,
+        'turno' => 'Matutino',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+    $turma2Ano->disciplinas()->attach($arteCiclo2->id_disciplina, ['professor_id' => $profCarlos->id]);
+    $turma2Ano->alunos()->attach($aluno->id, ['data_matricula' => '2026-02-01', 'status_matricula' => 'Ativo']);
+
+    $csvConteudo = "Aluno;Arte\nMariana Costa;24,5";
+    $res = $this->post("/api/turmas/{$turma2Ano->id_turma}/importar-relatorio", [
+        'arquivo' => UploadedFile::fake()->createWithContent('notas_2ano.csv', $csvConteudo),
+        'periodo_letivo' => '1º Trimestre',
+    ], ['Accept' => 'application/json']);
+
+    $res->assertOk()
+        ->assertJsonPath('status', 'sucesso')
+        ->assertJsonPath('dados.notas_sincronizadas', 1);
+
+    // 1. A disciplina "Arte" do 1º Ano NUNCA deve ser vinculada ao 2º Ano - Regular
+    expect($arteCiclo1->fresh()->ciclos->pluck('id_ciclo')->all())->toBe([$ciclo1->id_ciclo])
+        ->and($arteCiclo2->fresh()->ciclos->pluck('id_ciclo')->all())->toBe([$ciclo2->id_ciclo])
+        ->and($arteCiclo1->fresh()->professores->pluck('id')->all())->toBe([$profVitoria->id])
+        ->and($turma2Ano->fresh()->ciclo_id)->toBe($ciclo2->id_ciclo)
+        ->and($turma2Ano->fresh()->turmaDisciplinas()->pluck('disciplina_id')->all())->toBe([$arteCiclo2->id_disciplina]);
+
+    // 2. A nota deve ter sido lançada exclusivamente na disciplina "Arte" do 2º Ano
+    expect(Nota::where('turma_id', $turma2Ano->id_turma)->where('disciplina_id', $arteCiclo2->id_disciplina)->exists())->toBeTrue()
+        ->and(Nota::where('disciplina_id', $arteCiclo1->id_disciplina)->exists())->toBeFalse();
+
+    // 3. Tentar forçar na conciliação o vínculo com a disciplina do 1º Ano (não pertencente à turma) deve retornar 422
+    $resOutroCiclo = $this->post("/api/turmas/{$turma2Ano->id_turma}/importar-relatorio", [
+        'arquivo' => UploadedFile::fake()->createWithContent('notas_forcar.csv', "Aluno;Artes Visuais\nMariana Costa;25,0"),
+        'periodo_letivo' => '1º Trimestre',
+        'mapeamentos_disciplinas' => json_encode([
+            'Artes Visuais' => [
+                'acao' => 'vincular',
+                'disciplina_id' => $arteCiclo1->id_disciplina,
+            ],
+        ]),
+    ], ['Accept' => 'application/json']);
+    $resOutroCiclo->assertStatus(422);
+
+    // 4. Turma sem disciplinas vinculadas bloqueia importação CSV com 422 sem criar vínculos
+    $turmaSemDisciplinas = Turma::create([
+        'nome_identificador' => 'Turma Sem Grade',
         'turno' => 'Vespertino',
         'ano_letivo' => 2026,
         'status' => 'Ativa',
         'ciclo_id' => null,
     ]);
 
-    $csvConteudo = "Aluno;Programacao Web\nCarlos Drummond;8,5";
-    $arquivo = UploadedFile::fake()->createWithContent('notas_ciclo.csv', $csvConteudo);
-
-    $res = $this->post("/api/turmas/{$turma->id_turma}/importar-relatorio", [
-        'arquivo' => $arquivo,
+    $resSemDisc = $this->post("/api/turmas/{$turmaSemDisciplinas->id_turma}/importar-relatorio", [
+        'arquivo' => UploadedFile::fake()->createWithContent('notas_vazia.csv', $csvConteudo),
         'periodo_letivo' => '1º Trimestre',
-        'exigir_conciliacao_disciplinas' => '1',
-        'mapeamentos_disciplinas' => json_encode([
-            'Programacao Web' => [
-                'acao' => 'criar_nova',
-                'nome_nova' => 'Programação Web',
-                'aulas_semanais' => 3,
-                'ciclo_id' => $ciclo->id_ciclo,
-            ],
-        ]),
     ], ['Accept' => 'application/json']);
-
-    $res->assertOk()->assertJsonPath('status', 'sucesso');
-
-    $disciplina = Disciplina::where('nome', 'Programação Web')->first();
-    expect($disciplina)->not->toBeNull()
-        ->and($disciplina->aulas_semanais)->toBe(3)
-        ->and($disciplina->ciclos->pluck('id_ciclo')->all())->toContain($ciclo->id_ciclo);
-
-    // Turma agora deve ter o ciclo vinculado
-    $turma->refresh();
-    expect($turma->ciclo_id)->toBe($ciclo->id_ciclo);
+    $resSemDisc->assertStatus(422)
+        ->assertJsonValidationErrors(['disciplinas']);
 });
 
 test('integracao entre modulos: planos de estudos filtram disciplinas vinculadas, salvam conteudo e restringem compartilhamento por turmas do professor', function () {

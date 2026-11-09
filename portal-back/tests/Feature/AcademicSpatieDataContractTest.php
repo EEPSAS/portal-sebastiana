@@ -263,7 +263,6 @@ test('RegistroNotaCsvData descarta celulas invalidas com alerta detalhado e Rela
             'divergencias',
             'disciplinas_pendentes',
             'catalogo_disciplinas',
-            'catalogo_ciclos',
             'dados' => [
                 'status',
                 'tipo_pendencia',
@@ -334,6 +333,8 @@ test('ImportarRelatorioInputData valida mapeamentos_disciplinas e padroniza suge
         'data_matricula' => '2026-02-01',
         'status_matricula' => 'Ativo',
     ]);
+    // Vincula previamente a disciplina à turma (o importador CSV não cria vínculos automaticamente)
+    $turma->disciplinas()->attach($disciplinaCatalogo->id_disciplina);
 
     // Nome aproximado "Programacao Web I" força etapa de conciliação e sugestão aproximada
     $csvContent = implode("\n", [

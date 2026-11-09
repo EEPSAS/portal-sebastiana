@@ -16,7 +16,6 @@ class RelatorioImportadoData extends Data
      * @param  array<int, array<string, mixed>>  $divergencias
      * @param  array<int, array<string, mixed>>  $disciplinas_pendentes
      * @param  array<int, array<string, mixed>>  $catalogo_disciplinas
-     * @param  array<int, array<string, mixed>>  $catalogo_ciclos
      */
     public function __construct(
         public string $status,
@@ -27,7 +26,6 @@ class RelatorioImportadoData extends Data
         public array $divergencias,
         public array $disciplinas_pendentes,
         public array $catalogo_disciplinas,
-        public array $catalogo_ciclos,
         public ResumoDadosRelatorioCsvData $dados,
     ) {}
 
@@ -79,26 +77,25 @@ class RelatorioImportadoData extends Data
             array_values($payload['disciplinas_pendentes'] ?? $dadosBrutos['disciplinas_pendentes'] ?? [])
         );
 
+        // Catálogo restrito às disciplinas já vinculadas à turma alvo para eventual correlação manual de colunas
         $catalogoDisciplinas = array_values(array_map(
-            fn ($d) => is_array($d) ? $d : (method_exists($d, 'toArray') ? $d->toArray() : (array) $d),
+            fn ($d) => is_array($d) ? $d : (is_object($d) && method_exists($d, 'toArray') ? $d->toArray() : (array) $d),
             $payload['catalogo_disciplinas'] ?? $dadosBrutos['catalogo_disciplinas'] ?? []
         ));
 
-        $catalogoCiclos = array_values(array_map(
-            fn ($c) => is_array($c) ? $c : (method_exists($c, 'toArray') ? $c->toArray() : (array) $c),
-            $payload['catalogo_ciclos'] ?? $dadosBrutos['catalogo_ciclos'] ?? []
-        ));
-
         $ignorados = array_values(array_map(function (array $ig): array {
-            $item = [
+            if (array_key_exists('email', $ig)) {
+                return [
+                    'nome_csv' => (string) ($ig['nome_csv'] ?? ''),
+                    'motivo' => (string) ($ig['motivo'] ?? ''),
+                    'email' => $ig['email'] !== null ? (string) $ig['email'] : null,
+                ];
+            }
+
+            return [
                 'nome_csv' => (string) ($ig['nome_csv'] ?? ''),
                 'motivo' => (string) ($ig['motivo'] ?? ''),
             ];
-            if (array_key_exists('email', $ig)) {
-                $item['email'] = $ig['email'] !== null ? (string) $ig['email'] : null;
-            }
-
-            return $item;
         }, $dadosBrutos['alunos_ignorados'] ?? []));
 
         $resumoDados = new ResumoDadosRelatorioCsvData(
@@ -128,7 +125,6 @@ class RelatorioImportadoData extends Data
             divergencias: $divergencias,
             disciplinas_pendentes: $disciplinasPendentes,
             catalogo_disciplinas: $catalogoDisciplinas,
-            catalogo_ciclos: $catalogoCiclos,
             dados: $resumoDados,
         );
     }
