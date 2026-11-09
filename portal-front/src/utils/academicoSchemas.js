@@ -516,3 +516,165 @@ export const ComparativoTurmaSchema = z.object({
     ),
   }),
 });
+
+// ============================================================================
+// 3. Schemas do Painel Analítico Geral (AlunoResumoGlobalResource & DashboardGeralResource)
+// ============================================================================
+
+export const ItemRankingAlunoSchema = z.object({
+  posicao: z.number().int(),
+  nome: z.string(),
+  valor: z.number(),
+  cor: z.string().optional(),
+  corBadge: z.string().optional(),
+});
+
+// Espelha 1:1 App\Http\Resources\AlunoResumoGlobalResource
+export const AlunoResumoGlobalSchema = z.object({
+  aluno: z
+    .object({
+      id: z.number().int(),
+      nome: z.string(),
+      email: z.string(),
+    })
+    .nullable(),
+  turma: z
+    .object({
+      id_turma: z.number().int(),
+      nome_identificador: z.string(),
+      ciclo: z.string().nullable().optional(),
+      turno: z.string().nullable().optional(),
+      ano_letivo: z.number().int().nullable().optional(),
+    })
+    .nullable(),
+  periodo_selecionado: z.string(),
+  media_geral: z.number(),
+  frequencia_global: z.number(),
+  total_alertas_risco: z.number().int(),
+  alertas_risco: z.array(z.record(z.string(), z.unknown())),
+  student_stats: z.object({
+    frequenciaGeral: z.object({
+      porcentagem: z.number(),
+      classificacao: z.string(),
+    }),
+    mediaNotas: z.object({
+      valor: z.string(),
+      comparacao: z.string(),
+    }),
+    leituraAtual: z.object({
+      livro: z.string(),
+      autor: z.string().optional(),
+      pagina: z.string(),
+    }),
+    proximaNotificacao: z.object({
+      titulo: z.string(),
+      tempoRestante: z.string(),
+    }),
+    destaques: z.record(z.string(), z.unknown()).optional(),
+  }),
+  destaques: z
+    .object({
+      melhor_nota: z.object({
+        nota: z.string(),
+        disciplina: z.string(),
+        mensagem: z.string(),
+        tem_lancamento: z.boolean(),
+      }),
+      nota_atencao: z.object({
+        nota: z.string(),
+        disciplina: z.string(),
+        mensagem: z.string(),
+        em_alerta: z.boolean(),
+        tem_lancamento: z.boolean(),
+      }),
+    })
+    .nullable(),
+  desempenho: z
+    .object({
+      disciplinas: z.object({
+        melhores: z.array(ItemRankingAlunoSchema),
+        piores: z.array(ItemRankingAlunoSchema),
+      }),
+      frequencias: z.object({
+        melhores: z.array(ItemRankingAlunoSchema),
+        piores: z.array(ItemRankingAlunoSchema),
+      }),
+    })
+    .nullable(),
+});
+
+// Espelha 1:1 App\Http\Resources\DashboardGeralResource
+export const DashboardGeralSchema = z.object({
+  kpis: z.object({
+    total_alunos: z.number().int(),
+    media_geral: z.number().nullable(),
+    frequencia_media: z.string().nullable(),
+    noticias_publicadas: z.number().int(),
+    total_turmas: z.number().int(),
+  }),
+  resumo_turmas: z.object({
+    medias: z.array(
+      z.object({
+        id: z.number().int(),
+        turma: z.string(),
+        nota: z.number(),
+      })
+    ),
+    frequencias: z.array(
+      z.object({
+        id: z.number().int(),
+        turma: z.string(),
+        percentual: z.number(),
+      })
+    ),
+  }),
+  disciplinas_docente: z.array(z.string()),
+  disciplinas_detalhadas: z.array(
+    z.object({
+      id_disciplina: z.number().int(),
+      nome: z.string(),
+      aulas_semanais: z.number().int().nullable().optional(),
+      carga_horaria_anual: z.number().int().nullable().optional(),
+      ciclos: z.array(z.string()).optional(),
+      modo_simulacao: z.boolean().optional(),
+      turmas: z
+        .array(
+          z.object({
+            id_turma: z.number().int(),
+            nome_identificador: z.string(),
+            total_alunos: z.number().int().optional(),
+          })
+        )
+        .optional(),
+      medias: z
+        .array(
+          z.object({
+            id: z.number().int(),
+            turma: z.string(),
+            nota: z.number(),
+            aproveitamento: z.number().optional(),
+          })
+        )
+        .optional(),
+      frequencias: z
+        .array(
+          z.object({
+            id: z.number().int(),
+            turma: z.string(),
+            percentual: z.number(),
+          })
+        )
+        .optional(),
+      risco: z
+        .object({
+          alunosAbaixoDaMedia: z.number().int(),
+          alunosComFrequenciaInsuficiente: z.number().int(),
+          alunosPorNota: z.array(z.record(z.string(), z.unknown())),
+          alunosPorFrequencia: z.array(z.record(z.string(), z.unknown())),
+        })
+        .optional(),
+    })
+  ),
+  ultimas_notificacoes: z.array(z.record(z.string(), z.unknown())),
+  periodo_contexto: z.record(z.string(), z.unknown()).nullable(),
+});

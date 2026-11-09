@@ -235,3 +235,26 @@ test('feed do painel retorna notificacoes unicas de autores permitidos e destina
         ->assertJsonFragment(['texto' => 'Sistema: Alerta automático'])
         ->assertJsonMissing(['texto' => "{$outroAluno->name}: Aviso de aluno"]);
 });
+
+test('professor sem disciplinas vinculadas recebe lista vazia sem dados ficticios e especialista recebe modo simulacao', function () {
+    $profSemAlocacao = User::factory()->professor()->create(['name' => 'Docente Novo']);
+
+    $respProf = $this->actingAs($profSemAlocacao, 'sanctum')
+        ->getJson('/api/dashboard/geral');
+
+    $respProf->assertOk()
+        ->assertJsonPath('kpis.total_turmas', 0)
+        ->assertJsonPath('kpis.total_alunos', 0)
+        ->assertJsonCount(0, 'disciplinas_docente')
+        ->assertJsonCount(0, 'disciplinas_detalhadas');
+
+    // Já o Administrador/Especialista enxerga as disciplinas reais da escola sinalizadas com modo_simulacao = true
+    $adm = User::factory()->create(['role' => UserRole::ADM]);
+    $respAdm = $this->actingAs($adm, 'sanctum')
+        ->getJson('/api/dashboard/geral');
+
+    $respAdm->assertOk();
+    expect($respAdm->json('disciplinas_detalhadas'))->not->toBeEmpty()
+        ->and($respAdm->json('disciplinas_detalhadas.0.modo_simulacao'))->toBeTrue()
+        ->and($respAdm->json('disciplinas_detalhadas.0'))->toHaveKeys(['medias', 'frequencias', 'risco']);
+});

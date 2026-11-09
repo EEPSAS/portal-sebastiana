@@ -48,6 +48,8 @@ class Turma extends Model
 
     /**
      * Relacionamento N:1: Ciclo Escolar ao qual esta turma pertence (ex: 1º Ano, 2º Ano).
+     *
+     * @return BelongsTo<Ciclo, $this>
      */
     public function ciclo(): BelongsTo
     {
@@ -56,6 +58,8 @@ class Turma extends Model
 
     /**
      * Relacionamento N:1: Período Letivo oficial ao qual a turma está vinculada.
+     *
+     * @return BelongsTo<PeriodoLetivo, $this>
      */
     public function periodoLetivo(): BelongsTo
     {

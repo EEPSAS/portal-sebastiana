@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Models\Ciclo;
 use App\Models\Disciplina;
 use App\Models\Frequencia;
 use App\Models\Matricula;
@@ -88,7 +89,43 @@ test('aluno consulta seu resumo global com media geral, frequencia e alertas de 
     expect($response->json('media_geral'))->toEqual(6.0)
         ->and($response->json('frequencia_global'))->toEqual(90.0)
         ->and($response->json('total_alertas_risco'))->toBe(1)
-        ->and($response->json('alertas_risco.0.nome_disciplina'))->toBe('Português');
+        ->and($response->json('alertas_risco.0.nome_disciplina'))->toBe('Português')
+        ->and($response->json('destaques.melhor_nota.nota'))->toBe('8,0')
+        ->and($response->json('destaques.melhor_nota.disciplina'))->toBe('Matemática')
+        ->and($response->json('destaques.nota_atencao.nota'))->toBe('4,0')
+        ->and($response->json('destaques.nota_atencao.disciplina'))->toBe('Português')
+        ->and($response->json('destaques.nota_atencao.em_alerta'))->toBeTrue()
+        ->and($response->json('desempenho.disciplinas.melhores.0.nome'))->toBe('Matemática')
+        ->and($response->json('desempenho.disciplinas.piores.0.nome'))->toBe('Português')
+        ->and($response->json('desempenho.frequencias.melhores.0.nome'))->toBe('Matemática')
+        ->and($response->json('desempenho.frequencias.piores.0.nome'))->toBe('Português');
+});
+
+test('aluno recem-matriculado sem lancamentos recebe destaques e rankings vazios sem dados ficticios', function () {
+    $ciclo = Ciclo::firstOrCreate(['nome' => '1º Ano - Ensino Médio']);
+    $turma = Turma::factory()->create(['ciclo_id' => $ciclo->id_ciclo]);
+    $aluno = User::factory()->create(['role' => UserRole::ALUNO]);
+
+    Matricula::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $aluno->id,
+        'status_matricula' => 'Ativo',
+    ]);
+
+    $disc = Disciplina::factory()->create(['nome' => 'Biologia']);
+    $disc->ciclos()->sync([$ciclo->id_ciclo]);
+
+    $response = $this->actingAs($aluno, 'sanctum')
+        ->getJson("/api/alunos/{$aluno->id}/turmas/{$turma->id_turma}/resumo-global");
+
+    $response->assertOk();
+    expect($response->json('turma.ciclo'))->toBe('1º Ano - Ensino Médio')
+        ->and($response->json('destaques.melhor_nota.tem_lancamento'))->toBeFalse()
+        ->and($response->json('destaques.melhor_nota.nota'))->toBe('—')
+        ->and($response->json('destaques.nota_atencao.tem_lancamento'))->toBeFalse()
+        ->and($response->json('desempenho.disciplinas.melhores'))->toBeEmpty()
+        ->and($response->json('desempenho.disciplinas.piores'))->toBeEmpty()
+        ->and($response->json('desempenho.frequencias.melhores'))->toBeEmpty();
 });
 
 test('aluno consulta o boletim agrupado por disciplina com status e formato grafico', function () {

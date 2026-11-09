@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Cell, Pie, PieChart } from "recharts";
 
 /**
@@ -12,8 +13,8 @@ import { Cell, Pie, PieChart } from "recharts";
  *    - 50% a 65% do gráfico (da metade pra frente): Amarelo de atenção;
  *    - 65% a 75% do gráfico: Transição alaranjada;
  *    - 75% a 100% do gráfico: Vermelho crítico (>= ~19-20% de faltas).
- * 3. Ponteiro central com vetor trigonométrico corrigido (cx + L * cos(rad)), garantindo
- *    que 0% aponte para a extrema esquerda (Verde) e nunca para o vermelho.
+ * 3. Ponteiro animado por transição SVG/CSS ou requestAnimationFrame, subindo de 0%
+ *    até a marca real de faltas com easing orgânico.
  */
 
 // 20 segmentos iguais (5% do arco cada) formando o degradê contínuo de risco de faltas
@@ -48,7 +49,38 @@ const SEGMENTOS_ARCO = [
 const TETO_ESCALA_FALTAS = 25; // 25% de faltas preenche 100% do mostrador (limite legal LDB)
 
 export default function VelocimetroPresenca({ taxaFaltas = 0, className = "" }) {
-  const taxa = Math.max(0, Math.min(100, Number(taxaFaltas) || 0));
+  const taxaAlvo = Math.max(0, Math.min(100, Number(taxaFaltas) || 0));
+  const [taxaAnimada, setTaxaAnimada] = useState(0);
+
+  // Animação fluida da agulha subindo do 0% até a marca real da turma
+  useEffect(() => {
+    let frameId;
+    const duracaoMs = 850;
+    const inicio = performance.now();
+    const valorInicial = 0;
+
+    const animar = (agora) => {
+      const decorrido = agora - inicio;
+      const progresso = Math.min(1, decorrido / duracaoMs);
+      // Easing suave (easeOutCubic)
+      const ease = 1 - Math.pow(1 - progresso, 3);
+      const valorAtual = valorInicial + (taxaAlvo - valorInicial) * ease;
+
+      setTaxaAnimada(valorAtual);
+
+      if (progresso < 1) {
+        frameId = requestAnimationFrame(animar);
+      }
+    };
+
+    frameId = requestAnimationFrame(animar);
+
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId);
+    };
+  }, [taxaAlvo]);
+
+  const taxa = taxaAnimada;
 
   // Proporção no arco de 0 (0% faltas -> extrema esquerda) até 1 (25%+ faltas -> extrema direita)
   const proporcaoArco = Math.min(1, taxa / TETO_ESCALA_FALTAS);
@@ -66,20 +98,21 @@ export default function VelocimetroPresenca({ taxaFaltas = 0, className = "" }) 
   const agulhaX = cx + comprimentoAgulha * Math.cos(rad);
   const agulhaY = cy - comprimentoAgulha * Math.sin(rad);
 
-  // Classificação semântica coerente com a posição da agulha no mostrador
+  // Classificação semântica baseada na taxa alvo oficial da turma
+  const proporcaoAlvo = Math.min(1, taxaAlvo / TETO_ESCALA_FALTAS);
   let corDestaque = "#16a34a";
   let statusLabel = "Frequência Ótima";
   let badgeClass = "bg-success-subtle text-success border border-success-subtle";
 
-  if (proporcaoArco >= 0.75) {
+  if (proporcaoAlvo >= 0.75) {
     corDestaque = "#dc2626";
     statusLabel = "Crítico (≥ 20% faltas)";
     badgeClass = "bg-danger-subtle text-danger border border-danger-subtle";
-  } else if (proporcaoArco >= 0.65) {
+  } else if (proporcaoAlvo >= 0.65) {
     corDestaque = "#ea580c";
     statusLabel = "Alerta Elevado";
     badgeClass = "bg-warning-subtle text-danger-emphasis border border-warning-subtle";
-  } else if (proporcaoArco >= 0.5) {
+  } else if (proporcaoAlvo >= 0.5) {
     corDestaque = "#ca8a04";
     statusLabel = "Atenção (Média de Faltas)";
     badgeClass = "bg-warning-subtle text-dark border border-warning-subtle";

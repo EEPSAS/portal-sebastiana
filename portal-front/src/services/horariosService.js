@@ -3,7 +3,13 @@ import { api } from './api';
 const lerResposta = async (response, mensagemPadrao) => {
   const dados = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(dados?.message || mensagemPadrao);
+    const error = new Error(dados?.message || mensagemPadrao);
+    if (dados?.errors && typeof dados.errors === 'object') {
+      error.errors = dados.errors;
+      // Extrai lista plana de mensagens detalhadas
+      error.errorList = Object.values(dados.errors).flat().filter(Boolean);
+    }
+    throw error;
   }
   return dados?.data ?? dados;
 };

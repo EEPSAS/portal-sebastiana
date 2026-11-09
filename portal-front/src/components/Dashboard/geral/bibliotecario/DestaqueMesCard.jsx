@@ -1,8 +1,8 @@
-/** Agrupa o destaque mensal da API e o Top 3 demonstrativo solicitado ao backend. */
+/** Agrupa o Destaque do Mês e o ranking real das 3 obras mais emprestadas no acervo escolar. */
 export default function DestaqueMesCard({
   destaque,
   mesAtual,
-  topLivros,
+  topLivros = [],
 }) {
   return (
     <section
@@ -59,36 +59,47 @@ export default function DestaqueMesCard({
           )}
         </div>
 
-        <div className="col-12 col-md-7">
+        <div className="col-12 col-md-7 d-flex flex-column">
           <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
             <h2 className="h6 fw-bold mb-0">Top 3 mais emprestados</h2>
             <span className="badge rounded-pill text-bg-light text-dark">
-              Demonstrativo
+              Acervo Real
             </span>
           </div>
 
-          <ol className="list-unstyled d-flex flex-column gap-2 mb-0">
-            {topLivros.map((livro, index) => (
-              <li
-                className="d-flex align-items-center gap-2 rounded-3 px-2 py-2"
-                key={livro.livro_id}
-                style={{ backgroundColor: "rgba(255, 255, 255, 0.14)" }}
-              >
-                <span className="badge text-bg-light text-primary">
-                  {index + 1}
-                </span>
-                <span className="small flex-grow-1 text-truncate">
-                  {livro.titulo}
-                </span>
-                <span className="small fw-bold text-nowrap">
-                  {livro.total_emprestimos}
-                </span>
-              </li>
-            ))}
-          </ol>
-          <p className="small text-white-50 mt-2 mb-0">
-            O ranking será conectado ao endpoint solicitado ao backend.
-          </p>
+          {topLivros.length === 0 ? (
+            <div className="d-flex flex-grow-1 align-items-center">
+              <p className="small text-white-50 mb-0">
+                Nenhum histórico de empréstimos registrado no acervo até o momento.
+              </p>
+            </div>
+          ) : (
+            <>
+              <ol className="list-unstyled d-flex flex-column gap-2 mb-0">
+                {topLivros.map((livro, index) => (
+                  <li
+                    className="d-flex align-items-center gap-2 rounded-3 px-2 py-2"
+                    key={livro.livro_id}
+                    style={{ backgroundColor: "rgba(255, 255, 255, 0.14)" }}
+                  >
+                    <span className="badge text-bg-light text-primary">
+                      {index + 1}
+                    </span>
+                    <span className="small flex-grow-1 text-truncate" title={livro.titulo}>
+                      {livro.titulo}
+                    </span>
+                    <span className="small fw-bold text-nowrap">
+                      {livro.total_emprestimos}{" "}
+                      {livro.total_emprestimos === 1 ? "vez" : "vezes"}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <p className="small text-white-50 mt-2 mb-0">
+                Consolidado a partir do histórico de circulação da biblioteca.
+              </p>
+            </>
+          )}
         </div>
       </div>
     </section>

@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useDashboardBibliotecario } from "../../../../hooks/geral/bibliotecario/useDashboardBibliotecario";
-import dadosTopLivrosMock from "./dadosTopLivrosMock";
 import CirculacaoAtivaCard from "./CirculacaoAtivaCard";
 import DestaqueMesCard from "./DestaqueMesCard";
 import DevolucoesTabela from "./DevolucoesTabela";
 import ModalCriarNotificacao from "../../turmas/ModalCriarNotificacao";
 
-/** Organiza o painel bibliotecário em cards responsivos com dados do serviço da biblioteca. */
+/** Organiza o painel bibliotecário em cards responsivos alimentados integralmente pelos empréstimos reais da API. */
 const GeralBibliotecario = () => {
   const [emprestimoSelecionado, setEmprestimoSelecionado] = useState(null);
   const [mensagemSucesso, setMensagemSucesso] = useState("");
@@ -17,6 +16,7 @@ const GeralBibliotecario = () => {
     devolucoesHoje,
     devolucoesProximosDias,
     destaqueDoMes,
+    topLivros,
     mesAtual,
     formatarData,
     loading,
@@ -33,7 +33,7 @@ const GeralBibliotecario = () => {
 
   if (loading) {
     return (
-      <div className="text-center py-5" role="status">
+      <div className="text-center py-5">
         <div className="spinner-border text-primary" aria-hidden="true"></div>
         <p className="text-muted mt-2 mb-0">Carregando dados da biblioteca...</p>
       </div>
@@ -60,7 +60,7 @@ const GeralBibliotecario = () => {
           <DestaqueMesCard
             destaque={destaqueDoMes}
             mesAtual={mesAtual}
-            topLivros={dadosTopLivrosMock}
+            topLivros={topLivros}
           />
         </div>
         <div className="col-12 col-xl-6">

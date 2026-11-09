@@ -1,4 +1,9 @@
 import { api } from './api';
+import {
+  AlunoResumoGlobalSchema,
+  DashboardGeralSchema,
+  validarContratoZod,
+} from '../utils/academicoSchemas';
 
 /**
  * geralService.js - Serviço de Integração Analítica do Painel Geral (/dashboard/geral)
@@ -8,6 +13,22 @@ import { api } from './api';
  * atendendo tanto à visão institucional/docente (Especialista, Professor e Adm) quanto
  * aos endpoints analíticos de turmas e estudantes previstos em apiContract.md.
  */
+
+const obterChaveMarcadorLeitura = (alunoId) =>
+  `portal_sebastiana_leitura_${alunoId || 'atual'}`;
+
+/**
+ * Lê eventual marcador local de página salvo pelo estudante no navegador.
+ * Nunca retorna livros fictícios: só complementa o empréstimo real ou a anotação feita pelo próprio usuário.
+ */
+function lerMarcadorLeituraLocal(alunoId) {
+  try {
+    const bruto = localStorage.getItem(obterChaveMarcadorLeitura(alunoId));
+    return bruto ? JSON.parse(bruto) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Formata os KPIs brutos vindos de GET /api/dashboard/geral no array de cards superiores
@@ -53,7 +74,7 @@ export function montarCardsKpis(kpis = {}) {
 /**
  * GET /api/dashboard/geral
  * Busca em uma única requisição os KPIs, médias/frequências por turma e últimas atualizações
- * para os perfis de Especialista, Professor e Administrador.
+ * para os perfis de Especialista, Professor e Administrador, validando o contrato em runtime via Zod.
  */
 export async function fetchDashboardGeral({ divisao } = {}) {
   const query = divisao ? `?divisao=${encodeURIComponent(divisao)}` : '';
@@ -68,7 +89,8 @@ export async function fetchDashboardGeral({ divisao } = {}) {
 
   const json = await response.json();
   // Suporta retorno direto (withoutWrapping) ou envelopado em data
-  return json?.data && json?.data?.kpis ? json.data : json;
+  const payload = json?.data && json?.data?.kpis ? json.data : json;
+  return validarContratoZod(DashboardGeralSchema, payload, 'GET /dashboard/geral');
 }
 
 /**
@@ -102,18 +124,93 @@ export async function fetchLatestUpdates() {
 
 /**
  * GET /api/alunos/{aluno_id}/turmas/{turma_id}/resumo-global
- * Obtém o resumo global real do estudante (média geral, frequência global e alertas de risco).
+ * Obtém o resumo global real do estudante (média, frequência, destaques e rankings Top 3)
+ * validado estritamente contra AlunoResumoGlobalSchema.
  */
 export async function obterResumoAluno(alunoId, turmaId, trimestre = null) {
   const query = trimestre ? `?trimestre=${encodeURIComponent(trimestre)}` : '';
-  const response = await api(`/alunos/${alunoId}/turmas/${turmaId}/resumo-global${query}`);
+  const response = await api(
+    `/alunos/${encodeURIComponent(alunoId)}/turmas/${encodeURIComponent(turmaId)}/resumo-global${query}`
+  );
 
   if (!response.ok) {
     const errData = await response.json().catch(() => null);
     throw new Error(errData?.message || 'Não foi possível carregar o resumo global do estudante.');
   }
 
-  return response.json();
+  const json = await response.json();
+  const payload = json?.data && json?.data?.student_stats ? json.data : json;
+  const validado = validarContratoZod(
+    AlunoResumoGlobalSchema,
+    payload,
+    'GET /alunos/:id/turmas/:id/resumo-global'
+  );
+
+  // Mescla marcação de página salva pelo estudante quando compatível com o empréstimo vigente
+  const marcador = lerMarcadorLeituraLocal(alunoId);
+  if (marcador && validado?.student_stats?.leituraAtual) {
+    const leituraApi = validado.student_stats.leituraAtual;
+    const semEmprestimoAtivo = leituraApi.livro === 'Nenhum empréstimo ativo';
+    if (
+      (semEmprestimoAtivo && marcador.livro) ||
+      (!semEmprestimoAtivo && marcador.livro === leituraApi.livro && marcador.pagina)
+    ) {
+      validado.student_stats = {
+        ...validado.student_stats,
+        leituraAtual: {
+          ...leituraApi,
+          livro: semEmprestimoAtivo ? marcador.livro : leituraApi.livro,
+          autor: semEmprestimoAtivo ? marcador.autor || '' : leituraApi.autor,
+          pagina: marcador.pagina || leituraApi.pagina,
+        },
+      };
+    }
+  }
+
+  return validado;
+}
+
+/**
+ * Quando o Administrador utiliza a simulação de perfil "Aluno" no cabeçalho,
+ * localiza o primeiro estudante real matriculado em uma turma ativa para exibição fidedigna.
+ */
+export async function resolverContextoSimulacaoAluno() {
+  const respTurmas = await api('/turmas');
+  if (!respTurmas.ok) return null;
+
+  const jsonTurmas = await respTurmas.json().catch(() => null);
+  const listaTurmas = Array.isArray(jsonTurmas)
+    ? jsonTurmas
+    : Array.isArray(jsonTurmas?.data)
+      ? jsonTurmas.data
+      : [];
+
+  for (const turma of listaTurmas) {
+    const idTurma = turma.id_turma ?? turma.id;
+    if (!idTurma) continue;
+
+    const respAlunos = await api(`/turmas/${encodeURIComponent(idTurma)}/alunos`);
+    if (!respAlunos.ok) continue;
+
+    const jsonAlunos = await respAlunos.json().catch(() => null);
+    const listaAlunos = Array.isArray(jsonAlunos)
+      ? jsonAlunos
+      : Array.isArray(jsonAlunos?.data)
+        ? jsonAlunos.data
+        : [];
+
+    if (listaAlunos.length > 0) {
+      const primeiroAluno = listaAlunos[0];
+      return {
+        alunoId: primeiroAluno.id,
+        alunoNome: primeiroAluno.name || primeiroAluno.nome,
+        turmaId: idTurma,
+        turmaNome: turma.nome_identificador || turma.nome,
+      };
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -165,84 +262,48 @@ export async function obterDesempenhoTurma(turmaId, trimestre = null) {
 }
 
 /**
- * Indicadores superiores da Visão Geral do Estudante (GeralPadrao).
- * Caso o estudante possua identificadores de matrícula/turma informados, consulta a API real;
- * caso contrário, retorna os indicadores didáticos padrão para exibição imediata no painel.
+ * Indicadores superiores da Visão Geral do Estudante (GeralPadrao) sem dados fictícios.
  */
-export async function fetchStudentStats(alunoId = null, turmaId = null) {
-  if (alunoId && turmaId) {
-    try {
-      const resumo = await obterResumoAluno(alunoId, turmaId);
-      if (resumo?.student_stats) {
-        return resumo.student_stats;
-      }
-    } catch {
-      // Fallback gracioso caso o estudante ainda não possua matrícula ativa na turma consultada
-    }
+export async function fetchStudentStats(alunoId = null, turmaId = null, trimestre = null) {
+  if (!alunoId || !turmaId) {
+    return null;
   }
 
-  return {
-    frequenciaGeral: {
-      porcentagem: 94,
-      classificacao: 'Ótima',
-    },
-    mediaNotas: {
-      valor: '8.2',
-      comparacao: '+0.5 acima da média',
-    },
-    leituraAtual: {
-      livro: 'Dom Casmurro',
-      pagina: 'Pág. 120',
-    },
-    proximaNotificacao: {
-      titulo: 'Prova de Matemática',
-      tempoRestante: 'Em 3 dias',
-    },
-  };
+  const resumo = await obterResumoAluno(alunoId, turmaId, trimestre);
+  return resumo?.student_stats || null;
 }
 
 /**
- * Atualiza em memória os metadados do card de Leitura Atual do estudante.
+ * Persiste localmente o marcador de página da leitura atual do estudante.
  */
-export async function updateStudentReading(novosDadosLeitura) {
+export async function updateStudentReading(novosDadosLeitura, alunoId = null) {
+  try {
+    localStorage.setItem(
+      obterChaveMarcadorLeitura(alunoId),
+      JSON.stringify(novosDadosLeitura)
+    );
+  } catch {
+    // Ignora indisponibilidade de armazenamento local sem interromper a UI
+  }
   return novosDadosLeitura;
 }
 
 /**
- * Retorna os dados de Top 3 Melhores e Top 3 Piores disciplinas/frequências para o card do Aluno.
+ * Retorna os rankings reais de Top 3 Melhores e Top 3 Piores disciplinas/frequências do estudante.
  */
-export async function fetchAlunoDesempenho() {
-  return {
-    disciplinas: {
-      melhores: [
-        { posicao: 1, nome: 'Língua Portuguesa', valor: 9.8, cor: '#10b981', corBadge: '#10b981' },
-        { posicao: 2, nome: 'História', valor: 9.5, cor: '#3b82f6', corBadge: '#3b82f6' },
-        { posicao: 3, nome: 'Biologia', valor: 9.2, cor: '#8b5cf6', corBadge: '#8b5cf6' },
-      ],
-      piores: [
-        { posicao: 1, nome: 'Matemática', valor: 5.6, cor: '#ef4444', corBadge: '#ef4444' },
-        { posicao: 2, nome: 'Inglês', valor: 6.3, cor: '#f59e0b', corBadge: '#f59e0b' },
-        { posicao: 3, nome: 'Química', valor: 6.8, cor: '#06b6d4', corBadge: '#06b6d4' },
-      ],
-    },
-    frequencias: {
-      melhores: [
-        { posicao: 1, nome: 'Educação Física', valor: 100, cor: '#10b981', corBadge: '#10b981' },
-        { posicao: 2, nome: 'Artes', valor: 98, cor: '#3b82f6', corBadge: '#3b82f6' },
-        { posicao: 3, nome: 'Geografia', valor: 96, cor: '#8b5cf6', corBadge: '#8b5cf6' },
-      ],
-      piores: [
-        { posicao: 1, nome: 'Filosofia', valor: 76, cor: '#ef4444', corBadge: '#ef4444' },
-        { posicao: 2, nome: 'Física', valor: 80, cor: '#f59e0b', corBadge: '#f59e0b' },
-        { posicao: 3, nome: 'Sociologia', valor: 84, cor: '#06b6d4', corBadge: '#06b6d4' },
-      ],
-    },
-  };
+export async function fetchAlunoDesempenho(alunoId = null, turmaId = null, trimestre = null) {
+  if (!alunoId || !turmaId) {
+    return null;
+  }
+
+  const resumo = await obterResumoAluno(alunoId, turmaId, trimestre);
+  return resumo?.desempenho || null;
 }
 
 export const dashboardService = {
   fetchDashboardGeral,
   obterResumoAluno,
+  resolverContextoSimulacaoAluno,
   obterResumoEspecialista,
   obterAlunosCriticos,
   obterDesempenhoTurma,

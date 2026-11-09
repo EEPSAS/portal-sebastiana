@@ -473,8 +473,8 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
 
 | Método | Endpoint | Acesso | API Resource (Back) | Serviço Front | Dados Retornados por Perfil |
 |---|---|---|---|---|---|
-| `GET` | `/api/dashboard/geral?divisao={nome|todos}` | Especialista / Prof / Adm | `DashboardGeralResource` | `geralService()` / `fetchDashboardGeral()` | KPIs e médias/frequências por turma filtrados pela etapa ou pelo ano consolidado, disciplinas do docente e cinco últimas notificações únicas |
-| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/resumo-global` | Aluno / Prof / Esp / Adm | `AlunoResumoGlobalResource` | `dashboardService.obterResumoAluno()` | Média geral, percentual de frequência e avisos |
+| `GET` | `/api/dashboard/geral?divisao={nome|todos}` | Especialista / Prof / Adm | `DashboardGeralResource` | `geralService()` / `fetchDashboardGeral()` | KPIs, médias/frequências por turma filtrados pela etapa ou pelo ano consolidado, `disciplinas_detalhadas` com médias/frequências/risco por matéria e cinco últimas notificações únicas |
+| `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/resumo-global?trimestre={1|2|3}` | Aluno / Prof / Esp / Adm | `AlunoResumoGlobalResource` | `dashboardService.obterResumoAluno()` | Média geral, frequência global, turma/ciclo, empréstimo de leitura atual, destaques (`melhor_nota` / `nota_atencao`) e rankings Top 3 (`desempenho.disciplinas` e `desempenho.frequencias`) |
 | `GET` | `/api/turmas/{turma_id}/resumo-gerencial` | Especialista / Adm | `EspecialistaResumoGerencialResource` | `dashboardService.obterResumoEspecialista()` | Médias por componente, evasão e índice de frequência |
 | `GET` | `/api/turmas/{turma_id}/alunos-criticos` | Especialista / Adm | `AlunoCriticoResource` | `dashboardService.obterAlunosCriticos()` | Alunos com risco de retenção por falta ou nota |
 | `GET` | `/api/turmas/{turma_id}/desempenho-componentes` | Professor / Especialista / Adm | `DesempenhoComponenteResource` | `dashboardService.obterDesempenhoTurma()` | Médias consolidadas por disciplina da turma |
@@ -501,6 +501,31 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
     ]
   },
   "disciplinas_docente": ["Matemática", "Física"],
+  "disciplinas_detalhadas": [
+    {
+      "id_disciplina": 1,
+      "nome": "Matemática",
+      "aulas_semanais": 3,
+      "carga_horaria_anual": 120,
+      "ciclos": ["1º Ano - Ensino Médio"],
+      "modo_simulacao": false,
+      "turmas": [
+        { "id_turma": 1, "nome_identificador": "1º Ano A - Ensino Médio", "total_alunos": 32 }
+      ],
+      "medias": [
+        { "id": 1, "turma": "1º Ano A - Ensino Médio", "nota": 8.5, "aproveitamento": 85.0 }
+      ],
+      "frequencias": [
+        { "id": 1, "turma": "1º Ano A - Ensino Médio", "percentual": 96.0 }
+      ],
+      "risco": {
+        "alunosAbaixoDaMedia": 0,
+        "alunosComFrequenciaInsuficiente": 0,
+        "alunosPorNota": [],
+        "alunosPorFrequencia": []
+      }
+    }
+  ],
   "ultimas_notificacoes": [
     {
       "id": "manual:...",
@@ -511,13 +536,69 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
     }
   ],
   "periodo_contexto": {
+    "ano": 2026,
+    "tipo_divisao": "trimestre",
     "divisao_selecionada": "2º Trimestre",
     "pontos_divisao": 30,
-    "pontos_consolidados": 30
+    "pontos_consolidados": 30,
+    "data_inicio": "2026-02-05",
+    "data_fim": "2026-12-18",
+    "divisoes_disponiveis": []
   }
 }
 ```
-* **Nota sobre Escopo**: Para o `especialista` e `adm`, os dados abrangem todas as turmas ativas da instituição. Para o `professor`, os KPIs e listagens de turmas são calculados dinamicamente com base nas turmas e disciplinas sob sua regência docente (com fallback automático para a visão da escola caso ainda não possua turmas atribuídas). O parâmetro `divisao` aceita o nome de uma etapa ou `todos`; notas filtram pelo período letivo e frequências pelo intervalo de datas. As médias gerais são médias aritméticas das turmas com dados no período; sem dados, o valor do KPI é `null`. `pontos_consolidados` soma somente as etapas cuja data final já passou. `ultimas_notificacoes` lista até cinco eventos únicos, sem filtrar por leitura: inclui mensagens manuais criadas por Professor, Especialista, Adm ou Bibliotecária e eventos destinados a Bibliotecárias.
+* **Nota sobre Escopo**: Para `especialista` e `adm`, os dados abrangem todas as turmas ativas e todas as disciplinas cadastradas na matriz escolar (`modo_simulacao: true`). Para o `professor`, os KPIs, turmas e `disciplinas_detalhadas` restringem-se às disciplinas e turmas sob sua regência (`modo_simulacao: false`); caso o docente ainda não possua disciplinas vinculadas, retorna listas vazias (`[]`) sem dados fictícios. O parâmetro `divisao` aceita o nome de uma etapa ou `todos`; notas filtram pelo período letivo e frequências pelo intervalo de datas (ou pelo marcador de etapa nos lançamentos consolidados via CSV).
+
+#### Especificação de Payload: `AlunoResumoGlobalResource`
+Payload retornado em `/api/alunos/{aluno_id}/turmas/{turma_id}/resumo-global`:
+```json
+{
+  "aluno": { "id": 5, "nome": "Yasmin Teixeira", "email": "yasmin.teixeira@aluno.mg.gov.br" },
+  "turma": {
+    "id_turma": 1,
+    "nome_identificador": "1º Ano A - Ensino Médio",
+    "ciclo": "1º Ano - Ensino Médio",
+    "turno": "Matutino",
+    "ano_letivo": 2026
+  },
+  "periodo_selecionado": "Consolidado Anual",
+  "media_geral": 9.45,
+  "frequencia_global": 100,
+  "total_alertas_risco": 0,
+  "alertas_risco": [],
+  "student_stats": {
+    "frequenciaGeral": { "porcentagem": 100, "classificacao": "Ótima" },
+    "mediaNotas": { "valor": "9.5", "comparacao": "Acima da média escolar" },
+    "leituraAtual": { "livro": "Nenhum empréstimo ativo", "autor": "", "pagina": "Visite a biblioteca" },
+    "proximaNotificacao": { "titulo": "Sem avisos pendentes", "tempoRestante": "Tudo em dia" }
+  },
+  "destaques": {
+    "melhor_nota": {
+      "nota": "9,5",
+      "disciplina": "Matemática",
+      "mensagem": "Parabéns! Você está indo muito bem nesta disciplina!",
+      "tem_lancamento": true
+    },
+    "nota_atencao": {
+      "nota": "9,5",
+      "disciplina": "Física",
+      "mensagem": "Excelente! Todas as suas disciplinas estão acima da média.",
+      "em_alerta": false,
+      "tem_lancamento": true
+    }
+  },
+  "desempenho": {
+    "disciplinas": {
+      "melhores": [{ "posicao": 1, "nome": "Matemática", "valor": 9.5 }],
+      "piores": [{ "posicao": 1, "nome": "Física", "valor": 9.5 }]
+    },
+    "frequencias": {
+      "melhores": [{ "posicao": 1, "nome": "Matemática", "valor": 100 }],
+      "piores": [{ "posicao": 1, "nome": "Física", "valor": 100 }]
+    }
+  }
+}
+```
 
 ---
 

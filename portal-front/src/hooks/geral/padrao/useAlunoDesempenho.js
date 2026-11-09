@@ -1,30 +1,43 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../../useAuth";
 import { fetchAlunoDesempenho } from "../../../services/geralService";
 
 /**
  * useAlunoDesempenho.js - Hook Didático para Desempenho e Frequência do Aluno
  *
  * Papel Didático:
- * Centraliza o estado assíncrono (carregando, erro e dados) para o painel de Desempenho
- * por Disciplina e Frequência do estudante.
+ * Centraliza a busca real dos rankings Top 3 de notas e frequências do estudante
+ * autenticado, sem recorrer a arrays estáticos fictícios.
  */
-export function useAlunoDesempenho() {
-  const [desempenho, setDesempenho] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+export function useAlunoDesempenho(trimestre = null) {
+  const { user } = useAuth();
+  const alunoId = user?.id ?? null;
+  const turmaId = user?.turma_id ?? null;
+  const chave = `${alunoId ?? "anon"}:${turmaId ?? "sem-turma"}:${trimestre ?? ""}`;
+
+  const [estado, setEstado] = useState({
+    chave: null,
+    desempenho: null,
+    error: null,
+  });
 
   useEffect(() => {
     let isMounted = true;
 
     async function carregar() {
       try {
-        setLoading(true);
-        const data = await fetchAlunoDesempenho();
-        if (isMounted) setDesempenho(data);
+        const data = await fetchAlunoDesempenho(alunoId, turmaId, trimestre);
+        if (isMounted) {
+          setEstado({ chave, desempenho: data, error: null });
+        }
       } catch (err) {
-        if (isMounted) setError(err.message || "Erro ao carregar dados de desempenho");
-      } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setEstado({
+            chave,
+            desempenho: null,
+            error: err.message || "Erro ao carregar dados de desempenho",
+          });
+        }
       }
     }
 
@@ -33,7 +46,13 @@ export function useAlunoDesempenho() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [chave, alunoId, turmaId, trimestre]);
 
-  return { desempenho, loading, error };
+  const loading = estado.chave !== chave;
+
+  return {
+    desempenho: estado.desempenho,
+    loading,
+    error: loading ? null : estado.error,
+  };
 }

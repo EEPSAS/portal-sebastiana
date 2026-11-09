@@ -31,10 +31,10 @@ const GeralEspecialista = () => {
   if (loading && cards.length === 0) {
     return (
       <div className="text-center py-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Carregando indicadores...</span>
-        </div>
-        <p className="text-muted mt-2 small">Carregando estatísticas pedagógicas...</p>
+        <div className="spinner-border text-primary" aria-hidden="true"></div>
+        <p className="text-muted mt-2 small mb-0">
+          Carregando estatísticas pedagógicas...
+        </p>
       </div>
     );
   }
@@ -79,35 +79,45 @@ const GeralEspecialista = () => {
         </div>
       )}
       {periodoContexto && (
-        <div className="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 px-3 bg-white rounded-3 border shadow-xs">
-          <span className="small fw-bold text-dark text-uppercase d-flex align-items-center gap-1 me-2">
-            <i className="bi bi-calendar-range text-primary"></i>
-            Etapa Avaliativa:
-          </span>
-          <div
-            className="btn-group btn-group-sm flex-wrap p-1 bg-light rounded-pill border"
-            role="group"
-            aria-label="Filtrar indicadores por etapa do período letivo"
-          >
-            <button
-              type="button"
-              className={`btn-pill-filter ${divisaoAtiva === "todos" ? "is-active" : ""}`}
-              onClick={() => setDivisaoSelecionada("todos")}
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 p-2 px-3 bg-white rounded-3 border shadow-xs">
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <span className="small fw-bold text-dark text-uppercase d-flex align-items-center gap-1 me-2">
+              <i className="bi bi-calendar-range text-primary" aria-hidden="true"></i>
+              Etapa Avaliativa:
+            </span>
+            <div
+              className="btn-group btn-group-sm flex-wrap p-1 bg-light rounded-pill border"
+              role="group"
+              aria-label="Filtrar indicadores por etapa do período letivo"
             >
-              Consolidado Geral
-            </button>
-            {(periodoContexto.divisoes_disponiveis || []).map((divisao) => (
               <button
                 type="button"
-                key={divisao.id_divisao || divisao.nome}
-                className={`btn-pill-filter ${divisaoAtiva === divisao.nome ? "is-active" : ""}`}
-                onClick={() => setDivisaoSelecionada(divisao.nome)}
+                className={`btn-pill-filter ${divisaoAtiva === "todos" ? "is-active" : ""}`}
+                aria-pressed={divisaoAtiva === "todos"}
+                onClick={() => setDivisaoSelecionada("todos")}
               >
-                {divisao.nome} ({divisao.pontos} pts)
-                {divisao.is_atual ? " • Atual" : ""}
+                Consolidado Geral
               </button>
-            ))}
+              {(periodoContexto.divisoes_disponiveis || []).map((divisao) => {
+                const isAtiva = divisaoAtiva === divisao.nome;
+                return (
+                  <button
+                    type="button"
+                    key={divisao.id_divisao || divisao.nome}
+                    className={`btn-pill-filter ${isAtiva ? "is-active" : ""}`}
+                    aria-pressed={isAtiva}
+                    onClick={() => setDivisaoSelecionada(divisao.nome)}
+                  >
+                    {divisao.nome} ({divisao.pontos} pts)
+                    {divisao.is_atual ? " • Atual" : ""}
+                  </button>
+                );
+              })}
+            </div>
           </div>
+          <span className="badge bg-light text-secondary border rounded-pill px-3 py-2 small">
+            Ano Letivo {periodoContexto.ano}
+          </span>
         </div>
       )}
 
@@ -138,7 +148,7 @@ const GeralEspecialista = () => {
         escalaNotaMaxima={100}
         mostrarLinhasReferencia={false}
         badgeMedia={
-          divisaoAtiva && divisaoAtiva !== "todos"
+          divisaoAtiva && divisaoAtiva !== "todos" && pontosDivisaoSelecionada > 0
             ? `Meta mín. 60% (${(pontosDivisaoSelecionada * 0.6).toFixed(1)} pts)`
             : "Meta mín. 60%"
         }

@@ -370,16 +370,16 @@ export default function NotasAba({
               {/* Gráfico 1: Donut de Média Geral de Notas */}
               <div
                 className="position-relative d-flex justify-content-center align-items-center"
-                style={{ height: 146 }}
+                style={{ height: 136 }}
               >
-                <ResponsiveContainer width="100%" height={146}>
+                <ResponsiveContainer width="100%" height={136}>
                   <PieChart>
                     <Pie
                       data={dadosDonut}
                       cx="50%"
                       cy="50%"
-                      innerRadius={43}
-                      outerRadius={62}
+                      innerRadius={40}
+                      outerRadius={58}
                       paddingAngle={somaDist > 0 ? 3 : 0}
                       dataKey="value"
                       stroke="none"
@@ -397,6 +397,34 @@ export default function NotasAba({
                   <small className="text-muted fw-semibold" style={{ fontSize: "0.75rem" }}>
                     Média Geral
                   </small>
+                </div>
+              </div>
+
+              {/* Legenda compacta das cores de desempenho da média */}
+              <div
+                className="d-flex align-items-center justify-content-center gap-2.5 mt-1 px-1 flex-wrap text-muted"
+                style={{ fontSize: "0.72rem" }}
+              >
+                <div className="d-flex align-items-center gap-1">
+                  <span
+                    className="rounded-circle d-inline-block"
+                    style={{ width: 8, height: 8, backgroundColor: "#3b82f6" }}
+                  ></span>
+                  <span>Acima da Média</span>
+                </div>
+                <div className="d-flex align-items-center gap-1">
+                  <span
+                    className="rounded-circle d-inline-block"
+                    style={{ width: 8, height: 8, backgroundColor: "#f59e0b" }}
+                  ></span>
+                  <span>Na Média</span>
+                </div>
+                <div className="d-flex align-items-center gap-1">
+                  <span
+                    className="rounded-circle d-inline-block"
+                    style={{ width: 8, height: 8, backgroundColor: "#ec4899" }}
+                  ></span>
+                  <span>Abaixo da Média</span>
                 </div>
               </div>
             </div>

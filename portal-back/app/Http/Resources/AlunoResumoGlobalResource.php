@@ -30,6 +30,9 @@ class AlunoResumoGlobalResource extends JsonResource
             'total_alertas_risco' => (int) ($this->resource['total_alertas_risco'] ?? 0),
             'alertas_risco' => $this->resource['alertas_risco'] ?? [],
             'student_stats' => $this->resource['student_stats'] ?? [],
+            // Expõe destaques (melhor nota / atenção) e rankings Top 3 calculados sobre dados reais
+            'destaques' => $this->resource['destaques'] ?? null,
+            'desempenho' => $this->resource['desempenho'] ?? null,
         ];
     }
 }

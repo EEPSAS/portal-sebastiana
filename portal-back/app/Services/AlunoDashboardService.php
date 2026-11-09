@@ -146,11 +146,14 @@ class AlunoDashboardService
     /**
      * Retorna o resumo global completo do aluno, incluindo KPIs, alertas
      * e os objetos estruturados consumidos pelo front-end React.
+     *
+     * @return array<string, mixed>
      */
     public function obterResumoGlobal(int|string $alunoId, int|string $turmaId, ?string $trimestre = null): array
     {
         $aluno = User::findOrFail($alunoId);
-        $turma = Turma::findOrFail($turmaId);
+        // Carrega o Ciclo Escolar real vinculado à turma para contextualizar a matriz curricular
+        $turma = Turma::with('ciclo')->findOrFail($turmaId);
 
         $mediaGeral = $this->calcularMediaGeralAluno($alunoId, $turmaId, $trimestre);
         $frequenciaGlobal = $this->calcularFrequenciaGlobalAluno($alunoId, $turmaId, $trimestre);
@@ -158,6 +161,10 @@ class AlunoDashboardService
 
         // Prepara dados complementares para o React (StudentStatCards)
         $studentStats = $this->montarStudentStatsFrontend($aluno, $turma, $mediaGeral, $frequenciaGlobal);
+
+        // Consolida Melhor Nota, Nota de Atenção e Rankings Top 3 diretamente das tabelas de notas e frequências
+        $metricasConsolidadas = $this->montarDestaquesEDesempenho($alunoId, $turma, $trimestre);
+        $studentStats['destaques'] = $metricasConsolidadas['destaques'];
 
         return [
             'aluno' => [
@@ -168,6 +175,9 @@ class AlunoDashboardService
             'turma' => [
                 'id_turma' => $turma->id_turma,
                 'nome_identificador' => $turma->nome_identificador,
+                'ciclo' => $turma->ciclo?->nome,
+                'turno' => $turma->turno,
+                'ano_letivo' => $turma->ano_letivo,
             ],
             'periodo_selecionado' => $trimestre ? "{$trimestre}º Trimestre" : 'Consolidado Anual',
             'media_geral' => $mediaGeral,
@@ -176,6 +186,9 @@ class AlunoDashboardService
             'alertas_risco' => $alertasRisco,
             // Objeto compatível diretamente com o hook useStudentStats e cards do front-end
             'student_stats' => $studentStats,
+            // Destaques e rankings Top 3 derivados das fontes reais (disciplinas do ciclo, notas e faltas)
+            'destaques' => $metricasConsolidadas['destaques'],
+            'desempenho' => $metricasConsolidadas['desempenho'],
         ];
     }
 
@@ -688,6 +701,196 @@ class AlunoDashboardService
             ],
             'leituraAtual' => $leituraAtual,
             'proximaNotificacao' => $proximaNotificacao,
+        ];
+    }
+
+    /**
+     * Calcula a Melhor Nota, a Nota de Atenção e os rankings Top 3 (Disciplinas e Frequências)
+     * diretamente das tabelas reais de notas, frequências e disciplinas herdadas do Ciclo da turma.
+     *
+     * @return array{destaques: array<string, mixed>, desempenho: array<string, mixed>}
+     */
+    public function montarDestaquesEDesempenho(int|string $alunoId, Turma $turma, ?string $trimestre = null): array
+    {
+        $disciplinas = $this->obterDisciplinasDaTurma($turma);
+        $anoLetivo = $turma->ano_letivo ? (int) $turma->ano_letivo : null;
+
+        $notasCalculadas = [];
+        $frequenciasCalculadas = [];
+
+        foreach ($disciplinas as $disciplina) {
+            // 1. Consulta real de notas na disciplina para o período solicitado
+            $queryNotas = Nota::where('turma_id', $turma->id_turma)
+                ->where('disciplina_id', $disciplina->id_disciplina)
+                ->where('usuario_id', $alunoId);
+            $this->aplicarFiltroPeriodo($queryNotas, $trimestre);
+            $notasDisciplina = $queryNotas->get();
+
+            if ($notasDisciplina->isNotEmpty()) {
+                // Soma proporcional (ex: 30 + 30 + 40 = 100 pts na rede MG) convertida para escala 0 a 10
+                $somaNotas = (float) $notasDisciplina->sum('valor_nota');
+                $somaMaximos = (float) $notasDisciplina->sum(function ($nota) use ($trimestre, $anoLetivo) {
+                    return $nota->valor_maximo > 0
+                        ? (float) $nota->valor_maximo
+                        : $this->obterValorMaximoPeriodo($nota->periodo_letivo ?: $trimestre, $anoLetivo);
+                });
+
+                $notaEscala10 = $somaMaximos > 0
+                    ? round(($somaNotas / $somaMaximos) * 10, 1)
+                    : round($somaNotas, 1);
+
+                $notasCalculadas[] = [
+                    'disciplina_id' => $disciplina->id_disciplina,
+                    'nome' => $disciplina->nome,
+                    'valor' => $notaEscala10,
+                    'nota_bruta' => round($somaNotas, 1),
+                    'valor_maximo' => round($somaMaximos, 1),
+                ];
+            }
+
+            // 2. Consulta real de frequências na disciplina cruzando com a carga horária curricular
+            $queryFreq = Frequencia::where('turma_id', $turma->id_turma)
+                ->where('disciplina_id', $disciplina->id_disciplina)
+                ->where('usuario_id', $alunoId);
+            $this->aplicarFiltroDataFrequencia($queryFreq, $trimestre, $anoLetivo);
+            $freqsDisciplina = $queryFreq->get();
+
+            // Só ranqueia a frequência se houver chamada registrada ou diário consolidado (notas) lançado
+            if ($freqsDisciplina->isNotEmpty() || $notasDisciplina->isNotEmpty()) {
+                $faltas = (int) $freqsDisciplina
+                    ->whereIn('status_presenca', ['Falta', 'Falta Justificada'])
+                    ->sum('quantidade_aulas');
+                $aulasRegistradas = (int) $freqsDisciplina->sum('quantidade_aulas');
+                $temOrigemCsv = $freqsDisciplina->contains(
+                    fn ($f) => str_contains((string) $f->justificativa, 'via diário escolar')
+                );
+                $temRegistroPresenca = $freqsDisciplina->contains(
+                    fn ($f) => $f->status_presenca === 'Presente'
+                );
+
+                if ($aulasRegistradas === 0) {
+                    $freqPercentual = 100.0;
+                } elseif (! $temOrigemCsv && $temRegistroPresenca && $aulasRegistradas >= $faltas) {
+                    $freqPercentual = round((($aulasRegistradas - $faltas) / $aulasRegistradas) * 100, 1);
+                } else {
+                    // Em diários CSV sem chamada diária avulsa, projeta aulas previstas pela carga horária anual da matéria
+                    $cargaBase = (int) ($disciplina->carga_horaria_anual ?: (($disciplina->aulas_semanais ?: 2) * 40));
+                    $aulasPrevistas = max(20, (int) round($cargaBase / ($trimestre ? 3 : 1)));
+                    $aulasBase = max($faltas, $aulasRegistradas > $faltas ? $aulasRegistradas : $aulasPrevistas);
+                    $freqPercentual = $aulasBase > 0
+                        ? max(0.0, min(100.0, round((($aulasBase - $faltas) / $aulasBase) * 100, 1)))
+                        : 100.0;
+                }
+
+                $frequenciasCalculadas[] = [
+                    'disciplina_id' => $disciplina->id_disciplina,
+                    'nome' => $disciplina->nome,
+                    'valor' => (int) round($freqPercentual),
+                    'faltas' => $faltas,
+                ];
+            }
+        }
+
+        // Ordenação das notas (maior para menor e menor para maior; desempate alfabético para determinismo)
+        $notasDesc = $notasCalculadas;
+        usort($notasDesc, fn ($a, $b) => ($b['valor'] <=> $a['valor']) ?: strcmp($a['nome'], $b['nome']));
+
+        $notasAsc = $notasCalculadas;
+        usort($notasAsc, fn ($a, $b) => ($a['valor'] <=> $b['valor']) ?: strcmp($a['nome'], $b['nome']));
+
+        $melhorItem = $notasDesc[0] ?? null;
+        $piorItem = $notasAsc[0] ?? null;
+
+        $melhorNota = $melhorItem
+            ? [
+                'nota' => number_format((float) $melhorItem['valor'], 1, ',', ''),
+                'disciplina' => $melhorItem['nome'],
+                'mensagem' => $melhorItem['valor'] >= 6.0
+                    ? 'Parabéns! Você está indo muito bem nesta disciplina!'
+                    : 'Esta é sua maior nota atual; continue evoluindo nos estudos!',
+                'tem_lancamento' => true,
+            ]
+            : [
+                'nota' => '—',
+                'disciplina' => 'Sem notas lançadas',
+                'mensagem' => 'Aguardando lançamento de notas pelo corpo docente.',
+                'tem_lancamento' => false,
+            ];
+
+        $emAlertaNota = $piorItem !== null && $piorItem['valor'] < 6.0;
+        $notaAtencao = $piorItem
+            ? [
+                'nota' => number_format((float) $piorItem['valor'], 1, ',', ''),
+                'disciplina' => $piorItem['nome'],
+                'mensagem' => $emAlertaNota
+                    ? "Fique atento! {$piorItem['nome']} precisa de mais dedicação."
+                    : 'Excelente! Todas as suas disciplinas estão acima da média.',
+                'em_alerta' => $emAlertaNota,
+                'tem_lancamento' => true,
+            ]
+            : [
+                'nota' => '—',
+                'disciplina' => 'Sem pendências',
+                'mensagem' => 'Nenhuma disciplina requer atenção no momento.',
+                'em_alerta' => false,
+                'tem_lancamento' => false,
+            ];
+
+        // Montagem dos rankings Top 3 de Notas (sem valores mockados)
+        $melhoresDisciplinas = array_map(fn ($d, $idx) => [
+            'posicao' => $idx + 1,
+            'nome' => $d['nome'],
+            'valor' => $d['valor'],
+            'cor' => 'var(--dashboard-navy)',
+            'corBadge' => 'var(--dashboard-navy)',
+        ], array_slice($notasDesc, 0, 3), array_keys(array_slice($notasDesc, 0, 3)));
+
+        $pioresDisciplinas = array_map(fn ($d, $idx) => [
+            'posicao' => $idx + 1,
+            'nome' => $d['nome'],
+            'valor' => $d['valor'],
+            'cor' => 'var(--dashboard-pink)',
+            'corBadge' => 'var(--dashboard-pink)',
+        ], array_slice($notasAsc, 0, 3), array_keys(array_slice($notasAsc, 0, 3)));
+
+        // Montagem dos rankings Top 3 de Frequências
+        $freqDesc = $frequenciasCalculadas;
+        usort($freqDesc, fn ($a, $b) => ($b['valor'] <=> $a['valor']) ?: strcmp($a['nome'], $b['nome']));
+
+        $freqAsc = $frequenciasCalculadas;
+        usort($freqAsc, fn ($a, $b) => ($a['valor'] <=> $b['valor']) ?: strcmp($a['nome'], $b['nome']));
+
+        $melhoresFrequencias = array_map(fn ($f, $idx) => [
+            'posicao' => $idx + 1,
+            'nome' => $f['nome'],
+            'valor' => $f['valor'],
+            'cor' => 'var(--dashboard-navy)',
+            'corBadge' => 'var(--dashboard-navy)',
+        ], array_slice($freqDesc, 0, 3), array_keys(array_slice($freqDesc, 0, 3)));
+
+        $pioresFrequencias = array_map(fn ($f, $idx) => [
+            'posicao' => $idx + 1,
+            'nome' => $f['nome'],
+            'valor' => $f['valor'],
+            'cor' => 'var(--dashboard-pink)',
+            'corBadge' => 'var(--dashboard-pink)',
+        ], array_slice($freqAsc, 0, 3), array_keys(array_slice($freqAsc, 0, 3)));
+
+        return [
+            'destaques' => [
+                'melhor_nota' => $melhorNota,
+                'nota_atencao' => $notaAtencao,
+            ],
+            'desempenho' => [
+                'disciplinas' => [
+                    'melhores' => $melhoresDisciplinas,
+                    'piores' => $pioresDisciplinas,
+                ],
+                'frequencias' => [
+                    'melhores' => $melhoresFrequencias,
+                    'piores' => $pioresFrequencias,
+                ],
+            ],
         ];
     }
 

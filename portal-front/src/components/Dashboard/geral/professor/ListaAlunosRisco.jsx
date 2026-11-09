@@ -2,14 +2,16 @@ const CONFIGURACAO_INDICADOR = {
   nota: {
     tituloColuna: "Média atual",
     propriedadeValor: "mediaAtual",
+    rotuloRegiao: "Lista de alunos em risco por nota",
   },
   frequencia: {
     tituloColuna: "Frequência atual",
     propriedadeValor: "frequenciaAtual",
+    rotuloRegiao: "Lista de alunos em risco por frequência",
   },
 };
 
-/** Exibe todos os alunos em risco em uma tabela única por indicador. */
+/** Exibe todos os alunos em risco em uma tabela única por indicador com região rolável acessível. */
 export default function ListaAlunosRisco({
   indicador,
   alunos,
@@ -31,8 +33,9 @@ export default function ListaAlunosRisco({
         overflowY: "auto",
         borderColor: "rgba(38, 52, 74, 0.12)",
       }}
+      role="region"
       tabIndex={0}
-      aria-label="Lista de alunos em risco"
+      aria-label={configuracao.rotuloRegiao}
     >
       <div
         className="rounded-3 overflow-hidden border"

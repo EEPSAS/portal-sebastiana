@@ -4,19 +4,20 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
  * FrequenciaGeralCard.jsx - Indicador de Frequência do Estudante com Recharts
  *
  * Papel Didático:
- * Constrói o indicador circular de frequência geral escolar utilizando Recharts (PieChart em formato Donut).
- * Demonstra como utilizar proporções angulares (94% preenchido em branco, 6% restante translúcido)
- * mantendo alinhamento visual com o gradiente magenta da paleta escolar.
+ * Constrói o indicador circular de frequência escolar em formato Donut a partir do percentual
+ * real apurado sobre as chamadas/diário da turma, sem assumir valor fictício padrão.
  */
 export default function FrequenciaGeralCard({
-  porcentagem = 94,
-  classificacao = "Ótima",
-  bgColor = "var(--dashboard-pink)"
+  porcentagem = 0,
+  classificacao = "Sem registros",
+  bgColor = "var(--dashboard-pink)",
 }) {
+  const valorSeguro = Math.max(0, Math.min(100, Number(porcentagem) || 0));
+
   // Prepara os dados para o gráfico de Rosca (Donut) do Recharts
   const data = [
-    { name: "Frequência", value: porcentagem },
-    { name: "Restante", value: Math.max(0, 100 - porcentagem) }
+    { name: "Frequência", value: valorSeguro },
+    { name: "Restante", value: Math.max(0, 100 - valorSeguro) },
   ];
 
   // Cores: fatia ativa em branco puro, fatia restante translúcida
@@ -31,7 +32,11 @@ export default function FrequenciaGeralCard({
         }}
       >
         {/* Gráfico Circular Recharts */}
-        <div style={{ width: "95px", height: "95px", position: "relative" }} className="flex-shrink-0">
+        <div
+          style={{ width: "95px", height: "95px", position: "relative" }}
+          className="flex-shrink-0"
+          aria-hidden="true"
+        >
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -47,7 +52,7 @@ export default function FrequenciaGeralCard({
                 stroke="none"
               >
                 {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
             </PieChart>
@@ -56,15 +61,14 @@ export default function FrequenciaGeralCard({
 
         {/* Textos informativos de frequência */}
         <div className="ms-3 d-flex flex-column justify-content-center">
-          <span className="fw-semibold text-white-50 text-uppercase small" style={{ fontSize: "0.8rem", letterSpacing: "0.5px" }}>
+          <span
+            className="fw-semibold text-white-50 text-uppercase small"
+            style={{ fontSize: "0.8rem", letterSpacing: "0.5px" }}
+          >
             Frequência Geral
           </span>
-          <span className="fw-bold fs-1 lh-1 my-1 text-white">
-            {porcentagem}%
-          </span>
-          <span className="text-white-50 small fw-medium">
-            {classificacao}
-          </span>
+          <span className="fw-bold fs-1 lh-1 my-1 text-white">{valorSeguro}%</span>
+          <span className="text-white-50 small fw-medium">{classificacao}</span>
         </div>
       </div>
     </div>

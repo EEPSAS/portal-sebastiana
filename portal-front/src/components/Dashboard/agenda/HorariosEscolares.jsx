@@ -146,6 +146,8 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
   const [salvandoAula, setSalvandoAula] = useState(false);
   const [aulaArrastada, setAulaArrastada] = useState(null);
   const [erro, setErro] = useState('');
+  const [errosDetalhados, setErrosDetalhados] = useState([]);
+  const [caixaErrosAberta, setCaixaErrosAberta] = useState(false);
 
   // Sensores do @dnd-kit para ponteiro (mouse/touch) e teclado
   const sensors = useSensors(
@@ -237,6 +239,8 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
           onChange={(event) => {
             setTurmaSelecionadaId(event.target.value);
             setErro('');
+            setErrosDetalhados([]);
+            setCaixaErrosAberta(false);
             setAulaArrastada(null);
             setEditando(false);
           }}
@@ -268,6 +272,8 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
               if (!turmaSelecionada) return;
 
               setErro('');
+              setErrosDetalhados([]);
+              setCaixaErrosAberta(false);
               setGerando(true);
               try {
                 const resultado = await gerarHorario(turmaSelecionadaId);
@@ -280,6 +286,12 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
                 );
               } catch (error) {
                 setErro(error.message);
+                if (Array.isArray(error.errorList) && error.errorList.length > 0) {
+                  setErrosDetalhados(error.errorList);
+                  setCaixaErrosAberta(true);
+                } else {
+                  setErrosDetalhados([]);
+                }
               } finally {
                 setGerando(false);
               }
@@ -371,8 +383,50 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
       </div>
 
       {erro && (
-        <div className="alert alert-danger py-2" role="alert">
-          {erro}
+        <div className="alert alert-danger py-2 mb-3 shadow-sm" role="alert">
+          <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div className="d-flex align-items-center gap-2">
+              <i className="bi bi-exclamation-triangle-fill fs-5 text-danger" aria-hidden="true"></i>
+              <span className="fw-medium">{erro}</span>
+            </div>
+            {errosDetalhados.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-0.5 d-inline-flex align-items-center gap-1 fw-semibold"
+                onClick={() => setCaixaErrosAberta((aberta) => !aberta)}
+                aria-expanded={caixaErrosAberta}
+                aria-controls="horario-erros-detalhes"
+                style={{ fontSize: '0.8rem' }}
+              >
+                <i className={`bi ${caixaErrosAberta ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
+                <span>
+                  {caixaErrosAberta
+                    ? 'Ocultar detalhes'
+                    : `Ver todos os erros (${errosDetalhados.length})`}
+                </span>
+              </button>
+            )}
+          </div>
+
+          {errosDetalhados.length > 0 && caixaErrosAberta && (
+            <div
+              id="horario-erros-detalhes"
+              className="mt-2.5 pt-2 border-top border-danger-subtle bg-white rounded-3 p-2.5 text-dark"
+              style={{ maxHeight: '220px', overflowY: 'auto' }}
+            >
+              <div className="small fw-bold text-danger mb-1.5 d-flex align-items-center gap-1">
+                <i className="bi bi-list-check"></i>
+                <span>Lista completa de pendências e inconsistências da turma:</span>
+              </div>
+              <ul className="mb-0 ps-3 small text-secondary">
+                {errosDetalhados.map((itemErro, idx) => (
+                  <li key={idx} className="mb-1 text-dark">
+                    {itemErro}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

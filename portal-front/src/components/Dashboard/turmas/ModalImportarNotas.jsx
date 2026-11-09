@@ -14,6 +14,11 @@
 import { useEffect, useState } from "react";
 import { fetchTurmaDisciplinas, importarNotasCSV } from "../../../services/turmasService";
 import {
+  listarPeriodosLetivos,
+  obterPeriodoLetivo,
+  obterPeriodoLetivoAtivo,
+} from "../../../services/periodosLetivosService";
+import {
   ArquivoCsvUploadSchema,
   MapeamentosAlunosCsvSchema,
   MapeamentosDisciplinasCsvSchema,
@@ -27,9 +32,14 @@ const ESTADO_INICIAL_DISCIPLINAS_TURMA = {
   erroCarregamento: "",
 };
 
-const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
+const ESTADO_INICIAL_DIVISOES_TURMA = {
+  turmaKey: null,
+  divisoes: [],
+};
+
+const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess, periodosDisponiveis = [] }) => {
   const [arquivo, setArquivo] = useState(null);
-  const [periodoLetivo, setPeriodoLetivo] = useState("1º Trimestre");
+  const [periodoLetivoManual, setPeriodoLetivoManual] = useState("");
   const [dataAula, setDataAula] = useState("");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
@@ -37,6 +47,33 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
 
   // Etapas: 'upload' | 'disciplinas' | 'confirmacao' | 'divergencias'
   const [etapa, setEtapa] = useState("upload");
+
+  // Divisões do período letivo da turma carregadas de forma assíncrona
+  const [estadoDivisoesTurma, setEstadoDivisoesTurma] = useState(
+    ESTADO_INICIAL_DIVISOES_TURMA
+  );
+
+  const turmaId = turma?.id_turma ? Number(turma.id_turma) : null;
+  const periodoIdTurma = turma?.periodo_letivo_id || turma?.periodoLetivo?.id_periodo_letivo || null;
+  const anoTurma = turma?.ano_letivo || null;
+  const turmaKey = `${turmaId ?? "sem-id"}_${periodoIdTurma ?? "sem-periodo"}_${anoTurma ?? "sem-ano"}`;
+
+  // Quando periodosDisponiveis é passado via props, tem prioridade imediata
+  const temPeriodosProps = Array.isArray(periodosDisponiveis) && periodosDisponiveis.length > 0;
+  const divisoesTurma = temPeriodosProps
+    ? periodosDisponiveis
+    : estadoDivisoesTurma.turmaKey === turmaKey
+    ? estadoDivisoesTurma.divisoes
+    : [];
+
+  const carregandoDivisoes =
+    Boolean(isOpen) && !temPeriodosProps && estadoDivisoesTurma.turmaKey !== turmaKey;
+
+  // Deriva o período letivo selecionado sem set-state-in-effect
+  const periodoLetivo =
+    periodoLetivoManual && divisoesTurma.some((d) => d.nome === periodoLetivoManual)
+      ? periodoLetivoManual
+      : divisoesTurma.find((d) => d.is_atual)?.nome || divisoesTurma[0]?.nome || "1º Trimestre";
 
   // Estados da Etapa de Conciliação Estrita de Disciplinas (restrita à grade da turma)
   const [disciplinasPendentes, setDisciplinasPendentes] = useState([]);
@@ -50,8 +87,6 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
   const [ambiguidades, setAmbiguidades] = useState([]);
   const [mapeamentos, setMapeamentos] = useState({});
   const [divergencias, setDivergencias] = useState([]);
-
-  const turmaId = turma?.id_turma ? Number(turma.id_turma) : null;
 
   // Deriva os 3 estados assíncronos (Carregando, Erro e Vazio) sem setState síncrono no effect
   const carregandoDisciplinas = Boolean(
@@ -100,6 +135,87 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     };
   }, [isOpen, turmaId]);
 
+  // Carrega dinamicamente as etapas/divisões do período letivo atrelado à turma (ou ativo)
+  useEffect(() => {
+    let ativo = true;
+    if (!isOpen) return;
+
+    // Se já foram passadas divisões pré-carregadas via props, não precisa fazer requisições
+    if (temPeriodosProps) {
+      return;
+    }
+
+    const carregarPeriodo = async () => {
+      try {
+        let periodoEncontrado = null;
+
+        // 1. Tenta carregar pelo ID explícito do período letivo da turma
+        if (periodoIdTurma) {
+          try {
+            periodoEncontrado = await obterPeriodoLetivo(periodoIdTurma);
+          } catch {
+            periodoEncontrado = null;
+          }
+        }
+
+        // 2. Se não encontrou pelo ID ou a turma não tem periodo_letivo_id, busca pelo ano letivo
+        if (!periodoEncontrado?.divisoes?.length) {
+          try {
+            const todosPeriodos = await listarPeriodosLetivos();
+            if (Array.isArray(todosPeriodos) && todosPeriodos.length > 0) {
+              if (anoTurma) {
+                periodoEncontrado = todosPeriodos.find(
+                  (p) => Number(p.ano) === Number(anoTurma)
+                );
+              }
+              if (!periodoEncontrado) {
+                periodoEncontrado = todosPeriodos.find((p) => p.ativo) || todosPeriodos[0];
+              }
+            }
+          } catch {
+            periodoEncontrado = null;
+          }
+        }
+
+        // 3. Fallback: período letivo ativo vigente do sistema
+        if (!periodoEncontrado?.divisoes?.length) {
+          try {
+            periodoEncontrado = await obterPeriodoLetivoAtivo();
+          } catch {
+            periodoEncontrado = null;
+          }
+        }
+
+        if (ativo) {
+          const divisoes = periodoEncontrado?.divisoes || [];
+          setEstadoDivisoesTurma({
+            turmaKey,
+            divisoes,
+          });
+        }
+      } catch {
+        if (ativo) {
+          setEstadoDivisoesTurma({
+            turmaKey,
+            divisoes: [],
+          });
+        }
+      }
+    };
+
+    carregarPeriodo();
+
+    return () => {
+      ativo = false;
+    };
+  }, [
+    isOpen,
+    temPeriodosProps,
+    turmaKey,
+    periodoIdTurma,
+    anoTurma,
+  ]);
+
   if (!isOpen) return null;
 
   // Fecha o modal e redefine todos os estados internos (forçando recarga fresca na próxima abertura)
@@ -109,6 +225,8 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
     setDisciplinasCatalogo([]);
     setMapeamentosDisciplinas({});
     setEstadoDisciplinasTurma(ESTADO_INICIAL_DISCIPLINAS_TURMA);
+    setEstadoDivisoesTurma(ESTADO_INICIAL_DIVISOES_TURMA);
+    setPeriodoLetivoManual("");
     setAmbiguidades([]);
     setMapeamentos({});
     setDivergencias([]);
@@ -562,17 +680,28 @@ const ModalImportarNotas = ({ turma, isOpen, onClose, onSuccess }) => {
                   id="periodo-select"
                   className="form-select"
                   value={periodoLetivo}
-                  onChange={(e) => setPeriodoLetivo(e.target.value)}
-                  disabled={loading || carregandoDisciplinas || turmaSemDisciplinas}
+                  onChange={(e) => setPeriodoLetivoManual(e.target.value)}
+                  disabled={loading || carregandoDisciplinas || turmaSemDisciplinas || carregandoDivisoes}
                 >
-                  <option value="1º Trimestre">1º Trimestre</option>
-                  <option value="2º Trimestre">2º Trimestre</option>
-                  <option value="3º Trimestre">3º Trimestre</option>
-                  <option value="1º Bimestre">1º Bimestre</option>
-                  <option value="2º Bimestre">2º Bimestre</option>
-                  <option value="3º Bimestre">3º Bimestre</option>
-                  <option value="4º Bimestre">4º Bimestre</option>
+                  {carregandoDivisoes && divisoesTurma.length === 0 ? (
+                    <option value="">Carregando períodos da turma...</option>
+                  ) : divisoesTurma.length > 0 ? (
+                    divisoesTurma.map((div) => (
+                      <option key={div.id_divisao || div.id || div.nome} value={div.nome}>
+                        {div.nome} {div.is_atual ? "(Vigente)" : ""}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="1º Trimestre">1º Trimestre</option>
+                      <option value="2º Trimestre">2º Trimestre</option>
+                      <option value="3º Trimestre">3º Trimestre</option>
+                    </>
+                  )}
                 </select>
+                <div className="form-text">
+                  Período padrão caso o arquivo não especifique colunas por etapa.
+                </div>
               </div>
 
               <div className="col-12 col-md-6">
