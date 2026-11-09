@@ -3,8 +3,9 @@
  *
  * Papel Didático:
  * 1. Consome `/api/dashboard/geral` com suporte ao parâmetro `divisao` (1º Trimestre, 2º Trimestre, etc.);
- * 2. Exibe estritamente as disciplinas reais vinculadas ao docente (ou o catálogo real em modo de simulação Adm);
- * 3. Alimenta AlunosRiscoCards e ResumoTurmasCard com as médias e frequências específicas de cada disciplina.
+ * 2. Organiza a seleção de Ciclo Escolar, Disciplina (com <optgroup> por ciclo) e Etapa Avaliativa
+ *    em menus <select> nativos e acessíveis, comportando dezenas de disciplinas sem poluição visual;
+ * 3. Alimenta AlunosRiscoCards e ResumoTurmasCard com as médias e frequências específicas da disciplina ativa.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -13,6 +14,9 @@ import GeralMediumCards from "../especialista/Cards/ResumoTurmasCard";
 import LatestUpdates from "../especialista/LatestUpdates/UltimasAtualizacoes";
 import AlunosRiscoCards from "./Cards/AlunosRiscoCards";
 import { fetchDashboardGeral } from "../../../../services/geralService";
+import { formatarDisciplinaCiclo } from "../../../../utils/formatters";
+
+const SEM_CICLO_VALOR = "__sem_ciclo__";
 
 const formatarDataDiaMes = (dataString) => {
   if (!dataString) return "";
@@ -26,6 +30,7 @@ const formatarDataDiaMes = (dataString) => {
 const GeralProfessor = () => {
   const [dadosApi, setDadosApi] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [filtroCiclo, setFiltroCiclo] = useState("");
   const [materiaSelecionadaId, setMateriaSelecionadaId] = useState("");
   const [divisaoSelecionada, setDivisaoSelecionada] = useState("");
   const [erroCarregamento, setErroCarregamento] = useState("");
@@ -98,35 +103,86 @@ const GeralProfessor = () => {
     }
 
     return detalhadas
-      .map((disc) => ({
-        id: String(disc.id_disciplina),
-        nome: disc.nome,
-        aulas_semanais: disc.aulas_semanais ?? 2,
-        carga_horaria_anual: disc.carga_horaria_anual ?? 80,
-        ciclos: disc.ciclos || [],
-        turmas: disc.turmas || [],
-        modoSimulacao: Boolean(disc.modo_simulacao),
-        risco: disc.risco || {
-          alunosAbaixoDaMedia: 0,
-          alunosComFrequenciaInsuficiente: 0,
-          alunosPorNota: [],
-          alunosPorFrequencia: [],
-        },
-        medias: (disc.medias || []).map((m) => ({
-          id: m.id,
-          turma: m.turma,
-          nota:
-            m.aproveitamento !== undefined
-              ? Number(m.aproveitamento)
-              : Number(m.nota ?? 0) * 10,
-        })),
-        frequencias: disc.frequencias || [],
-      }))
-      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      .map((disc) => {
+        const ciclosLista = Array.isArray(disc.ciclos) ? disc.ciclos.filter(Boolean) : [];
+        const rotuloCompleto = formatarDisciplinaCiclo({
+          nome: disc.nome,
+          ciclos: ciclosLista,
+        });
+
+        return {
+          id: String(disc.id_disciplina),
+          nome: disc.nome,
+          rotuloCompleto,
+          aulas_semanais: disc.aulas_semanais ?? 2,
+          carga_horaria_anual: disc.carga_horaria_anual ?? 80,
+          ciclos: ciclosLista,
+          turmas: disc.turmas || [],
+          modoSimulacao: Boolean(disc.modo_simulacao),
+          risco: disc.risco || {
+            alunosAbaixoDaMedia: 0,
+            alunosComFrequenciaInsuficiente: 0,
+            alunosPorNota: [],
+            alunosPorFrequencia: [],
+          },
+          medias: (disc.medias || []).map((m) => ({
+            id: m.id,
+            turma: m.turma,
+            nota:
+              m.aproveitamento !== undefined
+                ? Number(m.aproveitamento)
+                : Number(m.nota ?? 0) * 10,
+          })),
+          frequencias: disc.frequencias || [],
+        };
+      })
+      .sort((a, b) => a.rotuloCompleto.localeCompare(b.rotuloCompleto, "pt-BR"));
   }, [dadosApi]);
 
+  // Extrai a relação única de ciclos presentes nas disciplinas disponíveis para o filtro superior
+  const opcoesCiclo = useMemo(() => {
+    const conjunto = new Set();
+    let possuiSemCiclo = false;
+
+    for (const mat of materiasDisponiveis) {
+      if (mat.ciclos.length === 0) {
+        possuiSemCiclo = true;
+      } else {
+        mat.ciclos.forEach((c) => conjunto.add(c));
+      }
+    }
+
+    const ordenados = Array.from(conjunto).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return { ciclos: ordenados, possuiSemCiclo };
+  }, [materiasDisponiveis]);
+
+  // Aplica o filtro de ciclo sobre as disciplinas disponíveis
+  const materiasFiltradas = useMemo(() => {
+    if (!filtroCiclo) return materiasDisponiveis;
+    if (filtroCiclo === SEM_CICLO_VALOR) {
+      return materiasDisponiveis.filter((m) => m.ciclos.length === 0);
+    }
+    return materiasDisponiveis.filter((m) => m.ciclos.includes(filtroCiclo));
+  }, [materiasDisponiveis, filtroCiclo]);
+
+  // Agrupa disciplinas por ciclo principal para uso em <optgroup> quando "Todos os Ciclos" está ativo
+  const gruposPorCiclo = useMemo(() => {
+    const mapa = new Map();
+    for (const mat of materiasFiltradas) {
+      const chaveGrupo = mat.ciclos[0] || "Outras Disciplinas";
+      if (!mapa.has(chaveGrupo)) {
+        mapa.set(chaveGrupo, []);
+      }
+      mapa.get(chaveGrupo).push(mat);
+    }
+    return Array.from(mapa.entries()).sort(([cicloA], [cicloB]) =>
+      cicloA.localeCompare(cicloB, "pt-BR")
+    );
+  }, [materiasFiltradas]);
+
   const materiaSelecionada =
-    materiasDisponiveis.find((m) => m.id === materiaSelecionadaId) ??
+    materiasFiltradas.find((m) => m.id === materiaSelecionadaId) ??
+    materiasFiltradas[0] ??
     materiasDisponiveis[0] ??
     null;
 
@@ -186,91 +242,112 @@ const GeralProfessor = () => {
         </div>
       )}
 
-      {/* 1. Barra de Seleção da Etapa do Período Letivo (Trimestres / Bimestres) */}
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 p-2 px-3 bg-white rounded-3 border shadow-xs">
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <span
-            className="small fw-bold text-dark text-uppercase d-flex align-items-center gap-1 me-2"
-            style={{ letterSpacing: "0.5px" }}
-          >
-            <i className="bi bi-calendar-range text-primary" aria-hidden="true"></i>
-            Etapa Avaliativa:
-          </span>
-          <div
-            className="btn-group btn-group-sm flex-wrap p-1 bg-light rounded-pill border"
-            role="group"
-            aria-label="Filtrar por etapa do período letivo"
-          >
-            <button
-              type="button"
-              className={`btn-pill-filter ${divisaoSelecionada === "todos" ? "is-active" : ""}`}
-              aria-pressed={divisaoSelecionada === "todos"}
-              onClick={() => selecionarDivisao("todos")}
+      {/* Barra unificada de seleção via <select> (no mesmo padrão limpo de Acadêmico - Disciplinas) */}
+      <div className="card border-0 bg-light rounded-4 p-3 mb-3">
+        <div className="row g-2 align-items-end">
+          {/* 1. Filtro por Ciclo Escolar */}
+          <div className="col-12 col-md-4 col-lg-3">
+            <label
+              htmlFor="prof-filtro-ciclo"
+              className="form-label small fw-semibold text-secondary mb-1"
             >
-              Consolidado Geral
-            </button>
-            {divisoesDisponiveis.map((div) => {
-              const isAtiva = divisaoSelecionada === div.nome;
-              return (
-                <button
-                  type="button"
-                  key={div.id_divisao || div.nome}
-                  className={`btn-pill-filter ${isAtiva ? "is-active" : ""}`}
-                  aria-pressed={isAtiva}
-                  onClick={() => selecionarDivisao(div.nome)}
-                >
-                  {div.nome} ({div.pontos} pts)
-                  {div.is_atual ? " • Atual" : ""}
-                </button>
-              );
-            })}
+              Ciclo Escolar
+            </label>
+            <select
+              id="prof-filtro-ciclo"
+              name="ciclo"
+              className="form-select"
+              value={filtroCiclo}
+              onChange={(e) => setFiltroCiclo(e.target.value)}
+            >
+              <option value="">Todos os Ciclos</option>
+              {opcoesCiclo.ciclos.map((cicloNome) => (
+                <option key={cicloNome} value={cicloNome}>
+                  {cicloNome}
+                </option>
+              ))}
+              {opcoesCiclo.possuiSemCiclo && (
+                <option value={SEM_CICLO_VALOR}>Sem ciclo vinculado</option>
+              )}
+            </select>
+          </div>
+
+          {/* 2. Seletor de Disciplina agrupado por Ciclo (<optgroup>) */}
+          <div className="col-12 col-md-8 col-lg-5">
+            <label
+              htmlFor="prof-select-disciplina"
+              className="form-label small fw-semibold text-secondary mb-1"
+            >
+              Disciplina Curricular
+            </label>
+            <select
+              id="prof-select-disciplina"
+              name="disciplina"
+              className="form-select"
+              value={materiaSelecionada.id}
+              onChange={(e) => setMateriaSelecionadaId(e.target.value)}
+            >
+              {!filtroCiclo && gruposPorCiclo.length > 1
+                ? gruposPorCiclo.map(([nomeGrupo, itensGrupo]) => (
+                    <optgroup key={nomeGrupo} label={nomeGrupo}>
+                      {itensGrupo.map((materia) => (
+                        <option key={materia.id} value={materia.id}>
+                          {materia.rotuloCompleto}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))
+                : materiasFiltradas.map((materia) => (
+                    <option key={materia.id} value={materia.id}>
+                      {materia.rotuloCompleto}
+                    </option>
+                  ))}
+            </select>
+          </div>
+
+          {/* 3. Seletor de Etapa Avaliativa do Período Letivo */}
+          <div className="col-12 col-md-12 col-lg-4">
+            <label
+              htmlFor="prof-select-etapa"
+              className="form-label small fw-semibold text-secondary mb-1"
+            >
+              Etapa Avaliativa
+            </label>
+            <select
+              id="prof-select-etapa"
+              name="divisao"
+              className="form-select"
+              value={divisaoSelecionada || "todos"}
+              onChange={(e) => selecionarDivisao(e.target.value)}
+            >
+              <option value="todos">
+                Consolidado Geral
+                {periodoContexto?.pontos_consolidados
+                  ? ` (${periodoContexto.pontos_consolidados} pts acumulados)`
+                  : ""}
+              </option>
+              {divisoesDisponiveis.map((div) => (
+                <option key={div.id_divisao || div.nome} value={div.nome}>
+                  {div.nome} ({div.pontos} pts){div.is_atual ? " • Atual" : ""}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {periodoContexto && (
-          <span className="badge bg-light text-secondary border rounded-pill px-3 py-2 small">
-            Ano Letivo {periodoContexto.ano} • {pontosDivisaoAtual} pts{" "}
-            {divisaoSelecionada === "todos" ? "acumulados" : "na etapa"}
-          </span>
-        )}
-      </div>
-
-      {/* 2. Seletor de Disciplinas Reais */}
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div
-          className="btn-group flex-wrap p-1 bg-light rounded-pill border"
-          role="group"
-          aria-label="Selecionar matéria"
-        >
-          {materiasDisponiveis.map((materia) => {
-            const isMateriaAtiva = materia.id === materiaSelecionada.id;
-            return (
-              <button
-                type="button"
-                key={materia.id}
-                className={`btn-pill-filter ${isMateriaAtiva ? "is-active" : ""}`}
-                aria-pressed={isMateriaAtiva}
-                onClick={() => setMateriaSelecionadaId(materia.id)}
-              >
-                {materia.nome}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Metadados Reais da Disciplina (Ciclos, Aulas Semanais e Turmas Herdadas) */}
-        <div className="d-flex flex-wrap align-items-center gap-2">
-          <span className="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
-            {materiaSelecionada.aulas_semanais} aulas/sem •{" "}
-            {materiaSelecionada.carga_horaria_anual}h anuais
-          </span>
-          {materiaSelecionada.ciclos?.length > 0 && (
-            <span className="badge bg-secondary-subtle text-dark rounded-pill px-3 py-2">
-              Ciclo(s): {materiaSelecionada.ciclos.join(", ")}
-            </span>
-          )}
-          <span className="badge bg-success-subtle text-success rounded-pill px-3 py-2">
+        {/* Rodapé informativo discreto (sem botões de flag) */}
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2 pt-2 border-top small text-muted">
+          <span>
+            <strong className="text-dark">{materiaSelecionada.rotuloCompleto}</strong>
+            {" • "}
+            {materiaSelecionada.aulas_semanais} a/sem ({materiaSelecionada.carga_horaria_anual}h/ano)
+            {" • "}
             {materiaSelecionada.turmas?.length || 0} turma(s) vinculada(s)
+          </span>
+          <span>
+            <strong>{materiasFiltradas.length}</strong> de{" "}
+            <strong>{materiasDisponiveis.length}</strong> disciplina(s)
+            {periodoContexto ? ` • Ano Letivo ${periodoContexto.ano}` : ""}
           </span>
         </div>
       </div>
