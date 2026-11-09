@@ -152,11 +152,29 @@ class Disciplina extends Model
     }
 
     /**
-     * Propaga esta disciplina para todas as turmas pertencentes aos Ciclos vinculados.
+     * Propaga esta disciplina para todas as turmas pertencentes aos Ciclos vinculados
+     * e limpa vínculos órfãos em turmas regidas por outros Ciclos Escolares.
      */
     public function sincronizarComTurmasDosCiclos(): void
     {
         $ciclos = $this->ciclos()->with('turmas')->get();
+        $cicloIdsVinculados = $ciclos
+            ->pluck('id_ciclo')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        // Remove alocações obsoletas em turmas vinculadas a ciclos cuja matriz não contém esta disciplina
+        TurmaDisciplina::where('disciplina_id', $this->id_disciplina)
+            ->whereHas('turma', function ($query) use ($cicloIdsVinculados) {
+                $query->whereNotNull('ciclo_id')
+                    ->whereHas('ciclo.disciplinas');
+
+                if (! empty($cicloIdsVinculados)) {
+                    $query->whereNotIn('ciclo_id', $cicloIdsVinculados);
+                }
+            })
+            ->delete();
+
         $professorPadraoId = $this->professores()->first()?->id;
 
         foreach ($ciclos as $ciclo) {

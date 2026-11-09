@@ -3,6 +3,8 @@
 use App\Enums\UserRole;
 use App\Models\Ciclo;
 use App\Models\Disciplina;
+use App\Models\Turma;
+use App\Models\TurmaDisciplina;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -100,4 +102,58 @@ test('especialista vincula e desvincula disciplina de ciclo existente', function
 
     expect($ciclo->fresh()->disciplinas->pluck('id_disciplina'))->not->toContain($disciplina->id_disciplina)
         ->and(Disciplina::find($disciplina->id_disciplina))->not->toBeNull();
+});
+
+test('desvincular disciplina do ciclo ou remover ciclo da disciplina limpa vinculo em turma_disciplinas', function () {
+    Sanctum::actingAs(usuarioComPapel(UserRole::ESPECIALISTA));
+
+    $ciclo1 = Ciclo::create(['nome' => '1º Ano - Regular']);
+    $ciclo2 = Ciclo::create(['nome' => '2º Ano - Regular']);
+
+    $turma1 = Turma::create([
+        'nome_identificador' => '1º Ano',
+        'ciclo_id' => $ciclo1->id_ciclo,
+        'turno' => 'Matutino',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+
+    $disciplina = Disciplina::create([
+        'nome' => 'Sociologia',
+        'aulas_semanais' => 1,
+        'carga_horaria_anual' => 40,
+    ]);
+
+    // 1. Vincula ao ciclo 1 -> propaga para turma 1
+    $this->postJson("/api/ciclos/{$ciclo1->id_ciclo}/disciplinas", [
+        'disciplina_id' => $disciplina->id_disciplina,
+    ])->assertOk();
+
+    expect(TurmaDisciplina::where('turma_id', $turma1->id_turma)
+        ->where('disciplina_id', $disciplina->id_disciplina)
+        ->exists())->toBeTrue();
+
+    // 2. Desvincula do ciclo 1 via CicloController -> remove de turma_disciplinas da turma 1
+    $this->deleteJson("/api/ciclos/{$ciclo1->id_ciclo}/disciplinas/{$disciplina->id_disciplina}")
+        ->assertOk();
+
+    expect(TurmaDisciplina::where('turma_id', $turma1->id_turma)
+        ->where('disciplina_id', $disciplina->id_disciplina)
+        ->exists())->toBeFalse();
+
+    // 3. Vincula novamente e depois altera o ciclo da disciplina para ciclo 2 via PUT /api/disciplinas/{id}
+    $this->postJson("/api/ciclos/{$ciclo1->id_ciclo}/disciplinas", [
+        'disciplina_id' => $disciplina->id_disciplina,
+    ])->assertOk();
+
+    $this->putJson("/api/disciplinas/{$disciplina->id_disciplina}", [
+        'nome' => 'Sociologia',
+        'aulas_semanais' => 1,
+        'carga_horaria_anual' => 40,
+        'ciclo_ids' => [$ciclo2->id_ciclo],
+    ])->assertOk();
+
+    expect(TurmaDisciplina::where('turma_id', $turma1->id_turma)
+        ->where('disciplina_id', $disciplina->id_disciplina)
+        ->exists())->toBeFalse();
 });

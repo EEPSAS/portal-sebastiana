@@ -234,10 +234,11 @@ class ProfessorController extends Controller
             ->update(['professor_id' => $professor->id]);
 
         // 3. Se a disciplina pertence a Ciclos Escolares, propaga para as turmas desses Ciclos;
-        // caso contrário, propaga para todas as turmas ativas (comportamento compatível).
+        // caso contrário, propaga apenas para turmas ativas sem Ciclo vinculado (modo legado),
+        // evitando criar vínculos órfãos em turmas regidas por outros Ciclos Escolares.
         $turmasAlvo = $disciplina->ciclos->isNotEmpty()
             ? $disciplina->ciclos->flatMap(fn ($ciclo) => $ciclo->turmas)->unique('id_turma')
-            : Turma::where('status', 'Ativa')->get();
+            : Turma::where('status', 'Ativa')->whereNull('ciclo_id')->get();
 
         foreach ($turmasAlvo as $turma) {
             $idTurma = $turma instanceof Turma ? $turma->id_turma : $turma->getKey();

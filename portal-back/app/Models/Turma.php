@@ -67,7 +67,8 @@ class Turma extends Model
     }
 
     /**
-     * Herda automaticamente todas as disciplinas (e professores titulares) do Ciclo da turma.
+     * Herda automaticamente todas as disciplinas (e professores titulares) do Ciclo da turma,
+     * removendo eventuais vínculos órfãos de ciclos anteriores ou disciplinas desvinculadas.
      */
     public function herdarDisciplinasDoCiclo(): void
     {
@@ -78,6 +79,18 @@ class Turma extends Model
         $ciclo = $this->ciclo()->with('disciplinas.professores')->first();
         if (! $ciclo) {
             return;
+        }
+
+        $disciplinasCicloIds = $ciclo->disciplinas
+            ->pluck('id_disciplina')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        // Remove vínculos residuais de disciplinas que não pertencem ao Ciclo atual da turma
+        if (! empty($disciplinasCicloIds)) {
+            $this->turmaDisciplinas()
+                ->whereNotIn('disciplina_id', $disciplinasCicloIds)
+                ->delete();
         }
 
         foreach ($ciclo->disciplinas as $disciplina) {

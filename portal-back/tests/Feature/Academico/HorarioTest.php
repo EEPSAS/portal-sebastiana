@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Models\Ciclo;
 use App\Models\Disciplina;
 use App\Models\Horario;
 use App\Models\HorarioAula;
@@ -349,4 +350,131 @@ test('movimentação impede três aulas seguidas do mesmo professor', function (
         ->assertJsonPath('errors.horario.0', 'O mesmo professor não pode dar três aulas seguidas na mesma turma.');
 
     expect($aulaMovida->fresh()->aula_numero)->toBe(3);
+});
+
+test('geração de horário em turma com ciclo remove vínculos órfãos homônimos e gera grade sem falso erro de duplicidade', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA, 'status_confirmacao' => 'confirmado']);
+    $profLuiza = User::factory()->create(['name' => 'Luiza', 'role' => UserRole::PROFESSOR, 'status_confirmacao' => 'confirmado']);
+    $profAdao = User::factory()->create(['name' => 'Adao', 'role' => UserRole::PROFESSOR, 'status_confirmacao' => 'confirmado']);
+
+    $cicloAntigo = Ciclo::query()->create(['nome' => '1º Ano - Ensino Médio']);
+    $cicloRegular = Ciclo::query()->create(['nome' => '1º Ano - Regular']);
+
+    $turma = Turma::factory()->create([
+        'nome_identificador' => '1º Ano',
+        'ciclo_id' => $cicloRegular->id_ciclo,
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+
+    // Disciplinas residuais/órfãs (de outro ciclo ou catálogo legado) já presas em turma_disciplinas
+    $portuguesLegado = Disciplina::query()->create(['nome' => 'Língua Portuguesa e Literatura', 'aulas_semanais' => 3]);
+    $matematicaOutroCiclo = Disciplina::query()->create(['nome' => 'Matemática', 'aulas_semanais' => 4]);
+    $portuguesLegado->ciclos()->sync([$cicloAntigo->id_ciclo]);
+
+    TurmaDisciplina::query()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $portuguesLegado->id_disciplina,
+        'professor_id' => $profLuiza->id,
+    ]);
+    TurmaDisciplina::query()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $matematicaOutroCiclo->id_disciplina,
+        'professor_id' => $profAdao->id,
+    ]);
+
+    // Disciplinas oficiais do ciclo atual ("1º Ano - Regular")
+    $portuguesCiclo = Disciplina::query()->create(['nome' => 'Língua Portuguesa', 'aulas_semanais' => 4]);
+    $matematicaCiclo = Disciplina::query()->create(['nome' => 'Matemática', 'aulas_semanais' => 4]);
+    $sociologiaCiclo = Disciplina::query()->create(['nome' => 'Sociologia', 'aulas_semanais' => 1]);
+
+    $portuguesCiclo->ciclos()->sync([$cicloRegular->id_ciclo]);
+    $portuguesCiclo->professores()->sync([$profLuiza->id]);
+
+    $matematicaCiclo->ciclos()->sync([$cicloRegular->id_ciclo]);
+    $matematicaCiclo->professores()->sync([$profAdao->id]);
+
+    $sociologiaCiclo->ciclos()->sync([$cicloRegular->id_ciclo]);
+    $sociologiaCiclo->professores()->sync([$profAdao->id]);
+
+    $response = $this->actingAs($especialista, 'sanctum')
+        ->postJson("/api/turmas/{$turma->id_turma}/horario/gerar");
+
+    $response->assertCreated()
+        ->assertJsonPath('status', 'concluido')
+        ->assertJsonCount(9, 'aulas');
+
+    // Garante que os vínculos órfãos foram eliminados de turma_disciplinas
+    $idsVinculados = TurmaDisciplina::query()
+        ->where('turma_id', $turma->id_turma)
+        ->pluck('disciplina_id')
+        ->all();
+
+    expect($idsVinculados)->toEqualCanonicalizing([
+        $portuguesCiclo->id_disciplina,
+        $matematicaCiclo->id_disciplina,
+        $sociologiaCiclo->id_disciplina,
+    ]);
+});
+
+test('limpeza de vínculos órfãos persiste mesmo quando alguma disciplina do ciclo ainda está sem professor', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA, 'status_confirmacao' => 'confirmado']);
+    $profLuiza = User::factory()->create(['role' => UserRole::PROFESSOR, 'status_confirmacao' => 'confirmado']);
+
+    $cicloRegular = Ciclo::query()->create(['nome' => '1º Ano - Regular']);
+    $turma = Turma::factory()->create([
+        'nome_identificador' => '1º Ano',
+        'ciclo_id' => $cicloRegular->id_ciclo,
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+
+    // Vínculo órfão homônimo
+    $fisicaOrfa = Disciplina::query()->create(['nome' => 'Física', 'aulas_semanais' => 2]);
+    TurmaDisciplina::query()->create([
+        'turma_id' => $turma->id_turma,
+        'disciplina_id' => $fisicaOrfa->id_disciplina,
+        'professor_id' => $profLuiza->id,
+    ]);
+
+    // Disciplinas do ciclo (Física ainda sem professor vinculado)
+    $portugues = Disciplina::query()->create(['nome' => 'Língua Portuguesa', 'aulas_semanais' => 4]);
+    $portugues->ciclos()->sync([$cicloRegular->id_ciclo]);
+    $portugues->professores()->sync([$profLuiza->id]);
+
+    $fisicaCiclo = Disciplina::query()->create(['nome' => 'Física', 'aulas_semanais' => 2]);
+    $fisicaCiclo->ciclos()->sync([$cicloRegular->id_ciclo]);
+
+    $response = $this->actingAs($especialista, 'sanctum')
+        ->postJson("/api/turmas/{$turma->id_turma}/horario/gerar")
+        ->assertUnprocessable();
+
+    $errosCurriculo = $response->json('errors.curriculo');
+    expect($errosCurriculo)->toBe(['Vincule um professor válido à disciplina Física.'])
+        ->and(TurmaDisciplina::where('turma_id', $turma->id_turma)->where('disciplina_id', $fisicaOrfa->id_disciplina)->exists())
+        ->toBeFalse();
+});
+
+test('vincular professor a disciplina sem ciclo não polui turmas governadas por ciclo escolar', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA, 'status_confirmacao' => 'confirmado']);
+    $professor = User::factory()->create(['role' => UserRole::PROFESSOR, 'status_confirmacao' => 'confirmado']);
+
+    $ciclo = Ciclo::query()->create(['nome' => '1º Ano - Regular']);
+    $turmaComCiclo = Turma::factory()->create([
+        'nome_identificador' => '1º Ano',
+        'ciclo_id' => $ciclo->id_ciclo,
+        'status' => 'Ativa',
+    ]);
+
+    $disciplinaSemCiclo = Disciplina::query()->create(['nome' => 'Geografia', 'aulas_semanais' => 2]);
+
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson("/api/professores/{$professor->id}/vincular-disciplina", [
+            'disciplina_id' => $disciplinaSemCiclo->id_disciplina,
+        ])
+        ->assertOk();
+
+    expect(TurmaDisciplina::where('turma_id', $turmaComCiclo->id_turma)
+        ->where('disciplina_id', $disciplinaSemCiclo->id_disciplina)
+        ->exists())->toBeFalse();
 });
