@@ -138,6 +138,7 @@ export const NotaDiarioSchema = z.object({
   valor_maximo_periodo: z.number(),
   percentual_faltas: z.number().nullable().optional(),
   total_faltas: z.number().int().nullable().optional(),
+  total_aulas_previstas: z.number().int().nullable().optional(),
   situacao: z.string(),
   data_registro: z.string().nullable().optional(),
   observacoes: z.string().nullable().optional(),
@@ -152,6 +153,8 @@ export const NotaDiarioSchema = z.object({
     .object({
       id_disciplina: z.number().int(),
       nome: z.string(),
+      carga_horaria_anual: z.number().int().nullable().optional(),
+      aulas_semanais: z.number().int().nullable().optional(),
     })
     .optional(),
 });
@@ -380,6 +383,9 @@ export const DivergenciaNotaCsvSchema = z.object({
   periodo_letivo: z.string(),
   nota_atual: z.number(),
   nova_nota: z.number(),
+  tipo_divergencia: z.enum(["nota", "falta", "ambos"]).optional(),
+  faltas_atuais: z.number().int().nullable().optional(),
+  novas_faltas: z.number().int().nullable().optional(),
 });
 
 export const DisciplinaPendenteCsvSchema = z.object({

@@ -64,6 +64,13 @@ class RelatorioImportadoData extends Data
                 periodo_letivo: (string) ($div['periodo_letivo'] ?? ''),
                 nota_atual: round((float) ($div['nota_atual'] ?? 0.0), 2),
                 nova_nota: round((float) ($div['nova_nota'] ?? 0.0), 2),
+                tipo_divergencia: (string) ($div['tipo_divergencia'] ?? 'nota'),
+                faltas_atuais: array_key_exists('faltas_atuais', $div) && $div['faltas_atuais'] !== null
+                    ? (int) $div['faltas_atuais']
+                    : null,
+                novas_faltas: array_key_exists('novas_faltas', $div) && $div['novas_faltas'] !== null
+                    ? (int) $div['novas_faltas']
+                    : null,
             ))->toArray(),
             array_values($payload['divergencias'] ?? $dadosBrutos['divergencias'] ?? [])
         );

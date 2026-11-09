@@ -39,21 +39,36 @@ const SmallNewsCard = ({ noticia, loading }) => {
 						</div>
 					</div>
 				) : imagemMiniatura ? (
-					<img
-						className="img-fluid w-100 rounded-3 shadow-sm"
-						style={{ height: '140px', objectFit: 'cover' }}
-						src={imagemMiniatura}
-						alt={noticia?.titulo || ''}
-						onError={(e) => {
-							e.currentTarget.style.display = 'none';
-						}}
-					/>
+					<div className="position-relative w-100 rounded-3 overflow-hidden bg-light d-flex align-items-center justify-content-center" style={{ height: '140px' }}>
+						<img
+							className="img-fluid w-100 h-100 rounded-3 shadow-sm object-fit-cover"
+							style={{ height: '140px' }}
+							src={imagemMiniatura}
+							alt={noticia?.titulo || ''}
+							onError={(e) => {
+								e.currentTarget.style.display = 'none';
+								if (e.currentTarget.nextElementSibling) {
+									e.currentTarget.nextElementSibling.style.display = 'flex';
+								}
+							}}
+						/>
+						<div className="align-items-center justify-content-center text-muted py-4 w-100" style={{ display: 'none' }}>
+							<i className="bi bi-image fs-3 opacity-50"></i>
+						</div>
+					</div>
 				) : (
-					<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100 py-4 text-muted">
+					<div className="d-flex align-items-center justify-content-center bg-light rounded-3 w-100 py-4 text-muted" style={{ height: '140px' }}>
 						<i className="bi bi-image fs-3 opacity-50"></i>
 					</div>
 				)}
-				<h3 className="h5 text-secondary mt-3 mb-0">{loading ? 'Carregando...' : noticia?.titulo}</h3>
+				<div className="mt-3">
+					{!loading && noticia?.categoria && (
+						<span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 mb-1 fw-semibold d-inline-block" style={{ fontSize: '0.72rem' }}>
+							{noticia.categoria}
+						</span>
+					)}
+					<h3 className="h5 text-secondary mb-0">{loading ? 'Carregando...' : noticia?.titulo}</h3>
+				</div>
 			</article>
 		</Link>
 	);

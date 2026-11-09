@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import './donaNanaAvatar.css';
 
-const DEFAULT_AVATAR = '/img/escola-professora.jpeg';
+const DEFAULT_AVATAR = '/img/donanaavatar.jpeg';
 
 const DonaNanaAvatar = ({
   src,

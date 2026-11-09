@@ -36,10 +36,42 @@ const request = async (path, { method = 'GET', body, signal } = {}) => {
 };
 
 /**
+ * Normaliza a URL de imagem para garantir exibição resiliente tanto no ambiente
+ * local de desenvolvimento quanto em produção no Railway.
+ */
+export const normalizeImageUrl = (rawUrl) => {
+  if (!rawUrl || typeof rawUrl !== 'string') return '';
+
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return '';
+
+  // 1. Se a URL apontar para https em localhost/127.0.0.1 porta 8000, corrige para http
+  if (trimmed.startsWith('https://localhost:8000') || trimmed.startsWith('https://127.0.0.1:8000')) {
+    return trimmed.replace(/^https:/, 'http:');
+  }
+
+  // 2. Se for um caminho relativo iniciado em /storage ou storage, resolve com a raiz da API
+  if (trimmed.startsWith('/storage/') || trimmed.startsWith('storage/')) {
+    const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    const baseUrl = rawApiUrl.trim().replace(/\/api\/?$/, '');
+    const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    return `${baseUrl}${cleanPath}`;
+  }
+
+  return trimmed;
+};
+
+/**
  * Converte os dados brutos da API para o formato padronizado do frontend.
  */
 export const mapNoticia = (noticia) => {
   if (!noticia) return null;
+
+  // Normaliza previamente URLs de capa e miniatura para suportar ambiente local e produção
+  const urlFoto = normalizeImageUrl(noticia.url_foto || noticia.imagem);
+  const urlMiniatura = normalizeImageUrl(
+    noticia.url_miniatura || noticia.miniatura || noticia.url_foto || noticia.imagem
+  );
 
   return {
     ...noticia,
@@ -48,9 +80,9 @@ export const mapNoticia = (noticia) => {
     descricao: noticia.descricao || noticia.conteudo?.slice(0, 160) || '',
     conteudo: noticia.conteudo || '',
     categoria: noticia.categoria || 'Geral',
-    url_foto: noticia.url_foto || noticia.imagem || '',
-    url_miniatura: noticia.url_miniatura || noticia.miniatura || noticia.url_foto || noticia.imagem || '',
-    imagem: noticia.url_foto || noticia.imagem || '',
+    url_foto: urlFoto,
+    url_miniatura: urlMiniatura,
+    imagem: urlFoto,
     destaque: Boolean(noticia.destaque),
     autor: noticia.autor?.name || noticia.autor || 'Portal EEPSAS',
     autorId: noticia.autor?.id || noticia.autor_id || null,

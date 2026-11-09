@@ -54,12 +54,20 @@ class EmprestimoPolicy
     }
 
     /**
-     * Autoriza a aprovação de retirada física apenas para gestores da biblioteca.
+     * Autoriza o registro de entrega física do exemplar apenas para gestores da biblioteca.
      */
-    public function aprovar(User $user, Emprestimo $emprestimo): bool
+    public function entregar(User $user, Emprestimo $emprestimo): bool
     {
         return $user->hasPermissionTo('gerenciar_emprestimos')
             || $user->hasPermissionTo('gerenciar_biblioteca');
+    }
+
+    /**
+     * Mantém alias de compatibilidade apontando para a mesma regra de entrega física.
+     */
+    public function aprovar(User $user, Emprestimo $emprestimo): bool
+    {
+        return $this->entregar($user, $emprestimo);
     }
 
     /**

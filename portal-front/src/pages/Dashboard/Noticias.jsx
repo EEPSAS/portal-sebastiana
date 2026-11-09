@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Noticias.jsx - Gestão Completa de Notícias Escolares (Especialista e Administrador)
  *
  * Papel Didático:
@@ -375,16 +375,26 @@ const DashboardNoticias = () => {
                   <tr key={item.id}>
                     {/* Miniatura da Imagem */}
                     <td>
-                      {item.url_foto ? (
-                        <img
-                          src={item.url_foto}
-                          alt={item.titulo}
-                          className="rounded-3 object-fit-cover shadow-sm"
-                          style={{ width: '60px', height: '45px' }}
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
+                      {item.url_foto || item.url_miniatura ? (
+                        <div className="position-relative d-inline-block rounded-3 overflow-hidden" style={{ width: '60px', height: '45px' }}>
+                          <img
+                            src={item.url_foto || item.url_miniatura}
+                            alt={item.titulo}
+                            className="w-100 h-100 rounded-3 object-fit-cover shadow-sm"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              if (e.currentTarget.nextElementSibling) {
+                                e.currentTarget.nextElementSibling.style.display = 'flex';
+                              }
+                            }}
+                          />
+                          <div
+                            className="bg-light text-muted align-items-center justify-content-center rounded-3 border w-100 h-100"
+                            style={{ display: 'none' }}
+                          >
+                            <i className="bi bi-image fs-6"></i>
+                          </div>
+                        </div>
                       ) : (
                         <div
                           className="bg-light text-muted d-flex align-items-center justify-content-center rounded-3 border"

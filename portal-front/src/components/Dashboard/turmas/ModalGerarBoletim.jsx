@@ -9,7 +9,8 @@ import { BoletimEmissaoSchema, validarFormularioZod } from "../../../utils/acade
  * 1. Substitui opções redundantes por uma caixa de seleção direta de alunos (checkboxes)
  *    com barra de rolagem controlada, evitando que o modal estoure na tela.
  * 2. Valida os parâmetros de emissão em tempo real via Zod (BoletimEmissaoSchema).
- * 3. Utiliza um <iframe> de impressão isolado com CSS técnico A4 próprio, garantindo que
+ * 3. Consolida notas e faltas respeitando o limite legal de 25% da LDB (Art. 24) por etapa e no ano.
+ * 4. Utiliza um <iframe> de impressão isolado com CSS técnico A4 próprio, garantindo que
  *    o PDF impresso saia idêntico ao modelo visualizado (sem cortes ou deslocamentos do modal).
  */
 export default function ModalGerarBoletim({
@@ -123,6 +124,11 @@ export default function ModalGerarBoletim({
     notasAluno.forEach((n) => {
       const discNome = n.disciplina?.nome || "Disciplina";
       const discId = n.disciplina_id;
+      const cargaAnualDisc = Number(
+        n.disciplina?.carga_horaria_anual ||
+          ((n.disciplina?.aulas_semanais || 2) * 40) ||
+          80
+      );
 
       if (!disciplinasMap[discId]) {
         disciplinasMap[discId] = {
@@ -131,8 +137,11 @@ export default function ModalGerarBoletim({
           notasPorPeriodo: {},
           somaNotas: 0,
           totalPontos: 0,
-          percentualFaltas: Number(n.percentual_faltas ?? 0),
-          totalFaltas: Number(n.total_faltas ?? 0),
+          somaFaltas: 0,
+          somaAulasEtapas: 0,
+          cargaAnual: cargaAnualDisc,
+          ultimoPercentualFaltas: Number(n.percentual_faltas ?? 0),
+          periodosFaltasContabilizados: new Set(),
         };
       }
 
@@ -143,17 +152,46 @@ export default function ModalGerarBoletim({
       disciplinasMap[discId].somaNotas += valorNota;
       disciplinasMap[discId].totalPontos += valorMax;
 
+      const chavePeriodo = String(n.periodo_letivo || "etapa").toLowerCase();
+      if (!disciplinasMap[discId].periodosFaltasContabilizados.has(chavePeriodo)) {
+        disciplinasMap[discId].periodosFaltasContabilizados.add(chavePeriodo);
+        disciplinasMap[discId].somaFaltas += Number(n.total_faltas ?? 0);
+        disciplinasMap[discId].somaAulasEtapas += Number(
+          n.total_aulas_previstas || Math.max(15, Math.round(cargaAnualDisc / 3))
+        );
+      }
+
       if (n.percentual_faltas !== null && n.percentual_faltas !== undefined) {
-        disciplinasMap[discId].percentualFaltas = Number(n.percentual_faltas);
+        disciplinasMap[discId].ultimoPercentualFaltas = Number(n.percentual_faltas);
       }
-      if (n.total_faltas !== null && n.total_faltas !== undefined) {
-        disciplinasMap[discId].totalFaltas = Number(n.total_faltas);
-      }
+    });
+
+    const disciplinasConsolidadas = Object.values(disciplinasMap).map((d) => {
+      const baseAulas =
+        periodoSelecionado === "todos"
+          ? Math.max(d.somaFaltas, d.cargaAnual)
+          : Math.max(d.somaFaltas, d.somaAulasEtapas);
+      const percentualFaltas =
+        periodoSelecionado === "todos"
+          ? baseAulas > 0
+            ? Number(((d.somaFaltas / baseAulas) * 100).toFixed(1))
+            : 0
+          : d.ultimoPercentualFaltas;
+
+      return {
+        id: d.id,
+        nome: d.nome,
+        notasPorPeriodo: d.notasPorPeriodo,
+        somaNotas: d.somaNotas,
+        totalPontos: d.totalPontos,
+        totalFaltas: d.somaFaltas,
+        percentualFaltas,
+      };
     });
 
     return {
       aluno,
-      disciplinas: Object.values(disciplinasMap),
+      disciplinas: disciplinasConsolidadas,
     };
   });
 
@@ -176,6 +214,17 @@ export default function ModalGerarBoletim({
     setAlunosSelecionadosIds((prev) =>
       prev.includes(idStr) ? prev.filter((item) => item !== idStr) : [...prev, idStr]
     );
+  };
+
+  // Classifica a situação combinando limite legal de 25% de faltas (LDB Art. 24) e média mínima de 60%
+  const classificarSituacaoBoletim = (percentualFaltas, percentualAproveitamento, usarAcentos = true) => {
+    if (percentualFaltas > 25.0) {
+      return periodoSelecionado === "todos" ? "REPROVADO POR FALTA" : "RISCO POR FALTA";
+    }
+    if (percentualAproveitamento >= 60) {
+      return usarAcentos ? "NA MÉDIA / APROVADO" : "APROVADO / NA MEDIA";
+    }
+    return usarAcentos ? "ABAIXO DA MÉDIA" : "ABAIXO DA MEDIA";
   };
 
   // Exporta tabela técnica compatível com Microsoft Excel (.csv com UTF-8 BOM)
@@ -227,7 +276,7 @@ export default function ModalGerarBoletim({
         );
         const teto = periodoSelecionado === "todos" ? 100 : d.totalPontos || 30;
         const percentualAproveitamento = teto > 0 ? (d.somaNotas / teto) * 100 : 0;
-        const situacao = percentualAproveitamento >= 60 ? "APROVADO / NA MEDIA" : "ABAIXO DA MEDIA";
+        const situacao = classificarSituacaoBoletim(d.percentualFaltas, percentualAproveitamento, false);
 
         linhas.push(
           [
@@ -692,24 +741,24 @@ export default function ModalGerarBoletim({
                       >
                         <thead>
                           <tr style={{ backgroundColor: "#e5e5e5" }}>
-                            <th style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "left", width: "32%" }}>
+                            <th scope="col" style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "left", width: "32%" }}>
                               DISCIPLINA
                             </th>
                             {etapasColunas.map((etapa) => (
-                              <th key={etapa} style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "center" }}>
+                              <th key={etapa} scope="col" style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "center" }}>
                                 {etapa.toUpperCase()}
                               </th>
                             ))}
-                            <th style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "center" }}>
+                            <th scope="col" style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "center" }}>
                               TOTAL
                             </th>
-                            <th style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "center" }}>
+                            <th scope="col" style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "center" }}>
                               FALTAS
                             </th>
-                            <th style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "center" }}>
+                            <th scope="col" style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "center" }}>
                               % FALTAS
                             </th>
-                            <th style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "center" }}>
+                            <th scope="col" style={{ border: "1px solid #000", padding: "5px 6px", textAlign: "center" }}>
                               SITUAÇÃO
                             </th>
                           </tr>
@@ -728,7 +777,7 @@ export default function ModalGerarBoletim({
                             disciplinas.map((d) => {
                               const teto = periodoSelecionado === "todos" ? 100 : d.totalPontos || 30;
                               const aproveitamento = teto > 0 ? (d.somaNotas / teto) * 100 : 0;
-                              const situacao = aproveitamento >= 60 ? "NA MÉDIA / APROVADO" : "ABAIXO DA MÉDIA";
+                              const situacao = classificarSituacaoBoletim(d.percentualFaltas, aproveitamento, true);
 
                               return (
                                 <tr key={d.id}>

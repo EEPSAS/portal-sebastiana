@@ -28,6 +28,16 @@ const ESTADO_LIVRO_INICIAL = {
   capa: '',
 };
 
+// Mapeia os status técnicos da API para rótulos amigáveis na listagem do estudante
+const ROTULOS_STATUS_EMPRESTIMO = {
+  solicitado: 'Solicitado (aguardando retirada)',
+  entregue: 'Entregue (em posse do leitor)',
+  renovado: 'Renovado',
+  atrasado: 'Em atraso',
+  devolvido: 'Devolvido',
+  recusado: 'Cancelado / Recusado',
+};
+
 const AcervoAba = ({
   livros = [],
   emprestimos = [],
@@ -287,7 +297,9 @@ const AcervoAba = ({
               <div key={emprestimo.id} className="d-flex flex-wrap justify-content-between align-items-center gap-2 border rounded-3 p-2">
                 <div>
                   <strong>{emprestimo.livro?.titulo || "Livro"}</strong>
-                  <div className="small text-muted">Situação: {emprestimo.status}</div>
+                  <div className="small text-muted">
+                    Situação: {ROTULOS_STATUS_EMPRESTIMO[emprestimo.status] || emprestimo.status}
+                  </div>
                 </div>
                 {emprestimo.status === "solicitado" && (
                   <button

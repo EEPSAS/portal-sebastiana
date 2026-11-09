@@ -169,7 +169,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Empréstimos de Livros
     Route::get('/emprestimos/meus-emprestimos', [EmprestimoController::class, 'meusEmprestimos']);
     Route::post('/emprestimos/solicitar', [EmprestimoController::class, 'solicitar']);
-    Route::patch('/emprestimos/{emprestimo}/aprovar', [EmprestimoController::class, 'aprovar']);
+    // Rota oficial de entrega física do exemplar (mantém /aprovar como alias de retrocompatibilidade)
+    Route::patch('/emprestimos/{emprestimo}/entregar', [EmprestimoController::class, 'entregar']);
+    Route::patch('/emprestimos/{emprestimo}/aprovar', [EmprestimoController::class, 'entregar']);
     Route::patch('/emprestimos/{emprestimo}/cancelar', [EmprestimoController::class, 'cancelarSolicitacao']);
     Route::patch('/emprestimos/{emprestimo}/renovar', [EmprestimoController::class, 'renovar']);
     Route::patch('/emprestimos/{emprestimo}/devolver', [EmprestimoController::class, 'registrarDevolucao']);

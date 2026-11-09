@@ -150,12 +150,13 @@ Suporta envio tanto em `application/json` quanto em `multipart/form-data` (quand
 | `POST` | `/api/livros/importar-csv` | Bibliotecária / Especialista / Adm | `ImportarLivrosCsvRequest` | `LivroResource` (Coleção) | `bibliotecaService.importarLivrosCSV()` | **Mass Assignment via CSV** (`titulo`, `editora`, `autor`, `genero`, `data_lancamento`, `codigo_livro`) |
 | `PUT` | `/api/livros/{id}` | Bibliotecária / Especialista / Adm | `UpdateLivroRequest` | `LivroResource` | `bibliotecaService.editarLivro()` | Atualiza dados do exemplar |
 | `DELETE` | `/api/livros/{id}` | Bibliotecária / Especialista / Adm | N/A | Mensagem 200/204 | `bibliotecaService.excluirLivro()` | Exclui exemplar do acervo |
-| `POST` | `/api/emprestimos/solicitar` | Logado | `SolicitarEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.solicitarEmprestimo()` | Cria a solicitação e reserva atomicamente um exemplar disponível; avisa a Bibliotecária com notificação interna importante contendo aluno, livro e número do pedido |
+| `POST` | `/api/emprestimos/solicitar` | Logado | `SolicitarEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.solicitarEmprestimo()` | Cria a solicitação (`status: "solicitado"`, sem iniciar contagem de prazo) e reserva atomicamente um exemplar disponível; avisa a Bibliotecária com notificação interna importante contendo aluno, livro e número do pedido |
 | `GET` | `/api/emprestimos/meus-emprestimos` | Logado | N/A | `EmprestimoResource` (Coleção)| `bibliotecaService.meusEmprestimos()` | Consulta histórico pessoal |
+| `PATCH` | `/api/emprestimos/{id}/entregar` | Bibliotecária / Especialista / Adm | N/A | `EmprestimoResource` | `bibliotecaService.entregarEmprestimo()` | Registra a entrega física do exemplar ao leitor (`status: "entregue"`), iniciando `data_emprestimo` e `data_prevista_devolucao` (+14 dias). *(Mantém `/aprovar` como alias de compatibilidade)* |
 | `PATCH` | `/api/emprestimos/{id}/cancelar` | Titular da solicitação pendente | N/A | `EmprestimoResource` | `bibliotecaService.cancelarSolicitacaoEmprestimo()` | Cancela somente solicitação em status `solicitado` e libera o exemplar reservado |
-| `PATCH`| `/api/emprestimos/{id}/status` | Bibliotecária / Especialista / Adm | `AtualizarStatusEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.atualizarEmprestimo()` | Aprova, renova ou registra devolução |
+| `PATCH`| `/api/emprestimos/{id}/status` | Bibliotecária / Especialista / Adm | `AtualizarStatusEmprestimoRequest`| `EmprestimoResource` | `bibliotecaService.atualizarEmprestimo()` | Atualiza status (`solicitado`, `entregue`, `renovado`, `atrasado`, `devolvido`, `recusado`) |
 
-**Reserva de exemplares:** a disponibilidade é decrementada no momento da solicitação. O estado interno `reserva_ativa` distingue solicitações antigas (ainda sem baixa de estoque) das novas; a migration inicializa empréstimos ativos antigos como reservados e solicitações pendentes antigas como não reservadas. Aprovar não decrementa novamente uma reserva ativa; pedidos antigos sem reserva descontam o estoque ao aprovar. Recusar/cancelar libera somente reservas ativas, e registrar devolução libera o exemplar emprestado. As mudanças de estoque e status são transacionais para evitar solicitações concorrentes do último exemplar.
+**Reserva e entrega de exemplares:** a disponibilidade é decrementada no momento da solicitação (`status: "solicitado"`), mas `data_emprestimo` e `data_prevista_devolucao` permanecem nulos até a retirada física no balcão. O estado interno `reserva_ativa` distingue solicitações antigas (ainda sem baixa de estoque) das novas; a migration converte registros antigos `'aprovado'` para `'entregue'` com reserva ativa. Registrar a entrega (`entregar`) define `status: "entregue"`, inicia a contagem de 14 dias e não decrementa novamente uma reserva já ativa (descontando o estoque apenas em pedidos legados sem reserva). Recusar/cancelar libera somente reservas ativas, e registrar devolução libera o exemplar emprestado. As mudanças de estoque e status são transacionais para evitar solicitações concorrentes do último exemplar.
 
 #### Solicitação pendente: Top 3 de livros mais emprestados
 O endpoint proposto ainda não está disponível e fica registrado para implementação futura pela equipe backend. Deve contar os empréstimos de todo o histórico, ordenar pela quantidade decrescente e retornar até três livros:
@@ -283,14 +284,14 @@ As respostas seguem a configuração global `JsonResource::withoutWrapping()`: o
 | `GET` | `/api/turmas/{turma_id}/alunos-disponiveis` | Especialista / Adm | N/A | `UsuarioResource` (Coleção) | `turmasService.listarAlunosDisponiveis()` | Alunos elegíveis para matrícula na turma (sem matrícula ativa no mesmo ano letivo) |
 | `GET` | `/api/matriculas` | Especialista / Prof / Adm | N/A | `MatriculaResource` (Coleção) | `turmasService.listarMatriculas()` | Relação nominal de todos os matriculados ativos |
 | `POST` | `/api/matriculas` | Especialista / Adm | `StoreMatriculaRequest` | `MatriculaResource` | `turmasService.vincularAluno()` | Matricula/vincula aluno na turma |
-| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista / Adm | `ImportarRelatorioTurmaRequest` + `ImportarRelatorioInputData` + `RegistroNotaCsvData` | `RelatorioImportadoResource` + `RelatorioImportadoData` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com função exclusiva de lançar notas e faltas consolidadas (**proibido** criar disciplinas/ciclos/usuários ou alterar vínculos `Ciclos <> Disciplinas <> Professores <> Turmas <> Alunos`); exige estritamente arquivo `.csv` e que a turma já possua disciplinas vinculadas (`422` caso contrário); valida cada célula via `RegistroNotaCsvData` (descartando células inválidas com aviso em `dados.alertas`) e importa exclusivamente alunos previamente cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`) e matrícula ativa na turma. Suporta desambiguação de homônimos (`mapeamentos_alunos`), correlação estrita de colunas com disciplinas já vinculadas à turma (`mapeamentos_disciplinas` com `acao: 'vincular' \| 'ignorar'`, `disciplina_id`, `sugestao_disciplina_id`, `sugestao_disciplina_nome` e `catalogo_disciplinas` restrito à turma), além de múltiplos períodos letivos e resolução de divergências via `decisao_divergencias` (`'atualizar'` ou `'manter'`). |
+| `POST` | `/api/turmas/{turma_id}/importar-relatorio` | Especialista / Adm | `ImportarRelatorioTurmaRequest` + `ImportarRelatorioInputData` + `RegistroNotaCsvData` | `RelatorioImportadoResource` + `RelatorioImportadoData` | `turmasService.importarRelatorioCSV()` | **Upload único do CSV** com função exclusiva de lançar notas e faltas consolidadas (**proibido** criar disciplinas/ciclos/usuários ou alterar vínculos `Ciclos <> Disciplinas <> Professores <> Turmas <> Alunos`); exige estritamente arquivo `.csv` e que a turma já possua disciplinas vinculadas (`422` caso contrário); valida cada célula via `RegistroNotaCsvData` (descartando células inválidas com aviso em `dados.alertas`) e importa exclusivamente alunos previamente cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`) e matrícula ativa na turma. Suporta desambiguação de homônimos (`mapeamentos_alunos`), correlação estrita de colunas com disciplinas já vinculadas à turma (`mapeamentos_disciplinas` com `acao: 'vincular' \| 'ignorar'`, `disciplina_id`, `sugestao_disciplina_id`, `sugestao_disciplina_nome` e `catalogo_disciplinas` restrito à turma), reconhecimento automático de múltiplos períodos letivos e resolução de divergências de notas e/ou faltas (`tipo_divergencia: 'nota' \| 'falta' \| 'ambos'`, `faltas_atuais`, `novas_faltas`) via `decisao_divergencias` (`'atualizar'` ou `'manter'`). |
 | `POST` | `/api/notas` | Especialista / Adm | `StoreNotaRequest` | `NotaResource` + `NotaDiarioData` | `turmasService.lancarNotaManual()` | Registra nota individual existente na tabela `notas`; exige turma, aluno matriculado ativo, disciplina vinculada, período, avaliação, nota e valor máximo; data e observações são opcionais. Dispara os alertas acadêmicos aplicáveis. |
 | `POST` | `/api/frequencias` | Especialista / Adm | `StoreFrequenciaManualRequest` | `FrequenciaResource` | `turmasService.lancarFrequenciaManual()` | Registra/atualiza a frequência de um aluno por turma, disciplina e data, com quantidade de aulas, situação e justificativa opcional; usa a tabela `frequencias` existente e atualiza os alertas acadêmicos aplicáveis. |
 | `DELETE`| `/api/turmas/{turma_id}/dados-csv` | Especialista / Adm | N/A | Mensagem 200 | `turmasService.excluirDadosCsv()` | Exclui notas e faltas carregadas via CSV da turma (suporta ?periodo_letivo=) |
-| `GET` | `/api/turmas/{turma_id}/notas` | Especialista / Prof / Adm | `FiltroNotasTurmaData` | `NotaResource` + `NotaDiarioData` (Coleção) | `turmasService.listarNotasTurma()` | Consulta notas lançadas na turma; blindado para exibir exclusivamente notas de alunos cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`), com filtros combinados de período (`periodo_letivo`), disciplina (`disciplina_id`) e aluno (`aluno_id`). Inclui `percentual_faltas`, `total_faltas`, `valor_maximo_periodo` e `situacao`. |
+| `GET` | `/api/turmas/{turma_id}/notas` | Especialista / Prof / Adm | `FiltroNotasTurmaData` | `NotaResource` + `NotaDiarioData` (Coleção) | `turmasService.listarNotasTurma()` | Consulta notas e frequência consolidada na turma; blindado para exibir exclusivamente alunos cadastrados com e-mail institucional oficial (`@aluno.mg.gov.br`), com filtros combinados de período (`periodo_letivo`), disciplina (`disciplina_id`) e aluno (`aluno_id`). Filtra as faltas estritamente pelo período de cada nota sobre a carga horária prevista da disciplina (LDB Art. 24), incluindo `percentual_faltas`, `total_faltas`, `total_aulas_previstas`, `valor_maximo_periodo` e `situacao` (incluindo `"Risco por Falta"` acima de `25%`). |
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/boletim` | Aluno / Prof / Esp / Adm | N/A | `BoletimResource` + `BoletimAlunoData` | `boletimService.obterBoletim()` | Boletim consolidado de notas e faltas por trimestre validado ponta a ponta com `BoletimAlunoSchema` |
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/comparativo-turma` | Aluno / Prof / Esp / Adm | N/A | `ComparativoTurmaResource` + `ComparativoTurmaData` | `boletimService.obterComparativoTurma()` | Dados comparativos do aluno vs média oficial da turma por disciplina validados com `ComparativoTurmaSchema` (inclui `frequencia_aluno_global`, `frequencia_turma_global`, e por matéria `frequencia_aluno` e `frequencia_turma`) |
-| `GET` | `/api/professores` | Especialista / Adm | N/A | `ProfessorResource` (Coleção + `meta.pendentes_count`) | `professoresService.listarProfessores()` | Lista professores cadastrados, status de confirmação e disciplinas vinculadas |
+| `GET` | `/api/professores` | Especialista / Adm | N/A | `ProfessorResource` (Coleção + `meta.pendentes_count`) | `professoresService.listarProfessores()` | Lista professores cadastrados, status de confirmação e disciplinas vinculadas; cada item de `disciplinas` inclui `ciclos: [{ id_ciclo, nome }]` para o front exibir `Nome - Ciclo` (ex.: "Filosofia - 2º Ano regular") |
 | `GET` | `/api/professores/{professor}` | Especialista / Adm | N/A | `ProfessorResource` | `professoresService.obterProfessor()` | Detalhes de um professor e suas disciplinas |
 | `PATCH` | `/api/professores/{professor}/confirmar` | Especialista / Adm | `ConfirmarProfessorRequest` | `ProfessorResource` | `professoresService.confirmarProfessor()` | Confirma o vínculo institucional do professor exigindo vínculo a ao menos 1 disciplina (`disciplina_ids`) |
 | `PATCH` | `/api/professores/{professor}/recusar` | Especialista / Adm | N/A | `UsuarioResource` | `professoresService.recusarProfessor()` | Recusa a solicitação docente, revertendo o papel para `aluno` |
@@ -372,11 +373,12 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
     "valor_maximo_periodo": 30.0,
     "percentual_faltas": 5.0,
     "total_faltas": 2,
+    "total_aulas_previstas": 40,
     "situacao": "Acima da Média",
     "data_registro": "2026-05-15",
     "observacoes": null,
     "aluno": { "id": 12, "name": "Ana Ramos", "email": "ana.ramos@aluno.mg.gov.br" },
-    "disciplina": { "id_disciplina": 4, "nome": "Desenvolvimento de Aplicativos" }
+    "disciplina": { "id_disciplina": 4, "nome": "Desenvolvimento de Aplicativos", "carga_horaria_anual": 120, "aulas_semanais": 3 }
   }
   ```
 * **`RelatorioImportadoResource` (`RelatorioImportadoData` ↔ `RelatorioImportadoSchema`)**:
@@ -387,7 +389,20 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
     "message": "Relatório da turma importado e sincronizado com sucesso.",
     "turma": { "id_turma": 1, "nome_identificador": "3º Ano - ADS" },
     "ambiguidades": [],
-    "divergencias": [],
+    "divergencias": [
+      {
+        "usuario_id": 12,
+        "nome_aluno": "Ana Ramos",
+        "disciplina_id": 4,
+        "nome_disciplina": "Desenvolvimento de Aplicativos",
+        "periodo_letivo": "1º Trimestre",
+        "nota_atual": 24.5,
+        "nova_nota": 24.5,
+        "tipo_divergencia": "falta",
+        "faltas_atuais": 2,
+        "novas_faltas": 6
+      }
+    ],
     "disciplinas_pendentes": [],
     "catalogo_disciplinas": [],
     "dados": {

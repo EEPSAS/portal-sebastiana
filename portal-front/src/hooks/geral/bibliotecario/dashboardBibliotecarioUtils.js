@@ -1,4 +1,5 @@
-export const STATUS_ATIVOS = ["aprovado", "renovado", "atrasado"];
+// Status em que o exemplar físico já foi entregue ao leitor e o prazo está correndo
+export const STATUS_ATIVOS = ["entregue", "renovado", "atrasado"];
 
 const formatarDataISO = (data) => {
   const ano = data.getFullYear();

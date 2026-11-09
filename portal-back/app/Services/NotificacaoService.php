@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\EmprestimoStatus;
 use App\Enums\UserRole;
 use App\Models\Disciplina;
 use App\Models\Emprestimo;
@@ -408,11 +409,16 @@ class NotificacaoService
 
         if ($autor->isBibliotecaria()) {
             $prazoLimite = now()->addDays(3)->toDateString();
+            // Considera como empréstimo em posse do aluno os status ativos de retirada (entregue, renovado e atrasado)
             $temDevolucaoProxima = Emprestimo::query()
                 ->where('usuario_id', $aluno->id)
-                ->whereIn('status', ['aprovado', 'renovado', 'atrasado'])
+                ->whereIn('status', [
+                    EmprestimoStatus::ENTREGUE->value,
+                    EmprestimoStatus::RENOVADO->value,
+                    EmprestimoStatus::ATRASADO->value,
+                ])
                 ->where(function ($query) use ($prazoLimite) {
-                    $query->where('status', 'atrasado')
+                    $query->where('status', EmprestimoStatus::ATRASADO->value)
                         ->orWhereDate('data_prevista_devolucao', '<=', $prazoLimite);
                 })
                 ->exists();

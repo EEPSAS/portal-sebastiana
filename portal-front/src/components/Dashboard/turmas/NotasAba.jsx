@@ -150,14 +150,18 @@ export default function NotasAba({
       const notaValor = Number(n.valor_nota ?? 0);
       const maximo = Number(n.valor_maximo_periodo ?? 30.0);
       const percentual = maximo > 0 ? (notaValor / maximo) * 100 : 0;
+      const pctFaltas = Number(n.percentual_faltas ?? 0);
+      const totFaltas = Number(n.total_faltas ?? 0);
 
       const situacaoCalculada =
-        n.situacao ||
-        (percentual >= 80
-          ? "Acima da Média"
-          : percentual >= 60
-          ? "Na Média"
-          : "Abaixo da Média");
+        pctFaltas > 25.0
+          ? "Risco por Falta"
+          : n.situacao ||
+            (percentual >= 80
+              ? "Acima da Média"
+              : percentual >= 60
+              ? "Na Média"
+              : "Abaixo da Média");
 
       return {
         id: n.id_nota || `${n.usuario_id}_${n.disciplina_id}_${n.periodo_letivo}`,
@@ -169,19 +173,25 @@ export default function NotasAba({
         nota: notaValor,
         valor_maximo_periodo: maximo,
         situacao: situacaoCalculada,
-        percentual_faltas: Number(n.percentual_faltas ?? 0),
-        total_faltas: Number(n.total_faltas ?? 0),
+        percentual_faltas: pctFaltas,
+        total_faltas: totFaltas,
         data_registro: formatarData(n.data_registro),
       };
     });
   } else {
-    // Consolidação em "Todos os Períodos": agrupa por disciplina (e aluno) somando notas e pegando data mais recente
+    // Consolidação em "Todos os Períodos": agrupa por disciplina (e aluno) somando notas e faltas de todas as etapas
     const agrupado = {};
 
     notasFiltradas.forEach((n) => {
       const chave = alunoFiltroId
         ? `disc_${n.disciplina_id}`
         : `aluno_${n.usuario_id}_disc_${n.disciplina_id}`;
+
+      const cargaAnualDisc = Number(
+        n.disciplina?.carga_horaria_anual ||
+          ((n.disciplina?.aulas_semanais || 2) * 40) ||
+          80
+      );
 
       if (!agrupado[chave]) {
         agrupado[chave] = {
@@ -193,8 +203,10 @@ export default function NotasAba({
           periodo_letivo: "Todos os Períodos",
           somaNotas: 0,
           pontosConcluidos: 0,
-          percentual_faltas: Number(n.percentual_faltas ?? 0),
-          total_faltas: Number(n.total_faltas ?? 0),
+          somaFaltas: 0,
+          somaAulasEtapas: 0,
+          cargaAnual: cargaAnualDisc,
+          periodosFaltasContabilizados: new Set(),
           data_mais_recente: n.data_registro || "",
         };
       }
@@ -205,6 +217,16 @@ export default function NotasAba({
       agrupado[chave].somaNotas += valorNota;
       agrupado[chave].pontosConcluidos += maximoEtapa;
 
+      // Soma as faltas e aulas previstas uma única vez por período letivo da disciplina
+      const chavePeriodoFalta = String(n.periodo_letivo || "etapa").toLowerCase();
+      if (!agrupado[chave].periodosFaltasContabilizados.has(chavePeriodoFalta)) {
+        agrupado[chave].periodosFaltasContabilizados.add(chavePeriodoFalta);
+        agrupado[chave].somaFaltas += Number(n.total_faltas ?? 0);
+        agrupado[chave].somaAulasEtapas += Number(
+          n.total_aulas_previstas || Math.max(15, Math.round(cargaAnualDisc / 3))
+        );
+      }
+
       if (
         n.data_registro &&
         (!agrupado[chave].data_mais_recente ||
@@ -212,18 +234,26 @@ export default function NotasAba({
       ) {
         agrupado[chave].data_mais_recente = n.data_registro;
       }
-
-      if (n.percentual_faltas !== undefined && n.percentual_faltas !== null) {
-        agrupado[chave].percentual_faltas = Number(n.percentual_faltas);
-      }
     });
 
     notasExibidas = Object.values(agrupado).map((item) => {
       const divisorTotal = baseCalculoAnual === "100" ? 100.0 : item.pontosConcluidos || 100.0;
       const percentual = divisorTotal > 0 ? (item.somaNotas / divisorTotal) * 100 : 0;
 
+      // Base de aulas anual (100% da carga horária) ou proporcional às etapas concluídas (LDB Art. 24)
+      const baseAulasConsolidada =
+        baseCalculoAnual === "100"
+          ? Math.max(item.somaFaltas, item.cargaAnual)
+          : Math.max(item.somaFaltas, item.somaAulasEtapas || item.cargaAnual);
+      const percentualFaltasConsolidado =
+        baseAulasConsolidada > 0
+          ? Number(((item.somaFaltas / baseAulasConsolidada) * 100).toFixed(1))
+          : 0;
+
       const situacao =
-        percentual >= 80
+        percentualFaltasConsolidado > 25.0
+          ? "Risco por Falta"
+          : percentual >= 80
           ? "Acima da Média"
           : percentual >= 60
           ? "Na Média"
@@ -239,16 +269,25 @@ export default function NotasAba({
         nota: item.somaNotas,
         valor_maximo_periodo: divisorTotal,
         situacao,
-        percentual_faltas: item.percentual_faltas,
-        total_faltas: item.total_faltas,
+        percentual_faltas: percentualFaltasConsolidado,
+        total_faltas: item.somaFaltas,
         data_registro: formatarData(item.data_mais_recente),
       };
     });
   }
 
-  // Badge semântica de situação do estudante
+  // Badge semântica de situação do estudante (Aproveitamento + Limite LDB 25% de Faltas)
   const renderBadgeSituacao = (situacao) => {
     switch (situacao) {
+      case "Risco por Falta":
+      case "Risco de Reprovação por Falta":
+      case "Reprovado por Falta":
+        return (
+          <span className="badge rounded-pill bg-danger text-white px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1">
+            <i className="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+            Risco por Falta
+          </span>
+        );
       case "Acima da Média":
         return (
           <span className="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-semibold">
@@ -280,7 +319,7 @@ export default function NotasAba({
     turmaAtiva?.total_alunos ?? resumoTurmaAtiva?.total_alunos ?? alunosTurma.length ?? 0;
 
   return (
-    <div className="notas-aba-container">
+    <div className="notas-aba-container notas-aba-viewport-lock">
       {/* 1. Controle de Guias Horizontais das Turmas em Alto Destaque (Estilo Access) */}
       <div className="turmas-tab-bar" role="tablist" aria-label="Guias de turmas escolares">
         {listaBaseTurmas.map((t) => {
@@ -311,17 +350,17 @@ export default function NotasAba({
         })}
       </div>
 
-      {/* 2. Painel Central da Turma Selecionada */}
-      <div className="row g-3">
-        {/* Painel Esquerdo: Resumo da Turma (Donut de Média + Velocímetro logo abaixo com altura estática fixa no topo) */}
-        <div className="col-12 col-lg-4 col-xl-3 align-self-start">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-column">
+      {/* 2. Painel Central da Turma Selecionada (travado na altura da viewport em desktop) */}
+      <div className="row gx-3 gy-3 gy-lg-0 notas-painel-row">
+        {/* Painel Esquerdo: Resumo da Turma (Donut de Média + Velocímetro alinhados à altura do painel) */}
+        <div className="col-12 col-lg-4 col-xl-3 notas-col-esquerda">
+          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-column notas-card-esquerdo">
             <div>
               {/* Título do Card */}
-              <div className="d-flex align-items-center gap-2 mb-2">
+              <div className="d-flex align-items-center gap-2 mb-1">
                 <div
                   className="d-flex align-items-center justify-content-center rounded-3 bg-primary-subtle text-primary"
-                  style={{ width: 34, height: 34 }}
+                  style={{ width: 32, height: 32 }}
                 >
                   <i className="bi bi-people-fill fs-6"></i>
                 </div>
@@ -331,16 +370,16 @@ export default function NotasAba({
               {/* Gráfico 1: Donut de Média Geral de Notas */}
               <div
                 className="position-relative d-flex justify-content-center align-items-center"
-                style={{ height: 170 }}
+                style={{ height: 146 }}
               >
-                <ResponsiveContainer width="100%" height={170}>
+                <ResponsiveContainer width="100%" height={146}>
                   <PieChart>
                     <Pie
                       data={dadosDonut}
                       cx="50%"
                       cy="50%"
-                      innerRadius={50}
-                      outerRadius={70}
+                      innerRadius={43}
+                      outerRadius={62}
                       paddingAngle={somaDist > 0 ? 3 : 0}
                       dataKey="value"
                       stroke="none"
@@ -362,26 +401,26 @@ export default function NotasAba({
               </div>
             </div>
 
-            <hr className="my-2 border-secondary-subtle" />
+            <hr className="my-1 border-secondary-subtle" />
 
             {/* Gráfico 2: Velocímetro / Manômetro de Faltas (fixado diretamente abaixo do Donut) */}
-            <div className="pt-1 pb-1">
+            <div>
               <VelocimetroPresenca taxaFaltas={taxaFaltasTurma} />
             </div>
           </div>
         </div>
 
         {/* Painel Direito: Turma Selecionada em Destaque e Diário Escolar */}
-        <div className="col-12 col-lg-8 col-xl-9">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+        <div className="col-12 col-lg-8 col-xl-9 notas-col-direita">
+          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white notas-card-direito">
             {/* Cabeçalho de Identificação da Turma Selecionada */}
-            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
-              <div className="d-flex align-items-center gap-3">
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom flex-shrink-0">
+              <div className="d-flex align-items-center gap-2">
                 <div
                   className="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white shadow-sm"
-                  style={{ width: 48, height: 48 }}
+                  style={{ width: 40, height: 40 }}
                 >
-                  <i className="bi bi-mortarboard-fill fs-4"></i>
+                  <i className="bi bi-mortarboard-fill fs-5"></i>
                 </div>
                 <div>
                   <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -404,7 +443,7 @@ export default function NotasAba({
             </div>
 
             {/* Sub-abas de Navegação: Notas | Alunos | Informações */}
-            <div className="d-flex align-items-center gap-4 mb-4 border-bottom">
+            <div className="d-flex align-items-center gap-4 mb-2 border-bottom flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setSubAbaPainel("notas")}
@@ -464,7 +503,7 @@ export default function NotasAba({
             {subAbaPainel === "notas" && (
               <>
                 {/* Linha de Título e Botões de Ação */}
-                <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 flex-shrink-0">
                   <div className="d-flex align-items-center gap-2">
                     <div
                       className="d-flex align-items-center justify-content-center rounded-2 bg-primary-subtle text-primary"
@@ -530,7 +569,7 @@ export default function NotasAba({
                 </div>
 
                 {/* Barra de Filtros Cumulativos (Aluno + Período + Disciplina) */}
-                <div className="row g-2 mb-3 align-items-center">
+                <div className="row g-2 mb-2 align-items-center flex-shrink-0">
                   {/* Filtro 1: Seleção de Aluno */}
                   <div className="col-12 col-sm-4">
                     <div className="input-group input-group-sm">
@@ -600,7 +639,7 @@ export default function NotasAba({
 
                 {/* Toggle Pill de Base de Cálculo Anual (quando "Todos os Períodos" está ativo) */}
                 {periodoFiltro === "todos" && (
-                  <div className="d-flex align-items-center justify-content-between p-2 mb-3 bg-light rounded-3 border">
+                  <div className="d-flex align-items-center justify-content-between py-1 px-2 mb-2 bg-light rounded-3 border flex-shrink-0">
                     <div className="small text-muted d-flex align-items-center gap-1.5">
                       <i className="bi bi-calculator text-primary"></i>
                       <span>Base de totalização dos pontos:</span>
@@ -632,24 +671,45 @@ export default function NotasAba({
                   </div>
                 )}
 
-                {/* Tabela de Notas e Diário Escolar */}
-                <div className="table-responsive rounded-3 border">
+                {/* Tabela de Notas e Diário Escolar com Scroll Exclusivo e Confinado */}
+                <div
+                  className="turmas-notas-tabela-scroll"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Tabela de notas e frequência do diário escolar da turma"
+                >
                   <table className="table table-hover align-middle mb-0" style={{ fontSize: "0.88rem" }}>
                     <thead className="table-light text-muted small fw-bold">
                       <tr>
-                        {!temFiltroAluno && <th className="ps-3 py-2.5">ALUNO</th>}
-                        <th className="py-2.5">DISCIPLINA</th>
-                        {temFiltroAluno && <th className="py-2.5 text-center">% FALTAS</th>}
-                        <th className="py-2.5">PERÍODO LETIVO</th>
-                        <th className="py-2.5 text-center">NOTA</th>
-                        <th className="py-2.5 text-center">SITUAÇÃO</th>
-                        <th className="pe-3 py-2.5 text-end">DATA REGISTRO</th>
+                        {!temFiltroAluno && (
+                          <th scope="col" className="ps-3 py-2.5">
+                            ALUNO
+                          </th>
+                        )}
+                        <th scope="col" className={`${temFiltroAluno ? "ps-3 " : ""}py-2.5`}>
+                          DISCIPLINA
+                        </th>
+                        <th scope="col" className="py-2.5 text-center">
+                          % FALTAS
+                        </th>
+                        <th scope="col" className="py-2.5">
+                          PERÍODO LETIVO
+                        </th>
+                        <th scope="col" className="py-2.5 text-center">
+                          NOTA
+                        </th>
+                        <th scope="col" className="py-2.5 text-center">
+                          SITUAÇÃO
+                        </th>
+                        <th scope="col" className="pe-3 py-2.5 text-end">
+                          DATA REGISTRO
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {loadingNotas ? (
                         <tr>
-                          <td colSpan={6} className="text-center py-4 text-muted">
+                          <td colSpan={temFiltroAluno ? 6 : 7} className="text-center py-4 text-muted">
                             <span
                               className="spinner-border spinner-border-sm me-2 text-primary"
                               role="status"
@@ -659,68 +719,83 @@ export default function NotasAba({
                         </tr>
                       ) : notasExibidas.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="text-center py-5 text-muted">
+                          <td colSpan={temFiltroAluno ? 6 : 7} className="text-center py-5 text-muted">
                             <i className="bi bi-inbox fs-2 d-block mb-2 text-secondary opacity-50"></i>
                             Nenhum registro de nota encontrado para os filtros selecionados.
                           </td>
                         </tr>
                       ) : (
-                        notasExibidas.map((item) => (
-                          <tr key={item.id}>
-                            {!temFiltroAluno && (
-                              <td className="ps-3 fw-bold text-dark text-nowrap">
-                                {item.aluno_nome}
-                              </td>
-                            )}
+                        notasExibidas.map((item) => {
+                          const pctFaltas = Number(item.percentual_faltas || 0);
+                          const totFaltas = Number(item.total_faltas || 0);
 
-                            <td>
-                              <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 fw-semibold text-wrap text-start">
-                                {formatarDisciplinaCiclo(item.disciplina_nome, cicloNomeAtivo)}
-                              </span>
-                            </td>
+                          return (
+                            <tr key={item.id}>
+                              {!temFiltroAluno && (
+                                <th scope="row" className="ps-3 fw-bold text-dark text-nowrap">
+                                  {item.aluno_nome}
+                                </th>
+                              )}
 
-                            {temFiltroAluno && (
-                              <td className="text-center">
+                              {temFiltroAluno ? (
+                                <th scope="row" className="ps-3 fw-normal">
+                                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 fw-semibold text-wrap text-start">
+                                    {formatarDisciplinaCiclo(item.disciplina_nome, cicloNomeAtivo)}
+                                  </span>
+                                </th>
+                              ) : (
+                                <td>
+                                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 fw-semibold text-wrap text-start">
+                                    {formatarDisciplinaCiclo(item.disciplina_nome, cicloNomeAtivo)}
+                                  </span>
+                                </td>
+                              )}
+
+                              <td className="text-center text-nowrap">
                                 <span
+                                  title={`${totFaltas} falta(s) registrada(s) (${pctFaltas.toFixed(1)}% da carga prevista)`}
                                   className={`badge rounded-pill px-2 py-1 fw-semibold ${
-                                    Number(item.percentual_faltas) >= 20
+                                    pctFaltas > 25
+                                      ? "bg-danger text-white"
+                                      : pctFaltas >= 20
                                       ? "bg-danger-subtle text-danger border border-danger-subtle"
-                                      : Number(item.percentual_faltas) >= 10
+                                      : pctFaltas >= 10
                                       ? "bg-warning-subtle text-warning-emphasis border border-warning-subtle"
                                       : "bg-success-subtle text-success border border-success-subtle"
                                   }`}
                                 >
-                                  {Number(item.percentual_faltas || 0).toFixed(1)}%
+                                  {pctFaltas.toFixed(1)}%
+                                  <span className="opacity-75 ms-1">({totFaltas})</span>
                                 </span>
                               </td>
-                            )}
 
-                            <td className="text-muted text-nowrap">{item.periodo_letivo}</td>
+                              <td className="text-muted text-nowrap">{item.periodo_letivo}</td>
 
-                            <td className="text-center text-nowrap">
-                              <span
-                                className={`fw-bolder ${
-                                  item.situacao === "Abaixo da Média"
-                                    ? "text-danger"
-                                    : "text-primary"
-                                }`}
-                              >
-                                {Number(item.nota).toFixed(1)}
-                              </span>
-                              <span className="text-muted small ms-1">
-                                / {Number(item.valor_maximo_periodo).toFixed(0)}
-                              </span>
-                            </td>
+                              <td className="text-center text-nowrap">
+                                <span
+                                  className={`fw-bolder ${
+                                    item.situacao === "Abaixo da Média"
+                                      ? "text-danger"
+                                      : "text-primary"
+                                  }`}
+                                >
+                                  {Number(item.nota).toFixed(1)}
+                                </span>
+                                <span className="text-muted small ms-1">
+                                  / {Number(item.valor_maximo_periodo).toFixed(0)}
+                                </span>
+                              </td>
 
-                            <td className="text-center text-nowrap">
-                              {renderBadgeSituacao(item.situacao)}
-                            </td>
+                              <td className="text-center text-nowrap">
+                                {renderBadgeSituacao(item.situacao)}
+                              </td>
 
-                            <td className="pe-3 text-end text-muted small text-nowrap">
-                              {item.data_registro}
-                            </td>
-                          </tr>
-                        ))
+                              <td className="pe-3 text-end text-muted small text-nowrap">
+                                {item.data_registro}
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -730,8 +805,8 @@ export default function NotasAba({
 
             {/* CONTEÚDO 2: SUB-ABA ALUNOS DA TURMA */}
             {subAbaPainel === "alunos" && (
-              <div>
-                <div className="d-flex align-items-center justify-content-between mb-3">
+              <div className="notas-subaba-flex-body">
+                <div className="d-flex align-items-center justify-content-between mb-2 flex-shrink-0">
                   <h6 className="fw-bold mb-0 text-dark">
                     Estudantes Matriculados ({alunosTurma.length})
                   </h6>
@@ -746,7 +821,12 @@ export default function NotasAba({
                     Ver Todas as Notas
                   </button>
                 </div>
-                <div className="list-group list-group-flush rounded-3 border">
+                <div
+                  className="list-group list-group-flush turmas-alunos-lista-scroll"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Lista de estudantes matriculados na turma"
+                >
                   {alunosTurma.map((aluno) => (
                     <div
                       key={aluno.id}
@@ -784,7 +864,8 @@ export default function NotasAba({
 
             {/* CONTEÚDO 3: SUB-ABA INFORMAÇÕES DA TURMA */}
             {subAbaPainel === "informacoes" && (
-              <div className="row g-3">
+              <div className="notas-subaba-info-scroll">
+                <div className="row g-3 m-0">
                 <div className="col-12 col-sm-6">
                   <div className="p-3 bg-light rounded-3 border">
                     <div className="small text-muted mb-1">Nome da Turma</div>
@@ -808,6 +889,7 @@ export default function NotasAba({
                     <div className="small text-muted mb-1">Ano Letivo</div>
                     <div className="fw-bold text-dark">{turmaAtiva?.ano_letivo || "-"}</div>
                   </div>
+                </div>
                 </div>
               </div>
             )}

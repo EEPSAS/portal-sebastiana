@@ -28,7 +28,7 @@ class EmprestimoFactory extends Factory
             'data_emprestimo' => now(),
             'data_prevista_devolucao' => now()->addDays(14),
             'data_devolucao_real' => null,
-            'status' => EmprestimoStatus::APROVADO,
+            'status' => EmprestimoStatus::ENTREGUE,
             'reserva_ativa' => true,
             'observacoes' => null,
         ];

@@ -7,8 +7,13 @@
  * a titularidade do professor nas turmas ativas da instituição.
  */
 
-import { useState } from "react";
-import { formatarDisciplinaCiclo } from "../../../utils/formatters";
+import { useMemo, useState } from "react";
+import {
+  filtrarDisciplinas,
+  formatarDisciplinaCiclo,
+  listarCiclosDasDisciplinas,
+} from "../../../utils/formatters";
+import FiltroDisciplinas from "./FiltroDisciplinas";
 
 const ModalVincularDisciplina = ({
   professor,
@@ -21,6 +26,12 @@ const ModalVincularDisciplina = ({
   const [salvando, setSalvando] = useState(false);
   const [removendoId, setRemovendoId] = useState(null);
   const [erro, setErro] = useState("");
+  // Filtros que reduzem a lista do select (ciclo e nome)
+  const [filtroCiclo, setFiltroCiclo] = useState("");
+  const [filtroTermo, setFiltroTermo] = useState("");
+
+  // Opções de ciclo derivadas do catálogo completo
+  const ciclos = useMemo(() => listarCiclosDasDisciplinas(disciplinasCatalogo || []), [disciplinasCatalogo]);
 
   if (!professor) return null;
 
@@ -29,6 +40,11 @@ const ModalVincularDisciplina = ({
   const disciplinasDisponiveis = (disciplinasCatalogo || []).filter(
     (d) => !idsJaVinculados.has(d.id_disciplina)
   );
+  // Aplica os filtros de ciclo/nome sobre as disponíveis (já ordenadas por "Nome - Ciclo")
+  const disciplinasFiltradas = filtrarDisciplinas(disciplinasDisponiveis, {
+    ciclo: filtroCiclo,
+    termo: filtroTermo,
+  });
 
   const handleVincular = async (e) => {
     e.preventDefault();
@@ -141,21 +157,39 @@ const ModalVincularDisciplina = ({
                 Atribuir Nova Disciplina Curricular:
               </label>
 
+              {/* Filtros de ciclo e nome para localizar a disciplina sem rolar o catálogo inteiro */}
+              <FiltroDisciplinas
+                idPrefixo="modal-vinculo"
+                ciclos={ciclos}
+                ciclo={filtroCiclo}
+                termo={filtroTermo}
+                onCicloChange={(valor) => {
+                  setFiltroCiclo(valor);
+                  setDisciplinaSelecionadaId("");
+                }}
+                onTermoChange={(valor) => {
+                  setFiltroTermo(valor);
+                  setDisciplinaSelecionadaId("");
+                }}
+              />
+
               <div className="d-flex gap-2">
                 <select
                   id="select-disciplina"
                   className="form-select form-select-sm rounded-3"
                   value={disciplinaSelecionadaId}
                   onChange={(e) => setDisciplinaSelecionadaId(e.target.value)}
-                  disabled={salvando || disciplinasDisponiveis.length === 0}
+                  disabled={salvando || disciplinasFiltradas.length === 0}
                   required
                 >
                   <option value="">
                     {disciplinasDisponiveis.length === 0
                       ? "Todas as matérias já vinculadas"
-                      : "Selecione uma disciplina..."}
+                      : disciplinasFiltradas.length === 0
+                        ? "Nenhuma disciplina encontrada com os filtros"
+                        : `Selecione uma disciplina (${disciplinasFiltradas.length})...`}
                   </option>
-                  {disciplinasDisponiveis.map((disc) => (
+                  {disciplinasFiltradas.map((disc) => (
                     <option key={disc.id_disciplina} value={disc.id_disciplina}>
                       {formatarDisciplinaCiclo(disc)}
                     </option>

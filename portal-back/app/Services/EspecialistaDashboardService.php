@@ -167,15 +167,15 @@ class EspecialistaDashboardService
             ];
         }
 
-        // Detecta possíveis divergências entre notas já cadastradas e novas notas do arquivo
-        $divergencias = $this->detectarDivergenciasNotas($turma, $dadosExtraidos['alunos_dados']);
+        // Detecta possíveis divergências entre notas e faltas já cadastradas e os novos valores do arquivo
+        $divergencias = $this->detectarDivergenciasNotas($turma, $dadosExtraidos['alunos_dados'], $data);
 
         // Caso haja divergências e o Especialista ainda não tenha tomado a decisão ('atualizar' ou 'manter'):
         if (! empty($divergencias) && empty($decisaoDivergencias)) {
             return [
                 'status' => 'pendente_confirmacao',
                 'tipo_pendencia' => 'divergencias_notas',
-                'message' => 'Identificamos divergências entre as notas do arquivo e as notas já cadastradas para períodos anteriores. Por favor, confirme se deseja atualizar ou manter as notas anteriores.',
+                'message' => 'Identificamos divergências entre os lançamentos (notas e/ou faltas) do arquivo e o histórico já cadastrado para períodos anteriores. Por favor, confirme se deseja atualizar ou manter os registros anteriores.',
                 'ambiguidades' => [],
                 'divergencias' => $divergencias,
                 'linhas_lidas' => count($linhas),
@@ -200,14 +200,16 @@ class EspecialistaDashboardService
 
         $totalIgnorados = count($dadosExtraidos['alunos_ignorados'] ?? []);
         $totalIdentificados = count($dadosExtraidos['alunos_dados']);
+        $qtdNotasSinc = $resultadoSincronizacao['notas_sincronizadas'];
+        $qtdFreqsSinc = $resultadoSincronizacao['frequencias_sincronizadas'];
 
-        // Mensagem didática informando o sucesso da importação e o tratamento aplicado
+        // Mensagem didática informando o sucesso da importação de notas e faltas e o tratamento aplicado
         $mensagemSucesso = match ($decisaoDivergencias) {
-            'atualizar' => "Relatório processado: {$totalIdentificados} aluno(s) sincronizado(s). As notas divergentes de períodos anteriores foram atualizadas com sucesso.",
-            'manter' => "Relatório processado: {$totalIdentificados} aluno(s) sincronizado(s). As notas anteriores foram mantidas e apenas os novos períodos foram importados.",
+            'atualizar' => "Relatório processado: {$totalIdentificados} aluno(s), {$qtdNotasSinc} nota(s) e {$qtdFreqsSinc} registro(s) de frequência sincronizados. Os lançamentos divergentes de períodos anteriores foram atualizados com sucesso.",
+            'manter' => "Relatório processado: {$totalIdentificados} aluno(s), {$qtdNotasSinc} nota(s) e {$qtdFreqsSinc} registro(s) de frequência sincronizados. Os registros anteriores divergentes foram mantidos e apenas os novos períodos foram importados.",
             default => $totalIgnorados > 0
-                ? "Relatório processado: {$totalIdentificados} aluno(s) sincronizado(s). {$totalIgnorados} aluno(s) ignorado(s) por falta de cadastro institucional (@aluno.mg.gov.br) ou matrícula ativa."
-                : 'Relatório da turma importado e sincronizado com sucesso.',
+                ? "Relatório processado: {$totalIdentificados} aluno(s), {$qtdNotasSinc} nota(s) e {$qtdFreqsSinc} registro(s) de frequência sincronizados. {$totalIgnorados} aluno(s) ignorado(s) por falta de cadastro institucional (@aluno.mg.gov.br) ou matrícula ativa."
+                : "Relatório da turma importado com sucesso ({$qtdNotasSinc} nota(s) e {$qtdFreqsSinc} registro(s) de frequência sincronizados).",
         };
 
         return [
@@ -474,6 +476,107 @@ class EspecialistaDashboardService
         }
 
         return $dataFallback ?: "{$anoAtual}-04-15";
+    }
+
+    /**
+     * Calcula a quantidade prevista de aulas de uma disciplina na etapa ou no ano letivo (LDB Art. 24 / 40 semanas).
+     */
+    public function calcularAulasPrevistasDisciplina(
+        Disciplina $disciplina,
+        int $totalDivisoes = 3,
+        bool $consolidadoAnual = false
+    ): int {
+        $cargaAnual = (int) ($disciplina->carga_horaria_anual ?: (($disciplina->aulas_semanais ?: 2) * 40));
+        if ($cargaAnual <= 0) {
+            $cargaAnual = 80;
+        }
+
+        if ($consolidadoAnual) {
+            return max(20, $cargaAnual);
+        }
+
+        $divisoes = max(1, $totalDivisoes);
+
+        return max(15, (int) round($cargaAnual / $divisoes));
+    }
+
+    /**
+     * Verifica se um registro de Frequencia pertence a um período letivo específico (ex: '1º Trimestre').
+     * Prioriza:
+     * 1. Marcador explícito na justificativa do CSV ("... via diário escolar (1º Trimestre)");
+     * 2. Intervalo de datas oficial da divisão cadastrada no Período Letivo da turma;
+     * 3. Fallback pelo mês do calendário escolar (Trimestral ou Bimestral).
+     */
+    public function pertenceAoPeriodoFrequencia(
+        Frequencia $frequencia,
+        string $periodoAlvo,
+        ?PeriodoLetivo $periodoLetivoTurma = null
+    ): bool {
+        $periodoNormAlvo = $this->normalizarPeriodoLetivo($periodoAlvo, trim($periodoAlvo)) ?? trim($periodoAlvo);
+        $chaveAlvo = Str::lower(Str::ascii($periodoNormAlvo));
+
+        // 1. Marcador explícito gravado durante a sincronização consolidada via CSV
+        if (! empty($frequencia->justificativa) && preg_match('/\(([^)]+)\)\s*$/u', $frequencia->justificativa, $matches)) {
+            $periodoTag = $this->normalizarPeriodoLetivo($matches[1], trim($matches[1])) ?? trim($matches[1]);
+
+            return Str::lower(Str::ascii($periodoTag)) === $chaveAlvo;
+        }
+
+        $dataStr = $frequencia->data_aula instanceof \DateTimeInterface
+            ? $frequencia->data_aula->format('Y-m-d')
+            : substr((string) $frequencia->data_aula, 0, 10);
+
+        if ($dataStr === '') {
+            return false;
+        }
+
+        // 2. Intervalo oficial da divisão no Período Letivo da turma
+        if ($periodoLetivoTurma && $periodoLetivoTurma->relationLoaded('divisoes')) {
+            $divisao = $periodoLetivoTurma->divisoes->first(
+                fn ($div) => Str::lower(Str::ascii(trim((string) $div->nome))) === $chaveAlvo
+            );
+            if ($divisao && $divisao->data_inicio && $divisao->data_fim) {
+                $inicio = $divisao->data_inicio instanceof \DateTimeInterface
+                    ? $divisao->data_inicio->format('Y-m-d')
+                    : substr((string) $divisao->data_inicio, 0, 10);
+                $fim = $divisao->data_fim instanceof \DateTimeInterface
+                    ? $divisao->data_fim->format('Y-m-d')
+                    : substr((string) $divisao->data_fim, 0, 10);
+
+                return $dataStr >= $inicio && $dataStr <= $fim;
+            }
+        }
+
+        // 3. Fallback para calendário escolar padrão
+        $mes = (int) substr($dataStr, 5, 2);
+        if (str_contains($chaveAlvo, 'tri') || in_array($chaveAlvo, ['1', '2', '3'], true)) {
+            if (str_contains($chaveAlvo, '1')) {
+                return $mes >= 1 && $mes <= 4;
+            }
+            if (str_contains($chaveAlvo, '2')) {
+                return $mes >= 5 && $mes <= 8;
+            }
+            if (str_contains($chaveAlvo, '3')) {
+                return $mes >= 9 && $mes <= 12;
+            }
+        }
+
+        if (str_contains($chaveAlvo, 'bim')) {
+            if (str_contains($chaveAlvo, '1')) {
+                return $mes >= 1 && $mes <= 3;
+            }
+            if (str_contains($chaveAlvo, '2')) {
+                return $mes >= 4 && $mes <= 6;
+            }
+            if (str_contains($chaveAlvo, '3')) {
+                return $mes >= 7 && $mes <= 9;
+            }
+            if (str_contains($chaveAlvo, '4')) {
+                return $mes >= 10 && $mes <= 12;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -907,6 +1010,7 @@ class EspecialistaDashboardService
 
                             $faltasDoAluno[] = [
                                 'disciplina_id' => $registro->disciplina_id,
+                                'nome_disciplina' => $registro->nome_disciplina,
                                 'quantidade_faltas' => (int) $registro->quantidade_faltas,
                                 'periodo_letivo' => $registro->periodo_letivo,
                             ];
@@ -933,6 +1037,7 @@ class EspecialistaDashboardService
 
                         $faltasDoAluno[] = [
                             'disciplina_id' => $registro->disciplina_id,
+                            'nome_disciplina' => $registro->nome_disciplina,
                             'quantidade_faltas' => (int) $registro->quantidade_faltas,
                             'periodo_letivo' => $registro->periodo_letivo,
                         ];
@@ -1055,30 +1160,49 @@ class EspecialistaDashboardService
     }
 
     /**
-     * Compara as notas extraídas da planilha com as notas já registradas no banco de dados para a turma.
-     * Identifica divergências quando uma nota de período já cadastrado difere da nota da planilha em mais de 0.01 ponto.
+     * Compara as notas e as faltas extraídas da planilha com o histórico já registrado no banco para a turma.
+     * Identifica divergências quando uma nota difere em mais de 0.01 ponto ou quando a quantidade de faltas
+     * consolidada para um período já cadastrado difere do valor atualmente salvo.
      *
      * @param  Turma  $turma  Turma que está sendo processada
-     * @param  array  $alunosDados  Array de alunos com suas respectivas notas
-     * @return array<int, array{usuario_id: int, nome_aluno: string, disciplina_id: int, nome_disciplina: string, periodo_letivo: string, nota_atual: float, nova_nota: float}>
+     * @param  array  $alunosDados  Array de alunos com suas respectivas notas e faltas
+     * @return array<int, array<string, mixed>>
      */
-    public function detectarDivergenciasNotas(Turma $turma, array $alunosDados): array
+    public function detectarDivergenciasNotas(Turma $turma, array $alunosDados, ?string $dataFallback = null): array
     {
-        $divergencias = [];
+        $mapaDivergencias = [];
 
-        // Carrega em cache as notas existentes da turma para verificação eficiente sem N+1
+        // Carrega em cache as notas e frequências existentes da turma sem N+1
         $notasExistentes = Nota::with('disciplina')
             ->where('turma_id', $turma->id_turma)
             ->get()
             ->groupBy(fn (Nota $n) => "{$n->usuario_id}_{$n->disciplina_id}_{$n->periodo_letivo}");
 
-        foreach ($alunosDados as $alunoItem) {
-            $usuarioId = $alunoItem['usuario_id'];
-            $nomeAluno = $alunoItem['nome_aluno'];
+        $frequenciasExistentes = Frequencia::with('disciplina')
+            ->where('turma_id', $turma->id_turma)
+            ->get()
+            ->groupBy(fn (Frequencia $f) => "{$f->usuario_id}_{$f->disciplina_id}");
 
-            foreach ($alunoItem['notas'] as $notaItem) {
-                $disciplinaId = $notaItem['disciplina_id'];
-                $periodoLetivo = $notaItem['periodo_letivo'];
+        foreach ($alunosDados as $alunoItem) {
+            $usuarioId = (int) $alunoItem['usuario_id'];
+            $nomeAluno = (string) $alunoItem['nome_aluno'];
+
+            // Indexa notas novas da planilha por chave para cruzamento com divergências de faltas
+            $novasNotasIndexadas = [];
+            foreach ($alunoItem['notas'] ?? [] as $nItem) {
+                $novasNotasIndexadas["{$usuarioId}_{$nItem['disciplina_id']}_{$nItem['periodo_letivo']}"] = (float) $nItem['valor_nota'];
+            }
+
+            // Indexa faltas novas da planilha por chave para cruzamento com divergências de notas
+            $novasFaltasIndexadas = [];
+            foreach ($alunoItem['faltas'] ?? [] as $fItem) {
+                $novasFaltasIndexadas["{$usuarioId}_{$fItem['disciplina_id']}_{$fItem['periodo_letivo']}"] = (int) $fItem['quantidade_faltas'];
+            }
+
+            // 1. Verifica divergências de notas em etapas já cadastradas
+            foreach ($alunoItem['notas'] ?? [] as $notaItem) {
+                $disciplinaId = (int) $notaItem['disciplina_id'];
+                $periodoLetivo = (string) $notaItem['periodo_letivo'];
                 $novaNota = (float) $notaItem['valor_nota'];
 
                 $chave = "{$usuarioId}_{$disciplinaId}_{$periodoLetivo}";
@@ -1087,9 +1211,8 @@ class EspecialistaDashboardService
                 if ($notaRegistrada !== null) {
                     $notaAtual = (float) $notaRegistrada->valor_nota;
 
-                    // Se a nota cadastrada for diferente da nota da planilha (diferença > 0.01)
                     if (abs($notaAtual - $novaNota) > 0.01) {
-                        $divergencias[] = [
+                        $mapaDivergencias[$chave] = [
                             'usuario_id' => $usuarioId,
                             'nome_aluno' => $nomeAluno,
                             'disciplina_id' => $disciplinaId,
@@ -1097,19 +1220,80 @@ class EspecialistaDashboardService
                             'periodo_letivo' => $periodoLetivo,
                             'nota_atual' => $notaAtual,
                             'nova_nota' => $novaNota,
+                            'tipo_divergencia' => 'nota',
+                            'faltas_atuais' => null,
+                            'novas_faltas' => $novasFaltasIndexadas[$chave] ?? null,
+                        ];
+                    }
+                }
+            }
+
+            // 2. Verifica divergências de faltas em etapas já sincronizadas no banco
+            foreach ($alunoItem['faltas'] ?? [] as $faltaItem) {
+                $disciplinaId = (int) $faltaItem['disciplina_id'];
+                $periodoLetivo = (string) $faltaItem['periodo_letivo'];
+                $novasFaltas = (int) $faltaItem['quantidade_faltas'];
+
+                $chave = "{$usuarioId}_{$disciplinaId}_{$periodoLetivo}";
+                $dataRef = $this->obterDataReferenciaPeriodo($turma, $periodoLetivo, $dataFallback);
+                $chavePeriodoAscii = Str::lower(Str::ascii(trim($periodoLetivo)));
+
+                $freqsAlunoDisc = $frequenciasExistentes->get("{$usuarioId}_{$disciplinaId}", collect());
+                $freqRegistrada = $freqsAlunoDisc->first(function (Frequencia $f) use ($dataRef, $chavePeriodoAscii) {
+                    if (! empty($f->justificativa) && preg_match('/\(([^)]+)\)\s*$/u', $f->justificativa, $m)) {
+                        $tagNorm = $this->normalizarPeriodoLetivo($m[1], trim($m[1])) ?? trim($m[1]);
+
+                        return Str::lower(Str::ascii($tagNorm)) === $chavePeriodoAscii;
+                    }
+
+                    $dAula = $f->data_aula instanceof \DateTimeInterface
+                        ? $f->data_aula->format('Y-m-d')
+                        : substr((string) $f->data_aula, 0, 10);
+
+                    return $dAula === $dataRef;
+                });
+
+                if ($freqRegistrada !== null) {
+                    $faltasAtuais = in_array($freqRegistrada->status_presenca, ['Falta', 'Falta Justificada'], true)
+                        ? (int) $freqRegistrada->quantidade_aulas
+                        : 0;
+
+                    if (isset($mapaDivergencias[$chave])) {
+                        $mapaDivergencias[$chave]['faltas_atuais'] = $faltasAtuais;
+                        $mapaDivergencias[$chave]['novas_faltas'] = $novasFaltas;
+                        if ($faltasAtuais !== $novasFaltas) {
+                            $mapaDivergencias[$chave]['tipo_divergencia'] = 'ambos';
+                        }
+                    } elseif ($faltasAtuais !== $novasFaltas) {
+                        $notaExistentePeriodo = $notasExistentes->get($chave)?->first();
+                        $notaBase = $notaExistentePeriodo !== null
+                            ? (float) $notaExistentePeriodo->valor_nota
+                            : ($novasNotasIndexadas[$chave] ?? 0.0);
+
+                        $mapaDivergencias[$chave] = [
+                            'usuario_id' => $usuarioId,
+                            'nome_aluno' => $nomeAluno,
+                            'disciplina_id' => $disciplinaId,
+                            'nome_disciplina' => ($faltaItem['nome_disciplina'] ?? null) ?: ($freqRegistrada->disciplina?->nome ?? 'Disciplina'),
+                            'periodo_letivo' => $periodoLetivo,
+                            'nota_atual' => $notaBase,
+                            'nova_nota' => $novasNotasIndexadas[$chave] ?? $notaBase,
+                            'tipo_divergencia' => 'falta',
+                            'faltas_atuais' => $faltasAtuais,
+                            'novas_faltas' => $novasFaltas,
                         ];
                     }
                 }
             }
         }
 
-        return $divergencias;
+        return array_values($mapaDivergencias);
     }
 
     /**
      * Efetua a persistência transacional (upsert) dos registros de notas e faltas extraídos.
      * Ajusta automaticamente a escala de nota máxima (10.0, 30.0, 35.0 ou 100.0) de acordo com os dados.
-     * Respeita a decisão do Especialista ('atualizar' ou 'manter') para períodos divergentes.
+     * Respeita a decisão do Especialista ('atualizar' ou 'manter') para períodos divergentes em notas e faltas.
      */
     public function sincronizarRegistrosAcademicos(
         Turma $turma,
@@ -1123,11 +1307,19 @@ class EspecialistaDashboardService
         $frequenciasSincronizadas = 0;
         $alertas = [];
 
-        // Mapeia chaves de divergências caso a opção seja manter as notas anteriores
-        $chavesDivergentes = [];
+        // Mapeia chaves de divergências separando notas e faltas caso a opção seja manter o histórico anterior
+        $chavesNotasDivergentes = [];
+        $chavesFaltasDivergentes = [];
         if ($decisaoDivergencias === 'manter') {
             foreach ($divergencias as $div) {
-                $chavesDivergentes["{$div['usuario_id']}_{$div['disciplina_id']}_{$div['periodo_letivo']}"] = true;
+                $chaveItem = "{$div['usuario_id']}_{$div['disciplina_id']}_{$div['periodo_letivo']}";
+                $tipoDiv = (string) ($div['tipo_divergencia'] ?? 'nota');
+                if (in_array($tipoDiv, ['nota', 'ambos'], true)) {
+                    $chavesNotasDivergentes[$chaveItem] = true;
+                }
+                if (in_array($tipoDiv, ['falta', 'ambos'], true)) {
+                    $chavesFaltasDivergentes[$chaveItem] = true;
+                }
             }
         }
 
@@ -1137,7 +1329,8 @@ class EspecialistaDashboardService
             $periodoLetivo,
             $dataAula,
             $decisaoDivergencias,
-            $chavesDivergentes,
+            $chavesNotasDivergentes,
+            $chavesFaltasDivergentes,
             &$notasSincronizadas,
             &$frequenciasSincronizadas
         ) {
@@ -1150,7 +1343,7 @@ class EspecialistaDashboardService
                     $chaveNota = "{$usuarioId}_{$notaItem['disciplina_id']}_{$periodoDaNota}";
 
                     // Se a decisão for manter, pula notas divergentes de períodos já cadastrados
-                    if ($decisaoDivergencias === 'manter' && isset($chavesDivergentes[$chaveNota])) {
+                    if ($decisaoDivergencias === 'manter' && isset($chavesNotasDivergentes[$chaveNota])) {
                         continue;
                     }
 
@@ -1176,10 +1369,16 @@ class EspecialistaDashboardService
                     $notasSincronizadas++;
                 }
 
-                // 2. Sincroniza cada registro de faltas
+                // 2. Sincroniza cada registro de faltas respeitando decisões de divergência e marcando a etapa na justificativa
                 foreach ($alunoItem['faltas'] as $faltaItem) {
-                    $qtdFaltas = $faltaItem['quantidade_faltas'];
+                    $qtdFaltas = (int) $faltaItem['quantidade_faltas'];
                     $periodoDaFalta = $faltaItem['periodo_letivo'] ?? $periodoLetivo;
+                    $chaveFalta = "{$usuarioId}_{$faltaItem['disciplina_id']}_{$periodoDaFalta}";
+
+                    if ($decisaoDivergencias === 'manter' && isset($chavesFaltasDivergentes[$chaveFalta])) {
+                        continue;
+                    }
+
                     $dataFalta = $this->obterDataReferenciaPeriodo($turma, $periodoDaFalta, $dataAula);
 
                     Frequencia::updateOrCreate(
@@ -1192,7 +1391,9 @@ class EspecialistaDashboardService
                         [
                             'quantidade_aulas' => max(1, $qtdFaltas),
                             'status_presenca' => $qtdFaltas > 0 ? 'Falta' : 'Presente',
-                            'justificativa' => $qtdFaltas > 0 ? "Registro de faltas via diário escolar ({$periodoDaFalta})" : null,
+                            'justificativa' => $qtdFaltas > 0
+                                ? "Registro de faltas via diário escolar ({$periodoDaFalta})"
+                                : "Presença integral via diário escolar ({$periodoDaFalta})",
                         ]
                     );
                     $frequenciasSincronizadas++;
@@ -1231,21 +1432,61 @@ class EspecialistaDashboardService
 
     /**
      * Calcula a taxa percentual de absenteísmo (faltas) da turma.
+     * Respeita o filtro opcional de período e projeta a carga horária prevista por disciplina (LDB Art. 24)
+     * quando os lançamentos provêm de importação consolidada CSV (onde não há chamadas diárias avulsas).
      */
     public function calcularTaxaAbsenteismoTurma(Turma $turma, ?string $periodo = null): float
     {
-        $query = Frequencia::where('turma_id', $turma->id_turma);
+        $frequencias = Frequencia::with('disciplina')
+            ->where('turma_id', $turma->id_turma)
+            ->get();
 
-        $totalAulas = (int) (clone $query)->sum('quantidade_aulas');
-        if ($totalAulas === 0) {
+        if ($frequencias->isEmpty()) {
             return 0.0;
         }
 
-        $faltas = (int) (clone $query)
-            ->whereIn('status_presenca', ['Falta', 'Falta Justificada'])
-            ->sum('quantidade_aulas');
+        $periodoLetivoTurma = $turma->periodoLetivo()->with('divisoes')->first()
+            ?? PeriodoLetivo::where('ano', $turma->ano_letivo)->with('divisoes')->first();
+        $totalDivisoes = max(1, $periodoLetivoTurma?->divisoes?->count() ?: 3);
 
-        return round(($faltas / $totalAulas) * 100, 2);
+        if (! empty($periodo) && strtolower(trim($periodo)) !== 'todos') {
+            $frequencias = $frequencias->filter(
+                fn (Frequencia $f) => $this->pertenceAoPeriodoFrequencia($f, $periodo, $periodoLetivoTurma)
+            );
+        }
+
+        if ($frequencias->isEmpty()) {
+            return 0.0;
+        }
+
+        $somaFaltas = 0;
+        $somaAulas = 0;
+
+        foreach ($frequencias->groupBy(fn (Frequencia $f) => "{$f->usuario_id}_{$f->disciplina_id}") as $freqsGrupo) {
+            $faltasGrupo = (int) $freqsGrupo
+                ->whereIn('status_presenca', ['Falta', 'Falta Justificada'])
+                ->sum('quantidade_aulas');
+            $aulasRegistradas = (int) $freqsGrupo->sum('quantidade_aulas');
+            $temOrigemCsv = $freqsGrupo->contains(
+                fn (Frequencia $f) => str_contains((string) $f->justificativa, 'via diário escolar')
+            );
+
+            if (! $temOrigemCsv && $aulasRegistradas > $faltasGrupo) {
+                $aulasGrupo = $aulasRegistradas;
+            } else {
+                $etapasLancadas = max(1, $freqsGrupo->count());
+                $disc = $freqsGrupo->first()?->disciplina;
+                $aulasPorEtapa = $disc
+                    ? $this->calcularAulasPrevistasDisciplina($disc, $totalDivisoes, false)
+                    : max(15, (int) round(80 / $totalDivisoes));
+                $aulasGrupo = max($faltasGrupo, $aulasPorEtapa * $etapasLancadas);
+            }
+
+            $somaFaltas += $faltasGrupo;
+            $somaAulas += $aulasGrupo;
+        }
+
+        return $somaAulas > 0 ? round(($somaFaltas / $somaAulas) * 100, 2) : 0.0;
     }
 
     /**

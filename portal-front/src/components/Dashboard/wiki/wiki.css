@@ -1,0 +1,132 @@
+/**
+ * wiki.css - Estilização Modular da Base de Conhecimento e Manuais (Wiki)
+ *
+ * Conceito Didático:
+ * Utiliza variáveis de cor globais e componentes do Bootstrap 5 para criar
+ * uma interface de leitura agradável, tipografia nítida e navegação intuitiva.
+ */
+
+.wiki-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.wiki-search-container {
+  background: linear-gradient(135deg, #0d3b66 0%, #174d82 100%);
+  border-radius: 1rem;
+  padding: 2.2rem 2rem;
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(13, 59, 102, 0.12);
+}
+
+.wiki-search-input-group {
+  position: relative;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.wiki-search-icon {
+  position: absolute;
+  left: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  font-size: 1.2rem;
+  z-index: 5;
+}
+
+.wiki-search-input {
+  padding-left: 3.2rem !important;
+  padding-right: 3rem !important;
+  height: 3.4rem;
+  border-radius: 50rem !important;
+  border: none !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  font-size: 1.05rem;
+}
+
+.wiki-search-clear-btn {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6c757d;
+  z-index: 5;
+}
+
+.wiki-category-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  border-radius: 0.85rem;
+  border: 1px solid #e9ecef;
+}
+
+.wiki-category-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
+  border-color: #0d3b66;
+}
+
+.wiki-category-card.active {
+  border-color: #0d3b66;
+  background-color: #f0f7ff;
+}
+
+.wiki-article-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  border-radius: 0.85rem;
+  border: 1px solid #e9ecef;
+}
+
+.wiki-article-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+}
+
+.wiki-sidebar-item {
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  padding: 0.65rem 0.9rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.wiki-sidebar-item:hover {
+  background-color: #e9ecef;
+  color: #0d3b66;
+}
+
+.wiki-sidebar-item.active {
+  background-color: #0d3b66;
+  color: #ffffff;
+}
+
+.wiki-content-body {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #2b2d42;
+}
+
+.wiki-step-number {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: #0d3b66;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}

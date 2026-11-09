@@ -24,6 +24,7 @@ class NotaDiarioData extends Data
         public float $valor_maximo_periodo,
         public ?float $percentual_faltas,
         public ?int $total_faltas,
+        public ?int $total_aulas_previstas,
         public string $situacao,
         public ?string $data_registro,
         public ?string $observacoes,
@@ -33,18 +34,24 @@ class NotaDiarioData extends Data
 
     /**
      * Constrói o DTO tipado a partir do Model Nota já enriquecido com métricas de falta e período.
+     * Aplica o limite legal da LDB (Art. 24 — máximo de 25% de faltas) na situação do estudante.
      */
     public static function fromModel(Nota $nota): self
     {
         $valorNota = (float) $nota->valor_nota;
         $valorMax = (float) ($nota->valor_maximo ?? 10.0);
         $valorMaxPeriodo = (float) ($nota->valor_maximo_periodo ?? $valorMax ?: 10.0);
+        $percentualFaltas = isset($nota->percentual_faltas) ? (float) $nota->percentual_faltas : null;
 
-        // Classificação automática da situação caso ainda não tenha sido atribuída
+        // Classificação automática combinando assiduidade legal (LDB 25%) e aproveitamento (60% / 80%)
         $proporcao = $valorMaxPeriodo > 0 ? ($valorNota / $valorMaxPeriodo) : 0.0;
-        $situacaoPadrao = $proporcao >= 0.8
-            ? 'Acima da Média'
-            : ($proporcao >= 0.6 ? 'Na Média' : 'Abaixo da Média');
+        if ($percentualFaltas !== null && $percentualFaltas > 25.0) {
+            $situacaoPadrao = 'Risco por Falta';
+        } else {
+            $situacaoPadrao = $proporcao >= 0.8
+                ? 'Acima da Média'
+                : ($proporcao >= 0.6 ? 'Na Média' : 'Abaixo da Média');
+        }
 
         $dataFormatada = null;
         if ($nota->data_registro) {
@@ -63,8 +70,9 @@ class NotaDiarioData extends Data
             valor_nota: $valorNota,
             valor_maximo: $valorMax,
             valor_maximo_periodo: $valorMaxPeriodo,
-            percentual_faltas: isset($nota->percentual_faltas) ? (float) $nota->percentual_faltas : null,
+            percentual_faltas: $percentualFaltas,
             total_faltas: isset($nota->total_faltas) ? (int) $nota->total_faltas : null,
+            total_aulas_previstas: isset($nota->total_aulas_previstas) ? (int) $nota->total_aulas_previstas : null,
             situacao: (string) ($nota->situacao ?? $situacaoPadrao),
             data_registro: $dataFormatada,
             observacoes: $nota->observacoes !== null ? (string) $nota->observacoes : null,
@@ -79,6 +87,12 @@ class NotaDiarioData extends Data
                 ? new DisciplinaNotaResumoData(
                     id_disciplina: (int) $nota->disciplina->id_disciplina,
                     nome: (string) $nota->disciplina->nome,
+                    carga_horaria_anual: $nota->disciplina->carga_horaria_anual !== null
+                        ? (int) $nota->disciplina->carga_horaria_anual
+                        : null,
+                    aulas_semanais: $nota->disciplina->aulas_semanais !== null
+                        ? (int) $nota->disciplina->aulas_semanais
+                        : null,
                 )
                 : Optional::create(),
         );
