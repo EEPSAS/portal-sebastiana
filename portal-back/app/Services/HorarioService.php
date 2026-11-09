@@ -78,6 +78,10 @@ class HorarioService
 
     public function gerar(Turma $turma): Horario
     {
+        // Reconcilia e limpa vínculos órfãos da turma com seu Ciclo antes da transação,
+        // garantindo que a limpeza persista mesmo que ainda faltem professores em algumas matérias.
+        $turma->herdarDisciplinasDoCiclo();
+
         return DB::transaction(function () use ($turma): Horario {
             // O bloqueio por ano impede duas grades simultâneas de reservar o mesmo professor.
             Turma::query()
@@ -213,9 +217,28 @@ class HorarioService
         $atribuicoes = [];
         $erros = [];
 
+        $disciplinasPermitidasIds = null;
+        if ($turma->ciclo_id !== null) {
+            $idsDoCiclo = $turma->ciclo()
+                ->with('disciplinas:id_disciplina')
+                ->first()
+                ?->disciplinas
+                ?->pluck('id_disciplina')
+                ?->map(fn ($id) => (int) $id)
+                ?->all() ?? [];
+
+            if (! empty($idsDoCiclo)) {
+                $disciplinasPermitidasIds = array_flip($idsDoCiclo);
+            }
+        }
+
         foreach ($turma->turmaDisciplinas as $vinculo) {
             $disciplina = $vinculo->disciplina;
             if (! $disciplina) {
+                continue;
+            }
+
+            if ($disciplinasPermitidasIds !== null && ! isset($disciplinasPermitidasIds[(int) $disciplina->id_disciplina])) {
                 continue;
             }
 

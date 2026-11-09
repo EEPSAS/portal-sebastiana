@@ -159,18 +159,31 @@ class DisciplinaController extends Controller
 
         // Atualiza os Ciclos caso 'ciclo_ids' ou 'novo_ciclo_nome' tenham sido enviados
         if (array_key_exists('ciclo_ids', $validated) || ! empty($validated['novo_ciclo_nome'])) {
+            $cicloIdsAnteriores = $disciplina->ciclos()
+                ->pluck('ciclos.id_ciclo')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
             $cicloIds = array_key_exists('ciclo_ids', $validated)
                 ? collect($validated['ciclo_ids'] ?? [])->map(fn ($id) => (int) $id)->all()
-                : $disciplina->ciclos()->pluck('ciclos.id_ciclo')->all();
+                : $cicloIdsAnteriores;
 
             if (! empty($validated['novo_ciclo_nome'])) {
                 $novoCiclo = Ciclo::firstOrCreate([
                     'nome' => trim($validated['novo_ciclo_nome']),
                 ]);
-                $cicloIds[] = $novoCiclo->id_ciclo;
+                $cicloIds[] = (int) $novoCiclo->id_ciclo;
             }
 
-            $disciplina->ciclos()->sync(array_values(array_unique($cicloIds)));
+            $cicloIdsFinais = array_values(array_unique($cicloIds));
+            $disciplina->ciclos()->sync($cicloIdsFinais);
+
+            $cicloIdsRemovidos = array_values(array_diff($cicloIdsAnteriores, $cicloIdsFinais));
+            if (! empty($cicloIdsRemovidos)) {
+                TurmaDisciplina::where('disciplina_id', $disciplina->id_disciplina)
+                    ->whereHas('turma', fn ($q) => $q->whereIn('ciclo_id', $cicloIdsRemovidos))
+                    ->delete();
+            }
         }
 
         if (array_key_exists('professor_ids', $validated)) {

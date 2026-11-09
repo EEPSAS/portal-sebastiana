@@ -8,6 +8,7 @@ use App\Http\Resources\CicloResource;
 use App\Http\Resources\DisciplinaResource;
 use App\Models\Ciclo;
 use App\Models\Disciplina;
+use App\Models\TurmaDisciplina;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -180,6 +181,7 @@ class CicloController extends Controller
         $disciplina = Disciplina::findOrFail($validated['disciplina_id']);
         $ciclo->disciplinas()->syncWithoutDetaching([$disciplina->id_disciplina]);
         $disciplina->sincronizarComTurmasDosCiclos();
+        $ciclo->turmas()->get()->each(fn ($turma) => $turma->herdarDisciplinasDoCiclo());
 
         return response()->json([
             'message' => "Disciplina '{$disciplina->nome}' vinculada ao ciclo '{$ciclo->nome}' com sucesso.",
@@ -197,6 +199,15 @@ class CicloController extends Controller
         }
 
         $ciclo->disciplinas()->detach($disciplina->id_disciplina);
+
+        // Remove o vínculo da disciplina nas turmas pertencentes a este ciclo
+        $turmaIdsDoCiclo = $ciclo->turmas()->pluck('id_turma')->all();
+        if (! empty($turmaIdsDoCiclo)) {
+            TurmaDisciplina::whereIn('turma_id', $turmaIdsDoCiclo)
+                ->where('disciplina_id', $disciplina->id_disciplina)
+                ->delete();
+        }
+
         $disciplina->sincronizarComTurmasDosCiclos();
 
         return response()->json([

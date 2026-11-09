@@ -258,6 +258,8 @@ class TurmaController extends Controller
     {
         Gate::authorize('view', $turma);
 
+        $turma->herdarDisciplinasDoCiclo();
+
         $disciplinas = $turma->turmaDisciplinas()
             ->with(['disciplina.ciclos', 'professor:id,name,email'])
             ->get();
