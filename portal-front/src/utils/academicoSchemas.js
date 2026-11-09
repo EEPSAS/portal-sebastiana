@@ -184,6 +184,7 @@ export const PeriodoLetivoDivisaoSchema = z.object({
   data_fim: z.string().nullable().optional(),
   ordem: z.number().int().optional(),
   is_atual: z.boolean().optional(),
+  is_concluida: z.boolean().optional(),
 });
 
 export const PeriodoLetivoSchema = z.object({
@@ -192,11 +193,13 @@ export const PeriodoLetivoSchema = z.object({
   tipo_divisao: z.string(),
   tipo_divisao_label: z.string().optional(),
   total_pontos: z.number(),
+  pontos_etapas_concluidas: z.number().optional(),
   data_inicio: z.string().nullable().optional(),
   data_fim: z.string().nullable().optional(),
   ativo: z.boolean(),
   status: z.string().optional(),
   total_turmas: z.number().int().optional(),
+  divisao_atual: z.any().optional(),
   divisoes: z.array(PeriodoLetivoDivisaoSchema).optional().default([]),
 });
 
@@ -275,23 +278,52 @@ export const SalvarCicloInputSchema = z.object({
     .optional(),
 });
 
-// Validação de configuração de Turnos Escolares (inclusive revalidação do localStorage)
+// Validação de itens da grade horária sequencial do turno
+export const GradeHorarioItemSchema = z.object({
+  is_intervalo: z.boolean().default(false),
+  aula_numero: z.number().int().nullable().optional(),
+  hora_inicio: z.string(),
+  hora_fim: z.string(),
+  rotulo: z.string().optional(),
+});
+
+// Validação de configuração de Turnos Escolares e Módulos de Aula (Contrato API Backend)
+export const TurnoSchema = z.object({
+  id: z.string(),
+  nome: z.string().min(1),
+  hora_inicio: z.string(),
+  hora_fim: z.string(),
+  duracao_aula_minutos: z.number().int().default(50),
+  intervalo_inicio: z.string().nullable().optional(),
+  intervalo_fim: z.string().nullable().optional(),
+  quantidade_aulas: z.number().int().default(5),
+  ativo: z.boolean(),
+  descricao: z.string().nullable().optional(),
+  icone: z.string().optional().default("bi-sun-fill"),
+  cor: z.string().optional().default("warning"),
+  grade_horarios: z.array(GradeHorarioItemSchema).optional().default([]),
+});
+
+export const ListaTurnosSchema = z.array(TurnoSchema);
+
+// Compatibilidade legada para o validador antigo de turnos
 export const TurnoConfigItemSchema = z
   .object({
-    id: z.enum(["Matutino", "Vespertino", "Noturno", "Integral"]),
+    id: z.string(),
     nome: z.string().min(1),
     icone: z.string().min(1),
     cor: z.string().optional(),
-    inicio: z.string().regex(/^\d{2}:\d{2}$/, "Horário inicial inválido."),
-    fim: z.string().regex(/^\d{2}:\d{2}$/, "Horário final inválido."),
+    inicio: z.string().optional(),
+    fim: z.string().optional(),
+    hora_inicio: z.string().optional(),
+    hora_fim: z.string().optional(),
+    duracao_aula_minutos: z.number().optional(),
+    quantidade_aulas: z.number().optional(),
     ativo: z.boolean(),
-    descricao: z.string(),
-  })
-  .refine((turno) => !turno.ativo || turno.fim > turno.inicio, {
-    message: "O horário de término do turno ativo deve ser posterior ao horário de início.",
+    descricao: z.string().optional(),
   });
 
-export const ListaTurnosConfigSchema = z.array(TurnoConfigItemSchema).min(1);
+export const ListaTurnosConfigSchema = z.array(TurnoConfigItemSchema);
 
 // ============================================================================
 // 4. Schemas de Importação CSV (Antes e Depois do Envio HTTP)

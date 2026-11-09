@@ -124,6 +124,187 @@ class HorarioService
     }
 
     /**
+     * Gera os horários escolares simultaneamente para todas as turmas de um Turno específico.
+     * Garante que não haja choques de professores entre as turmas do mesmo turno.
+     *
+     * @return Collection<int, Horario>
+     */
+    public function gerarPorTurno(string $turno, int $anoLetivo): Collection
+    {
+        $turmas = Turma::query()
+            ->where('ano_letivo', $anoLetivo)
+            ->where('status', 'Ativa')
+            ->where('turno', $turno)
+            ->get();
+
+        if ($turmas->isEmpty()) {
+            throw ValidationException::withMessages([
+                'turno' => "Nenhuma turma ativa encontrada para o turno '{$turno}' no ano letivo {$anoLetivo}.",
+            ]);
+        }
+
+        return $this->gerarMultiplas($turmas, $anoLetivo);
+    }
+
+    /**
+     * Gera os horários escolares para todas as turmas ativas da escola no ano letivo.
+     * Processa cada turno em conjunto e sincroniza as cargas diárias globais dos docentes.
+     *
+     * @return Collection<int, Horario>
+     */
+    public function gerarTodas(int $anoLetivo): Collection
+    {
+        $turmas = Turma::query()
+            ->where('ano_letivo', $anoLetivo)
+            ->where('status', 'Ativa')
+            ->get();
+
+        if ($turmas->isEmpty()) {
+            throw ValidationException::withMessages([
+                'ano_letivo' => "Nenhuma turma ativa cadastrada no ano letivo {$anoLetivo}.",
+            ]);
+        }
+
+        return $this->gerarMultiplas($turmas, $anoLetivo);
+    }
+
+    /**
+     * Motor de geração simultânea multi-turma com resolução de restrições por retrocesso (backtracking).
+     *
+     * @param  Collection<int, Turma>|array<int, Turma>  $turmas
+     * @return Collection<int, Horario>
+     */
+    public function gerarMultiplas(Collection|array $turmas, int $anoLetivo): Collection
+    {
+        $turmasColecao = $turmas instanceof Collection ? $turmas : collect($turmas);
+
+        if ($turmasColecao->isEmpty()) {
+            return new Collection;
+        }
+
+        return DB::transaction(function () use ($turmasColecao, $anoLetivo): Collection {
+            // O bloqueio impede geração concorrente sobre as mesmas turmas
+            Turma::query()
+                ->where('ano_letivo', $anoLetivo)
+                ->orderBy('id_turma')
+                ->lockForUpdate()
+                ->get(['id_turma']);
+
+            $turmasIds = $turmasColecao->pluck('id_turma')->all();
+            $usoExistente = $this->usoDeOutrasTurmas($anoLetivo, $turmasIds);
+
+            // 1. Sincroniza vínculos do Ciclo e valida o currículo de cada turma do lote
+            $turmasDados = [];
+            foreach ($turmasColecao as $turma) {
+                $turma->herdarDisciplinasDoCiclo();
+                $turma->load(['turmaDisciplinas.disciplina', 'turmaDisciplinas.professor']);
+                $atribuicoes = $this->validarCurriculo($turma);
+
+                $turmasDados[] = [
+                    'turma' => $turma,
+                    'atribuicoes' => $atribuicoes,
+                    'total_aulas' => array_sum(array_column($atribuicoes, 'aulas_semanais')),
+                ];
+            }
+
+            // 2. Ordena as turmas colocando primeiro as mais restritas (maior número de aulas)
+            usort($turmasDados, fn ($a, $b) => $b['total_aulas'] <=> $a['total_aulas']);
+
+            // 3. Executa a resolução multi-turma com backtracking
+            $gradesPorTurma = $this->resolverGradesMultiplas(
+                $turmasDados,
+                0,
+                $usoExistente['ocupacoes'],
+                $usoExistente['cargas_diarias']
+            );
+
+            if ($gradesPorTurma === null) {
+                throw ValidationException::withMessages([
+                    'horario' => 'Não foi possível encontrar uma grade válida sem conflito de professores entre as turmas selecionadas. Revise a alocação docente e a disponibilidade dos professores.',
+                ]);
+            }
+
+            // 4. Persiste atomicamente as grades geradas para todas as turmas
+            $horariosSalvos = new Collection;
+            foreach ($gradesPorTurma as $turmaId => $gradeAulas) {
+                $horario = Horario::query()->firstOrNew([
+                    'turma_id' => $turmaId,
+                    'ano_letivo' => $anoLetivo,
+                ]);
+                $horario->status = 'em_montagem';
+                $horario->save();
+                $horario->aulas()->delete();
+
+                foreach ($gradeAulas as $aula) {
+                    $horario->aulas()->create($aula);
+                }
+
+                $horario->update(['status' => 'concluido']);
+                $horariosSalvos->push($horario->load(['aulas.disciplina', 'aulas.professor']));
+            }
+
+            return $horariosSalvos;
+        });
+    }
+
+    /**
+     * Resolução recursiva com retrocesso entre turmas para garantir que escolhas de uma turma
+     * não impeçam as turmas subsequentes de encontrar horários válidos.
+     *
+     * @param  array<int, array{turma: Turma, atribuicoes: array}>  $turmasLista
+     * @param  array<int, array<int, array<int, bool>>>  $ocupacoes
+     * @param  array<int, array<int, int>>  $cargasDiarias
+     * @return array<int, array>|null
+     */
+    private function resolverGradesMultiplas(
+        array $turmasLista,
+        int $indice,
+        array $ocupacoes,
+        array $cargasDiarias
+    ): ?array {
+        if ($indice >= count($turmasLista)) {
+            return [];
+        }
+
+        $itemAtual = $turmasLista[$indice];
+        $turma = $itemAtual['turma'];
+        $atribuicoes = $itemAtual['atribuicoes'];
+
+        // Tenta até 6 variações de grade para a turma atual
+        $maxTentativas = 6;
+        for ($t = 0; $t < $maxTentativas; $t++) {
+            $grade = $this->buscarGrade($atribuicoes, $ocupacoes, $cargasDiarias);
+            if ($grade === null) {
+                return null;
+            }
+
+            $novasOcupacoes = $ocupacoes;
+            $novasCargas = $cargasDiarias;
+
+            foreach ($grade as $aula) {
+                $profId = (int) $aula['professor_id'];
+                $dia = (int) $aula['dia_semana'];
+                $periodo = (int) $aula['aula_numero'];
+                $novasOcupacoes[$profId][$dia][$periodo] = true;
+                $novasCargas[$profId][$dia] = ($novasCargas[$profId][$dia] ?? 0) + 1;
+            }
+
+            $restoGrades = $this->resolverGradesMultiplas(
+                $turmasLista,
+                $indice + 1,
+                $novasOcupacoes,
+                $novasCargas
+            );
+
+            if ($restoGrades !== null) {
+                return [$turma->id_turma => $grade] + $restoGrades;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Move uma aula trocando-a com a posição ocupada e valida o resultado completo.
      *
      * @param  array{destino_dia_semana: int, destino_aula_numero: int}  $destino
@@ -313,18 +494,21 @@ class HorarioService
     }
 
     /**
+     * @param  int|array<int>  $turmasExcluidas
      * @return array{
      *     ocupacoes: array<int, array<int, array<int, bool>>>,
      *     cargas_diarias: array<int, array<int, int>>
      * }
      */
-    private function usoDeOutrasTurmas(int $anoLetivo, int $turmaId): array
+    private function usoDeOutrasTurmas(int $anoLetivo, int|array $turmasExcluidas): array
     {
+        $idsExcluir = is_array($turmasExcluidas) ? $turmasExcluidas : [$turmasExcluidas];
+
         $ocupacoes = [];
         $cargasDiarias = [];
         $horarios = Horario::query()
             ->where('ano_letivo', $anoLetivo)
-            ->where('turma_id', '!=', $turmaId)
+            ->whereNotIn('turma_id', $idsExcluir)
             ->where('status', 'concluido')
             ->with('aulas')
             ->lockForUpdate()

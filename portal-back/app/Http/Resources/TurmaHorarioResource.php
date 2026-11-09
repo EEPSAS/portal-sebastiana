@@ -31,6 +31,7 @@ class TurmaHorarioResource extends JsonResource
                 'id_turma' => $this->id_turma,
                 'nome_identificador' => $this->nome_identificador,
                 'ano_letivo' => (int) $this->ano_letivo,
+                'turno' => $this->turno,
                 'ciclo_id' => $this->ciclo_id,
                 'ciclo_nome' => $this->relationLoaded('ciclo') ? $this->ciclo?->nome : null,
                 'disciplinas_previstas' => $disciplinasPrevistas,

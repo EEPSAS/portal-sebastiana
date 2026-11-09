@@ -32,6 +32,60 @@ class HorarioController extends Controller
             ->setStatusCode(201);
     }
 
+    /**
+     * POST /api/horarios/gerar-turno
+     * Gera simultaneamente a grade de todas as turmas ativas de um turno específico.
+     */
+    public function gerarPorTurno(Request $request, HorarioService $horarioService): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user || ! $user->canManageAcademic()) {
+            abort(403, 'Apenas Especialistas e Administradores podem gerar horários escolares.');
+        }
+
+        $request->validate([
+            'turno' => ['required', 'string'],
+            'ano_letivo' => ['nullable', 'integer', 'min:2020', 'max:2050'],
+        ]);
+
+        $turno = (string) $request->input('turno');
+        $anoLetivo = (int) ($request->input('ano_letivo') ?: date('Y'));
+
+        $horarios = $horarioService->gerarPorTurno($turno, $anoLetivo);
+
+        return response()->json([
+            'status' => 'sucesso',
+            'message' => "Horários do turno {$turno} gerados com sucesso ({$horarios->count()} turmas).",
+            'dados' => TurmaHorarioResource::collection($horarioService->turmasVisiveis($user)),
+        ], 201);
+    }
+
+    /**
+     * POST /api/horarios/gerar-todas
+     * Gera simultaneamente os horários de todas as turmas ativas da instituição no ano letivo.
+     */
+    public function gerarTodas(Request $request, HorarioService $horarioService): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user || ! $user->canManageAcademic()) {
+            abort(403, 'Apenas Especialistas e Administradores podem gerar horários escolares.');
+        }
+
+        $request->validate([
+            'ano_letivo' => ['nullable', 'integer', 'min:2020', 'max:2050'],
+        ]);
+
+        $anoLetivo = (int) ($request->input('ano_letivo') ?: date('Y'));
+
+        $horarios = $horarioService->gerarTodas($anoLetivo);
+
+        return response()->json([
+            'status' => 'sucesso',
+            'message' => "Horários de todas as turmas gerados com sucesso ({$horarios->count()} turmas).",
+            'dados' => TurmaHorarioResource::collection($horarioService->turmasVisiveis($user)),
+        ], 201);
+    }
+
     public function moverAula(
         MoveHorarioAulaRequest $request,
         Horario $horario,

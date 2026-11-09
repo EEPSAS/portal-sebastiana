@@ -74,4 +74,19 @@ class PeriodoLetivoDivisao extends Model
 
         return $hoje->between($inicio, $fim);
     }
+
+    /**
+     * Verifica se esta divisão específica já foi concluída na data informada ou atual.
+     */
+    public function isConcluida(?string $dataReferencia = null): bool
+    {
+        if (! $this->data_fim) {
+            return false;
+        }
+
+        $hoje = $dataReferencia ? Carbon::parse($dataReferencia) : Carbon::today();
+        $fim = Carbon::parse($this->data_fim)->endOfDay();
+
+        return $hoje->gt($fim);
+    }
 }

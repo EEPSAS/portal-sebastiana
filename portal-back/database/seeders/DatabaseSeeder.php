@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             RadioatividadeSeeder::class,
             BibliotecaSeeder::class,
             PeriodoLetivoSeeder::class,
+            TurnoSeeder::class,
             AcademicoSeeder::class,
             DonaNanaConfigSeeder::class,
         ]);

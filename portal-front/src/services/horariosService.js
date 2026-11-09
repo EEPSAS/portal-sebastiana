@@ -11,7 +11,7 @@ const lerResposta = async (response, mensagemPadrao) => {
     }
     throw error;
   }
-  return dados?.data ?? dados;
+  return dados?.dados ?? dados?.data ?? dados;
 };
 
 export const listarHorarios = async ({ signal } = {}) => {
@@ -26,6 +26,24 @@ export const gerarHorario = async (turmaId, { signal } = {}) => {
     signal,
   });
   return lerResposta(response, 'Não foi possível gerar o horário da turma.');
+};
+
+export const gerarHorariosTurno = async (turno, anoLetivo, { signal } = {}) => {
+  const response = await api('/horarios/gerar-turno', {
+    method: 'POST',
+    body: { turno, ano_letivo: anoLetivo },
+    signal,
+  });
+  return lerResposta(response, `Não foi possível gerar os horários do turno ${turno}.`);
+};
+
+export const gerarHorariosTodas = async (anoLetivo, { signal } = {}) => {
+  const response = await api('/horarios/gerar-todas', {
+    method: 'POST',
+    body: { ano_letivo: anoLetivo },
+    signal,
+  });
+  return lerResposta(response, 'Não foi possível gerar os horários de todas as turmas.');
 };
 
 export const moverAula = async (horarioId, aulaId, destino, { signal } = {}) => {

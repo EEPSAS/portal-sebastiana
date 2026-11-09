@@ -817,3 +817,13 @@ dialog.boletim-native-dialog::backdrop {
 .turma-slim-card:hover .turma-slim-checkbox {
   transform: scale(1.08);
 }
+
+/* Efeito visual de hover nos cabeçalhos ordenáveis da tabela de notas */
+.turmas-notas-tabela-scroll thead th[aria-sort]:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.turmas-notas-tabela-scroll thead th[aria-sort]:active {
+  background-color: #e2e8f0;
+}

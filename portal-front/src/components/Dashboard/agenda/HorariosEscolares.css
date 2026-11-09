@@ -1,20 +1,20 @@
 .horario-turma-seletor {
-  min-width: min(100%, 260px);
+  min-width: min(100%, 250px);
 }
 
 .horario-semanal {
-  min-width: 760px;
+  min-width: 720px;
   margin-bottom: 0;
 }
 
 .horario-semanal th,
 .horario-semanal td {
-  min-width: 112px;
-  padding: 0.65rem 0.45rem;
+  min-width: 105px;
+  padding: 0.4rem 0.35rem;
 }
 
 .horario-semanal th:first-child {
-  min-width: 60px;
+  min-width: 85px;
 }
 
 .horario-celula-editavel {
@@ -26,7 +26,21 @@
 }
 
 .horario-aula-conteudo {
-  min-height: 2.75rem;
+  min-height: 2.3rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  transition: all 0.15s ease-in-out;
+}
+
+.horario-aula-draggable {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.horario-aula-draggable:hover {
+  background-color: #e2e8f0;
+  border-color: #94a3b8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 @media (max-width: 767.98px) {

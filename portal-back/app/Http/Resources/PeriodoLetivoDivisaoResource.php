@@ -27,6 +27,7 @@ class PeriodoLetivoDivisaoResource extends JsonResource
             'data_fim' => $this->data_fim ? $this->data_fim->format('Y-m-d') : null,
             'ordem' => (int) $this->ordem,
             'is_atual' => $this->isVigente(),
+            'is_concluida' => $this->isConcluida(),
         ];
     }
 }

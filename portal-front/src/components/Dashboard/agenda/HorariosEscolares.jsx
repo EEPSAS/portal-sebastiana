@@ -2,15 +2,15 @@
  * HorariosEscolares.jsx - Grade Semanal Interativa de Horários Escolares com @dnd-kit
  *
  * Papel Didático:
- * Atende às Diretrizes 3.4b e 3.4c (28/10/2026):
+ * Atende às Diretrizes 3.4b e 3.4c (28/10/2026) e à Revisão Operacional Multi-Turmas:
  * 1. Utiliza a biblioteca `@dnd-kit/core` e `@dnd-kit/utilities` (`DndContext`, `useDraggable`,
  *    `useDroppable`) para permitir o arrastar e soltar (drag and drop) das aulas na tabela semanal;
- * 2. Exibe as informações correlatas da matriz de Disciplinas e Ciclos (nome da disciplina,
- *    quantidade de aulas semanais previstas vs alocadas na grade, carga horária anual de 40 semanas
- *    e ciclo da turma).
+ * 2. Integra-se aos Turnos de Funcionamento reais (Matutino, Vespertino, Noturno, Integral)
+ *    calculando dinamicamente os horários dos períodos e a linha separadora de intervalo/recreio;
+ * 3. Suporta geração simultânea multi-turmas sem conflito docente (Por Turma, Por Turno e Global).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -22,7 +22,14 @@ import {
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../../../hooks/useAuth';
-import { gerarHorario, listarHorarios, moverAula } from '../../../services/horariosService';
+import {
+  gerarHorario,
+  gerarHorariosTurno,
+  gerarHorariosTodas,
+  listarHorarios,
+  moverAula,
+} from '../../../services/horariosService';
+import { listarTurnos } from '../../../services/turnosService';
 import { formatarDisciplinaCiclo } from '../../../utils/formatters';
 import './HorariosEscolares.css';
 
@@ -36,6 +43,7 @@ const DIAS = [
 
 /**
  * Componente Draggable (@dnd-kit) para o card da aula dentro da célula do horário.
+ * Apresenta formato compacto com tipografia e espaçamento otimizados.
  */
 const AulaDraggableCard = ({ aula, habilitado, cicloNome }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -58,20 +66,30 @@ const AulaDraggableCard = ({ aula, habilitado, cicloNome }) => {
       style={style}
       {...(habilitado ? listeners : {})}
       {...(habilitado ? attributes : {})}
-      className={`horario-aula-conteudo rounded-3 p-1 ${
+      className={`horario-aula-conteudo rounded-2 p-1 ${
         habilitado ? 'horario-aula-draggable' : ''
       }`}
     >
-      <span className="d-block fw-semibold text-dark">{/* Ciclo da turma selecionada concatenado ao nome (ex.: "Filosofia - 2º Ano regular") */}
+      <span
+        className="d-block fw-semibold text-dark text-truncate"
+        style={{ fontSize: '0.8rem', lineHeight: '1.2' }}
+        title={formatarDisciplinaCiclo(aula.disciplina, cicloNome)}
+      >
         {formatarDisciplinaCiclo(aula.disciplina, cicloNome)}
       </span>
-      <span className="d-block small text-muted">{aula.professor?.name}</span>
+      <span
+        className="d-block text-muted text-truncate"
+        style={{ fontSize: '0.72rem', lineHeight: '1.2' }}
+        title={aula.professor?.name}
+      >
+        {aula.professor?.name}
+      </span>
       {aulasSemanais && (
         <span
-          className="badge bg-primary-subtle text-primary rounded-pill mt-1"
-          style={{ fontSize: '0.68rem' }}
+          className="badge bg-primary-subtle text-primary rounded-pill mt-0.5 px-1.5 py-0.5"
+          style={{ fontSize: '0.64rem' }}
         >
-          {aulasSemanais} aula(s)/sem
+          {aulasSemanais} a/sem
         </span>
       )}
     </div>
@@ -128,7 +146,7 @@ const CelulaHorarioDroppable = ({
       {aula ? (
         <AulaDraggableCard aula={aula} habilitado={habilitadoDrag} cicloNome={cicloNome} />
       ) : (
-        <span className="text-muted">—</span>
+        <span className="text-muted" style={{ fontSize: '0.8rem' }}>—</span>
       )}
     </td>
   );
@@ -138,16 +156,20 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
   const { user } = useAuth();
   const role = String(user?.role || '').toLowerCase();
   const podeEditar = ['especialista', 'adm'].includes(role);
+
   const [turmas, setTurmas] = useState([]);
+  const [turnos, setTurnos] = useState([]);
   const [turmaSelecionadaId, setTurmaSelecionadaId] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [gerando, setGerando] = useState(false);
+  const [mensagemGerando, setMensagemGerando] = useState('');
   const [editando, setEditando] = useState(false);
   const [salvandoAula, setSalvandoAula] = useState(false);
   const [aulaArrastada, setAulaArrastada] = useState(null);
   const [erro, setErro] = useState('');
   const [errosDetalhados, setErrosDetalhados] = useState([]);
   const [caixaErrosAberta, setCaixaErrosAberta] = useState(false);
+  const [dropdownGerarAberto, setDropdownGerarAberto] = useState(false);
 
   // Sensores do @dnd-kit para ponteiro (mouse/touch) e teclado
   const sensors = useSensors(
@@ -157,15 +179,24 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
     useSensor(KeyboardSensor)
   );
 
+  // Carregamento inicial integrado de horários e turnos operacionais
   useEffect(() => {
     let ativo = true;
 
-    const carregarHorarios = async () => {
+    const carregarTudo = async () => {
       try {
-        const resultado = await listarHorarios();
+        const [resultadoHorarios, resultadoTurnos] = await Promise.all([
+          listarHorarios(),
+          listarTurnos().catch(() => []),
+        ]);
         if (ativo) {
-          setTurmas(resultado);
-          setTurmaSelecionadaId(String(resultado[0]?.turma?.id_turma || ''));
+          setTurmas(resultadoHorarios);
+          if (resultadoHorarios.length > 0) {
+            setTurmaSelecionadaId(String(resultadoHorarios[0]?.turma?.id_turma || ''));
+          }
+          if (Array.isArray(resultadoTurnos)) {
+            setTurnos(resultadoTurnos);
+          }
         }
       } catch (error) {
         if (ativo) {
@@ -178,7 +209,7 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
       }
     };
 
-    carregarHorarios();
+    carregarTudo();
     return () => {
       ativo = false;
     };
@@ -188,8 +219,34 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
     ({ turma }) => String(turma.id_turma) === turmaSelecionadaId
   );
   const horario = turmaSelecionada?.horario;
-  // Ciclo da turma escolhida, concatenado ao nome das disciplinas na grade e no resumo
   const cicloNomeTurma = turmaSelecionada?.turma?.ciclo_nome;
+  const turnoTurmaNome = turmaSelecionada?.turma?.turno;
+
+  // Localiza a configuração do turno da turma selecionada
+  const turnoConfig = turnos.find(
+    (t) => String(t.id).toLowerCase() === String(turnoTurmaNome).toLowerCase()
+  );
+
+  // Grade de horários com períodos e intervalo obtidos do turno correspondente
+  const gradeHorarios = useMemo(() => {
+    if (
+      turnoConfig?.grade_horarios &&
+      Array.isArray(turnoConfig.grade_horarios) &&
+      turnoConfig.grade_horarios.length > 0
+    ) {
+      return turnoConfig.grade_horarios;
+    }
+    // Fallback padrão sequencial de 5 períodos de 50 minutos caso o turno não venha configurado
+    return [
+      { periodo: 1, hora_inicio: '07:00', hora_fim: '07:50', is_intervalo: false },
+      { periodo: 2, hora_inicio: '07:50', hora_fim: '08:40', is_intervalo: false },
+      { periodo: 3, hora_inicio: '08:40', hora_fim: '09:30', is_intervalo: false },
+      { periodo: null, hora_inicio: '09:30', hora_fim: '09:56', is_intervalo: true },
+      { periodo: 4, hora_inicio: '09:56', hora_fim: '10:46', is_intervalo: false },
+      { periodo: 5, hora_inicio: '10:46', hora_fim: '11:36', is_intervalo: false },
+    ];
+  }, [turnoConfig]);
+
   const aulasPorPosicao = new Map(
     (horario?.aulas || []).map((aula) => [`${aula.dia_semana}-${aula.aula_numero}`, aula])
   );
@@ -202,7 +259,6 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
       if (!disc?.id_disciplina) return;
       const atual = mapa.get(disc.id_disciplina) || {
         id_disciplina: disc.id_disciplina,
-        // Rótulo já concatenado com o ciclo da turma (ex.: "Filosofia - 2º Ano regular")
         nome: formatarDisciplinaCiclo(disc, cicloNomeTurma),
         aulas_semanais: disc.aulas_semanais || 0,
         carga_horaria_anual: disc.carga_horaria_anual || (disc.aulas_semanais || 0) * 40,
@@ -224,12 +280,70 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
     );
   };
 
+  // Handler de Geração: Turma individual, Por Turno (multi-turmas) ou Global (todas)
+  const handleGerar = useCallback(async (modo = 'turma') => {
+    if (!turmaSelecionada) return;
+
+    setErro('');
+    setErrosDetalhados([]);
+    setCaixaErrosAberta(false);
+    setDropdownGerarAberto(false);
+    setGerando(true);
+
+    const anoLetivo = Number(turmaSelecionada.turma.ano_letivo) || new Date().getFullYear();
+    const turnoAlvo = turmaSelecionada.turma.turno || 'Matutino';
+
+    try {
+      if (modo === 'todas') {
+        setMensagemGerando('Otimizando todas as turmas da instituição...');
+        const resultadoTodas = await gerarHorariosTodas(anoLetivo);
+        if (Array.isArray(resultadoTodas) && resultadoTodas.length > 0) {
+          setTurmas(resultadoTodas);
+        } else {
+          const atualizados = await listarHorarios();
+          setTurmas(atualizados);
+        }
+      } else if (modo === 'turno') {
+        setMensagemGerando(`Otimizando turmas do turno ${turnoAlvo}...`);
+        const resultadoTurno = await gerarHorariosTurno(turnoAlvo, anoLetivo);
+        if (Array.isArray(resultadoTurno) && resultadoTurno.length > 0) {
+          setTurmas(resultadoTurno);
+        } else {
+          const atualizados = await listarHorarios();
+          setTurmas(atualizados);
+        }
+      } else {
+        setMensagemGerando(`Montando grade de ${turmaSelecionada.turma.nome_identificador}...`);
+        const resultadoTurma = await gerarHorario(turmaSelecionadaId);
+        setTurmas((atuais) =>
+          atuais.map((item) =>
+            String(item.turma.id_turma) === turmaSelecionadaId
+              ? { ...item, horario: resultadoTurma }
+              : item
+          )
+        );
+      }
+    } catch (error) {
+      setErro(error.message);
+      if (Array.isArray(error.errorList) && error.errorList.length > 0) {
+        setErrosDetalhados(error.errorList);
+        setCaixaErrosAberta(true);
+      } else {
+        setErrosDetalhados([]);
+      }
+    } finally {
+      setGerando(false);
+      setMensagemGerando('');
+    }
+  }, [turmaSelecionada, turmaSelecionadaId]);
+
+  // Registro das ações na barra superior do PainelModulo
   useEffect(() => {
     if (!onRegistrarAcoes) return;
 
     const acoes = turmas.length > 0 && (
       <div className="horarios-nav-acoes d-flex align-items-center gap-2">
-        <label htmlFor="horario-turma" className="form-label small mb-0">
+        <label htmlFor="horario-turma" className="form-label small mb-0 fw-semibold text-secondary">
           Turma
         </label>
         <select
@@ -243,20 +357,23 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
             setCaixaErrosAberta(false);
             setAulaArrastada(null);
             setEditando(false);
+            setDropdownGerarAberto(false);
           }}
-          disabled={carregando}
+          disabled={carregando || gerando}
         >
           {turmas.map(({ turma }) => (
             <option key={turma.id_turma} value={turma.id_turma}>
               {turma.nome_identificador} — {turma.ano_letivo}
+              {turma.turno ? ` • ${turma.turno}` : ''}
               {turma.ciclo_nome ? ` (${turma.ciclo_nome})` : ''}
             </option>
           ))}
         </select>
+
         {podeEditar && horario && (
           <button
             type="button"
-            className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+            className="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold"
             onClick={() => setEditando((atual) => !atual)}
             disabled={gerando || salvandoAula || carregando}
             aria-pressed={editando}
@@ -264,52 +381,92 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
             {editando ? 'Concluir edição' : 'Editar'}
           </button>
         )}
-        {podeEditar && (
-          <button
-            type="button"
-            className="btn btn-sm btn-primary rounded-pill px-3"
-            onClick={async () => {
-              if (!turmaSelecionada) return;
 
-              setErro('');
-              setErrosDetalhados([]);
-              setCaixaErrosAberta(false);
-              setGerando(true);
-              try {
-                const resultado = await gerarHorario(turmaSelecionadaId);
-                setTurmas((atuais) =>
-                  atuais.map((item) =>
-                    String(item.turma.id_turma) === turmaSelecionadaId
-                      ? { ...item, horario: resultado }
-                      : item
-                  )
-                );
-              } catch (error) {
-                setErro(error.message);
-                if (Array.isArray(error.errorList) && error.errorList.length > 0) {
-                  setErrosDetalhados(error.errorList);
-                  setCaixaErrosAberta(true);
-                } else {
-                  setErrosDetalhados([]);
-                }
-              } finally {
-                setGerando(false);
-              }
-            }}
-            disabled={gerando || salvandoAula || carregando || editando || !turmaSelecionada}
-          >
-            {gerando ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />
-                Em montagem
-              </>
-            ) : (
-              <>
-                <i className="bi bi-shuffle me-1" aria-hidden="true" />
-                Gerar
-              </>
+        {/* Grupo de Ações de Geração Multi-Turmas com Dropdown */}
+        {podeEditar && (
+          <div className="btn-group btn-group-sm position-relative" role="group">
+            <button
+              type="button"
+              className="btn btn-sm btn-primary rounded-start-pill px-3 fw-semibold"
+              onClick={() => handleGerar('turma')}
+              disabled={gerando || salvandoAula || carregando || editando || !turmaSelecionada}
+              title="Gerar grade da turma selecionada"
+            >
+              {gerando ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-1" aria-hidden="true" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-shuffle me-1" aria-hidden="true" />
+                  Gerar
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split rounded-end-pill px-2"
+              onClick={() => setDropdownGerarAberto((aberto) => !aberto)}
+              aria-expanded={dropdownGerarAberto}
+              disabled={gerando || salvandoAula || carregando || editando}
+              title="Mais opções de geração de horários"
+            >
+              <span className="visually-hidden">Abrir opções de geração</span>
+            </button>
+
+            {dropdownGerarAberto && (
+              <ul
+                className="dropdown-menu dropdown-menu-end shadow-sm show mt-1"
+                style={{ minWidth: '240px', zIndex: 1050 }}
+              >
+                <li>
+                  <button
+                    type="button"
+                    className="dropdown-item d-flex align-items-center gap-2 small py-2"
+                    onClick={() => handleGerar('turma')}
+                  >
+                    <i className="bi bi-person-workspace text-primary fs-6"></i>
+                    <div>
+                      <div className="fw-semibold">Gerar Esta Turma</div>
+                      <small className="text-muted">Apenas {turmaSelecionada?.turma?.nome_identificador}</small>
+                    </div>
+                  </button>
+                </li>
+                {turnoTurmaNome && (
+                  <li>
+                    <button
+                      type="button"
+                      className="dropdown-item d-flex align-items-center gap-2 small py-2"
+                      onClick={() => handleGerar('turno')}
+                    >
+                      <i className="bi bi-sun text-warning fs-6"></i>
+                      <div>
+                        <div className="fw-semibold">Gerar Turno ({turnoTurmaNome})</div>
+                        <small className="text-muted">Todas do turno sem conflito docente</small>
+                      </div>
+                    </button>
+                  </li>
+                )}
+                <li>
+                  <hr className="dropdown-divider my-1" />
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="dropdown-item d-flex align-items-center gap-2 small py-2 text-primary"
+                    onClick={() => handleGerar('todas')}
+                  >
+                    <i className="bi bi-grid-3x3-gap-fill fs-6"></i>
+                    <div>
+                      <div className="fw-semibold">Gerar Todas as Turmas</div>
+                      <small className="text-muted">Grade global simultânea da escola</small>
+                    </div>
+                  </button>
+                </li>
+              </ul>
             )}
-          </button>
+          </div>
         )}
       </div>
     );
@@ -326,6 +483,9 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
     gerando,
     salvandoAula,
     editando,
+    dropdownGerarAberto,
+    turnoTurmaNome,
+    handleGerar,
   ]);
 
   useEffect(
@@ -371,15 +531,13 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
 
   return (
     <section className="horarios-escolares mt-2" aria-labelledby="horarios-escolares-titulo">
-      <div className="mb-3">
-        <div>
-          <h3 id="horarios-escolares-titulo" className="h5 fw-bold mb-1">
-            Horários das Turmas
-          </h3>
-          <p className="text-muted small mb-0">
-            Grade semanal integrada às Disciplinas do Ciclo e carga horária semanal (arraste e solte com dnd-kit).
-          </p>
-        </div>
+      <div className="mb-2">
+        <h3 id="horarios-escolares-titulo" className="h6 fw-bold mb-0 text-dark">
+          Horários das Turmas
+        </h3>
+        <p className="text-muted small mb-0" style={{ fontSize: '0.78rem' }}>
+          Grade semanal integrada às Disciplinas do Ciclo e carga horária semanal (arraste e solte com dnd-kit).
+        </p>
       </div>
 
       {erro && (
@@ -431,18 +589,18 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
       )}
 
       {carregando ? (
-        <div className="text-muted small" role="status">
+        <div className="text-muted small py-3" role="status">
           <span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />
-          Carregando horários...
+          Carregando horários e turnos operacionais...
         </div>
       ) : turmas.length === 0 ? (
         <p className="alert alert-light border mb-0">
           Não há turmas vinculadas ao seu perfil para consultar horários.
         </p>
       ) : !horario && gerando ? (
-        <div className="text-muted small" role="status">
+        <div className="text-muted small py-3" role="status">
           <span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />
-          Em montagem — aguardando a validação da grade semanal.
+          {mensagemGerando || 'Em montagem — calculando combinações sem conflito de professores...'}
         </div>
       ) : !horario ? (
         <p className="alert alert-light border mb-0">
@@ -451,14 +609,19 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
         </p>
       ) : (
         <>
-          <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-            <span className="fw-semibold">{turmaSelecionada.turma.nome_identificador}</span>
+          <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <span className="fw-semibold text-dark">{turmaSelecionada.turma.nome_identificador}</span>
             {turmaSelecionada.turma.ciclo_nome && (
-              <span className="badge bg-primary-subtle text-primary rounded-pill">
+              <span className="badge bg-primary-subtle text-primary rounded-pill px-2.5 py-1">
                 Ciclo: {turmaSelecionada.turma.ciclo_nome}
               </span>
             )}
-            <span className="badge text-bg-light">{horario.ano_letivo}</span>
+            {turmaSelecionada.turma.turno && (
+              <span className="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2.5 py-1">
+                Turno: {turmaSelecionada.turma.turno}
+              </span>
+            )}
+            <span className="badge text-bg-light border">{horario.ano_letivo}</span>
             <span className={`badge ${gerando ? 'text-bg-warning' : 'text-bg-success'}`}>
               {gerando ? 'Em montagem' : 'Concluído'}
             </span>
@@ -470,25 +633,26 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
             )}
           </div>
 
-          {/* Resumo Correlato de Disciplinas e Carga Semanal (Diretriz 3.4c) */}
+          {/* Resumo Correlato de Disciplinas e Carga Semanal Compacto (Diretriz 3.4c) */}
           {resumoDisciplinasGrade.length > 0 && (
-            <div className="d-flex flex-wrap gap-2 mb-3 p-2 rounded-3 bg-light border">
+            <div className="d-flex flex-wrap gap-1.5 mb-2.5 p-2 rounded-3 bg-light border">
               {resumoDisciplinasGrade.map((disc) => (
                 <span
                   key={disc.id_disciplina}
-                  className="badge bg-white text-dark border rounded-pill px-3 py-1 fw-normal"
+                  className="badge bg-white text-dark border rounded-pill px-2.5 py-1 fw-normal"
+                  style={{ fontSize: '0.74rem' }}
                 >
-                  <strong className="text-primary">{disc.nome}:</strong> {disc.alocadas} aula(s)/sem
+                  <strong className="text-primary">{disc.nome}:</strong> {disc.alocadas} a/sem
                   {disc.carga_horaria_anual ? ` (${disc.carga_horaria_anual}h/ano)` : ''}
                 </span>
               ))}
             </div>
           )}
 
-          {/* Grade Semanal envolvida com DndContext (@dnd-kit/core) */}
+          {/* Grade Semanal Compacta com suporte a Módulos e Intervalo (@dnd-kit) */}
           <DndContext sensors={sensors} onDragEnd={handleDndKitDragEnd}>
             <div
-              className="dashboard-table-scroll border"
+              className="dashboard-table-scroll border rounded-3 overflow-hidden shadow-sm"
               tabIndex={0}
               role="region"
               aria-labelledby="horarios-escolares-titulo"
@@ -497,7 +661,9 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
                 <caption className="visually-hidden">Horário semanal da turma selecionada</caption>
                 <thead className="table-light">
                   <tr>
-                    <th scope="col">Aula</th>
+                    <th scope="col" style={{ width: '95px' }}>
+                      Aula
+                    </th>
                     {DIAS.map(({ numero, nome }) => (
                       <th scope="col" key={numero}>
                         {nome}
@@ -506,11 +672,37 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: 6 }, (_, index) => {
-                    const periodo = index + 1;
+                  {gradeHorarios.map((item, index) => {
+                    if (item.is_intervalo) {
+                      return (
+                        <tr key={`intervalo-${index}`} className="table-light">
+                          <td
+                            colSpan={6}
+                            className="text-center py-1 bg-light-subtle text-muted small fw-semibold border-top border-bottom"
+                            style={{ fontSize: '0.78rem', letterSpacing: '0.2px' }}
+                          >
+                            <i className="bi bi-cup-hot-fill text-warning me-1.5" aria-hidden="true"></i>
+                            {item.hora_inicio} - {item.hora_fim} • Intervalo / Recreio
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const periodo = item.periodo;
                     return (
-                      <tr key={periodo}>
-                        <th scope="row">{periodo}ª</th>
+                      <tr key={`aula-${periodo}`}>
+                        <th
+                          scope="row"
+                          className="align-middle py-1 px-2 text-nowrap bg-light-subtle"
+                          style={{ width: '95px' }}
+                        >
+                          <div className="fw-bold text-dark" style={{ fontSize: '0.82rem' }}>
+                            {periodo}ª aula
+                          </div>
+                          <small className="text-muted d-block" style={{ fontSize: '0.68rem' }}>
+                            {item.hora_inicio} - {item.hora_fim}
+                          </small>
+                        </th>
                         {DIAS.map(({ numero: dia, nome }) => {
                           const aula = aulasPorPosicao.get(`${dia}-${periodo}`);
                           return (

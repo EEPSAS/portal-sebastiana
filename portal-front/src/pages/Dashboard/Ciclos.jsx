@@ -29,9 +29,10 @@ import {
 } from "../../services/disciplinasService";
 import { fetchTurmas } from "../../services/turmasService";
 import {
-  ListaTurnosConfigSchema,
-  validarFormularioZod,
-} from "../../utils/academicoSchemas";
+  listarTurnos,
+  atualizarTurno,
+  alternarTurno,
+} from "../../services/turnosService";
 import { useAuth } from "../../hooks/useAuth";
 import { formatarDisciplinaCiclo } from "../../utils/formatters";
 
@@ -64,33 +65,45 @@ export default function CiclosPage() {
   const [cicloPreSelecionadoId, setCicloPreSelecionadoId] = useState(null);
   const [disciplinaDetalhe, setDisciplinaDetalhe] = useState(null);
 
-  // Configuração dos Turnos da Escola
+  // Configuração dos Turnos Operacionais da Escola (valores padrão e estado sincronizado com a API)
   const TURNOS_PADRAO = [
     {
       id: "Matutino",
       nome: "Matutino",
-      inicio: "07:00",
-      fim: "11:30",
+      hora_inicio: "07:00",
+      hora_fim: "12:15",
+      duracao_aula_minutos: 50,
+      quantidade_aulas: 5,
+      intervalo_inicio: "09:30",
+      intervalo_fim: "09:56",
       ativo: true,
-      descricao: "Turno da manhã, com 5 aulas de 50 minutos e 20 minutos de recreio.",
+      descricao: "Turno da manhã, com 5 aulas de 50 minutos e intervalo de 09:30 às 09:56.",
       icone: "bi-sun-fill",
       cor: "warning",
     },
     {
       id: "Vespertino",
       nome: "Vespertino",
-      inicio: "13:00",
-      fim: "17:30",
+      hora_inicio: "12:50",
+      hora_fim: "16:25",
+      duracao_aula_minutos: 50,
+      quantidade_aulas: 5,
+      intervalo_inicio: "14:30",
+      intervalo_fim: "14:45",
       ativo: true,
-      descricao: "Turno da tarde, com 5 aulas de 50 minutos e 20 minutos de recreio.",
+      descricao: "Turno da tarde, com 5 aulas de 50 minutos e intervalo de 14:30 às 14:45.",
       icone: "bi-brightness-alt-high-fill",
       cor: "primary",
     },
     {
       id: "Noturno",
       nome: "Noturno",
-      inicio: "18:45",
-      fim: "22:15",
+      hora_inicio: "18:45",
+      hora_fim: "22:15",
+      duracao_aula_minutos: 45,
+      quantidade_aulas: 4,
+      intervalo_inicio: "20:30",
+      intervalo_fim: "20:45",
       ativo: false,
       descricao: "Turno da noite, voltado prioritariamente para EJA e Cursos Noturnos.",
       icone: "bi-moon-stars-fill",
@@ -99,8 +112,12 @@ export default function CiclosPage() {
     {
       id: "Integral",
       nome: "Integral",
-      inicio: "07:00",
-      fim: "16:40",
+      hora_inicio: "07:00",
+      hora_fim: "16:40",
+      duracao_aula_minutos: 50,
+      quantidade_aulas: 9,
+      intervalo_inicio: "09:30",
+      intervalo_fim: "09:56",
       ativo: true,
       descricao: "Jornada ampliada do Ensino Médio de Tempo Integral (EMTI).",
       icone: "bi-clock-history",
@@ -108,25 +125,18 @@ export default function CiclosPage() {
     },
   ];
 
-  const [turnos, setTurnos] = useState(() => {
-    try {
-      const salvo = localStorage.getItem("portal_sebastiana_turnos_config");
-      if (!salvo) return TURNOS_PADRAO;
-      const validado = ListaTurnosConfigSchema.safeParse(JSON.parse(salvo));
-      return validado.success ? validado.data : TURNOS_PADRAO;
-    } catch {
-      return TURNOS_PADRAO;
-    }
-  });
+  const [turnos, setTurnos] = useState(TURNOS_PADRAO);
+  const [salvandoTurnoId, setSalvandoTurnoId] = useState(null);
 
   const carregarDados = async () => {
     setLoading(true);
     setErro("");
     try {
-      const [resCiclos, resDisciplinas, resTurmas] = await Promise.all([
+      const [resCiclos, resDisciplinas, resTurmas, resTurnos] = await Promise.all([
         listarDisciplinasPorCiclo(),
         listarDisciplinas(),
         fetchTurmas(),
+        listarTurnos().catch(() => null),
       ]);
 
       setCiclos(resCiclos?.ciclos || []);
@@ -137,6 +147,10 @@ export default function CiclosPage() {
         ? resTurmas
         : resTurmas?.data || [];
       setTurmas(listaTurmas);
+
+      if (Array.isArray(resTurnos) && resTurnos.length > 0) {
+        setTurnos(resTurnos);
+      }
     } catch (err) {
       setErro(err.message || "Erro ao carregar dados de ciclos e disciplinas.");
     } finally {
@@ -146,8 +160,13 @@ export default function CiclosPage() {
 
   useEffect(() => {
     let cancelado = false;
-    Promise.all([listarDisciplinasPorCiclo(), listarDisciplinas(), fetchTurmas()])
-      .then(([resCiclos, resDisciplinas, resTurmas]) => {
+    Promise.all([
+      listarDisciplinasPorCiclo(),
+      listarDisciplinas(),
+      fetchTurmas(),
+      listarTurnos().catch(() => null),
+    ])
+      .then(([resCiclos, resDisciplinas, resTurmas, resTurnos]) => {
         if (!cancelado) {
           setCiclos(resCiclos?.ciclos || []);
           setDisciplinasSemCiclo(resCiclos?.disciplinas_sem_ciclo || []);
@@ -156,6 +175,9 @@ export default function CiclosPage() {
             ? resTurmas
             : resTurmas?.data || [];
           setTurmas(listaTurmas);
+          if (Array.isArray(resTurnos) && resTurnos.length > 0) {
+            setTurnos(resTurnos);
+          }
         }
       })
       .catch((err) => {
@@ -177,38 +199,53 @@ export default function CiclosPage() {
     setTimeout(() => setMensagemSucesso(""), 4500);
   };
 
-  // Turnos
-  const handleSalvarTurnos = (novosTurnos) => {
-    setTurnos(novosTurnos);
-    const checkTurnos = validarFormularioZod(ListaTurnosConfigSchema, novosTurnos);
-    if (!checkTurnos.valido) {
-      setErro(checkTurnos.mensagem);
-      return;
+  // Handlers para Configuração Dinâmica dos Turnos de Funcionamento
+  const handleToggleTurno = async (idTurno) => {
+    try {
+      const turnoAtualizado = await alternarTurno(idTurno);
+      setTurnos((atuais) =>
+        atuais.map((t) => (t.id === idTurno ? { ...t, ...turnoAtualizado } : t))
+      );
+      exibirSucesso(`Turno ${idTurno} ${turnoAtualizado.ativo ? "ativado" : "desativado"} com sucesso!`);
+    } catch (err) {
+      setErro(err.message || `Erro ao alternar o turno ${idTurno}.`);
     }
+  };
+
+  const handleAlterarCampoTurno = (idTurno, campo, valor) => {
+    setTurnos((atuais) =>
+      atuais.map((t) => (t.id === idTurno ? { ...t, [campo]: valor } : t))
+    );
+  };
+
+  const handleSalvarTurno = async (idTurno) => {
+    const turno = turnos.find((t) => t.id === idTurno);
+    if (!turno) return;
+
+    setSalvandoTurnoId(idTurno);
     setErro("");
     try {
-      localStorage.setItem(
-        "portal_sebastiana_turnos_config",
-        JSON.stringify(checkTurnos.dados)
+      const payload = {
+        hora_inicio: turno.hora_inicio || turno.inicio,
+        hora_fim: turno.hora_fim || turno.fim,
+        duracao_aula_minutos: Number(turno.duracao_aula_minutos) || 50,
+        quantidade_aulas: Number(turno.quantidade_aulas) || 5,
+        intervalo_inicio: turno.intervalo_inicio || "09:30",
+        intervalo_fim: turno.intervalo_fim || "09:56",
+        ativo: Boolean(turno.ativo),
+        descricao: turno.descricao || null,
+      };
+
+      const turnoSalvo = await atualizarTurno(idTurno, payload);
+      setTurnos((atuais) =>
+        atuais.map((t) => (t.id === idTurno ? { ...t, ...turnoSalvo } : t))
       );
-      exibirSucesso("Configuração dos turnos escolares atualizada com sucesso!");
-    } catch {
-      // Ignora erro
+      exibirSucesso(`Configurações operacionais do turno ${turno.nome} salvas com sucesso!`);
+    } catch (err) {
+      setErro(err.message || `Erro ao salvar as configurações do turno ${idTurno}.`);
+    } finally {
+      setSalvandoTurnoId(null);
     }
-  };
-
-  const handleToggleTurno = (idTurno) => {
-    const atualizados = turnos.map((t) =>
-      t.id === idTurno ? { ...t, ativo: !t.ativo } : t
-    );
-    handleSalvarTurnos(atualizados);
-  };
-
-  const handleAlterarHorario = (idTurno, campo, valor) => {
-    const atualizados = turnos.map((t) =>
-      t.id === idTurno ? { ...t, [campo]: valor } : t
-    );
-    handleSalvarTurnos(atualizados);
   };
 
   // Ciclos
@@ -796,6 +833,7 @@ export default function CiclosPage() {
                 const turmasDoTurno = turmas.filter(
                   (t) => String(t.turno).toLowerCase() === String(turno.id).toLowerCase()
                 );
+                const isSalvando = salvandoTurnoId === turno.id;
 
                 return (
                   <div key={turno.id} className="col-12 col-md-6 col-xl-3">
@@ -804,7 +842,8 @@ export default function CiclosPage() {
                         turno.ativo ? "" : "opacity-75 bg-light"
                       }`}
                     >
-                      <div className="d-flex justify-content-between align-items-start mb-2">
+                      {/* Cabeçalho do Card */}
+                      <div className="d-flex justify-content-between align-items-center mb-2">
                         <div className="d-flex align-items-center gap-2">
                           <div
                             className={`rounded-circle d-flex align-items-center justify-content-center ${
@@ -812,95 +851,228 @@ export default function CiclosPage() {
                                 ? "bg-primary-subtle text-primary"
                                 : "bg-secondary-subtle text-muted"
                             }`}
-                            style={{ width: "38px", height: "38px", fontSize: "1.1rem" }}
+                            style={{ width: "32px", height: "32px", fontSize: "1rem" }}
                           >
-                            <i className={`bi ${turno.icone}`}></i>
+                            <i className={`bi ${turno.icone || "bi-clock"}`}></i>
                           </div>
                           <div>
-                            <h6 className="fw-bold mb-0 text-dark">{turno.nome}</h6>
-                            <small
-                              className={
-                                turno.ativo ? "text-success fw-semibold" : "text-muted"
-                              }
+                            <h6 className="fw-bold mb-0 text-dark" style={{ fontSize: "0.95rem" }}>
+                              {turno.nome}
+                            </h6>
+                            <span
+                              className={`badge rounded-pill ${
+                                turno.ativo
+                                  ? "bg-success-subtle text-success"
+                                  : "bg-secondary-subtle text-secondary"
+                              }`}
+                              style={{ fontSize: "0.68rem" }}
                             >
                               {turno.ativo ? "Em Funcionamento" : "Desativado"}
-                            </small>
+                            </span>
                           </div>
                         </div>
 
-                        {/* Switch de Ativação */}
-                        <div className="form-check form-switch m-0">
-                          <input
-                            className="form-check-input cursor-pointer"
-                            type="checkbox"
-                            role="switch"
-                            checked={turno.ativo}
-                            onChange={() => handleToggleTurno(turno.id)}
-                            title={`Alternar ativação do turno ${turno.nome}`}
-                          />
-                        </div>
+                        {/* Switch de Ativação Rápida */}
+                        {podeGerenciar && (
+                          <div className="form-check form-switch m-0">
+                            <input
+                              className="form-check-input cursor-pointer"
+                              type="checkbox"
+                              role="switch"
+                              checked={Boolean(turno.ativo)}
+                              onChange={() => handleToggleTurno(turno.id)}
+                              title={`Alternar ativação do turno ${turno.nome}`}
+                            />
+                          </div>
+                        )}
                       </div>
 
-                      <p className="text-secondary small mb-3" style={{ minHeight: "40px" }}>
+                      <p
+                        className="text-secondary small mb-2 text-truncate"
+                        title={turno.descricao}
+                        style={{ fontSize: "0.78rem" }}
+                      >
                         {turno.descricao}
                       </p>
 
-                      {/* Definição de Horários */}
-                      <div className="p-2 rounded-3 bg-light border mb-3">
-                        <small
-                          className="text-muted fw-bold text-uppercase d-block mb-1"
-                          style={{ fontSize: "0.68rem" }}
-                        >
-                          Horário de Funcionamento
-                        </small>
-                        <div className="row g-2 align-items-center">
+                      {/* Configuração Operacional Compacta */}
+                      <div className="p-2 rounded-3 bg-light border mb-2">
+                        {/* Linha 1: Início e Fim do Turno */}
+                        <div className="row g-1 mb-1.5 align-items-center">
                           <div className="col-6">
                             <label
                               htmlFor={`turno-inicio-${turno.id}`}
-                              className="text-muted small"
-                              style={{ fontSize: "0.7rem" }}
+                              className="text-muted fw-semibold d-block mb-0 text-uppercase"
+                              style={{ fontSize: "0.65rem" }}
                             >
                               Início
                             </label>
                             <input
                               id={`turno-inicio-${turno.id}`}
                               type="time"
-                              className="form-control form-control-sm text-center fw-semibold"
-                              value={turno.inicio}
+                              className="form-control form-control-sm text-center fw-semibold py-0.5 px-1"
+                              style={{ fontSize: "0.78rem" }}
+                              value={turno.hora_inicio || turno.inicio || "07:00"}
                               onChange={(e) =>
-                                handleAlterarHorario(turno.id, "inicio", e.target.value)
+                                handleAlterarCampoTurno(turno.id, "hora_inicio", e.target.value)
                               }
-                              disabled={!turno.ativo}
+                              disabled={!turno.ativo || !podeGerenciar}
                             />
                           </div>
                           <div className="col-6">
                             <label
                               htmlFor={`turno-fim-${turno.id}`}
-                              className="text-muted small"
-                              style={{ fontSize: "0.7rem" }}
+                              className="text-muted fw-semibold d-block mb-0 text-uppercase"
+                              style={{ fontSize: "0.65rem" }}
                             >
                               Término
                             </label>
                             <input
                               id={`turno-fim-${turno.id}`}
                               type="time"
-                              className="form-control form-control-sm text-center fw-semibold"
-                              value={turno.fim}
+                              className="form-control form-control-sm text-center fw-semibold py-0.5 px-1"
+                              style={{ fontSize: "0.78rem" }}
+                              value={turno.hora_fim || turno.fim || "12:15"}
                               onChange={(e) =>
-                                handleAlterarHorario(turno.id, "fim", e.target.value)
+                                handleAlterarCampoTurno(turno.id, "hora_fim", e.target.value)
                               }
-                              disabled={!turno.ativo}
+                              disabled={!turno.ativo || !podeGerenciar}
                             />
                           </div>
                         </div>
+
+                        {/* Linha 2: Módulo Aula (min) e Qtd Aulas */}
+                        <div className="row g-1 mb-1.5 align-items-center">
+                          <div className="col-6">
+                            <label
+                              htmlFor={`turno-duracao-${turno.id}`}
+                              className="text-muted fw-semibold d-block mb-0 text-uppercase"
+                              style={{ fontSize: "0.65rem" }}
+                            >
+                              Módulo (min)
+                            </label>
+                            <input
+                              id={`turno-duracao-${turno.id}`}
+                              type="number"
+                              min="30"
+                              max="120"
+                              step="5"
+                              className="form-control form-control-sm text-center fw-semibold py-0.5 px-1"
+                              style={{ fontSize: "0.78rem" }}
+                              value={turno.duracao_aula_minutos || 50}
+                              onChange={(e) =>
+                                handleAlterarCampoTurno(
+                                  turno.id,
+                                  "duracao_aula_minutos",
+                                  parseInt(e.target.value, 10) || 0
+                                )
+                              }
+                              disabled={!turno.ativo || !podeGerenciar}
+                            />
+                          </div>
+                          <div className="col-6">
+                            <label
+                              htmlFor={`turno-qtd-${turno.id}`}
+                              className="text-muted fw-semibold d-block mb-0 text-uppercase"
+                              style={{ fontSize: "0.65rem" }}
+                            >
+                              Aulas/dia
+                            </label>
+                            <input
+                              id={`turno-qtd-${turno.id}`}
+                              type="number"
+                              min="1"
+                              max="12"
+                              className="form-control form-control-sm text-center fw-semibold py-0.5 px-1"
+                              style={{ fontSize: "0.78rem" }}
+                              value={turno.quantidade_aulas || 5}
+                              onChange={(e) =>
+                                handleAlterarCampoTurno(
+                                  turno.id,
+                                  "quantidade_aulas",
+                                  parseInt(e.target.value, 10) || 0
+                                )
+                              }
+                              disabled={!turno.ativo || !podeGerenciar}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Linha 3: Intervalo / Recreio */}
+                        <div className="row g-1 align-items-center">
+                          <div className="col-6">
+                            <label
+                              htmlFor={`turno-int-ini-${turno.id}`}
+                              className="text-muted fw-semibold d-block mb-0 text-uppercase"
+                              style={{ fontSize: "0.65rem" }}
+                            >
+                              Intervalo (Início)
+                            </label>
+                            <input
+                              id={`turno-int-ini-${turno.id}`}
+                              type="time"
+                              className="form-control form-control-sm text-center fw-semibold py-0.5 px-1"
+                              style={{ fontSize: "0.78rem" }}
+                              value={turno.intervalo_inicio || "09:30"}
+                              onChange={(e) =>
+                                handleAlterarCampoTurno(turno.id, "intervalo_inicio", e.target.value)
+                              }
+                              disabled={!turno.ativo || !podeGerenciar}
+                            />
+                          </div>
+                          <div className="col-6">
+                            <label
+                              htmlFor={`turno-int-fim-${turno.id}`}
+                              className="text-muted fw-semibold d-block mb-0 text-uppercase"
+                              style={{ fontSize: "0.65rem" }}
+                            >
+                              Intervalo (Fim)
+                            </label>
+                            <input
+                              id={`turno-int-fim-${turno.id}`}
+                              type="time"
+                              className="form-control form-control-sm text-center fw-semibold py-0.5 px-1"
+                              style={{ fontSize: "0.78rem" }}
+                              value={turno.intervalo_fim || "09:56"}
+                              onChange={(e) =>
+                                handleAlterarCampoTurno(turno.id, "intervalo_fim", e.target.value)
+                              }
+                              disabled={!turno.ativo || !podeGerenciar}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Botão Salvar Configuração do Turno */}
+                        {podeGerenciar && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary w-100 rounded-pill py-1 mt-2 d-flex align-items-center justify-content-center gap-1 fw-semibold"
+                            style={{ fontSize: "0.75rem" }}
+                            onClick={() => handleSalvarTurno(turno.id)}
+                            disabled={!turno.ativo || isSalvando}
+                          >
+                            {isSalvando ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                                <span>Salvando...</span>
+                              </>
+                            ) : (
+                              <>
+                                <i className="bi bi-floppy2"></i>
+                                <span>Salvar Turno</span>
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
 
-                      {/* Turmas no turno */}
+                      {/* Rodapé com Turmas Ativas */}
                       <div className="mt-auto pt-2 border-top d-flex justify-content-between align-items-center">
-                        <span className="text-muted small">Turmas Ativas:</span>
-                        <span className="badge rounded-pill bg-primary px-2 py-1">
-                          {turmasDoTurno.length}{" "}
-                          {turmasDoTurno.length === 1 ? "turma" : "turmas"}
+                        <span className="text-muted small" style={{ fontSize: "0.75rem" }}>
+                          Turmas Ativas:
+                        </span>
+                        <span className="badge rounded-pill bg-primary px-2 py-0.5" style={{ fontSize: "0.72rem" }}>
+                          {turmasDoTurno.length} {turmasDoTurno.length === 1 ? "turma" : "turmas"}
                         </span>
                       </div>
                     </div>

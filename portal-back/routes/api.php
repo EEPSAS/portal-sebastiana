@@ -22,6 +22,7 @@ use App\Http\Controllers\PlanoEstudoController;
 use App\Http\Controllers\ProfessorController;
 use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\TurmaController;
+use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Resources\UsuarioResource;
 use Illuminate\Http\Request;
@@ -84,8 +85,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/eventos/em-massa', [EventoController::class, 'storeEmMassa']);
     Route::apiResource('eventos', EventoController::class)->except(['index']);
 
+    // Turnos de Funcionamento e Módulos Escolares
+    Route::get('/turnos', [TurnoController::class, 'index']);
+    Route::get('/turnos/{turno}', [TurnoController::class, 'show']);
+    Route::put('/turnos/{turno}', [TurnoController::class, 'update']);
+    Route::patch('/turnos/{turno}/toggle', [TurnoController::class, 'toggle']);
+
     // Horários escolares: leitura por perfil, gestão restrita a Especialista e Adm.
     Route::get('/horarios', [HorarioController::class, 'index']);
+    Route::post('/horarios/gerar-todas', [HorarioController::class, 'gerarTodas']);
+    Route::post('/horarios/gerar-turno', [HorarioController::class, 'gerarPorTurno']);
     Route::post('/turmas/{turma}/horario/gerar', [HorarioController::class, 'gerar']);
     Route::patch('/horarios/{horario}/aulas/{aula}', [HorarioController::class, 'moverAula']);
 

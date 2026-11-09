@@ -237,9 +237,11 @@ Enquanto a rota não estiver pronta, o frontend apresenta dados demonstrativos a
 |---|---|---|---|---|---|---|
 | `GET` | `/api/horarios` | Especialista / Adm (todas as turmas), Professor (turmas vinculadas), Aluno (turma ativa própria) | N/A | `TurmaHorarioResource` (Coleção) | `horariosService.listar()` | Lista as turmas autorizadas, com horário concluído ou `null` quando ainda não foi gerado |
 | `POST` | `/api/turmas/{turma_id}/horario/gerar` | Especialista / Adm | `GenerateHorarioRequest` (autorização; sem corpo) | `HorarioResource` | `horariosService.gerar()` | Gera a grade da turma selecionada; confere currículo, cargas anuais e disponibilidade docente no mesmo ano letivo |
+| `POST` | `/api/horarios/gerar-turno` | Especialista / Adm | Validação inline (`turno`, `ano_letivo`) | Coleção `TurmaHorarioResource` | `horariosService.gerarHorariosTurno()` | Gera simultaneamente a grade de todas as turmas ativas de um turno específico, eliminando deadlocks entre professores compartilhados |
+| `POST` | `/api/horarios/gerar-todas` | Especialista / Adm | Validação inline (`ano_letivo`) | Coleção `TurmaHorarioResource` | `horariosService.gerarHorariosTodas()` | Gera simultaneamente os horários de todas as turmas ativas da instituição no ano letivo com backtracking multi-turmas |
 | `PATCH` | `/api/horarios/{horario_id}/aulas/{aula_id}` | Especialista / Adm | `MoveHorarioAulaRequest` | `HorarioResource` | `horariosService.moverAula()` | Move uma aula para posição vazia ou troca com a aula ocupante e recusa violações docentes |
 
-**Regras da grade:** 5 dias × 6 períodos (30 aulas semanais); o número semanal de aulas é a carga anual da disciplina dividida por 40. Geografia, Filosofia, Artes, Sociologia, Educação Física, Inglês, Biologia e Educação Digital têm 40 aulas anuais; Química, Física e História, 80; Sustentabilidade e Produção Cultural, 120; Português e Matemática, 200. O gerador confere todas as disciplinas e cargas em cada tentativa. Um professor não pode lecionar em duas turmas no mesmo período, ultrapassar 5 aulas diárias ou lecionar 3 períodos consecutivos na mesma turma. Evitar períodos consecutivos é preferência; a geração favorece concentrar as aulas do professor no mesmo dia. Sem combinação válida, retorna `422` e mantém a grade anterior.
+**Regras da grade:** 5 dias × N períodos (conforme a quantidade de aulas e módulo de cada turno); o número semanal de aulas é a carga anual da disciplina dividida por 40. Geografia, Filosofia, Artes, Sociologia, Educação Física, Inglês, Biologia e Educação Digital têm 40 aulas anuais; Química, Física e História, 80; Sustentabilidade e Produção Cultural, 120; Português e Matemática, 200. O gerador confere todas as disciplinas e cargas em cada tentativa. Um professor não pode lecionar em duas turmas no mesmo período de um mesmo turno, ultrapassar 5 aulas diárias ou lecionar 3 períodos consecutivos na mesma turma. Evitar períodos consecutivos é preferência; a geração favorece concentrar as aulas do professor no mesmo dia. Sem combinação válida, retorna `422` e mantém a grade anterior.
 
 **Saída: `TurmaHorarioResource`**
 ```json
@@ -247,7 +249,10 @@ Enquanto a rota não estiver pronta, o frontend apresenta dados demonstrativos a
   "turma": {
     "id_turma": 1,
     "nome_identificador": "1º Ano A - Ensino Médio",
-    "ano_letivo": 2026
+    "ano_letivo": 2026,
+    "turno": "Matutino",
+    "ciclo_id": 1,
+    "ciclo_nome": "1º Ano - Regular"
   },
   "horario": {
     "id": 8,
@@ -315,11 +320,41 @@ As respostas seguem a configuração global `JsonResource::withoutWrapping()`: o
 | `PATCH`| `/api/periodos-letivos/{id}/ativar` | Especialista / Adm | N/A | `PeriodoLetivoResource` | `periodosLetivosService.ativarPeriodoLetivo()` | Define o período como vigente/ativo desativando os anteriores |
 | `DELETE`| `/api/periodos-letivos/{id}` | Especialista / Adm | N/A | Mensagem 200 | `periodosLetivosService.excluirPeriodoLetivo()` | Exclui período letivo (bloqueia se houver turmas no ano) |
 | `POST` | `/api/periodos-letivos/{id}/sincronizar-agenda` | Especialista / Adm | N/A | Mensagem 200 | `periodosLetivosService.sincronizarAgendaPeriodo()` | Força a sincronização dos marcos escolares com o calendário institucional |
+| `GET` | `/api/turnos` | Autenticado | N/A | `TurnoResource` (Coleção) | `turnosService.listarTurnos()` | Lista os turnos de funcionamento da instituição com suas configurações e grade calculada |
+| `GET` | `/api/turnos/{turno}` | Autenticado | N/A | `TurnoResource` | `turnosService.obterTurno()` | Detalhes de um turno específico |
+| `PUT` | `/api/turnos/{turno}` | Especialista / Adm | `UpdateTurnoRequest` | `TurnoResource` | `turnosService.atualizarTurno()` | Atualiza horários de início/fim, módulo (min), aulas por dia, intervalo de recreio e descrição |
+| `PATCH`| `/api/turnos/{turno}/toggle` | Especialista / Adm | N/A | `TurnoResource` | `turnosService.alternarTurno()` | Alterna o status ativo/inativo do turno |
 
 > **Regra de Escopo:** O Professor possui acesso **estritamente consultivo e isolado** aos dados das suas turmas e dos seus alunos (rotulada no frontend como **"Minhas Turmas"**). No módulo acadêmico, o professor visualiza única e exclusivamente as turmas e disciplinas a ele vinculadas, sem botões de criação, edição ou exclusão. Como contingência aprovada, Especialista/Adm podem lançar nota e frequência de um aluno individualmente; isso não habilita o professor nem cria uma chamada diária em lote. Cadastro manual de atividades e consolidação diária de chamada continuam fora de escopo. A criação de turmas e a vinculação de alunos são privativas do Especialista e Administrador. A importação de CSV é privativa do Especialista. No frontend, as disciplinas exibem obrigatoriamente a concatenação **`NOME + CICLO`**.
 
 #### Especificação de Contratos Tipados (Spatie Laravel Data ↔ Zod)
 Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spatie Laravel Data** (`app/Data/Academico/*`) na entrada/saída do Laravel e **Zod** (`src/utils/academicoSchemas.js`) nos serviços e formulários do React:
+
+* **`TurnoResource` (`TurnoSchema`)**:
+  ```json
+  {
+    "id": "Matutino",
+    "nome": "Matutino",
+    "hora_inicio": "07:00",
+    "hora_fim": "12:15",
+    "duracao_aula_minutos": 50,
+    "intervalo_inicio": "09:30",
+    "intervalo_fim": "09:56",
+    "quantidade_aulas": 5,
+    "ativo": true,
+    "descricao": "Turno da manhã, com 5 aulas de 50 minutos e intervalo de 09:30 às 09:56.",
+    "icone": "bi-sun-fill",
+    "cor": "warning",
+    "grade_horarios": [
+      { "periodo": 1, "hora_inicio": "07:00", "hora_fim": "07:50", "is_intervalo": false },
+      { "periodo": 2, "hora_inicio": "07:50", "hora_fim": "08:40", "is_intervalo": false },
+      { "periodo": 3, "hora_inicio": "08:40", "hora_fim": "09:30", "is_intervalo": false },
+      { "periodo": null, "hora_inicio": "09:30", "hora_fim": "09:56", "is_intervalo": true },
+      { "periodo": 4, "hora_inicio": "09:56", "hora_fim": "10:46", "is_intervalo": false },
+      { "periodo": 5, "hora_inicio": "10:46", "hora_fim": "11:36", "is_intervalo": false }
+    ]
+  }
+  ```
 
 * **`TurmaResource` (`TurmaData` ↔ `TurmaSchema`)**:
   ```json

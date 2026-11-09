@@ -44,6 +44,25 @@ export default function NotasAba({
   const [modalManualAberto, setModalManualAberto] = useState(false);
   const [subAbaPainel, setSubAbaPainel] = useState("notas");
 
+  // Estados de ordenação interativa da tabela de notas
+  const [colunaOrdenacao, setColunaOrdenacao] = useState(null);
+  const [direcaoOrdenacao, setDirecaoOrdenacao] = useState("asc");
+
+  // Alterna ou define a coluna de ordenação ativa
+  const handleOrdenar = (coluna) => {
+    if (colunaOrdenacao === coluna) {
+      setDirecaoOrdenacao((prev) => (prev === "desc" ? "asc" : "desc"));
+    } else {
+      setColunaOrdenacao(coluna);
+      // Para métricas numéricas (% faltas e nota), inicia do maior para o menor conforme solicitado
+      if (coluna === "faltas" || coluna === "nota") {
+        setDirecaoOrdenacao("desc");
+      } else {
+        setDirecaoOrdenacao("asc");
+      }
+    }
+  };
+
   // Busca o período letivo ativo institucional para compor as etapas oficiais
   useEffect(() => {
     let ativo = true;
@@ -68,6 +87,35 @@ export default function NotasAba({
           { id_divisao: 2, nome: "2º Trimestre", pontos: 35 },
           { id_divisao: 3, nome: "3º Trimestre", pontos: 35 },
         ];
+
+  // Identificação institucional das etapas oficialmente concluídas pelo calendário escolar (Diretriz 5.3)
+  const hoje = new Date();
+  const divisoesConcluidas = divisoesDisponiveis.filter((d) => {
+    if (typeof d.is_concluida === "boolean") {
+      return d.is_concluida;
+    }
+    if (!d.data_fim) return false;
+    const fim = new Date(d.data_fim.includes("T") ? d.data_fim : `${d.data_fim}T23:59:59`);
+    return fim < hoje;
+  });
+
+  // Conjunto com os nomes normalizados das etapas concluídas para conferência no loop
+  const nomesEtapasConcluidasSet = new Set(
+    divisoesConcluidas.map((d) => String(d.nome || "").toLowerCase().trim())
+  );
+
+  // Pontuação fixa institucional das etapas concluídas (ex: 30 + 30 = 60 pts)
+  // Garante que todas as disciplinas compartilhem a mesma régua uniforme sem oscilação
+  const pontosConcluidosInstitucional =
+    divisoesConcluidas.length > 0
+      ? divisoesConcluidas.reduce((acc, d) => acc + Number(d.pontos || 0), 0)
+      : Number(divisoesDisponiveis[0]?.pontos || 30.0);
+
+  // Etapas válidas para acumulação quando a base de totalização for "Etapas Concluídas"
+  const etapasValidasParaSoma =
+    nomesEtapasConcluidasSet.size > 0
+      ? nomesEtapasConcluidasSet
+      : new Set([String(divisoesDisponiveis[0]?.nome || "").toLowerCase().trim()]);
 
   // Turma ativa selecionada (usa resumoGeral como fallback caso turmas esteja sincronizando)
   const listaBaseTurmas = turmas.length > 0 ? turmas : resumoGeral;
@@ -211,33 +259,42 @@ export default function NotasAba({
         };
       }
 
-      const valorNota = Number(n.valor_nota ?? 0);
-      const maximoEtapa = Number(n.valor_maximo_periodo ?? 30.0);
+      const etapaNotaNome = String(n.periodo_letivo || "").toLowerCase().trim();
+      const isEtapaConcluida = etapasValidasParaSoma.has(etapaNotaNome);
 
-      agrupado[chave].somaNotas += valorNota;
-      agrupado[chave].pontosConcluidos += maximoEtapa;
+      // Regra Pedagógica Aprovada:
+      // Na base "Etapas Concluídas", somam-se estritamente as notas e faltas das etapas concluídas oficiais.
+      // Notas de etapas em andamento (ex: 3º Trimestre) são ignoradas nesta base para manter a régua fixa uniforme (ex: 60 pts).
+      const deveAcumularNestaBase = baseCalculoAnual === "100" || isEtapaConcluida;
 
-      // Soma as faltas e aulas previstas uma única vez por período letivo da disciplina
-      const chavePeriodoFalta = String(n.periodo_letivo || "etapa").toLowerCase();
-      if (!agrupado[chave].periodosFaltasContabilizados.has(chavePeriodoFalta)) {
-        agrupado[chave].periodosFaltasContabilizados.add(chavePeriodoFalta);
-        agrupado[chave].somaFaltas += Number(n.total_faltas ?? 0);
-        agrupado[chave].somaAulasEtapas += Number(
-          n.total_aulas_previstas || Math.max(15, Math.round(cargaAnualDisc / 3))
-        );
-      }
+      if (deveAcumularNestaBase) {
+        const valorNota = Number(n.valor_nota ?? 0);
+        agrupado[chave].somaNotas += valorNota;
 
-      if (
-        n.data_registro &&
-        (!agrupado[chave].data_mais_recente ||
-          new Date(n.data_registro) > new Date(agrupado[chave].data_mais_recente))
-      ) {
-        agrupado[chave].data_mais_recente = n.data_registro;
+        // Soma as faltas e aulas previstas uma única vez por período letivo da disciplina
+        const chavePeriodoFalta = String(n.periodo_letivo || "etapa").toLowerCase();
+        if (!agrupado[chave].periodosFaltasContabilizados.has(chavePeriodoFalta)) {
+          agrupado[chave].periodosFaltasContabilizados.add(chavePeriodoFalta);
+          agrupado[chave].somaFaltas += Number(n.total_faltas ?? 0);
+          agrupado[chave].somaAulasEtapas += Number(
+            n.total_aulas_previstas || Math.max(15, Math.round(cargaAnualDisc / 3))
+          );
+        }
+
+        if (
+          n.data_registro &&
+          (!agrupado[chave].data_mais_recente ||
+            new Date(n.data_registro) > new Date(agrupado[chave].data_mais_recente))
+        ) {
+          agrupado[chave].data_mais_recente = n.data_registro;
+        }
       }
     });
 
     notasExibidas = Object.values(agrupado).map((item) => {
-      const divisorTotal = baseCalculoAnual === "100" ? 100.0 : item.pontosConcluidos || 100.0;
+      // Base de cálculo institucional fixa: 100 pts no Total Anual ou a régua oficial de etapas concluídas (ex: 60 pts)
+      const divisorTotal =
+        baseCalculoAnual === "100" ? 100.0 : pontosConcluidosInstitucional;
       const percentual = divisorTotal > 0 ? (item.somaNotas / divisorTotal) * 100 : 0;
 
       // Base de aulas anual (100% da carga horária) ou proporcional às etapas concluídas (LDB Art. 24)
@@ -275,6 +332,127 @@ export default function NotasAba({
       };
     });
   }
+
+  // Ordenação dinâmica dos dados da tabela conforme a coluna e direção selecionadas
+  const notasOrdenadas = !colunaOrdenacao
+    ? notasExibidas
+    : [...notasExibidas].sort((a, b) => {
+        let valorA;
+        let valorB;
+
+        switch (colunaOrdenacao) {
+          case "aluno":
+            valorA = String(a.aluno_nome || "").toLowerCase();
+            valorB = String(b.aluno_nome || "").toLowerCase();
+            return direcaoOrdenacao === "asc"
+              ? valorA.localeCompare(valorB, "pt-BR")
+              : valorB.localeCompare(valorA, "pt-BR");
+
+          case "disciplina":
+            valorA = String(a.disciplina_nome || "").toLowerCase();
+            valorB = String(b.disciplina_nome || "").toLowerCase();
+            return direcaoOrdenacao === "asc"
+              ? valorA.localeCompare(valorB, "pt-BR")
+              : valorB.localeCompare(valorA, "pt-BR");
+
+          case "faltas":
+            valorA = Number(a.percentual_faltas ?? 0);
+            valorB = Number(b.percentual_faltas ?? 0);
+            if (valorA === valorB) {
+              valorA = Number(a.total_faltas ?? 0);
+              valorB = Number(b.total_faltas ?? 0);
+            }
+            return direcaoOrdenacao === "asc" ? valorA - valorB : valorB - valorA;
+
+          case "periodo":
+            valorA = String(a.periodo_letivo || "").toLowerCase();
+            valorB = String(b.periodo_letivo || "").toLowerCase();
+            return direcaoOrdenacao === "asc"
+              ? valorA.localeCompare(valorB, "pt-BR")
+              : valorB.localeCompare(valorA, "pt-BR");
+
+          case "nota":
+            valorA = Number(a.nota ?? 0);
+            valorB = Number(b.nota ?? 0);
+            return direcaoOrdenacao === "asc" ? valorA - valorB : valorB - valorA;
+
+          case "situacao":
+            valorA = String(a.situacao || "").toLowerCase();
+            valorB = String(b.situacao || "").toLowerCase();
+            return direcaoOrdenacao === "asc"
+              ? valorA.localeCompare(valorB, "pt-BR")
+              : valorB.localeCompare(valorA, "pt-BR");
+
+          case "data": {
+            const parseData = (dStr) => {
+              if (!dStr || dStr === "-") return 0;
+              const partes = dStr.split("/");
+              if (partes.length === 3) {
+                return (
+                  new Date(`${partes[2]}-${partes[1]}-${partes[0]}`).getTime() ||
+                  0
+                );
+              }
+              return new Date(dStr).getTime() || 0;
+            };
+            valorA = parseData(a.data_registro);
+            valorB = parseData(b.data_registro);
+            return direcaoOrdenacao === "asc" ? valorA - valorB : valorB - valorA;
+          }
+
+          default:
+            return 0;
+        }
+      });
+
+  // Renderizador semântico e acessível de cabeçalho clicável para ordenação (WCAG / modern-web-guidance)
+  const renderHeaderOrdenavel = (colunaId, label, align = "start", extraClass = "") => {
+    const isAtivo = colunaOrdenacao === colunaId;
+    const isDesc = isAtivo && direcaoOrdenacao === "desc";
+
+    let ariaSortValue = "none";
+    if (isAtivo) {
+      ariaSortValue = direcaoOrdenacao === "asc" ? "ascending" : "descending";
+    }
+
+    const proximaDirecao = isAtivo && isDesc ? "crescente" : "decrescente";
+
+    return (
+      <th
+        scope="col"
+        className={`${extraClass} user-select-none`}
+        aria-sort={ariaSortValue}
+        style={{ cursor: "pointer", transition: "background-color 0.15s ease" }}
+        onClick={() => handleOrdenar(colunaId)}
+        title={`Clique para ordenar por ${label} (ordem ${proximaDirecao})`}
+      >
+        <div
+          className={`d-inline-flex align-items-center gap-1.5 ${
+            align === "center"
+              ? "justify-content-center w-100"
+              : align === "end"
+              ? "justify-content-end w-100"
+              : "justify-content-start"
+          } ${isAtivo ? "text-primary fw-bolder" : "text-muted fw-bold"}`}
+        >
+          <span>{label}</span>
+          {isAtivo ? (
+            direcaoOrdenacao === "desc" ? (
+              <i className="bi bi-arrow-down text-primary fw-bold" aria-hidden="true"></i>
+            ) : (
+              <i className="bi bi-arrow-up text-primary fw-bold" aria-hidden="true"></i>
+            )
+          ) : (
+            <i
+              className="bi bi-arrow-down-up text-secondary opacity-50"
+              style={{ fontSize: "0.75rem" }}
+              aria-hidden="true"
+            ></i>
+          )}
+        </div>
+      </th>
+    );
+  };
 
   // Badge semântica de situação do estudante (Aproveitamento + Limite LDB 25% de Faltas)
   const renderBadgeSituacao = (situacao) => {
@@ -693,7 +871,7 @@ export default function NotasAba({
                             : "btn-outline-secondary"
                         }`}
                       >
-                        Etapas Concluídas
+                        Etapas Concluídas ({pontosConcluidosInstitucional.toFixed(0)} pts)
                       </button>
                     </div>
                   </div>
@@ -709,29 +887,19 @@ export default function NotasAba({
                   <table className="table table-hover align-middle mb-0" style={{ fontSize: "0.88rem" }}>
                     <thead className="table-light text-muted small fw-bold">
                       <tr>
-                        {!temFiltroAluno && (
-                          <th scope="col" className="ps-3 py-2.5">
-                            ALUNO
-                          </th>
+                        {!temFiltroAluno &&
+                          renderHeaderOrdenavel("aluno", "ALUNO", "start", "ps-3 py-2.5")}
+                        {renderHeaderOrdenavel(
+                          "disciplina",
+                          "DISCIPLINA",
+                          "start",
+                          `${temFiltroAluno ? "ps-3 " : ""}py-2.5`
                         )}
-                        <th scope="col" className={`${temFiltroAluno ? "ps-3 " : ""}py-2.5`}>
-                          DISCIPLINA
-                        </th>
-                        <th scope="col" className="py-2.5 text-center">
-                          % FALTAS
-                        </th>
-                        <th scope="col" className="py-2.5">
-                          PERÍODO LETIVO
-                        </th>
-                        <th scope="col" className="py-2.5 text-center">
-                          NOTA
-                        </th>
-                        <th scope="col" className="py-2.5 text-center">
-                          SITUAÇÃO
-                        </th>
-                        <th scope="col" className="pe-3 py-2.5 text-end">
-                          DATA REGISTRO
-                        </th>
+                        {renderHeaderOrdenavel("faltas", "% FALTAS", "center", "py-2.5")}
+                        {renderHeaderOrdenavel("periodo", "PERÍODO LETIVO", "start", "py-2.5")}
+                        {renderHeaderOrdenavel("nota", "NOTA", "center", "py-2.5")}
+                        {renderHeaderOrdenavel("situacao", "SITUAÇÃO", "center", "py-2.5")}
+                        {renderHeaderOrdenavel("data", "DATA REGISTRO", "end", "pe-3 py-2.5")}
                       </tr>
                     </thead>
                     <tbody>
@@ -745,7 +913,7 @@ export default function NotasAba({
                             Carregando notas da turma...
                           </td>
                         </tr>
-                      ) : notasExibidas.length === 0 ? (
+                      ) : notasOrdenadas.length === 0 ? (
                         <tr>
                           <td colSpan={temFiltroAluno ? 6 : 7} className="text-center py-5 text-muted">
                             <i className="bi bi-inbox fs-2 d-block mb-2 text-secondary opacity-50"></i>
@@ -753,7 +921,7 @@ export default function NotasAba({
                           </td>
                         </tr>
                       ) : (
-                        notasExibidas.map((item) => {
+                        notasOrdenadas.map((item) => {
                           const pctFaltas = Number(item.percentual_faltas || 0);
                           const totFaltas = Number(item.total_faltas || 0);
 

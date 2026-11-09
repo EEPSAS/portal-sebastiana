@@ -28,12 +28,17 @@ class PeriodoLetivoResource extends JsonResource
             ? $this->obterDivisaoAtual()
             : null;
 
+        $pontosEtapasConcluidas = $this->relationLoaded('divisoes')
+            ? (float) $this->divisoes->filter(fn ($d) => $d->isConcluida())->sum('pontos')
+            : 0.0;
+
         return [
             'id_periodo_letivo' => $this->id_periodo_letivo,
             'ano' => (int) $this->ano,
             'tipo_divisao' => $this->tipo_divisao,
             'tipo_divisao_label' => $tipoLabel,
             'total_pontos' => (float) $this->total_pontos,
+            'pontos_etapas_concluidas' => $pontosEtapasConcluidas,
             'data_inicio' => $this->data_inicio ? $this->data_inicio->format('Y-m-d') : null,
             'data_fim' => $this->data_fim ? $this->data_fim->format('Y-m-d') : null,
             'ativo' => (bool) $this->ativo,
