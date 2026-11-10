@@ -104,10 +104,13 @@ class TurnoController extends Controller
             // Última tentativa de auto-cura para padrões canônicos
             $padraoCanonico = Turno::obterPadraoCanonico($idLimpo);
             if ($padraoCanonico) {
-                $encontrado = Turno::create($padraoCanonico);
-                $encontrado->grade_horarios = $encontrado->gerarGradeAutomatica();
-                $encontrado->save();
-                $encontrado->wasRecentlyCreated = false;
+                $encontrado = Turno::where('id', $padraoCanonico['id'])->first();
+                if (! $encontrado) {
+                    $encontrado = Turno::create($padraoCanonico);
+                    $encontrado->grade_horarios = $encontrado->gerarGradeAutomatica();
+                    $encontrado->save();
+                    $encontrado->wasRecentlyCreated = false;
+                }
             }
         }
 

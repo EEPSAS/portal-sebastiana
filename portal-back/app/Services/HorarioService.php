@@ -465,10 +465,6 @@ class HorarioService
             // Aulas semanais vindas diretamente do cadastro da disciplina (ou derivadas de 40 semanas letivas)
             $aulasSemanais = (int) ($disciplina->aulas_semanais ?: intdiv(max(40, (int) $disciplina->carga_horaria_anual), 40));
 
-            if ($aulasSemanais < 1 || $aulasSemanais > 30) {
-                $erros[] = "A disciplina {$disciplina->nome} possui quantidade de aulas semanais inválida ({$aulasSemanais}).";
-            }
-
             // Tenta recuperar o professor titular da disciplina caso a alocação da turma esteja sem professor
             $professor = $vinculo->professor;
             if ($professor === null) {
@@ -494,15 +490,37 @@ class HorarioService
             $erros[] = 'Nenhuma disciplina vinculada à turma ou ao seu Ciclo Escolar.';
         }
 
+        // Obtém os parâmetros operacionais dinâmicos do turno configurado
+        $turno = (new Turno)->resolveRouteBinding($turma->turno);
+        $aulasPorDiaTurno = 0;
+        if ($turno) {
+            $gradeTurno = $turno->obterGradeHorarios();
+            $aulasNoTurno = count(array_filter($gradeTurno, fn ($i) => empty($i['is_intervalo'])));
+            $aulasPorDiaTurno = $aulasNoTurno > 0 ? $aulasNoTurno : (int) $turno->quantidade_aulas;
+        }
+
+        $aulasPorDiaTurno = $aulasPorDiaTurno > 0 ? $aulasPorDiaTurno : 6;
+        $capacidadeSemanalTurno = $aulasPorDiaTurno * 5; // 5 dias letivos por semana (segunda a sexta)
+        $nomeTurno = $turno?->nome ?? ($turma->turno ?: 'Turno Padrão');
+
+        // Valida se alguma disciplina excede a capacidade semanal total do turno
+        foreach ($atribuicoes as $atrib) {
+            if ($atrib['aulas_semanais'] < 1 || $atrib['aulas_semanais'] > $capacidadeSemanalTurno) {
+                $erros[] = "A carga horária semanal ({$atrib['aulas_semanais']} aulas) excede o limite do turno {$nomeTurno} ({$capacidadeSemanalTurno} aulas semanais).";
+            }
+        }
+
         $totalAulas = array_sum(array_column($atribuicoes, 'aulas_semanais'));
 
-        // Se a turma está vinculada a um Ciclo Escolar dinâmico, permite gerar grade com até 30 aulas semanais;
-        // para turmas sem ciclo (modo legado), exige a grade completa de 30 aulas semanais.
+        // Se a turma está vinculada a um Ciclo Escolar dinâmico, confere contra a capacidade semanal real do turno configurado
         if ($turma->ciclo_id !== null) {
-            if ($totalAulas < 1 || $totalAulas > 30) {
-                $erros[] = "A soma de aulas semanais do ciclo deve estar entre 1 e 30 aulas; atual: {$totalAulas}.";
+            if ($totalAulas < 1) {
+                $erros[] = 'A grade curricular do ciclo não possui aulas semanais vinculadas.';
+            } elseif ($totalAulas > $capacidadeSemanalTurno) {
+                $erros[] = "A soma de aulas semanais do ciclo ({$totalAulas} aulas) excede a capacidade máxima do turno {$nomeTurno} ({$capacidadeSemanalTurno} aulas semanais: {$aulasPorDiaTurno} aulas/dia × 5 dias). Ajuste as cargas horárias do ciclo ou configure o turno correspondente.";
             }
         } elseif ($totalAulas !== 30) {
+            // Modo legado (turma sem ciclo): exige a grade padrão de 30 aulas semanais
             $erros[] = "A carga horária semanal deve totalizar 30 aulas; a configuração atual totaliza {$totalAulas}.";
         }
 
@@ -531,15 +549,20 @@ class HorarioService
      */
     private function calcularMaxAulasPorDia(Turma $turma, array $atribuicoes): int
     {
-        $turno = Turno::where('id', $turma->turno)
-            ->orWhereRaw('LOWER(id) = ?', [strtolower((string) $turma->turno)])
-            ->first();
+        $turno = (new Turno)->resolveRouteBinding($turma->turno);
 
         $totalAulas = array_sum(array_column($atribuicoes, 'aulas_semanais'));
         $aulasPorDiaMinimas = (int) ceil($totalAulas / 5);
 
-        if ($turno && $turno->quantidade_aulas > 0) {
-            return max((int) $turno->quantidade_aulas, $aulasPorDiaMinimas);
+        $aulasPorDiaTurno = 0;
+        if ($turno) {
+            $gradeTurno = $turno->obterGradeHorarios();
+            $aulasNoTurno = count(array_filter($gradeTurno, fn ($i) => empty($i['is_intervalo'])));
+            $aulasPorDiaTurno = $aulasNoTurno > 0 ? $aulasNoTurno : (int) $turno->quantidade_aulas;
+        }
+
+        if ($aulasPorDiaTurno > 0) {
+            return max($aulasPorDiaTurno, $aulasPorDiaMinimas);
         }
 
         return max(6, $aulasPorDiaMinimas);
@@ -776,7 +799,23 @@ class HorarioService
             ];
         }
 
+        $vagasSobrando = (count($posicoes) - $indice) - array_sum($restantes);
+
         if ($opcoes === []) {
+            // Se nenhuma disciplina pode entrar neste período, mas ainda há posições sobressalentes,
+            // deixa este período vago e continua a busca nas próximas posições
+            if ($vagasSobrando > 0) {
+                return $this->buscarPosicoes(
+                    $posicoes,
+                    $indice + 1,
+                    $restantes,
+                    $porDisciplina,
+                    $grade,
+                    $ocupacoes,
+                    $cargasDiarias
+                );
+            }
+
             return null;
         }
 
@@ -807,6 +846,22 @@ class HorarioService
             }
         }
 
+        // Se nenhuma das opções de preenchimento produziu solução viável, tenta manter esta posição vaga caso haja vagas sobressalentes
+        if ($vagasSobrando > 0) {
+            $resultadoVago = $this->buscarPosicoes(
+                $posicoes,
+                $indice + 1,
+                $restantes,
+                $porDisciplina,
+                $grade,
+                $ocupacoes,
+                $cargasDiarias
+            );
+            if ($resultadoVago !== null) {
+                return $resultadoVago;
+            }
+        }
+
         return null;
     }
 
@@ -816,7 +871,7 @@ class HorarioService
     private function criaTresAulasSeguidas(array $grade, int $dia, int $periodo, int $professorId): bool
     {
         $inicio = max(1, $periodo - 2);
-        $fim = min(4, $periodo);
+        $fim = $periodo;
 
         for ($primeiro = $inicio; $primeiro <= $fim; $primeiro++) {
             $quantidade = 0;
@@ -883,7 +938,9 @@ class HorarioService
         }
 
         for ($dia = 1; $dia <= 5; $dia++) {
-            for ($periodo = 1; $periodo <= 4; $periodo++) {
+            $periodosDoDia = array_keys($professoresPorTurmaEDia[$dia] ?? []);
+            $maxPeriodoDia = ! empty($periodosDoDia) ? max($periodosDoDia) : 6;
+            for ($periodo = 1; $periodo <= $maxPeriodoDia - 2; $periodo++) {
                 $professorId = $professoresPorTurmaEDia[$dia][$periodo] ?? null;
                 if ($professorId !== null
                     && $professorId === ($professoresPorTurmaEDia[$dia][$periodo + 1] ?? null)

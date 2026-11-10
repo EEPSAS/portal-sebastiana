@@ -303,3 +303,79 @@ test('professor pode lecionar no matutino e no vespertino no mesmo dia sem falso
 
     expect(Horario::where('turma_id', $turmaVesp->id_turma)->exists())->toBeTrue();
 });
+
+test('turma em turno integral com 44 aulas semanais do ciclo gera grade sem erro de limite', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+
+    $ciclo = Ciclo::create(['nome' => '3º Ano - EMTI']);
+    $professores = User::factory()->count(11)->create(['role' => UserRole::PROFESSOR]);
+
+    $turma = Turma::create([
+        'nome_identificador' => '3º Ano - ADS',
+        'turno' => 'Integral',
+        'ano_letivo' => 2026,
+        'capacidade_maxima' => 35,
+        'status' => 'Ativa',
+        'ciclo_id' => $ciclo->id_ciclo,
+    ]);
+
+    // 11 disciplinas de 4 aulas semanais cada = 44 aulas semanais
+    for ($i = 1; $i <= 11; $i++) {
+        $disc = Disciplina::create([
+            'nome' => "Disciplina EMTI {$i}",
+            'aulas_semanais' => 4,
+            'carga_horaria_anual' => 160,
+        ]);
+        $ciclo->disciplinas()->attach($disc->id_disciplina);
+        TurmaDisciplina::create([
+            'turma_id' => $turma->id_turma,
+            'disciplina_id' => $disc->id_disciplina,
+            'professor_id' => $professores[$i - 1]->id,
+        ]);
+    }
+
+    $response = $this->actingAs($especialista, 'sanctum')->postJson("/api/turmas/{$turma->id_turma}/horario/gerar");
+
+    $response->assertCreated()
+        ->assertJsonPath('status', 'concluido');
+
+    $aulas = Horario::where('turma_id', $turma->id_turma)->first()->aulas;
+    expect($aulas->count())->toBe(44)
+        ->and($aulas->max('aula_numero'))->toBeLessThanOrEqual(9);
+});
+
+test('rejeita geracao de grade quando ciclo excede capacidade máxima do turno', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+
+    $ciclo = Ciclo::create(['nome' => 'Ciclo Carga Excessiva']);
+    $prof = User::factory()->create(['role' => UserRole::PROFESSOR]);
+
+    $turma = Turma::create([
+        'nome_identificador' => 'Turma Excesso',
+        'turno' => 'Matutino',
+        'ano_letivo' => 2026,
+        'capacidade_maxima' => 35,
+        'status' => 'Ativa',
+        'ciclo_id' => $ciclo->id_ciclo,
+    ]);
+
+    // 6 disciplinas de 5 aulas semanais = 30 aulas (excede os 25 do Matutino: 5 * 5 = 25)
+    for ($i = 1; $i <= 6; $i++) {
+        $disc = Disciplina::create([
+            'nome' => "Disciplina Excesso {$i}",
+            'aulas_semanais' => 5,
+            'carga_horaria_anual' => 200,
+        ]);
+        $ciclo->disciplinas()->attach($disc->id_disciplina);
+        TurmaDisciplina::create([
+            'turma_id' => $turma->id_turma,
+            'disciplina_id' => $disc->id_disciplina,
+            'professor_id' => $prof->id,
+        ]);
+    }
+
+    $response = $this->actingAs($especialista, 'sanctum')->postJson("/api/turmas/{$turma->id_turma}/horario/gerar");
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors('curriculo');
+});

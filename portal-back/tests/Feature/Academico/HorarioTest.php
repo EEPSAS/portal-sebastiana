@@ -85,6 +85,9 @@ test('especialista gera uma grade semanal completa com as cargas e restrições 
     for ($dia = 1; $dia <= 5; $dia++) {
         for ($periodo = 1; $periodo <= 4; $periodo++) {
             $professor = $professoresPorPosicao->get("{$dia}-{$periodo}");
+            if ($professor === null) {
+                continue;
+            }
             expect($professor !== $professoresPorPosicao->get("{$dia}-".($periodo + 1))
                 || $professor !== $professoresPorPosicao->get("{$dia}-".($periodo + 2)))->toBeTrue();
         }

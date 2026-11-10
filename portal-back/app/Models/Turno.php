@@ -174,10 +174,25 @@ class Turno extends Model
     public static function obterPadraoCanonico(string $id): ?array
     {
         $idLimpo = trim($id);
-        foreach (static::obterPadroesCanonicos() as $chave => $padrao) {
+        $padroes = static::obterPadroesCanonicos();
+
+        foreach ($padroes as $chave => $padrao) {
             if (strcasecmp($chave, $idLimpo) === 0 || strcasecmp($padrao['nome'], $idLimpo) === 0) {
                 return $padrao;
             }
+        }
+
+        // Mapeamento semântico de sinônimos e termos usuais da comunidade escolar
+        $alias = match (strtolower(str_replace(['ã', 'á'], ['a', 'a'], $idLimpo))) {
+            'manha', 'matutina' => 'Matutino',
+            'tarde', 'vespertina' => 'Vespertino',
+            'noite', 'noturna' => 'Noturno',
+            'integral', 'emti', 'tempo integral', 'ensino integral' => 'Integral',
+            default => null,
+        };
+
+        if ($alias !== null && isset($padroes[$alias])) {
+            return $padroes[$alias];
         }
 
         return null;
@@ -227,6 +242,11 @@ class Turno extends Model
         // 5. Auto-cura didática: caso o banco não tenha sido populado com seeds, auto-cria o turno canônico
         $padraoCanonico = static::obterPadraoCanonico($idLimpo);
         if ($padraoCanonico) {
+            $existente = $this->where('id', $padraoCanonico['id'])->first();
+            if ($existente) {
+                return $existente;
+            }
+
             $novoTurno = static::create($padraoCanonico);
             $novoTurno->grade_horarios = $novoTurno->gerarGradeAutomatica();
             $novoTurno->save();
