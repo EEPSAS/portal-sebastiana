@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "../../../hooks/useAuth";
 import {
   listarNotificacoes,
   listarSuperImportantes,
   marcarNotificacaoLida,
   marcarPadraoComoLidas,
-} from "../../services/notificacoesService";
+} from "../../../services/notificacoesService";
 import "./NotificacoesHeader.css";
 
 const lerLista = (resposta) => {

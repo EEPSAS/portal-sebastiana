@@ -12,8 +12,8 @@
  */
 
 import { Navigate } from "react-router";
-import { useAuth } from "../../hooks/useAuth";
-import { getRotaInicial } from "../../utils/rolesRoutes";
+import { useAuth } from "../../../hooks/useAuth";
+import { getRotaInicial } from "../../../utils/rolesRoutes";
 
 const DashboardIndexRedirect = () => {
   const { user } = useAuth();

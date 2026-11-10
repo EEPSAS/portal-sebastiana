@@ -1,7 +1,8 @@
 /**
- * ModalCiclo.jsx - Modal único para CRIAR e EDITAR um Ciclo Escolar
+ * ModalCiclo.jsx - Modal único para CRIAR e EDITAR um Ciclo Escolar (Módulo 5.4)
  *
  * Papel Didático:
+ * Localizado no domínio de Ciclos (src/components/Dashboard/ciclos/).
  * Reaproveitamos o mesmo formulário em 3 lugares (botão "+ Criar Ciclo", botão "Editar Ciclo"
  * e botão "+" dentro do cadastro de Disciplina). Quem decide se é criação ou edição é a prop `ciclo`.
  *

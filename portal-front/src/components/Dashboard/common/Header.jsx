@@ -13,8 +13,8 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { useAuth } from "../../hooks/useAuth";
-import { getRotaInicial } from "../../utils/rolesRoutes";
+import { useAuth } from "../../../hooks/useAuth";
+import { getRotaInicial } from "../../../utils/rolesRoutes";
 import NotificacoesHeader from "./NotificacoesHeader";
 
 const ROLES_SIMULACAO = [

@@ -21,11 +21,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { NavLink, Link, useLocation } from "react-router";
-import { useAuth } from "../../hooks/useAuth";
-import { listarProfessores } from "../../services/professoresService";
-import { obterPendentesResumo } from "../../services/usuarioService";
-import { NAV_STRUCTURE, isChildActive } from "../../utils/dashboardNav";
-import { EVENTO_PENDENCIAS_ATUALIZADAS } from "../../utils/notificacoesEventos";
+import { useAuth } from "../../../hooks/useAuth";
+import { listarProfessores } from "../../../services/professoresService";
+import { obterPendentesResumo } from "../../../services/usuarioService";
+import { NAV_STRUCTURE, isChildActive } from "../../../utils/dashboardNav";
+import { EVENTO_PENDENCIAS_ATUALIZADAS } from "../../../utils/notificacoesEventos";
 
 const ROLE_BADGES = {
   aluno: { label: "Aluno", cor: "bg-primary" },

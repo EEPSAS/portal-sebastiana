@@ -12,10 +12,9 @@
  */
 
 import { Outlet } from "react-router";
-import Aside from "../../components/Dashboard/Aside";
-// Import respeitando o case exato registrado no índice do Git para sistemas Linux (case-sensitive)
-import Panel from "../../components/dashboard/panel";
-import Header from "../../components/Dashboard/Header";
+// Importações de componentes estruturais comuns do painel
+import Aside from "../../components/Dashboard/common/Aside";
+import Header from "../../components/Dashboard/common/Header";
 import { DonaNanaFloatingWidget } from "../../components/Dashboard/dona-nana";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -51,9 +50,10 @@ const DashboardLayout = () => {
           userPhoto={userPhoto}
           onLogout={logout}
         />
-        <Panel>
+        {/* Envelope semântico para a área de conteúdo dinâmico das páginas */}
+        <section className="dashboard-panel flex-grow-1">
           <Outlet />
-        </Panel>
+        </section>
       </div>
 
       {/* Balão Flutuante da Dona Nana no Canto Inferior Direito */}

@@ -24,7 +24,7 @@ import WikiPublica from "./pages/Portal/WikiPublica";
 import NotFound from "./pages/NotFound";
 
 // Páginas da Área Logada (Dashboard)
-import DashboardIndexRedirect from "./components/Dashboard/DashboardIndexRedirect";
+import DashboardIndexRedirect from "./components/Dashboard/common/DashboardIndexRedirect";
 import GeralPage from "./pages/Dashboard/Geral";
 import BoletimPage from "./pages/Dashboard/Boletim";
 import BibliotecaPage from "./pages/Dashboard/Biblioteca";
