@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdateTurnoRequest;
 use App\Http\Resources\TurnoResource;
 use App\Models\Turno;
+use Database\Seeders\TurnoSeeder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -17,9 +18,14 @@ class TurnoController extends Controller
     /**
      * GET /api/turnos
      * Lista todos os turnos escolares configurados na instituição.
+     * Auto-popula a base com os 4 turnos canônicos caso a tabela esteja vazia.
      */
     public function index(): AnonymousResourceCollection
     {
+        if (Turno::count() === 0) {
+            (new TurnoSeeder)->run();
+        }
+
         $turnos = Turno::orderBy('id')->get();
 
         return TurnoResource::collection($turnos);
@@ -81,6 +87,7 @@ class TurnoController extends Controller
 
     /**
      * Garante a resolução do Turno mesmo se o binding de rota falhar ou receber string direta.
+     * Inclui mecanismo resiliente com auto-recuperação de turnos canônicos.
      */
     private function resolverTurno(Turno|string $turno): Turno
     {
@@ -88,9 +95,21 @@ class TurnoController extends Controller
             return $turno;
         }
 
-        $encontrado = Turno::where('id', $turno)
-            ->orWhereRaw('LOWER(id) = ?', [strtolower((string) $turno)])
-            ->first();
+        $idLimpo = trim((string) $turno);
+
+        // Delega para o método especializado do Model com auto-cura e fallbacks insensíveis a case
+        $encontrado = (new Turno)->resolveRouteBinding($idLimpo);
+
+        if (! $encontrado) {
+            // Última tentativa de auto-cura para padrões canônicos
+            $padraoCanonico = Turno::obterPadraoCanonico($idLimpo);
+            if ($padraoCanonico) {
+                $encontrado = Turno::create($padraoCanonico);
+                $encontrado->grade_horarios = $encontrado->gerarGradeAutomatica();
+                $encontrado->save();
+                $encontrado->wasRecentlyCreated = false;
+            }
+        }
 
         if (! $encontrado) {
             abort(404, "Turno '{$turno}' não encontrado no sistema escolar.");

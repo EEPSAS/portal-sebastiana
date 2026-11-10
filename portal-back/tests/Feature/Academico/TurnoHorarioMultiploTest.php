@@ -110,6 +110,83 @@ test('usuario aluno nao pode atualizar turnos', function () {
     ])->assertForbidden();
 });
 
+test('binding de turno auto-recupera turno canonico quando nao existe no banco', function () {
+    Turno::where('id', 'Matutino')->delete();
+    expect(Turno::where('id', 'Matutino')->exists())->toBeFalse();
+
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+
+    $response = $this->actingAs($especialista, 'sanctum')->putJson('/api/turnos/Matutino', [
+        'hora_inicio' => '07:00',
+        'hora_fim' => '12:15',
+        'duracao_aula_minutos' => 50,
+        'quantidade_aulas' => 5,
+        'pausas' => [
+            [
+                'tipo' => 'intervalo',
+                'rotulo' => 'Intervalo / Recreio',
+                'hora_inicio' => '09:30',
+                'hora_fim' => '09:45',
+            ],
+        ],
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('id', 'Matutino');
+
+    expect(Turno::where('id', 'Matutino')->exists())->toBeTrue();
+});
+
+test('listar turnos auto-popula a base se a tabela estiver completamente vazia', function () {
+    Turno::query()->delete();
+    expect(Turno::count())->toBe(0);
+
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $response = $this->actingAs($especialista, 'sanctum')->getJson('/api/turnos');
+
+    $response->assertOk();
+    expect(count($response->json()))->toBe(4)
+        ->and(Turno::count())->toBe(4);
+});
+
+test('especialista atualiza turno integral com pausas de recreio e almoco', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+
+    $response = $this->actingAs($especialista, 'sanctum')->putJson('/api/turnos/Integral', [
+        'hora_inicio' => '07:00',
+        'hora_fim' => '16:25',
+        'duracao_aula_minutos' => 50,
+        'quantidade_aulas' => 9,
+        'pausas' => [
+            [
+                'tipo' => 'intervalo',
+                'rotulo' => 'Intervalo Manhã',
+                'hora_inicio' => '09:30',
+                'hora_fim' => '09:45',
+            ],
+            [
+                'tipo' => 'almoco',
+                'rotulo' => 'Almoço',
+                'hora_inicio' => '11:25',
+                'hora_fim' => '12:50',
+            ],
+            [
+                'tipo' => 'intervalo',
+                'rotulo' => 'Intervalo Tarde',
+                'hora_inicio' => '14:30',
+                'hora_fim' => '14:45',
+            ],
+        ],
+    ]);
+
+    $response->assertOk()
+        ->assertJsonCount(3, 'pausas')
+        ->assertJsonPath('pausas.1.tipo', 'almoco');
+
+    $turnoIntegral = Turno::find('Integral');
+    expect($turnoIntegral->pausas)->toHaveCount(3);
+});
+
 test('especialista pode gerar horarios simultaneamente para turmas do turno', function () {
     $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
 

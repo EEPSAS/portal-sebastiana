@@ -26,7 +26,8 @@ export const listarTurnos = async ({ signal } = {}) => {
 };
 
 export const obterTurno = async (id, { signal } = {}) => {
-  const response = await api(`/turnos/${id}`, { signal });
+  const idLimpo = encodeURIComponent(String(id || "").trim());
+  const response = await api(`/turnos/${idLimpo}`, { signal });
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
@@ -38,7 +39,8 @@ export const obterTurno = async (id, { signal } = {}) => {
 };
 
 export const atualizarTurno = async (id, dados) => {
-  const response = await api(`/turnos/${id}`, {
+  const idLimpo = encodeURIComponent(String(id || "").trim());
+  const response = await api(`/turnos/${idLimpo}`, {
     method: "PUT",
     body: JSON.stringify(dados),
   });
@@ -53,7 +55,8 @@ export const atualizarTurno = async (id, dados) => {
 };
 
 export const alternarTurno = async (id) => {
-  const response = await api(`/turnos/${id}/toggle`, {
+  const idLimpo = encodeURIComponent(String(id || "").trim());
+  const response = await api(`/turnos/${idLimpo}/toggle`, {
     method: "PATCH",
   });
   const data = await response.json().catch(() => null);

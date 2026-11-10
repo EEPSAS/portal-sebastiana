@@ -17,6 +17,55 @@ class UpdateTurnoRequest extends FormRequest
     }
 
     /**
+     * Sanitiza e normaliza os horários para o formato HH:MM antes da validação.
+     */
+    protected function prepareForValidation(): void
+    {
+        $sanitizarHora = function (?string $hora): ?string {
+            if (! $hora) {
+                return null;
+            }
+            $hora = trim($hora);
+            if (preg_match('/^(\d):(\d{2})$/', $hora, $matches)) {
+                return '0'.$matches[1].':'.$matches[2];
+            }
+
+            return $hora;
+        };
+
+        $merge = [];
+        if ($this->has('hora_inicio')) {
+            $merge['hora_inicio'] = $sanitizarHora($this->input('hora_inicio'));
+        }
+        if ($this->has('hora_fim')) {
+            $merge['hora_fim'] = $sanitizarHora($this->input('hora_fim'));
+        }
+        if ($this->has('intervalo_inicio')) {
+            $merge['intervalo_inicio'] = $sanitizarHora($this->input('intervalo_inicio'));
+        }
+        if ($this->has('intervalo_fim')) {
+            $merge['intervalo_fim'] = $sanitizarHora($this->input('intervalo_fim'));
+        }
+
+        if ($this->has('pausas') && is_array($this->input('pausas'))) {
+            $pausas = $this->input('pausas');
+            foreach ($pausas as $idx => $pausa) {
+                if (isset($pausa['hora_inicio'])) {
+                    $pausas[$idx]['hora_inicio'] = $sanitizarHora($pausa['hora_inicio']);
+                }
+                if (isset($pausa['hora_fim'])) {
+                    $pausas[$idx]['hora_fim'] = $sanitizarHora($pausa['hora_fim']);
+                }
+            }
+            $merge['pausas'] = $pausas;
+        }
+
+        if (! empty($merge)) {
+            $this->merge($merge);
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function rules(): array

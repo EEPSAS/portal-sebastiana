@@ -95,9 +95,17 @@ export default function CiclosPage() {
       duracao_aula_minutos: 50,
       quantidade_aulas: 5,
       intervalo_inicio: "09:30",
-      intervalo_fim: "09:56",
+      intervalo_fim: "09:45",
+      pausas: [
+        {
+          tipo: "intervalo",
+          rotulo: "Intervalo / Recreio",
+          hora_inicio: "09:30",
+          hora_fim: "09:45",
+        },
+      ],
       ativo: true,
-      descricao: "Turno da manhã, com 5 aulas de 50 minutos e intervalo de 09:30 às 09:56.",
+      descricao: "Turno da manhã, com 5 aulas de 50 minutos e intervalo de 09:30 às 09:45.",
       icone: "bi-sun-fill",
       cor: "warning",
     },
@@ -107,11 +115,19 @@ export default function CiclosPage() {
       hora_inicio: "12:50",
       hora_fim: "16:25",
       duracao_aula_minutos: 50,
-      quantidade_aulas: 5,
+      quantidade_aulas: 4,
       intervalo_inicio: "14:30",
       intervalo_fim: "14:45",
+      pausas: [
+        {
+          tipo: "intervalo",
+          rotulo: "Intervalo / Recreio",
+          hora_inicio: "14:30",
+          hora_fim: "14:45",
+        },
+      ],
       ativo: true,
-      descricao: "Turno da tarde, com 5 aulas de 50 minutos e intervalo de 14:30 às 14:45.",
+      descricao: "Turno da tarde, com 4 aulas de 50 minutos e intervalo de 14:30 às 14:45.",
       icone: "bi-brightness-alt-high-fill",
       cor: "primary",
     },
@@ -122,8 +138,16 @@ export default function CiclosPage() {
       hora_fim: "22:15",
       duracao_aula_minutos: 45,
       quantidade_aulas: 4,
-      intervalo_inicio: "20:30",
-      intervalo_fim: "20:45",
+      intervalo_inicio: "20:15",
+      intervalo_fim: "20:30",
+      pausas: [
+        {
+          tipo: "intervalo",
+          rotulo: "Intervalo / Recreio",
+          hora_inicio: "20:15",
+          hora_fim: "20:30",
+        },
+      ],
       ativo: false,
       descricao: "Turno da noite, voltado prioritariamente para EJA e Cursos Noturnos.",
       icone: "bi-moon-stars-fill",
@@ -133,13 +157,33 @@ export default function CiclosPage() {
       id: "Integral",
       nome: "Integral",
       hora_inicio: "07:00",
-      hora_fim: "16:40",
+      hora_fim: "16:25",
       duracao_aula_minutos: 50,
       quantidade_aulas: 9,
       intervalo_inicio: "09:30",
-      intervalo_fim: "09:56",
+      intervalo_fim: "09:45",
+      pausas: [
+        {
+          tipo: "intervalo",
+          rotulo: "Intervalo da Manhã",
+          hora_inicio: "09:30",
+          hora_fim: "09:45",
+        },
+        {
+          tipo: "almoco",
+          rotulo: "Almoço",
+          hora_inicio: "11:25",
+          hora_fim: "12:50",
+        },
+        {
+          tipo: "intervalo",
+          rotulo: "Intervalo da Tarde",
+          hora_inicio: "14:30",
+          hora_fim: "14:45",
+        },
+      ],
       ativo: true,
-      descricao: "Jornada ampliada do Ensino Médio de Tempo Integral (EMTI).",
+      descricao: "Jornada ampliada do Ensino Médio de Tempo Integral (EMTI) com recreios e almoço.",
       icone: "bi-clock-history",
       cor: "success",
     },
@@ -284,18 +328,19 @@ export default function CiclosPage() {
   };
 
   const handleSalvarTurno = async (idTurno) => {
-    const turno = turnos.find((t) => t.id === idTurno);
+    const idLimpo = String(idTurno || "").trim();
+    const turno = turnos.find((t) => t.id === idLimpo || t.id === idTurno);
     if (!turno) return;
 
-    setSalvandoTurnoId(idTurno);
+    setSalvandoTurnoId(idLimpo);
     setErro("");
     try {
       const pausasTurno = Array.isArray(turno.pausas) ? turno.pausas : [];
       const primeiraPausa = pausasTurno[0];
 
       const payload = {
-        hora_inicio: turno.hora_inicio || turno.inicio,
-        hora_fim: turno.hora_fim || turno.fim,
+        hora_inicio: turno.hora_inicio || turno.inicio || "07:00",
+        hora_fim: turno.hora_fim || turno.fim || "12:15",
         duracao_aula_minutos: Number(turno.duracao_aula_minutos) || 50,
         quantidade_aulas: Number(turno.quantidade_aulas) || 5,
         intervalo_inicio: primeiraPausa?.hora_inicio || turno.intervalo_inicio || "09:30",
@@ -305,14 +350,15 @@ export default function CiclosPage() {
         descricao: turno.descricao || null,
       };
 
-      const turnoSalvo = await atualizarTurno(idTurno, payload);
+      const turnoSalvo = await atualizarTurno(idLimpo, payload);
       setTurnos((atuais) =>
-        atuais.map((t) => (t.id === idTurno ? { ...t, ...turnoSalvo } : t))
+        atuais.map((t) => (t.id === idLimpo || t.id === idTurno ? { ...t, ...turnoSalvo } : t))
       );
       setTurnoEmEdicaoId(null);
+      setErro("");
       exibirSucesso(`Configurações operacionais do turno ${turno.nome} salvas com sucesso!`);
     } catch (err) {
-      setErro(err.message || `Erro ao salvar as configurações do turno ${idTurno}.`);
+      setErro(err.message || `Erro ao salvar as configurações do turno ${idLimpo}.`);
     } finally {
       setSalvandoTurnoId(null);
     }
