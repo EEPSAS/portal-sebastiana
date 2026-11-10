@@ -66,11 +66,15 @@ export default function TurmasAba({
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(25);
 
-  // 4. Estados para menus dropdown de ações
+  // 4. Estados de ordenação interativa da tabela de alunos (modern-web-guidance: sortable-table)
+  const [colunaOrdenacao, setColunaOrdenacao] = useState(null);
+  const [direcaoOrdenacao, setDirecaoOrdenacao] = useState("asc");
+
+  // 5. Estados para menus dropdown de ações
   const [menuAcoesTurmaAberto, setMenuAcoesTurmaAberto] = useState(false);
   const [menuAcoesAlunoAbertoId, setMenuAcoesAlunoAbertoId] = useState(null);
 
-  // 5. Estados para modais de detalhes do aluno e de notificação
+  // 6. Estados para modais de detalhes do aluno e de notificação
   const [matriculaModal, setMatriculaModal] = useState(null);
   const [matriculaParaNotificar, setMatriculaParaNotificar] = useState(null);
 
@@ -220,8 +224,61 @@ export default function TurmasAba({
     return lista;
   }, [matriculasArray, turmasSelecionadasIds, termoBuscaAluno, filtroStatusAluno]);
 
+  // Alterna a ordenação da coluna selecionada e reinicia para a 1ª página
+  const handleOrdenar = (colunaId) => {
+    if (colunaOrdenacao === colunaId) {
+      setDirecaoOrdenacao((prev) => (prev === "desc" ? "asc" : "desc"));
+    } else {
+      setColunaOrdenacao(colunaId);
+      setDirecaoOrdenacao("asc");
+    }
+    setPaginaAtual(1);
+  };
+
+  // Comparador de texto com Intl.Collator (sensível ao português e numérico para identificadores)
+  const collator = useMemo(
+    () => new Intl.Collator("pt-BR", { numeric: true, sensitivity: "base" }),
+    []
+  );
+
+  // Ordenação dos alunos com base na coluna e direção selecionadas
+  const alunosOrdenados = useMemo(() => {
+    if (!colunaOrdenacao) return alunosFiltrados;
+
+    return [...alunosFiltrados].sort((a, b) => {
+      switch (colunaOrdenacao) {
+        case "numero": {
+          const numA = Number(a.id_matricula ?? a.id ?? 0);
+          const numB = Number(b.id_matricula ?? b.id ?? 0);
+          return direcaoOrdenacao === "asc" ? numA - numB : numB - numA;
+        }
+        case "estudante": {
+          const nomeA = a.aluno?.name || a.name || "";
+          const nomeB = b.aluno?.name || b.name || "";
+          const comp = collator.compare(nomeA, nomeB);
+          return direcaoOrdenacao === "asc" ? comp : -comp;
+        }
+        case "data": {
+          const timeA =
+            new Date(a.data_matricula || a.created_at || 0).getTime() || 0;
+          const timeB =
+            new Date(b.data_matricula || b.created_at || 0).getTime() || 0;
+          return direcaoOrdenacao === "asc" ? timeA - timeB : timeB - timeA;
+        }
+        case "status": {
+          const statusA = a.status_matricula || "Ativo";
+          const statusB = b.status_matricula || "Ativo";
+          const comp = collator.compare(statusA, statusB);
+          return direcaoOrdenacao === "asc" ? comp : -comp;
+        }
+        default:
+          return 0;
+      }
+    });
+  }, [alunosFiltrados, colunaOrdenacao, direcaoOrdenacao, collator]);
+
   // Paginação dos alunos conforme itensPorPagina configurável (10, 25, 50)
-  const totalAlunosFiltrados = alunosFiltrados.length;
+  const totalAlunosFiltrados = alunosOrdenados.length;
   const totalPaginas = Math.max(
     1,
     Math.ceil(totalAlunosFiltrados / itensPorPagina)
@@ -232,7 +289,68 @@ export default function TurmasAba({
     indiceInicio + itensPorPagina,
     totalAlunosFiltrados
   );
-  const alunosPaginados = alunosFiltrados.slice(indiceInicio, indiceFim);
+  const alunosPaginados = alunosOrdenados.slice(indiceInicio, indiceFim);
+
+  // Renderizador semântico e acessível de cabeçalho clicável para ordenação (WCAG / modern-web-guidance)
+  const renderHeaderOrdenavel = (
+    colunaId,
+    label,
+    align = "start",
+    extraClass = "",
+    style = {}
+  ) => {
+    const isAtivo = colunaOrdenacao === colunaId;
+    const isDesc = isAtivo && direcaoOrdenacao === "desc";
+    const proximaDirecao = isAtivo && isDesc ? "crescente" : "decrescente";
+
+    return (
+      <th
+        scope="col"
+        className={`${extraClass} user-select-none`}
+        style={style}
+        {...(isAtivo
+          ? {
+              "aria-sort":
+                direcaoOrdenacao === "asc" ? "ascending" : "descending",
+            }
+          : {})}
+      >
+        <button
+          type="button"
+          className={`tabela-header-btn d-inline-flex align-items-center gap-1.5 ${
+            align === "center"
+              ? "justify-content-center w-100"
+              : align === "end"
+              ? "justify-content-end w-100"
+              : "justify-content-start"
+          } ${isAtivo ? "text-primary fw-bolder" : "text-muted fw-bold"}`}
+          onClick={() => handleOrdenar(colunaId)}
+          title={`Clique para ordenar por ${label} (ordem ${proximaDirecao})`}
+        >
+          <span>{label}</span>
+          {isAtivo ? (
+            direcaoOrdenacao === "desc" ? (
+              <i
+                className="bi bi-arrow-down text-primary fw-bold"
+                aria-hidden="true"
+              ></i>
+            ) : (
+              <i
+                className="bi bi-arrow-up text-primary fw-bold"
+                aria-hidden="true"
+              ></i>
+            )
+          ) : (
+            <i
+              className="bi bi-arrow-down-up text-secondary opacity-50"
+              style={{ fontSize: "0.75rem" }}
+              aria-hidden="true"
+            ></i>
+          )}
+        </button>
+      </th>
+    );
+  };
 
   // Formatação segura de datas DD/MM/AAAA
   const formatarData = (dataRaw) => {
@@ -660,18 +778,30 @@ export default function TurmasAba({
               >
                 <thead className="table-light text-muted small fw-bold">
                   <tr>
-                    <th className="ps-3 py-2" style={{ width: "12%" }}>
-                      Nº
-                    </th>
-                    <th className="py-2" style={{ width: "42%" }}>
-                      ESTUDANTE
-                    </th>
-                    <th className="py-2 text-center" style={{ width: "20%" }}>
-                      DATA DE MATRÍCULA
-                    </th>
-                    <th className="py-2 text-center" style={{ width: "14%" }}>
-                      STATUS
-                    </th>
+                    {renderHeaderOrdenavel("numero", "Nº", "start", "ps-3 py-2", {
+                      width: "12%",
+                    })}
+                    {renderHeaderOrdenavel(
+                      "estudante",
+                      "ESTUDANTE",
+                      "start",
+                      "py-2",
+                      { width: "42%" }
+                    )}
+                    {renderHeaderOrdenavel(
+                      "data",
+                      "DATA DE MATRÍCULA",
+                      "center",
+                      "py-2 text-center",
+                      { width: "20%" }
+                    )}
+                    {renderHeaderOrdenavel(
+                      "status",
+                      "STATUS",
+                      "center",
+                      "py-2 text-center",
+                      { width: "14%" }
+                    )}
                     <th className="pe-3 py-2 text-end" style={{ width: "12%" }}>
                       AÇÕES
                     </th>

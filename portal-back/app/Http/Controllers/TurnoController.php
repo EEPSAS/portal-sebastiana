@@ -29,49 +29,73 @@ class TurnoController extends Controller
      * GET /api/turnos/{turno}
      * Detalhes de um turno específico e sua grade de horários.
      */
-    public function show(Turno $turno): TurnoResource
+    public function show(Turno|string $turno): TurnoResource
     {
-        return new TurnoResource($turno);
+        $model = $this->resolverTurno($turno);
+
+        return new TurnoResource($model);
     }
 
     /**
      * PUT /api/turnos/{turno}
      * Atualiza os parâmetros operacionais (horários, duração de aula, intervalo).
      */
-    public function update(UpdateTurnoRequest $request, Turno $turno): TurnoResource
+    public function update(UpdateTurnoRequest $request, Turno|string $turno): TurnoResource
     {
+        $model = $this->resolverTurno($turno);
         $dados = $request->validated();
 
-        $turno->fill($dados);
+        $model->fill($dados);
 
         // Se uma grade customizada não foi fornecida explicitamente, regenera a grade automática
         if (! isset($dados['grade_horarios'])) {
-            $turno->grade_horarios = $turno->gerarGradeAutomatica();
+            $model->grade_horarios = $model->gerarGradeAutomatica();
         }
 
-        $turno->save();
+        $model->save();
 
-        return new TurnoResource($turno);
+        return new TurnoResource($model);
     }
 
     /**
      * PATCH /api/turnos/{turno}/toggle
      * Alterna o estado de ativação operacional do turno.
      */
-    public function toggle(Request $request, Turno $turno): JsonResponse
+    public function toggle(Request $request, Turno|string $turno): JsonResponse
     {
         $user = $request->user();
         if (! $user || ! $user->canManageAcademic()) {
             abort(403, 'Apenas Especialistas e Administradores podem ativar ou desativar turnos.');
         }
 
-        $turno->ativo = ! $turno->ativo;
-        $turno->save();
+        $model = $this->resolverTurno($turno);
+        $model->ativo = ! $model->ativo;
+        $model->save();
 
         return response()->json([
             'status' => 'sucesso',
-            'message' => "Turno {$turno->nome} ".($turno->ativo ? 'ativado' : 'desativado').' com sucesso.',
-            'dados' => new TurnoResource($turno),
+            'message' => "Turno {$model->nome} ".($model->ativo ? 'ativado' : 'desativado').' com sucesso.',
+            'dados' => new TurnoResource($model),
         ], 200);
+    }
+
+    /**
+     * Garante a resolução do Turno mesmo se o binding de rota falhar ou receber string direta.
+     */
+    private function resolverTurno(Turno|string $turno): Turno
+    {
+        if ($turno instanceof Turno) {
+            return $turno;
+        }
+
+        $encontrado = Turno::where('id', $turno)
+            ->orWhereRaw('LOWER(id) = ?', [strtolower((string) $turno)])
+            ->first();
+
+        if (! $encontrado) {
+            abort(404, "Turno '{$turno}' não encontrado no sistema escolar.");
+        }
+
+        return $encontrado;
     }
 }

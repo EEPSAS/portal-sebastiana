@@ -83,7 +83,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false, te
   }
 
   return (
-    <div>
+    <div className="geral-aba-container">
       {/* 1. Cards de Indicadores Globais */}
       <div className="row g-2 g-md-3 mb-2">
         {/* Total de Turmas */}

@@ -53,6 +53,20 @@ class Turno extends Model
     }
 
     /**
+     * Resolve o binding de rota de forma robusta e insensível a maiúsculas/minúsculas.
+     *
+     * @param  mixed  $value
+     * @param  string|null  $field
+     * @return \Illuminate\Database\Eloquent\Model|null
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return $this->where('id', $value)
+            ->orWhereRaw('LOWER(id) = ?', [strtolower((string) $value)])
+            ->first();
+    }
+
+    /**
      * Calcula ou recupera a grade sequencial de horários e intervalos das aulas do turno.
      * Retorna a lista de módulos contendo hora de início, término e marcação de intervalo.
      *

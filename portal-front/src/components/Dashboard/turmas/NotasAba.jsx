@@ -409,31 +409,30 @@ export default function NotasAba({
   const renderHeaderOrdenavel = (colunaId, label, align = "start", extraClass = "") => {
     const isAtivo = colunaOrdenacao === colunaId;
     const isDesc = isAtivo && direcaoOrdenacao === "desc";
-
-    let ariaSortValue = "none";
-    if (isAtivo) {
-      ariaSortValue = direcaoOrdenacao === "asc" ? "ascending" : "descending";
-    }
-
     const proximaDirecao = isAtivo && isDesc ? "crescente" : "decrescente";
 
     return (
       <th
         scope="col"
         className={`${extraClass} user-select-none`}
-        aria-sort={ariaSortValue}
-        style={{ cursor: "pointer", transition: "background-color 0.15s ease" }}
-        onClick={() => handleOrdenar(colunaId)}
-        title={`Clique para ordenar por ${label} (ordem ${proximaDirecao})`}
+        {...(isAtivo
+          ? {
+              "aria-sort":
+                direcaoOrdenacao === "asc" ? "ascending" : "descending",
+            }
+          : {})}
       >
-        <div
-          className={`d-inline-flex align-items-center gap-1.5 ${
+        <button
+          type="button"
+          className={`tabela-header-btn d-inline-flex align-items-center gap-1.5 ${
             align === "center"
               ? "justify-content-center w-100"
               : align === "end"
               ? "justify-content-end w-100"
               : "justify-content-start"
           } ${isAtivo ? "text-primary fw-bolder" : "text-muted fw-bold"}`}
+          onClick={() => handleOrdenar(colunaId)}
+          title={`Clique para ordenar por ${label} (ordem ${proximaDirecao})`}
         >
           <span>{label}</span>
           {isAtivo ? (
@@ -449,7 +448,7 @@ export default function NotasAba({
               aria-hidden="true"
             ></i>
           )}
-        </div>
+        </button>
       </th>
     );
   };
