@@ -281,10 +281,19 @@ export const SalvarCicloInputSchema = z.object({
 // Validação de itens da grade horária sequencial do turno
 export const GradeHorarioItemSchema = z.object({
   is_intervalo: z.boolean().default(false),
+  tipo: z.string().optional(),
   aula_numero: z.number().int().nullable().optional(),
   hora_inicio: z.string(),
   hora_fim: z.string(),
   rotulo: z.string().optional(),
+});
+
+// Validação de pausas operacionais (intervalos/recreios e horário de almoço)
+export const PausaTurnoSchema = z.object({
+  tipo: z.enum(["intervalo", "almoco"]).default("intervalo"),
+  rotulo: z.string().default("Intervalo / Recreio"),
+  hora_inicio: z.string(),
+  hora_fim: z.string(),
 });
 
 // Validação de configuração de Turnos Escolares e Módulos de Aula (Contrato API Backend)
@@ -297,6 +306,7 @@ export const TurnoSchema = z.object({
   intervalo_inicio: z.string().nullable().optional(),
   intervalo_fim: z.string().nullable().optional(),
   quantidade_aulas: z.number().int().default(5),
+  pausas: z.array(PausaTurnoSchema).optional().default([]),
   ativo: z.boolean(),
   descricao: z.string().nullable().optional(),
   icone: z.string().optional().default("bi-sun-fill"),

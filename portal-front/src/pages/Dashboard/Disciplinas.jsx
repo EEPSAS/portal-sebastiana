@@ -41,6 +41,21 @@ const DisciplinasPage = () => {
   const [erro, setErro] = useState("");
   const [feedback, setFeedback] = useState("");
 
+  // Paleta de cores semânticas para identificação e distinção visual dos ciclos
+  const CORES_CICLOS = [
+    { primária: "#10b981", bgHeader: "#f0fdf4", border: "#86efac", badgeBg: "#dcfce7", badgeText: "#166534" }, // 1º (Esmeralda)
+    { primária: "#2563eb", bgHeader: "#eff6ff", border: "#93c5fd", badgeBg: "#dbeafe", badgeText: "#1e40af" }, // 2º (Azul Real)
+    { primária: "#d97706", bgHeader: "#fffbeb", border: "#fde68a", badgeBg: "#fef3c7", badgeText: "#92400e" }, // 3º (Âmbar)
+    { primária: "#7c3aed", bgHeader: "#f5f3ff", border: "#c4b5fd", badgeBg: "#ede9fe", badgeText: "#5b21b6" }, // 4º (Violeta)
+    { primária: "#db2777", bgHeader: "#fdf2f8", border: "#f9a8d4", badgeBg: "#fce7f3", badgeText: "#9d174d" }, // 5º (Rosa)
+    { primária: "#0891b2", bgHeader: "#ecfeff", border: "#67e8f9", badgeBg: "#cffafe", badgeText: "#155e75" }, // 6º (Ciano)
+  ];
+
+  const getCorCiclo = (idCiclo) => {
+    const idNum = Number(idCiclo) || 0;
+    return CORES_CICLOS[idNum % CORES_CICLOS.length];
+  };
+
   // Modais
   const [modalDisciplinaAberto, setModalDisciplinaAberto] = useState(false);
   const [disciplinaEmEdicao, setDisciplinaEmEdicao] = useState(null);
@@ -154,7 +169,8 @@ const DisciplinasPage = () => {
   );
 
   return (
-    <div className="position-relative">
+    <div className="position-relative disciplinas-page-viewport-lock">
+      {/* Toast flutuante de notificação */}
       {feedback && (
         <div
           className="alert alert-success dashboard-toast py-2 px-3 small z-3"
@@ -164,15 +180,19 @@ const DisciplinasPage = () => {
         </div>
       )}
 
-      <PainelModulo acoes={acoesDisciplinas}>
+      <PainelModulo
+        className="painel-modulo-viewport-lock"
+        conteudoClassName="painel-modulo-conteudo-viewport-lock"
+        acoes={acoesDisciplinas}
+      >
         {erro && (
-          <div className="alert alert-danger rounded-3 small mb-4" role="alert">
+          <div className="alert alert-danger rounded-3 small mb-2 py-2 px-3" role="alert">
             {erro}
           </div>
         )}
 
-        {/* Barra de Filtros e Busca Rápida */}
-        <div className="card border-0 bg-light rounded-4 p-3 mb-4">
+        {/* Barra de Filtros e Busca Rápida Slim */}
+        <div className="card border bg-light rounded-3 p-2 mb-2 flex-shrink-0">
           <div className="row g-2 align-items-center">
             <div className="col-12 col-md-6 col-lg-5">
               <div className="input-group input-group-sm">
@@ -220,8 +240,10 @@ const DisciplinasPage = () => {
           </div>
         </div>
 
-        {/* Estado de Carregamento */}
-        {loading ? (
+        {/* Conteúdo com rolagem vertical suave confinada */}
+        <div className="modulo-conteudo-scroll">
+          {/* Estado de Carregamento */}
+          {loading ? (
           <div className="text-center py-5">
             <div className="spinner-border text-primary" role="status"></div>
             <p className="text-muted small mt-2">Carregando catálogo de disciplinas...</p>
@@ -247,7 +269,7 @@ const DisciplinasPage = () => {
           </div>
         ) : (
           /* Grid Direto de Disciplinas (Conforme Requisito: Sem Agrupamento por Ciclos) */
-          <div className="row g-3">
+          <div className="row g-2">
             {disciplinasFiltradas.map((disc) => {
               const aulasSem =
                 disc.aulas_semanais ||
@@ -259,7 +281,10 @@ const DisciplinasPage = () => {
 
               return (
                 <div className="col-12 col-md-6 col-xl-4" key={disc.id_disciplina}>
-                  <div className="card h-100 border rounded-4 shadow-sm bg-white p-3 d-flex flex-column justify-content-between">
+                  <div
+                    className="card h-100 border rounded-3 shadow-xs bg-white d-flex flex-column justify-content-between"
+                    style={{ padding: "1.25rem 1.35rem" }}
+                  >
                     <div>
                       {/* Topo do Card: Nome e Carga Horária */}
                       <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
@@ -278,16 +303,24 @@ const DisciplinasPage = () => {
                         </small>
                         {Array.isArray(disc.ciclos) && disc.ciclos.length > 0 ? (
                           <div className="d-flex flex-wrap gap-1">
-                            {disc.ciclos.map((c) => (
-                              <span
-                                key={c.id_ciclo}
-                                className="badge bg-secondary-subtle text-dark rounded-pill"
-                                style={{ fontSize: "0.72rem" }}
-                              >
-                                <i className="bi bi-diagram-3 me-1 text-secondary"></i>
-                                {c.nome}
-                              </span>
-                            ))}
+                            {disc.ciclos.map((c) => {
+                              const cor = getCorCiclo(c.id_ciclo);
+                              return (
+                                <span
+                                  key={c.id_ciclo}
+                                  className="badge rounded-pill fw-medium"
+                                  style={{
+                                    fontSize: "0.74rem",
+                                    backgroundColor: cor.badgeBg,
+                                    color: cor.badgeText,
+                                    border: `1px solid ${cor.border}`,
+                                  }}
+                                >
+                                  <i className="bi bi-diagram-3 me-1" style={{ color: cor.primária }}></i>
+                                  {c.nome}
+                                </span>
+                              );
+                            })}
                           </div>
                         ) : (
                           <span
@@ -376,6 +409,7 @@ const DisciplinasPage = () => {
             })}
           </div>
         )}
+        </div>
       </PainelModulo>
 
       {/* Modal Reutilizável de Criação / Edição de Disciplina */}

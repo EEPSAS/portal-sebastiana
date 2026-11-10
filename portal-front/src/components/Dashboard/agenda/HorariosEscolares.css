@@ -48,3 +48,34 @@
     flex: 1 1 100%;
   }
 }
+
+/* Correção de ancoragem do Dropdown de Geração de Horários e fixação horizontal dos botões */
+.horarios-nav-acoes {
+  flex-wrap: nowrap;
+}
+
+.horarios-nav-acoes .btn {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.35;
+}
+
+.horarios-nav-acoes .btn-group {
+  position: relative;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.horarios-nav-acoes .dropdown-menu {
+  position: absolute !important;
+  right: 0 !important;
+  left: auto !important;
+  top: 100% !important;
+  min-width: 245px;
+  max-width: min(320px, calc(100vw - 20px));
+  transform: none !important;
+  margin-top: 0.35rem;
+}

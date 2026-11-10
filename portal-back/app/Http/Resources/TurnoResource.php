@@ -24,6 +24,7 @@ class TurnoResource extends JsonResource
             'intervalo_inicio' => $this->intervalo_inicio,
             'intervalo_fim' => $this->intervalo_fim,
             'quantidade_aulas' => (int) $this->quantidade_aulas,
+            'pausas' => $this->obterPausas(),
             'ativo' => (bool) $this->ativo,
             'descricao' => $this->descricao,
             'icone' => $this->icone,

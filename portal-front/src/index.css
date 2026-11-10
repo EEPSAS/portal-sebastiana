@@ -471,7 +471,23 @@ button {
   padding: 0.65rem clamp(0.5rem, 1.2vw, 0.95rem);
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
   position: relative;
+}
+
+/* Em telas desktop (>= 992px), páginas com viewport-lock travam o dashboard-panel para rolagem interna pura */
+@media (min-width: 992px) {
+  .dashboard-panel:has(.modulo-page-viewport-lock),
+  .dashboard-panel:has(.turmas-page-viewport-lock),
+  .dashboard-panel:has(.boletim-page-viewport-lock),
+  .dashboard-panel:has(.professores-page-viewport-lock),
+  .dashboard-panel:has(.disciplinas-page-viewport-lock),
+  .dashboard-panel:has(.periodo-letivo-page-viewport-lock),
+  .dashboard-panel:has(.ciclos-page-viewport-lock) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 }
 
 /* Notificação/Toast de Sucesso: fixado abaixo do Header (em top: 80px) sem sobrepor botões */

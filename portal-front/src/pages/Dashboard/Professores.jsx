@@ -213,13 +213,16 @@ const ProfessoresPage = () => {
       }
 
       return (
-        <div className="row g-3">
+        <div className="row g-2">
           {professoresPendentes.map((prof) => {
             const selecionadas = disciplinasPendentesMap[prof.id] || [];
 
             return (
               <div key={prof.id} className="col-12 col-lg-6">
-                <div className="card professor-card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div
+                  className="card professor-card border shadow-xs rounded-3 p-3 bg-white h-100"
+                  style={{ borderLeft: "4px solid #f59e0b" }}
+                >
                   <div className="d-flex align-items-start gap-3">
                     {/* Avatar do professor */}
                     <div
@@ -320,10 +323,13 @@ const ProfessoresPage = () => {
     }
 
     return (
-      <div className="row g-3">
+      <div className="row g-2">
         {professoresConfirmados.map((prof) => (
           <div key={prof.id} className="col-12 col-xl-6">
-            <div className="card professor-card border-0 shadow-sm rounded-4 p-4 bg-white h-100 d-flex flex-column justify-content-between">
+            <div
+              className="card professor-card border shadow-xs rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between"
+              style={{ borderLeft: "4px solid #10b981" }}
+            >
               <div>
                 <div className="d-flex align-items-start gap-3 mb-3">
                   {/* Avatar */}
@@ -419,7 +425,7 @@ const ProfessoresPage = () => {
   );
 
   return (
-    <div className="professores-page container-fluid px-0">
+    <div className="position-relative professores-page-viewport-lock">
       {/* Toast flutuante de notificação */}
       {feedback && (
         <div
@@ -444,49 +450,60 @@ const ProfessoresPage = () => {
         </div>
       )}
 
-      <PainelModulo acoes={acoesProfessores}>
-      {erro && (
-        <div className="alert alert-danger rounded-3 shadow-sm mb-3" role="alert">
-          {erro}
+      <PainelModulo
+        className="painel-modulo-viewport-lock"
+        conteudoClassName="painel-modulo-conteudo-viewport-lock"
+        acoes={acoesProfessores}
+      >
+        {erro && (
+          <div className="alert alert-danger rounded-3 shadow-sm mb-2 py-2 px-3" role="alert">
+            {erro}
+          </div>
+        )}
+
+        {/* Sub-abas de 2º Nível: Segmentadas e Compactas padronizadas com Turmas */}
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 p-1 bg-light rounded-3 border flex-shrink-0 mb-2">
+          <div className="d-flex flex-wrap align-items-center gap-1">
+            <button
+              type="button"
+              className={`btn btn-sm rounded-2 px-2.5 py-1 fw-semibold border-0 d-flex align-items-center gap-1.5 transition-all ${
+                abaAtiva === "pendentes"
+                  ? "btn-primary text-white shadow-xs"
+                  : "btn-light text-muted"
+              }`}
+              onClick={() => setAbaAtiva("pendentes")}
+            >
+              <i className="bi bi-hourglass-split"></i>
+              <span>Pendentes de Confirmação</span>
+              {pendentesCount > 0 && (
+                <span className="badge rounded-pill bg-danger ms-1">
+                  {pendentesCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              className={`btn btn-sm rounded-2 px-2.5 py-1 fw-semibold border-0 d-flex align-items-center gap-1.5 transition-all ${
+                abaAtiva === "confirmados"
+                  ? "btn-primary text-white shadow-xs"
+                  : "btn-light text-muted"
+              }`}
+              onClick={() => setAbaAtiva("confirmados")}
+            >
+              <i className="bi bi-person-check-fill"></i>
+              <span>Professores Confirmados</span>
+              <span className="badge rounded-pill bg-secondary ms-1">
+                {professoresConfirmados.length}
+              </span>
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* Sub-abas de 2º Nível: Segmentadas e Compactas */}
-      <div className="d-flex flex-wrap align-items-center gap-1 p-1 bg-light rounded-pill border mb-3 d-inline-flex">
-        <button
-          type="button"
-          className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 d-flex align-items-center gap-2 ${
-            abaAtiva === "pendentes" ? "btn-primary text-white shadow-sm" : "btn-light text-muted"
-          }`}
-          onClick={() => setAbaAtiva("pendentes")}
-        >
-          <i className="bi bi-hourglass-split"></i>
-          <span>Pendentes de Confirmação</span>
-          {pendentesCount > 0 && (
-            <span className="badge rounded-pill bg-danger ms-1">
-              {pendentesCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 d-flex align-items-center gap-2 ${
-            abaAtiva === "confirmados" ? "btn-primary text-white shadow-sm" : "btn-light text-muted"
-          }`}
-          onClick={() => setAbaAtiva("confirmados")}
-        >
-          <i className="bi bi-person-check-fill"></i>
-          <span>Professores Confirmados</span>
-          <span className="badge rounded-pill bg-secondary ms-1">
-            {professoresConfirmados.length}
-          </span>
-        </button>
-      </div>
-
-      {/* Renderização do conteúdo */}
-      {renderConteudo()}
-
+        {/* Renderização do conteúdo com rolagem vertical suave confinada */}
+        <div className="modulo-conteudo-scroll">
+          {renderConteudo()}
+        </div>
       </PainelModulo>
 
       {/* Modal de Gestão de Vínculos Docentes */}

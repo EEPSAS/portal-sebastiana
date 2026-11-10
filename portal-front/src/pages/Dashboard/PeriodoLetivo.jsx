@@ -157,91 +157,95 @@ export default function PeriodoLetivoPage() {
   ) : null;
 
   return (
-    <PainelModulo
-      titulo="Período Letivo"
-      subtitulo="Configuração do ano letivo escolar, ciclos avaliativos (Bimestres/Trimestres), pontuações e marcos institucionais."
-      icone="bi-calendar-range"
-      acoes={acoesCabecalho}
-    >
-      {/* Alertas de Feedback da Página Principal */}
-      {mensagemSucesso && (
-        <div className="alert alert-success alert-dismissible fade show rounded-4 shadow-sm mb-4" role="alert">
-          <i className="bi bi-check-circle-fill me-2 fs-5 align-middle"></i>
-          <span>{mensagemSucesso}</span>
-          <button
-            type="button"
-            className="btn-close"
-            aria-label="Fechar"
-            onClick={() => setMensagemSucesso("")}
-          ></button>
-        </div>
-      )}
-
-      {erro && (
-        <div className="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm mb-4" role="alert">
-          <i className="bi bi-exclamation-triangle-fill me-2 fs-5 align-middle"></i>
-          <span>{erro}</span>
-          <button
-            type="button"
-            className="btn-close"
-            aria-label="Fechar"
-            onClick={() => setErro("")}
-          ></button>
-        </div>
-      )}
-
-      {/* 1. Estado Assíncrono: Carregando */}
-      {loading && (
-        <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando períodos letivos...</span>
-          </div>
-          <p className="text-muted mt-2 small">Carregando configurações de períodos letivos...</p>
-        </div>
-      )}
-
-      {/* 2. Estado Assíncrono: Vazio */}
-      {!loading && !erro && periodos.length === 0 && (
-        <div className="text-center py-5 bg-white rounded-4 border p-5">
-          <i className="bi bi-calendar-x fs-1 text-muted d-block mb-3"></i>
-          <h5 className="fw-bold text-dark">Nenhum período letivo cadastrado</h5>
-          <p className="text-muted small mb-4" style={{ maxWidth: "480px", margin: "0 auto" }}>
-            Cadastre o primeiro ano letivo para configurar as divisões avaliativas (bimestres ou trimestres),
-            distribuir os pontos e sincronizar os marcos no calendário escolar.
-          </p>
-          {podeGerenciar && (
+    <div className="position-relative periodo-letivo-page-viewport-lock">
+      <PainelModulo
+        className="painel-modulo-viewport-lock"
+        conteudoClassName="painel-modulo-conteudo-viewport-lock"
+        acoes={acoesCabecalho}
+      >
+        {/* Alertas de Feedback da Página Principal */}
+        {mensagemSucesso && (
+          <div className="alert alert-success alert-dismissible fade show rounded-3 shadow-xs mb-2 py-2 px-3" role="alert">
+            <i className="bi bi-check-circle-fill me-2 fs-6 align-middle"></i>
+            <span>{mensagemSucesso}</span>
             <button
               type="button"
-              className="btn btn-primary rounded-pill px-4 fw-semibold"
-              onClick={handleAbrirCriacao}
-            >
-              <i className="bi bi-plus-lg me-1"></i> Cadastrar Período Letivo
-            </button>
+              className="btn-close"
+              aria-label="Fechar"
+              onClick={() => setMensagemSucesso("")}
+            ></button>
+          </div>
+        )}
+
+        {erro && (
+          <div className="alert alert-danger alert-dismissible fade show rounded-3 shadow-xs mb-2 py-2 px-3" role="alert">
+            <i className="bi bi-exclamation-triangle-fill me-2 fs-6 align-middle"></i>
+            <span>{erro}</span>
+            <button
+              type="button"
+              className="btn-close"
+              aria-label="Fechar"
+              onClick={() => setErro("")}
+            ></button>
+          </div>
+        )}
+
+        {/* Conteúdo com rolagem vertical suave confinada */}
+        <div className="modulo-conteudo-scroll">
+          {/* 1. Estado Assíncrono: Carregando */}
+          {loading && (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Carregando períodos letivos...</span>
+              </div>
+              <p className="text-muted mt-2 small">Carregando configurações de períodos letivos...</p>
+            </div>
+          )}
+
+          {/* 2. Estado Assíncrono: Vazio */}
+          {!loading && !erro && periodos.length === 0 && (
+            <div className="text-center py-5 bg-white rounded-4 border p-4">
+              <i className="bi bi-calendar-x fs-1 text-muted d-block mb-3"></i>
+              <h5 className="fw-bold text-dark">Nenhum período letivo cadastrado</h5>
+              <p className="text-muted small mb-4" style={{ maxWidth: "480px", margin: "0 auto" }}>
+                Cadastre o primeiro ano letivo para configurar as divisões avaliativas (bimestres ou trimestres),
+                distribuir os pontos e sincronizar os marcos no calendário escolar.
+              </p>
+              {podeGerenciar && (
+                <button
+                  type="button"
+                  className="btn btn-primary rounded-pill px-4 fw-semibold"
+                  onClick={handleAbrirCriacao}
+                >
+                  <i className="bi bi-plus-lg me-1"></i> Cadastrar Período Letivo
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* 3. Lista de Períodos Letivos Cadastrados */}
+          {!loading && periodos.length > 0 && (
+            <ListaPeriodosCard
+              periodos={periodos}
+              podeGerenciar={podeGerenciar}
+              onEditar={handleAbrirEdicao}
+              onAtivar={handleAtivar}
+              onSincronizarAgenda={handleSincronizarAgenda}
+              onExcluir={handleExcluir}
+              acaoEmProgressoId={acaoEmProgressoId}
+            />
           )}
         </div>
-      )}
 
-      {/* 3. Lista de Períodos Letivos Cadastrados */}
-      {!loading && periodos.length > 0 && (
-        <ListaPeriodosCard
-          periodos={periodos}
-          podeGerenciar={podeGerenciar}
-          onEditar={handleAbrirEdicao}
-          onAtivar={handleAtivar}
-          onSincronizarAgenda={handleSincronizarAgenda}
-          onExcluir={handleExcluir}
-          acaoEmProgressoId={acaoEmProgressoId}
+        {/* Modal de Criação / Edição com tratamento de erros interno */}
+        <ModalPeriodoLetivo
+          aberto={modalAberto}
+          periodoEmEdicao={periodoEmEdicao}
+          onFechar={() => setModalAberto(false)}
+          onSalvar={handleSalvar}
+          salvando={salvando}
         />
-      )}
-
-      {/* Modal de Criação / Edição com tratamento de erros interno */}
-      <ModalPeriodoLetivo
-        aberto={modalAberto}
-        periodoEmEdicao={periodoEmEdicao}
-        onFechar={() => setModalAberto(false)}
-        onSalvar={handleSalvar}
-        salvando={salvando}
-      />
-    </PainelModulo>
+      </PainelModulo>
+    </div>
   );
 }

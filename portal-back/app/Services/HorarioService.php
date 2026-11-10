@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Horario;
 use App\Models\HorarioAula;
 use App\Models\Turma;
+use App\Models\Turno;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -95,8 +96,9 @@ class HorarioService
 
             $turma->load(['turmaDisciplinas.disciplina', 'turmaDisciplinas.professor']);
             $atribuicoes = $this->validarCurriculo($turma);
-            $usoExistente = $this->usoDeOutrasTurmas($turma->ano_letivo, $turma->id_turma);
-            $grade = $this->buscarGrade($atribuicoes, $usoExistente['ocupacoes'], $usoExistente['cargas_diarias']);
+            $maxAulasPorDia = $this->calcularMaxAulasPorDia($turma, $atribuicoes);
+            $usoExistente = $this->usoDeOutrasTurmas($turma->ano_letivo, $turma->id_turma, $turma);
+            $grade = $this->buscarGrade($atribuicoes, $usoExistente['ocupacoes'], $usoExistente['cargas_diarias'], $maxAulasPorDia);
 
             if ($grade === null) {
                 throw ValidationException::withMessages([
@@ -204,18 +206,27 @@ class HorarioService
                     'turma' => $turma,
                     'atribuicoes' => $atribuicoes,
                     'total_aulas' => array_sum(array_column($atribuicoes, 'aulas_semanais')),
+                    'max_aulas_dia' => $this->calcularMaxAulasPorDia($turma, $atribuicoes),
                 ];
             }
 
             // 2. Ordena as turmas colocando primeiro as mais restritas (maior número de aulas)
             usort($turmasDados, fn ($a, $b) => $b['total_aulas'] <=> $a['total_aulas']);
 
+            // Mapeia previamente os horários de início e término de cada turma do lote para checagem rápida de choques
+            $turnosCache = Turno::all()->keyBy(fn ($t) => strtolower($t->id));
+            $horariosPorTurmaId = [];
+            foreach ($turmasColecao as $t) {
+                $horariosPorTurmaId[$t->id_turma] = $this->mapearHorariosTurno($t->turno, $turnosCache);
+            }
+
             // 3. Executa a resolução multi-turma com backtracking
             $gradesPorTurma = $this->resolverGradesMultiplas(
                 $turmasDados,
                 0,
                 $usoExistente['ocupacoes'],
-                $usoExistente['cargas_diarias']
+                $usoExistente['cargas_diarias'],
+                $horariosPorTurmaId
             );
 
             if ($gradesPorTurma === null) {
@@ -251,16 +262,18 @@ class HorarioService
      * Resolução recursiva com retrocesso entre turmas para garantir que escolhas de uma turma
      * não impeçam as turmas subsequentes de encontrar horários válidos.
      *
-     * @param  array<int, array{turma: Turma, atribuicoes: array}>  $turmasLista
+     * @param  array<int, array{turma: Turma, atribuicoes: array, total_aulas: int, max_aulas_dia: int}>  $turmasLista
      * @param  array<int, array<int, array<int, bool>>>  $ocupacoes
      * @param  array<int, array<int, int>>  $cargasDiarias
+     * @param  array<int, array<int, array{inicio: string, fim: string}>>  $horariosPorTurmaId
      * @return array<int, array>|null
      */
     private function resolverGradesMultiplas(
         array $turmasLista,
         int $indice,
         array $ocupacoes,
-        array $cargasDiarias
+        array $cargasDiarias,
+        array $horariosPorTurmaId = []
     ): ?array {
         if ($indice >= count($turmasLista)) {
             return [];
@@ -269,11 +282,13 @@ class HorarioService
         $itemAtual = $turmasLista[$indice];
         $turma = $itemAtual['turma'];
         $atribuicoes = $itemAtual['atribuicoes'];
+        $maxAulasPorDia = $itemAtual['max_aulas_dia'] ?? 6;
+        $horariosTurmaAtual = $horariosPorTurmaId[$turma->id_turma] ?? [];
 
         // Tenta até 6 variações de grade para a turma atual
         $maxTentativas = 6;
         for ($t = 0; $t < $maxTentativas; $t++) {
-            $grade = $this->buscarGrade($atribuicoes, $ocupacoes, $cargasDiarias);
+            $grade = $this->buscarGrade($atribuicoes, $ocupacoes, $cargasDiarias, $maxAulasPorDia);
             if ($grade === null) {
                 return null;
             }
@@ -285,15 +300,30 @@ class HorarioService
                 $profId = (int) $aula['professor_id'];
                 $dia = (int) $aula['dia_semana'];
                 $periodo = (int) $aula['aula_numero'];
-                $novasOcupacoes[$profId][$dia][$periodo] = true;
                 $novasCargas[$profId][$dia] = ($novasCargas[$profId][$dia] ?? 0) + 1;
+
+                // Propaga a ocupação para as próximas turmas
+                $faixaAula = $horariosTurmaAtual[$periodo] ?? null;
+                $proximaTurma = $turmasLista[$indice + 1]['turma'] ?? null;
+                $horariosProxima = $proximaTurma ? ($horariosPorTurmaId[$proximaTurma->id_turma] ?? []) : [];
+
+                if ($faixaAula && ! empty($horariosProxima)) {
+                    foreach ($horariosProxima as $periodoProx => $faixaProx) {
+                        if ($this->horariosColidem($faixaProx, $faixaAula)) {
+                            $novasOcupacoes[$profId][$dia][$periodoProx] = true;
+                        }
+                    }
+                } else {
+                    $novasOcupacoes[$profId][$dia][$periodo] = true;
+                }
             }
 
             $restoGrades = $this->resolverGradesMultiplas(
                 $turmasLista,
                 $indice + 1,
                 $novasOcupacoes,
-                $novasCargas
+                $novasCargas,
+                $horariosPorTurmaId
             );
 
             if ($restoGrades !== null) {
@@ -375,7 +405,7 @@ class HorarioService
             }
 
             $gradeAtualizada = $horario->aulas()->get();
-            $usoExistente = $this->usoDeOutrasTurmas($horario->ano_letivo, $horario->turma_id);
+            $usoExistente = $this->usoDeOutrasTurmas($horario->ano_letivo, $horario->turma_id, $horario->turma);
             $this->validarGradeEditada($gradeAtualizada, $usoExistente);
 
             return $horario->load(['aulas.disciplina', 'aulas.professor']);
@@ -494,13 +524,84 @@ class HorarioService
     }
 
     /**
+     * Calcula o número máximo de aulas/períodos diários para alocação da turma,
+     * respeitando a configuração do turno ou a demanda semanal do currículo.
+     *
+     * @param  array<string, array{professor_id: int, aulas_semanais: int, disciplina_id: int}>  $atribuicoes
+     */
+    private function calcularMaxAulasPorDia(Turma $turma, array $atribuicoes): int
+    {
+        $turno = Turno::where('id', $turma->turno)
+            ->orWhereRaw('LOWER(id) = ?', [strtolower((string) $turma->turno)])
+            ->first();
+
+        $totalAulas = array_sum(array_column($atribuicoes, 'aulas_semanais'));
+        $aulasPorDiaMinimas = (int) ceil($totalAulas / 5);
+
+        if ($turno && $turno->quantidade_aulas > 0) {
+            return max((int) $turno->quantidade_aulas, $aulasPorDiaMinimas);
+        }
+
+        return max(6, $aulasPorDiaMinimas);
+    }
+
+    /**
+     * Mapeia os horários de início e término de cada aula de um turno.
+     *
+     * @param  Collection<string, Turno>  $turnosCache
+     * @return array<int, array{inicio: string, fim: string}>
+     */
+    private function mapearHorariosTurno(?string $turnoNome, Collection $turnosCache): array
+    {
+        if (! $turnoNome) {
+            return [];
+        }
+
+        $turno = $turnosCache->get(strtolower($turnoNome));
+        if (! $turno) {
+            return [];
+        }
+
+        $grade = $turno->obterGradeHorarios();
+        $mapa = [];
+        foreach ($grade as $item) {
+            if (! empty($item['is_intervalo'])) {
+                continue;
+            }
+            $periodo = (int) ($item['periodo'] ?? $item['aula_numero'] ?? 0);
+            if ($periodo > 0 && ! empty($item['hora_inicio']) && ! empty($item['hora_fim'])) {
+                $mapa[$periodo] = [
+                    'inicio' => $item['hora_inicio'],
+                    'fim' => $item['hora_fim'],
+                ];
+            }
+        }
+
+        return $mapa;
+    }
+
+    /**
+     * Verifica se duas faixas horárias se sobrepõem cronologicamente no mesmo dia.
+     *
+     * @param  array{inicio: string, fim: string}  $faixa1
+     * @param  array{inicio: string, fim: string}  $faixa2
+     */
+    private function horariosColidem(array $faixa1, array $faixa2): bool
+    {
+        return max($faixa1['inicio'], $faixa2['inicio']) < min($faixa1['fim'], $faixa2['fim']);
+    }
+
+    /**
+     * Identifica as ocupações e cargas diárias de professores já alocados em outras turmas.
+     * Leva em consideração os horários operacionais reais de cada turno para evitar falsos choques.
+     *
      * @param  int|array<int>  $turmasExcluidas
      * @return array{
      *     ocupacoes: array<int, array<int, array<int, bool>>>,
      *     cargas_diarias: array<int, array<int, int>>
      * }
      */
-    private function usoDeOutrasTurmas(int $anoLetivo, int|array $turmasExcluidas): array
+    private function usoDeOutrasTurmas(int $anoLetivo, int|array $turmasExcluidas, ?Turma $turmaAlvo = null): array
     {
         $idsExcluir = is_array($turmasExcluidas) ? $turmasExcluidas : [$turmasExcluidas];
 
@@ -510,17 +611,35 @@ class HorarioService
             ->where('ano_letivo', $anoLetivo)
             ->whereNotIn('turma_id', $idsExcluir)
             ->where('status', 'concluido')
-            ->with('aulas')
+            ->with(['aulas', 'turma'])
             ->lockForUpdate()
             ->get();
 
+        $turnosCache = Turno::all()->keyBy(fn ($t) => strtolower($t->id));
+        $horariosAlvo = $turmaAlvo ? $this->mapearHorariosTurno($turmaAlvo->turno, $turnosCache) : [];
+
         foreach ($horarios as $horario) {
+            $turnoOrigem = $horario->turma?->turno;
+            $horariosOrigem = $this->mapearHorariosTurno($turnoOrigem, $turnosCache);
+
             foreach ($horario->aulas as $aula) {
                 $professorId = (int) $aula->professor_id;
                 $dia = (int) $aula->dia_semana;
-                $periodo = (int) $aula->aula_numero;
-                $ocupacoes[$professorId][$dia][$periodo] = true;
+                $periodoOrigem = (int) $aula->aula_numero;
                 $cargasDiarias[$professorId][$dia] = ($cargasDiarias[$professorId][$dia] ?? 0) + 1;
+
+                // Se temos informações de horários reais para ambas as turmas, compara faixas de tempo
+                if (! empty($horariosAlvo) && isset($horariosOrigem[$periodoOrigem])) {
+                    $faixaOrigem = $horariosOrigem[$periodoOrigem];
+                    foreach ($horariosAlvo as $periodoAlvo => $faixaAlvo) {
+                        if ($this->horariosColidem($faixaAlvo, $faixaOrigem)) {
+                            $ocupacoes[$professorId][$dia][$periodoAlvo] = true;
+                        }
+                    }
+                } else {
+                    // Fallback para quando uma ou ambas as turmas não possuem turno configurado
+                    $ocupacoes[$professorId][$dia][$periodoOrigem] = true;
+                }
             }
         }
 
@@ -535,7 +654,7 @@ class HorarioService
      * @param  array<int, array<int, int>>  $cargasDiarias
      * @return array<int, array{dia_semana: int, aula_numero: int, disciplina_id: int, professor_id: int}>|null
      */
-    private function buscarGrade(array $atribuicoes, array $ocupacoes, array $cargasDiarias): ?array
+    private function buscarGrade(array $atribuicoes, array $ocupacoes, array $cargasDiarias, int $maxAulasPorDia = 6): ?array
     {
         $restantes = [];
         $porDisciplina = [];
@@ -554,19 +673,19 @@ class HorarioService
 
         foreach ($aulasPorProfessor as $professorId => $aulas) {
             $aulasExistentes = array_sum($cargasDiarias[$professorId] ?? []);
-            if ($aulasExistentes + $aulas > 25) {
+            if ($aulasExistentes + $aulas > 40) {
                 return null;
             }
         }
 
         $posicoes = [];
         for ($dia = 1; $dia <= 5; $dia++) {
-            for ($periodo = 1; $periodo <= 6; $periodo++) {
+            for ($periodo = 1; $periodo <= $maxAulasPorDia; $periodo++) {
                 $professoresDisponiveis = [];
                 foreach ($porDisciplina as $atribuicao) {
                     $professorId = $atribuicao['professor_id'];
                     if (! ($ocupacoes[$professorId][$dia][$periodo] ?? false)
-                        && ($cargasDiarias[$professorId][$dia] ?? 0) < 5) {
+                        && ($cargasDiarias[$professorId][$dia] ?? 0) < 6) {
                         $professoresDisponiveis[$professorId] = true;
                     }
                 }

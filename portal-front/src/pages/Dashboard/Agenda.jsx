@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Agenda.jsx - Página de Calendário, Sábados Letivos, Feriados e Horário Escolar (Módulo 4)
  *
  * Papel Didático:
@@ -213,16 +213,6 @@ const AgendaPage = () => {
         {/* Aba 2: Sábados Letivos */}
         {abaAtiva === 'sabados' && (
           <div>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-bold mb-0 text-dark">
-                <i className="bi bi-calendar2-check text-primary me-2"></i>
-                Sábados Letivos Programados
-              </h5>
-              <span className="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
-                {sabadosLetivos.length} registro(s)
-              </span>
-            </div>
-
             {sabadosLetivos.length === 0 ? (
               <div className="alert alert-light border text-center py-4 mb-0">
                 <p className="mb-1 fw-semibold">Nenhum sábado letivo cadastrado até o momento.</p>
@@ -277,16 +267,6 @@ const AgendaPage = () => {
         {/* Aba 3: Feriados e Recessos */}
         {abaAtiva === 'feriados' && (
           <div>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-bold mb-0 text-dark">
-                <i className="bi bi-calendar2-heart text-danger me-2"></i>
-                Feriados Nacionais, Recessos e Datas Comemorativas
-              </h5>
-              <span className="badge bg-danger-subtle text-danger rounded-pill px-3 py-2">
-                {feriadosERecessos.length} data(s)
-              </span>
-            </div>
-
             <div
               className="dashboard-table-scroll border"
               tabIndex={0}

@@ -10,7 +10,7 @@
  * 3. Suporta geração simultânea multi-turmas sem conflito docente (Por Turma, Por Turno e Global).
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -170,6 +170,36 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
   const [errosDetalhados, setErrosDetalhados] = useState([]);
   const [caixaErrosAberta, setCaixaErrosAberta] = useState(false);
   const [dropdownGerarAberto, setDropdownGerarAberto] = useState(false);
+  const dropdownRef = useRef(null);
+  const botaoDropdownRef = useRef(null);
+
+  // Fecha o dropdown de geração de horários ao clicar fora ou pressionar ESC
+  useEffect(() => {
+    if (!dropdownGerarAberto) return;
+
+    const handleClickFora = (event) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target) &&
+        !botaoDropdownRef.current?.contains(event.target)
+      ) {
+        setDropdownGerarAberto(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setDropdownGerarAberto(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickFora);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickFora);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [dropdownGerarAberto]);
 
   // Sensores do @dnd-kit para ponteiro (mouse/touch) e teclado
   const sensors = useSensors(
@@ -247,28 +277,13 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
     ];
   }, [turnoConfig]);
 
-  const aulasPorPosicao = new Map(
-    (horario?.aulas || []).map((aula) => [`${aula.dia_semana}-${aula.aula_numero}`, aula])
+  const aulasPorPosicao = useMemo(
+    () =>
+      new Map(
+        (horario?.aulas || []).map((aula) => [`${aula.dia_semana}-${aula.aula_numero}`, aula])
+      ),
+    [horario]
   );
-
-  // Resumo correlato de disciplinas da grade (Qtd de aulas alocadas vs previstas e carga anual)
-  const resumoDisciplinasGrade = useMemo(() => {
-    const mapa = new Map();
-    (horario?.aulas || []).forEach((aula) => {
-      const disc = aula.disciplina;
-      if (!disc?.id_disciplina) return;
-      const atual = mapa.get(disc.id_disciplina) || {
-        id_disciplina: disc.id_disciplina,
-        nome: formatarDisciplinaCiclo(disc, cicloNomeTurma),
-        aulas_semanais: disc.aulas_semanais || 0,
-        carga_horaria_anual: disc.carga_horaria_anual || (disc.aulas_semanais || 0) * 40,
-        alocadas: 0,
-      };
-      atual.alocadas += 1;
-      mapa.set(disc.id_disciplina, atual);
-    });
-    return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [horario, cicloNomeTurma]);
 
   const atualizarHorarioSelecionado = (horarioAtualizado) => {
     setTurmas((atuais) =>
@@ -279,6 +294,293 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
       )
     );
   };
+
+  /**
+   * Imprime a grade semanal oficial em formato A4 Paisagem (Landscape)
+   * através de um iframe isolado com regras de impressão e cabeçalho institucional.
+   */
+  const handleImprimirHorario = useCallback(() => {
+    if (!turmaSelecionada || !horario) return;
+
+    const iframeAntigo = document.getElementById('iframe-impressao-horario-oficial');
+    if (iframeAntigo) {
+      iframeAntigo.remove();
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'iframe-impressao-horario-oficial';
+    iframe.setAttribute('title', 'Impressão de Grade Horária Escolar Oficial');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    const nomeTurma = turmaSelecionada.turma?.nome_identificador || 'Turma Escolar';
+    const cicloNome = turmaSelecionada.turma?.ciclo_nome || 'Ensino Médio';
+    const turnoNome = turmaSelecionada.turma?.turno || 'Turno Integral';
+    const anoLetivo = turmaSelecionada.turma?.ano_letivo || new Date().getFullYear();
+    const dataHoraEmissao = new Date().toLocaleString('pt-BR');
+
+    // Constrói as linhas da tabela semanal com suporte a aulas e intervalos/almoço
+    const linhasTabelaHtml = gradeHorarios
+      .map((item) => {
+        if (item.is_intervalo) {
+          const ehAlmoco = item.tipo === 'almoco';
+          const iconeTexto = ehAlmoco ? '🍽️' : '☕';
+          const rotulo = item.rotulo || (ehAlmoco ? 'Almoço' : 'Intervalo / Recreio');
+          return `
+            <tr class="linha-pausa ${ehAlmoco ? 'pausa-almoco' : 'pausa-intervalo'}">
+              <td colspan="6" class="celula-pausa">
+                ${iconeTexto} ${item.hora_inicio} - ${item.hora_fim} • ${rotulo}
+              </td>
+            </tr>
+          `;
+        }
+
+        const periodo = item.periodo ?? item.aula_numero;
+        const celulasDiasHtml = DIAS.map(({ numero: dia }) => {
+          const aula = aulasPorPosicao.get(`${dia}-${periodo}`);
+          if (!aula) {
+            return '<td class="celula-aula celula-vazia">—</td>';
+          }
+          const discNome = formatarDisciplinaCiclo(aula.disciplina, cicloNome);
+          const profNome = aula.professor?.name || 'Professor a definir';
+          const aulasSem = aula.disciplina?.aulas_semanais
+            ? `${aula.disciplina.aulas_semanais} a/sem`
+            : '';
+          return `
+            <td class="celula-aula">
+              <div class="disc-nome">${discNome}</div>
+              <div class="prof-nome">${profNome}</div>
+              ${aulasSem ? `<div class="aulas-badge">${aulasSem}</div>` : ''}
+            </td>
+          `;
+        }).join('');
+
+        return `
+          <tr>
+            <th scope="row" class="celula-periodo">
+              <div class="num-aula">${periodo}ª aula</div>
+              <div class="horario-faixa">${item.hora_inicio} - ${item.hora_fim}</div>
+            </th>
+            ${celulasDiasHtml}
+          </tr>
+        `;
+      })
+      .join('');
+
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Horário Escolar - ${nomeTurma}</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #0f172a;
+      font-family: Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 8.5pt;
+      line-height: 1.25;
+    }
+    .print-header {
+      text-align: center;
+      border-bottom: 2px solid #1e293b;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+    }
+    .print-header h1 {
+      font-size: 11pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin: 0 0 2px 0;
+      color: #0f172a;
+      letter-spacing: 0.3px;
+    }
+    .print-header h2 {
+      font-size: 9.5pt;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin: 0 0 4px 0;
+      color: #2563eb;
+    }
+    .print-metadados {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      font-size: 8.5pt;
+      font-weight: 500;
+      color: #334155;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 4px 8px;
+    }
+    .print-metadados strong {
+      color: #0f172a;
+    }
+    table.print-tabela {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1.5px solid #0f172a;
+      table-layout: fixed;
+    }
+    table.print-tabela thead th {
+      background-color: #f1f5f9;
+      border: 1px solid #0f172a;
+      padding: 6px 4px;
+      font-size: 8.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      text-align: center;
+      color: #0f172a;
+    }
+    table.print-tabela thead th:first-child {
+      width: 85px;
+    }
+    .celula-periodo {
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      padding: 4px;
+      text-align: center;
+      vertical-align: middle;
+      width: 85px;
+    }
+    .num-aula {
+      font-weight: 700;
+      font-size: 8.5pt;
+      color: #0f172a;
+    }
+    .horario-faixa {
+      font-size: 7pt;
+      color: #64748b;
+    }
+    .celula-aula {
+      border: 1px solid #cbd5e1;
+      padding: 4px 5px;
+      text-align: center;
+      vertical-align: middle;
+      height: 46px;
+    }
+    .celula-vazia {
+      color: #94a3b8;
+      font-size: 9pt;
+    }
+    .disc-nome {
+      font-weight: 700;
+      font-size: 7.8pt;
+      color: #0f172a;
+      line-height: 1.15;
+      margin-bottom: 2px;
+    }
+    .prof-nome {
+      font-size: 7.2pt;
+      color: #475569;
+      line-height: 1.1;
+    }
+    .aulas-badge {
+      display: inline-block;
+      margin-top: 2px;
+      font-size: 6.5pt;
+      font-weight: 600;
+      color: #1e40af;
+      background: #dbeafe;
+      border-radius: 9999px;
+      padding: 1px 5px;
+    }
+    .linha-pausa {
+      border: 1px solid #0f172a;
+    }
+    .pausa-intervalo {
+      background-color: #f8fafc;
+    }
+    .pausa-almoco {
+      background-color: #fef3c7;
+    }
+    .celula-pausa {
+      border: 1px solid #cbd5e1;
+      text-align: center;
+      padding: 3px 6px;
+      font-weight: 700;
+      font-size: 7.8pt;
+      color: #334155;
+      letter-spacing: 0.3px;
+    }
+    .pausa-almoco .celula-pausa {
+      color: #92400e;
+    }
+    .print-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+      padding-top: 4px;
+      border-top: 1px solid #cbd5e1;
+      font-size: 7pt;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="print-header">
+    <h1>Escola Estadual Professora Sebastiana de Almeida e Silva</h1>
+    <h2>Grade Curricular Semanal de Horários</h2>
+    <div class="print-metadados">
+      <span><strong>Turma:</strong> ${nomeTurma}</span>
+      <span><strong>Ciclo:</strong> ${cicloNome}</span>
+      <span><strong>Turno:</strong> ${turnoNome}</span>
+      <span><strong>Ano Letivo:</strong> ${anoLetivo}</span>
+      <span><strong>Status:</strong> Concluído</span>
+    </div>
+  </div>
+
+  <table class="print-tabela">
+    <thead>
+      <tr>
+        <th scope="col">Aula</th>
+        <th>Segunda-feira</th>
+        <th>Terça-feira</th>
+        <th>Quarta-feira</th>
+        <th>Quinta-feira</th>
+        <th>Sexta-feira</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${linhasTabelaHtml}
+    </tbody>
+  </table>
+
+  <div class="print-footer">
+    <span>Emitido em: ${dataHoraEmissao} • Documento Oficial de Consulta da Instituição</span>
+    <span>Portal Escolar Sebastiana • EEPSAS</span>
+  </div>
+</body>
+</html>`);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    }, 250);
+  }, [turmaSelecionada, horario, gradeHorarios, aulasPorPosicao]);
 
   // Handler de Geração: Turma individual, Por Turno (multi-turmas) ou Global (todas)
   const handleGerar = useCallback(async (modo = 'turma') => {
@@ -370,10 +672,23 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
           ))}
         </select>
 
+        {horario && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1.5 text-nowrap"
+            onClick={handleImprimirHorario}
+            disabled={carregando || gerando}
+            title="Imprimir grade horária oficial da turma em PDF"
+          >
+            <i className="bi bi-printer me-1" aria-hidden="true" />
+            <span>Imprimir</span>
+          </button>
+        )}
+
         {podeEditar && horario && (
           <button
             type="button"
-            className="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold"
+            className="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold text-nowrap"
             onClick={() => setEditando((atual) => !atual)}
             disabled={gerando || salvandoAula || carregando}
             aria-pressed={editando}
@@ -384,29 +699,30 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
 
         {/* Grupo de Ações de Geração Multi-Turmas com Dropdown */}
         {podeEditar && (
-          <div className="btn-group btn-group-sm position-relative" role="group">
+          <div className="btn-group btn-group-sm position-relative text-nowrap flex-nowrap" role="group">
             <button
               type="button"
-              className="btn btn-sm btn-primary rounded-start-pill px-3 fw-semibold"
+              className="btn btn-sm btn-primary rounded-start-pill px-3 fw-semibold text-nowrap d-inline-flex align-items-center"
               onClick={() => handleGerar('turma')}
               disabled={gerando || salvandoAula || carregando || editando || !turmaSelecionada}
               title="Gerar grade da turma selecionada"
             >
               {gerando ? (
                 <>
-                  <span className="spinner-border spinner-border-sm me-1" aria-hidden="true" />
-                  Gerando...
+                  <span className="spinner-border spinner-border-sm me-1.5" aria-hidden="true" />
+                  <span>Gerando...</span>
                 </>
               ) : (
                 <>
-                  <i className="bi bi-shuffle me-1" aria-hidden="true" />
-                  Gerar
+                  <i className="bi bi-shuffle me-1.5" aria-hidden="true" />
+                  <span>Gerar</span>
                 </>
               )}
             </button>
             <button
+              ref={botaoDropdownRef}
               type="button"
-              className="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split rounded-end-pill px-2"
+              className="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split rounded-end-pill px-2 d-inline-flex align-items-center justify-content-center"
               onClick={() => setDropdownGerarAberto((aberto) => !aberto)}
               aria-expanded={dropdownGerarAberto}
               disabled={gerando || salvandoAula || carregando || editando}
@@ -417,8 +733,9 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
 
             {dropdownGerarAberto && (
               <ul
+                ref={dropdownRef}
                 className="dropdown-menu dropdown-menu-end shadow-sm show mt-1"
-                style={{ minWidth: '240px', zIndex: 1050 }}
+                style={{ minWidth: '245px', right: 0, left: 'auto', zIndex: 1050 }}
               >
                 <li>
                   <button
@@ -486,6 +803,7 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
     dropdownGerarAberto,
     turnoTurmaNome,
     handleGerar,
+    handleImprimirHorario,
   ]);
 
   useEffect(
@@ -530,16 +848,7 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
   };
 
   return (
-    <section className="horarios-escolares mt-2" aria-labelledby="horarios-escolares-titulo">
-      <div className="mb-2">
-        <h3 id="horarios-escolares-titulo" className="h6 fw-bold mb-0 text-dark">
-          Horários das Turmas
-        </h3>
-        <p className="text-muted small mb-0" style={{ fontSize: '0.78rem' }}>
-          Grade semanal integrada às Disciplinas do Ciclo e carga horária semanal (arraste e solte com dnd-kit).
-        </p>
-      </div>
-
+    <section className="horarios-escolares" aria-label="Grade Semanal de Horários Escolares">
       {erro && (
         <div className="alert alert-danger py-2 mb-3 shadow-sm" role="alert">
           <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -633,29 +942,13 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
             )}
           </div>
 
-          {/* Resumo Correlato de Disciplinas e Carga Semanal Compacto (Diretriz 3.4c) */}
-          {resumoDisciplinasGrade.length > 0 && (
-            <div className="d-flex flex-wrap gap-1.5 mb-2.5 p-2 rounded-3 bg-light border">
-              {resumoDisciplinasGrade.map((disc) => (
-                <span
-                  key={disc.id_disciplina}
-                  className="badge bg-white text-dark border rounded-pill px-2.5 py-1 fw-normal"
-                  style={{ fontSize: '0.74rem' }}
-                >
-                  <strong className="text-primary">{disc.nome}:</strong> {disc.alocadas} a/sem
-                  {disc.carga_horaria_anual ? ` (${disc.carga_horaria_anual}h/ano)` : ''}
-                </span>
-              ))}
-            </div>
-          )}
-
           {/* Grade Semanal Compacta com suporte a Módulos e Intervalo (@dnd-kit) */}
           <DndContext sensors={sensors} onDragEnd={handleDndKitDragEnd}>
             <div
               className="dashboard-table-scroll border rounded-3 overflow-hidden shadow-sm"
               tabIndex={0}
               role="region"
-              aria-labelledby="horarios-escolares-titulo"
+              aria-label="Grade semanal de horários da turma"
             >
               <table className="table table-bordered align-middle text-center horario-semanal mb-0">
                 <caption className="visually-hidden">Horário semanal da turma selecionada</caption>
@@ -674,21 +967,32 @@ const HorariosEscolares = ({ onRegistrarAcoes }) => {
                 <tbody>
                   {gradeHorarios.map((item, index) => {
                     if (item.is_intervalo) {
+                      const ehAlmoco = item.tipo === 'almoco';
                       return (
-                        <tr key={`intervalo-${index}`} className="table-light">
+                        <tr
+                          key={`intervalo-${index}`}
+                          className={ehAlmoco ? 'table-warning border-top border-bottom' : 'table-light'}
+                        >
                           <td
                             colSpan={6}
-                            className="text-center py-1 bg-light-subtle text-muted small fw-semibold border-top border-bottom"
-                            style={{ fontSize: '0.78rem', letterSpacing: '0.2px' }}
+                            className={`text-center ${
+                              ehAlmoco
+                                ? 'py-1.5 bg-warning-subtle text-warning-emphasis fw-bold'
+                                : 'py-1 bg-light-subtle text-muted fw-semibold'
+                            } small border-top border-bottom`}
+                            style={{ fontSize: ehAlmoco ? '0.82rem' : '0.78rem', letterSpacing: '0.2px' }}
                           >
-                            <i className="bi bi-cup-hot-fill text-warning me-1.5" aria-hidden="true"></i>
-                            {item.hora_inicio} - {item.hora_fim} • Intervalo / Recreio
+                            <i
+                              className={`bi ${ehAlmoco ? 'bi-egg-fried text-warning-emphasis' : 'bi-cup-hot-fill text-warning'} me-1.5`}
+                              aria-hidden="true"
+                            ></i>
+                            {item.hora_inicio} - {item.hora_fim} • {item.rotulo || (ehAlmoco ? 'Almoço' : 'Intervalo / Recreio')}
                           </td>
                         </tr>
                       );
                     }
 
-                    const periodo = item.periodo;
+                    const periodo = item.periodo ?? item.aula_numero;
                     return (
                       <tr key={`aula-${periodo}`}>
                         <th

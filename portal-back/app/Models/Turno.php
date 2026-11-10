@@ -35,6 +35,7 @@ class Turno extends Model
         'intervalo_inicio',
         'intervalo_fim',
         'quantidade_aulas',
+        'pausas',
         'ativo',
         'descricao',
         'icone',
@@ -48,6 +49,7 @@ class Turno extends Model
             'duracao_aula_minutos' => 'integer',
             'quantidade_aulas' => 'integer',
             'ativo' => 'boolean',
+            'pausas' => 'array',
             'grade_horarios' => 'array',
         ];
     }
@@ -57,13 +59,42 @@ class Turno extends Model
      *
      * @param  mixed  $value
      * @param  string|null  $field
-     * @return \Illuminate\Database\Eloquent\Model|null
+     * @return Model|null
      */
     public function resolveRouteBinding($value, $field = null)
     {
         return $this->where('id', $value)
             ->orWhereRaw('LOWER(id) = ?', [strtolower((string) $value)])
             ->first();
+    }
+
+    /**
+     * Retorna a lista de pausas cadastradas no turno (intervalos e almoço), ordenadas cronologicamente.
+     * Mantém compatibilidade com registros antigos que utilizavam apenas intervalo_inicio e intervalo_fim.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function obterPausas(): array
+    {
+        if (! empty($this->pausas) && is_array($this->pausas)) {
+            $pausas = $this->pausas;
+            usort($pausas, fn ($a, $b) => strcmp($a['hora_inicio'] ?? '', $b['hora_inicio'] ?? ''));
+
+            return $pausas;
+        }
+
+        if (! empty($this->intervalo_inicio) && ! empty($this->intervalo_fim)) {
+            return [
+                [
+                    'tipo' => 'intervalo',
+                    'rotulo' => 'Intervalo / Recreio',
+                    'hora_inicio' => $this->intervalo_inicio,
+                    'hora_fim' => $this->intervalo_fim,
+                ],
+            ];
+        }
+
+        return [];
     }
 
     /**
@@ -84,7 +115,7 @@ class Turno extends Model
 
     /**
      * Gera automaticamente a sequência de horários de aula respeitando a duração
-     * em minutos e a pausa oficial para o recreio/intervalo.
+     * em minutos e as pausas oficiais (recreios e horário de almoço).
      *
      * @return array<int, array<string, mixed>>
      */
@@ -95,34 +126,39 @@ class Turno extends Model
         $duracao = max(30, (int) $this->duracao_aula_minutos);
 
         $cursor = Carbon::createFromFormat('H:i', $this->hora_inicio ?: '07:00');
-        $intervaloInicio = $this->intervalo_inicio
-            ? Carbon::createFromFormat('H:i', $this->intervalo_inicio)
-            : null;
-        $intervaloFim = $this->intervalo_fim
-            ? Carbon::createFromFormat('H:i', $this->intervalo_fim)
-            : null;
-
-        $intervaloInserido = false;
+        $pausas = $this->obterPausas();
+        $pausasInseridas = [];
 
         for ($numero = 1; $numero <= $qtdAulas; $numero++) {
-            // Se o cursor atingiu ou ultrapassou o horário de início do intervalo (e ainda não foi inserido)
-            if ($intervaloInicio && $intervaloFim && ! $intervaloInserido && $cursor->gte($intervaloInicio)) {
-                $grade[] = [
-                    'is_intervalo' => true,
-                    'aula_numero' => null,
-                    'hora_inicio' => $intervaloInicio->format('H:i'),
-                    'hora_fim' => $intervaloFim->format('H:i'),
-                    'rotulo' => 'Intervalo / Recreio',
-                ];
-                $cursor = $intervaloFim->copy();
-                $intervaloInserido = true;
+            // Verifica se alguma pausa deve ser inserida antes da próxima aula
+            foreach ($pausas as $idx => $pausa) {
+                if (in_array($idx, $pausasInseridas, true) || empty($pausa['hora_inicio']) || empty($pausa['hora_fim'])) {
+                    continue;
+                }
+
+                $inicioPausa = Carbon::createFromFormat('H:i', $pausa['hora_inicio']);
+                $fimPausa = Carbon::createFromFormat('H:i', $pausa['hora_fim']);
+
+                if ($cursor->gte($inicioPausa)) {
+                    $grade[] = [
+                        'is_intervalo' => true,
+                        'tipo' => $pausa['tipo'] ?? 'intervalo',
+                        'aula_numero' => null,
+                        'periodo' => null,
+                        'hora_inicio' => $inicioPausa->format('H:i'),
+                        'hora_fim' => $fimPausa->format('H:i'),
+                        'rotulo' => $pausa['rotulo'] ?? ($pausa['tipo'] === 'almoco' ? 'Almoço' : 'Intervalo / Recreio'),
+                    ];
+                    $cursor = $fimPausa->copy();
+                    $pausasInseridas[] = $idx;
+                }
             }
 
             $inicioAula = $cursor->format('H:i');
             $fimAulaCarbon = $cursor->copy()->addMinutes($duracao);
             $fimAula = $fimAulaCarbon->format('H:i');
 
-            // Caso especial da última aula no horário limite do turno (ex: 12:15 no Matutino)
+            // Caso especial da última aula no horário limite do turno se configurado
             if ($numero === $qtdAulas && ! empty($this->hora_fim)) {
                 $limiteTurno = Carbon::createFromFormat('H:i', $this->hora_fim);
                 if ($fimAulaCarbon->diffInMinutes($limiteTurno, false) !== 0) {
@@ -132,13 +168,30 @@ class Turno extends Model
 
             $grade[] = [
                 'is_intervalo' => false,
+                'tipo' => 'aula',
                 'aula_numero' => $numero,
+                'periodo' => $numero,
                 'hora_inicio' => $inicioAula,
                 'hora_fim' => $fimAula,
                 'rotulo' => "{$numero}ª aula",
             ];
 
             $cursor = Carbon::createFromFormat('H:i', $fimAula);
+        }
+
+        // Se ainda restaram pausas cronologicamente após a última aula
+        foreach ($pausas as $idx => $pausa) {
+            if (! in_array($idx, $pausasInseridas, true) && ! empty($pausa['hora_inicio']) && ! empty($pausa['hora_fim'])) {
+                $grade[] = [
+                    'is_intervalo' => true,
+                    'tipo' => $pausa['tipo'] ?? 'intervalo',
+                    'aula_numero' => null,
+                    'periodo' => null,
+                    'hora_inicio' => $pausa['hora_inicio'],
+                    'hora_fim' => $pausa['hora_fim'],
+                    'rotulo' => $pausa['rotulo'] ?? ($pausa['tipo'] === 'almoco' ? 'Almoço' : 'Intervalo / Recreio'),
+                ];
+            }
         }
 
         return $grade;

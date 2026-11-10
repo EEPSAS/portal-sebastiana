@@ -80,6 +80,78 @@
   padding-top: 0.75rem;
 }
 
+/* Modos de confinamento na viewport (zero redimensionamento e scroll global) */
+@media (min-width: 992px) {
+  .painel-modulo-viewport-lock {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+    margin-bottom: 0;
+  }
+
+  .painel-modulo-viewport-lock > :not(.painel-modulo-conteudo) {
+    flex-shrink: 0;
+  }
+
+  .painel-modulo-conteudo-viewport-lock {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+    padding-top: 0.5rem;
+  }
+
+  .modulo-page-viewport-lock,
+  .boletim-page-viewport-lock,
+  .professores-page-viewport-lock,
+  .disciplinas-page-viewport-lock,
+  .periodo-letivo-page-viewport-lock,
+  .ciclos-page-viewport-lock {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+
+  .modulo-page-viewport-lock > :not(.painel-modulo-viewport-lock),
+  .boletim-page-viewport-lock > :not(.painel-modulo-viewport-lock),
+  .professores-page-viewport-lock > :not(.painel-modulo-viewport-lock),
+  .disciplinas-page-viewport-lock > :not(.painel-modulo-viewport-lock),
+  .periodo-letivo-page-viewport-lock > :not(.painel-modulo-viewport-lock),
+  .ciclos-page-viewport-lock > :not(.painel-modulo-viewport-lock) {
+    flex-shrink: 0;
+  }
+}
+
+/* Scroll interno confinado que elimina barras de rolagem globais */
+.modulo-conteudo-scroll {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  padding-right: 2px;
+}
+
+/* Botão de colapsar ciclo (modern-web-guidance: accordion) */
+.ciclo-collapse-btn {
+  transition: color 0.15s ease, background-color 0.15s ease;
+  border-radius: 4px;
+}
+
+.ciclo-collapse-btn:hover {
+  color: var(--dashboard-navy, #0d2346) !important;
+  background-color: #e2e8f0;
+}
+
+.ciclo-collapse-btn:focus-visible {
+  outline: 2px solid var(--dashboard-blue, #2563eb);
+  outline-offset: 1px;
+}
+
 @media (max-width: 767.98px) {
   .modulo-nav {
     align-items: stretch;

@@ -8,17 +8,21 @@ import ResumoAba from "./ResumoAba";
 import "./Boletim.css";
 
 const ABAS = [
-  { id: "resumo", label: "Resumo", icone: "bi-house-door-fill" },
-  { id: "notas", label: "Notas Detalhadas", icone: "bi-bar-chart-steps" },
+  { id: "resumo", label: "Resumo", icone: "bi-house-door-fill", cor: "#2563eb", bg: "#eff6ff" },
+  { id: "notas", label: "Notas Detalhadas", icone: "bi-bar-chart-steps", cor: "#7c3aed", bg: "#f5f3ff" },
   {
     id: "frequencia",
     label: "Frequência Detalhada",
     icone: "bi-calendar2-check-fill",
+    cor: "#10b981",
+    bg: "#f0fdf4",
   },
   {
     id: "comparativo",
     label: "Comparativo Turma",
     icone: "bi-people-fill",
+    cor: "#d97706",
+    bg: "#fffbeb",
   },
 ];
 
@@ -84,97 +88,114 @@ export default function Boletim({ turmaId, alunoId }) {
   );
 
   return (
-    <PainelModulo acoes={acoesBoletim}>
-      <div className="boletim__shell">
-        {/* Sub-abas de 2º Nível: Segmentadas e Elegantes */}
-        <div
-          className="d-flex flex-wrap align-items-center gap-1 p-1 bg-light rounded-pill border mb-3 d-inline-flex"
-          role="tablist"
-          aria-label="Seções do boletim escolar"
-        >
-          {ABAS.map((aba, indice) => {
-            const ativa = abaAtiva === aba.id;
-            return (
-              <button
-                key={aba.id}
-                ref={(elemento) => {
-                  referenciasAbas.current[indice] = elemento;
-                }}
-                type="button"
-                id={`boletim-aba-${aba.id}`}
-                role="tab"
-                aria-selected={ativa}
-                aria-controls={`boletim-painel-${aba.id}`}
-                tabIndex={ativa ? 0 : -1}
-                className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 d-flex align-items-center gap-2 ${
-                  ativa ? "btn-primary text-white shadow-sm" : "btn-light text-muted"
-                }`}
-                onClick={() => setAbaAtiva(aba.id)}
-                onKeyDown={(evento) => navegarAbas(evento, indice)}
-              >
-                <i className={`bi ${aba.icone}`} aria-hidden="true" />
-                <span>{aba.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="boletim__content">
-          {ABAS.map((aba) => (
-            <div
-              key={aba.id}
-              id={`boletim-painel-${aba.id}`}
-              role="tabpanel"
-              aria-labelledby={`boletim-aba-${aba.id}`}
-              tabIndex="0"
-              hidden={abaAtiva !== aba.id}
-            >
-              {abaAtiva === aba.id && carregando && (
-                <div className="boletim__state" role="status">
-                  <span
-                    className="spinner-border spinner-border-sm me-2 text-primary"
-                    aria-hidden="true"
-                  />
-                  Carregando as informações do seu boletim...
-                </div>
-              )}
-
-              {abaAtiva === aba.id && !carregando && erro && (
-                <div
-                  className={`alert ${semMatricula ? "alert-info" : "alert-warning"} d-flex flex-column gap-2 mb-0 rounded-4 shadow-sm`}
-                  role="alert"
-                >
-                  <div className="d-flex align-items-center gap-2">
+    <div className="position-relative boletim-page-viewport-lock">
+      <PainelModulo
+        className="painel-modulo-viewport-lock"
+        conteudoClassName="painel-modulo-conteudo-viewport-lock"
+        acoes={acoesBoletim}
+      >
+        <div className="boletim__shell d-flex flex-column flex-grow-1 min-h-0 border-0 shadow-none bg-transparent">
+          {/* Sub-abas de 2º Nível: Segmentadas e Compactas padronizadas com Turmas */}
+          <div
+            className="d-flex flex-wrap align-items-center justify-content-between gap-2 p-1 bg-light rounded-3 border flex-shrink-0 mb-2"
+            role="tablist"
+            aria-label="Seções do boletim escolar"
+          >
+            <div className="d-flex flex-wrap align-items-center gap-1">
+              {ABAS.map((aba, indice) => {
+                const ativa = abaAtiva === aba.id;
+                return (
+                  <button
+                    key={aba.id}
+                    ref={(elemento) => {
+                      referenciasAbas.current[indice] = elemento;
+                    }}
+                    type="button"
+                    id={`boletim-aba-${aba.id}`}
+                    role="tab"
+                    aria-selected={ativa}
+                    aria-controls={`boletim-painel-${aba.id}`}
+                    tabIndex={ativa ? 0 : -1}
+                    className={`btn btn-sm rounded-2 px-2.5 py-1 fw-semibold border-0 d-flex align-items-center gap-1.5 transition-all ${
+                      ativa
+                        ? "text-white shadow-xs"
+                        : "btn-light text-secondary"
+                    }`}
+                    style={{
+                      backgroundColor: ativa ? aba.cor : "transparent",
+                    }}
+                    onClick={() => setAbaAtiva(aba.id)}
+                    onKeyDown={(evento) => navegarAbas(evento, indice)}
+                  >
                     <i
-                      className={`bi ${semMatricula ? "bi-info-circle-fill text-info" : "bi-exclamation-triangle-fill text-warning"} fs-5`}
+                      className={`bi ${aba.icone}`}
+                      style={{ color: ativa ? "#ffffff" : aba.cor }}
                       aria-hidden="true"
                     />
-                    <strong className="fw-semibold">
-                      {semMatricula ? "Aviso de Matrícula Escolar" : "Atenção"}
-                    </strong>
-                  </div>
-                  <p className="mb-0 text-secondary">{erro}</p>
-                  {podeTentarNovamente && (
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary rounded-pill px-3"
-                        onClick={tentarNovamente}
-                      >
-                        Tentar novamente
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {abaAtiva === aba.id && !carregando && !erro
-                ? renderizarAba(aba.id)
-                : null}
+                    <span>{aba.label}</span>
+                  </button>
+                );
+              })}
             </div>
-          ))}
+          </div>
+
+          <div className="boletim__content modulo-conteudo-scroll p-0">
+            {ABAS.map((aba) => (
+              <div
+                key={aba.id}
+                id={`boletim-painel-${aba.id}`}
+                role="tabpanel"
+                aria-labelledby={`boletim-aba-${aba.id}`}
+                tabIndex="0"
+                hidden={abaAtiva !== aba.id}
+              >
+                {abaAtiva === aba.id && carregando && (
+                  <div className="boletim__state" role="status">
+                    <span
+                      className="spinner-border spinner-border-sm me-2 text-primary"
+                      aria-hidden="true"
+                    />
+                    Carregando as informações do seu boletim...
+                  </div>
+                )}
+
+                {abaAtiva === aba.id && !carregando && erro && (
+                  <div
+                    className={`alert ${semMatricula ? "alert-info" : "alert-warning"} d-flex flex-column gap-2 mb-0 rounded-4 shadow-sm`}
+                    role="alert"
+                  >
+                    <div className="d-flex align-items-center gap-2">
+                      <i
+                        className={`bi ${semMatricula ? "bi-info-circle-fill text-info" : "bi-exclamation-triangle-fill text-warning"} fs-5`}
+                        aria-hidden="true"
+                      />
+                      <strong className="fw-semibold">
+                        {semMatricula ? "Aviso de Matrícula Escolar" : "Atenção"}
+                      </strong>
+                    </div>
+                    <p className="mb-0 text-secondary">{erro}</p>
+                    {podeTentarNovamente && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary rounded-pill px-3"
+                          onClick={tentarNovamente}
+                        >
+                          Tentar novamente
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {abaAtiva === aba.id && !carregando && !erro
+                  ? renderizarAba(aba.id)
+                  : null}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    </PainelModulo>
+      </PainelModulo>
+    </div>
   );
 }

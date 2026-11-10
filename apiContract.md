@@ -339,8 +339,11 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
     "hora_fim": "12:15",
     "duracao_aula_minutos": 50,
     "intervalo_inicio": "09:30",
-    "intervalo_fim": "09:56",
+    "intervalo_fim": "09:45",
     "quantidade_aulas": 5,
+    "pausas": [
+      { "tipo": "intervalo", "rotulo": "Intervalo / Recreio", "hora_inicio": "09:30", "hora_fim": "09:45" }
+    ],
     "ativo": true,
     "descricao": "Turno da manhã, com 5 aulas de 50 minutos e intervalo de 09:30 às 09:56.",
     "icone": "bi-sun-fill",

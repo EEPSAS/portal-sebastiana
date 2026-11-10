@@ -32,9 +32,12 @@ export default function ListaPeriodosCard({
           <div key={periodo.id_periodo_letivo} className="col-12 col-xl-6">
             <div
               className={`card h-100 rounded-4 shadow-sm border transition ${
-                periodo.ativo ? "border-primary border-2" : "border-light-subtle"
+                periodo.ativo ? "border-success-subtle" : "border-light-subtle"
               }`}
-              style={{ backgroundColor: "#ffffff" }}
+              style={{
+                backgroundColor: "#ffffff",
+                borderLeft: `5px solid ${periodo.ativo ? "#10b981" : "#94a3b8"}`,
+              }}
             >
               {/* Cabeçalho do Card */}
               <div className="card-header bg-transparent border-0 pt-4 px-4 pb-2 d-flex justify-content-between align-items-start gap-2 flex-wrap">
@@ -42,7 +45,7 @@ export default function ListaPeriodosCard({
                   <div className="d-flex align-items-center gap-2">
                     <span className="fs-3 fw-bold text-dark">{periodo.ano}</span>
                     {periodo.ativo ? (
-                      <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2 fw-semibold">
+                      <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 fw-semibold">
                         <i className="bi bi-check-circle-fill me-1"></i> Período Vigente
                       </span>
                     ) : (

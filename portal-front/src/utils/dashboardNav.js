@@ -111,7 +111,7 @@ export const NAV_STRUCTURE = [
       },
       {
         id: "ciclos",
-        label: "Ciclos",
+        label: "Ciclos e Turnos",
         path: "/dashboard/ciclos",
         icon: "bi-arrow-repeat",
         roles: ["especialista", "adm"],
