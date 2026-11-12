@@ -134,25 +134,15 @@ export default function ProfessoresContainer() {
   };
 
   const handleDesvincular = async (profId, disciplinaId) => {
-    try {
-      await desvincularDisciplina(profId, disciplinaId);
-      exibirFeedback("Disciplina desvinculada com sucesso.");
-      setChaveRecarga((c) => c + 1);
-    } catch (err) {
-      setErro(err.message || "Erro ao desvincular disciplina.");
-    }
+    await desvincularDisciplina(profId, disciplinaId);
+    exibirFeedback("Disciplina desvinculada com sucesso.");
+    setChaveRecarga((c) => c + 1);
   };
 
-  const handleSalvarVinculosModal = async (disciplinasIds) => {
-    if (!professorSelecionado) return;
-    try {
-      await vincularDisciplina(professorSelecionado.id, disciplinasIds);
-      exibirFeedback(`Disciplinas do professor(a) ${professorSelecionado.name} atualizadas!`);
-      setProfessorSelecionado(null);
-      setChaveRecarga((c) => c + 1);
-    } catch (err) {
-      setErro(err.message || "Erro ao atualizar disciplinas.");
-    }
+  const handleVincularModal = async (profId, disciplinaId) => {
+    await vincularDisciplina(profId, disciplinaId);
+    exibirFeedback(`Disciplina vinculada ao professor(a) ${professorSelecionado.name}!`);
+    setChaveRecarga((c) => c + 1);
   };
 
   const acoesProfessores = (
@@ -173,7 +163,7 @@ export default function ProfessoresContainer() {
   );
 
   return (
-    <div className="position-relative">
+    <div className="position-relative professores-page-viewport-lock">
       {feedback && (
         <div
           className="alert alert-success dashboard-toast py-2 px-3 small z-3"
@@ -183,16 +173,20 @@ export default function ProfessoresContainer() {
         </div>
       )}
 
-      <PainelModulo acoes={acoesProfessores}>
+      <PainelModulo
+        className="painel-modulo-viewport-lock"
+        conteudoClassName="painel-modulo-conteudo-viewport-lock"
+        acoes={acoesProfessores}
+      >
         {erro && (
-          <div className="alert alert-danger rounded-3 small mb-3" role="alert">
+          <div className="alert alert-danger rounded-3 small mb-2 py-2 px-3 flex-shrink-0" role="alert">
             <i className="bi bi-exclamation-triangle-fill me-2"></i>
             {erro}
           </div>
         )}
 
         {/* Sub-navegação interna entre Confirmados e Pendentes */}
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 p-1 bg-light rounded-3 border flex-shrink-0 mb-3">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 p-1 bg-light rounded-3 border flex-shrink-0 mb-2">
           <div className="d-flex flex-wrap align-items-center gap-1">
             <button
               type="button"
@@ -234,28 +228,30 @@ export default function ProfessoresContainer() {
           </div>
         </div>
 
-        {/* Conteúdo da Aba Ativa */}
-        {loading ? (
-          <div className="text-center py-5">
-            <div className="spinner-border text-primary" role="status"></div>
-            <p className="text-muted small mt-2">Carregando corpo docente da escola...</p>
-          </div>
-        ) : abaAtiva === "pendentes" ? (
-          <ProfessoresPendentesAba
-            professoresPendentes={professoresPendentes}
-            disciplinasCatalogo={disciplinasCatalogo}
-            disciplinasPendentesMap={disciplinasPendentesMap}
-            processandoId={processandoId}
-            onToggleDisciplinaPendente={toggleDisciplinaPendente}
-            onConfirmar={handleConfirmar}
-            onRecusar={handleRecusar}
-          />
-        ) : (
-          <ProfessoresConfirmadosAba
-            professoresConfirmados={professoresConfirmados}
-            onAbrirModalVincular={(prof) => setProfessorSelecionado(prof)}
-          />
-        )}
+        {/* Conteúdo da Aba Ativa com rolagem interna confinada */}
+        <div className="modulo-conteudo-scroll pt-1 pb-2">
+          {loading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status"></div>
+              <p className="text-muted small mt-2">Carregando corpo docente da escola...</p>
+            </div>
+          ) : abaAtiva === "pendentes" ? (
+            <ProfessoresPendentesAba
+              professoresPendentes={professoresPendentes}
+              disciplinasCatalogo={disciplinasCatalogo}
+              disciplinasPendentesMap={disciplinasPendentesMap}
+              processandoId={processandoId}
+              onToggleDisciplinaPendente={toggleDisciplinaPendente}
+              onConfirmar={handleConfirmar}
+              onRecusar={handleRecusar}
+            />
+          ) : (
+            <ProfessoresConfirmadosAba
+              professoresConfirmados={professoresConfirmados}
+              onAbrirModalVincular={(prof) => setProfessorSelecionado(prof)}
+            />
+          )}
+        </div>
       </PainelModulo>
 
       {/* Modal de Gerenciamento de Vínculos com Disciplinas */}
@@ -263,9 +259,9 @@ export default function ProfessoresContainer() {
         <ModalVincularDisciplina
           professor={professorSelecionado}
           disciplinasCatalogo={disciplinasCatalogo}
-          onFechar={() => setProfessorSelecionado(null)}
-          onSalvar={handleSalvarVinculosModal}
-          onDesvincular={(discId) => handleDesvincular(professorSelecionado.id, discId)}
+          onClose={() => setProfessorSelecionado(null)}
+          onVincular={handleVincularModal}
+          onDesvincular={handleDesvincular}
         />
       )}
     </div>
