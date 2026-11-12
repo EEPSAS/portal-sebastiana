@@ -395,7 +395,7 @@ export default function TurmasAba({
   }, 0);
 
   return (
-    <div className="quadro-turmas-viewport-lock">
+    <div className="quadro-turmas-viewport-lock academico-stage-well">
       <div className="row gx-3 gy-3 gy-lg-0 quadro-turmas-row">
         {/* =========================================================================
             COLUNA ESQUERDA: LISTA SLIM DE TURMAS (com marcar/desmarcar na viewport)

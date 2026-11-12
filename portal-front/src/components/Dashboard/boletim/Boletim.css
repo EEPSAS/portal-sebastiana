@@ -74,7 +74,6 @@
 
 .boletim__content {
   min-height: 300px;
-  padding: 12px;
 }
 
 .boletim__content:focus {
@@ -84,9 +83,10 @@
 .boletim__card,
 .boletim__frequencia-card,
 .boletim__compare-card {
-  border: 1px solid var(--dashboard-gray-border);
+  border: 1px solid #dbe3ee;
   border-radius: 12px;
   background-color: var(--dashboard-white);
+  box-shadow: 0 1px 3px rgba(13, 35, 70, 0.06), 0 4px 12px rgba(13, 35, 70, 0.035);
 }
 
 .boletim__card {

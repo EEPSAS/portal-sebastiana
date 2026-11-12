@@ -46,7 +46,7 @@ export default function DisciplinaCard({
   return (
     <div className="col-12 col-md-6 col-xl-4">
       <div
-        className="card h-100 border rounded-3 shadow-xs bg-white d-flex flex-column justify-content-between"
+        className="card disciplina-card h-100 border rounded-3 shadow-xs bg-white d-flex flex-column justify-content-between"
         style={{ padding: "1.25rem 1.35rem" }}
       >
         <div>

@@ -528,6 +528,7 @@ export default function NotasAba({
       </div>
 
       {/* 2. Painel Central da Turma Selecionada (travado na altura da viewport em desktop) */}
+      <div className="academico-stage-well flex-grow-1 min-h-0 d-flex flex-column">
       <div className="row gx-3 gy-3 gy-lg-0 notas-painel-row">
         {/* Painel Esquerdo: Resumo da Turma (Donut de Média + Velocímetro alinhados à altura do painel) */}
         <div className="col-12 col-lg-4 col-xl-3 notas-col-esquerda">
@@ -1090,6 +1091,7 @@ export default function NotasAba({
             )}
           </div>
         </div>
+      </div>
       </div>
 
       {/* 3. Modal Oficial de Geração de Boletim Técnico (PDF A4 e Excel) */}

@@ -124,7 +124,23 @@
   }
 }
 
-/* Scroll interno confinado que elimina barras de rolagem globais */
+/* Sombra sutil em múltiplas camadas para cards elevados (modern-web-guidance: visual-effects) */
+.shadow-xs {
+  box-shadow: 0 1px 2px rgba(13, 35, 70, 0.05), 0 3px 8px rgba(13, 35, 70, 0.04) !important;
+}
+
+/* Bandeja de profundidade compartilhada (nível rebaixado que destaca cards brancos acima dela) */
+.academico-stage-well,
+.modulo-conteudo-scroll {
+  background-color: #eef2f7;
+  background-color: color-mix(in oklab, var(--dashboard-navy, #0d2346) 5.5%, #f8fafc);
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  padding: 0.85rem;
+  box-shadow: inset 0 2px 6px rgba(13, 35, 70, 0.045);
+}
+
+/* Scroll interno confinado que elimina barras de rolagem globais + indicadores visuais de rolagem */
 .modulo-conteudo-scroll {
   flex: 1 1 0%;
   min-height: 0;
@@ -133,7 +149,98 @@
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  padding-right: 2px;
+  container-type: scroll-state;
+}
+
+/* Indicadores radiais de rolagem (modern-web-guidance: scrollability-affordance-hints) */
+.modulo-conteudo-scroll::before,
+.modulo-conteudo-scroll::after {
+  content: "";
+  display: block;
+  position: sticky;
+  block-size: 0.75rem;
+  margin-inline: -0.85rem;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.modulo-conteudo-scroll::before {
+  inset-block-start: 0;
+  margin-block-end: -0.75rem;
+  background: radial-gradient(farthest-side at 50% 0, rgba(13, 35, 70, 0.14), transparent);
+}
+
+.modulo-conteudo-scroll::after {
+  inset-block-end: 0;
+  margin-block-start: -0.75rem;
+  background: radial-gradient(farthest-side at 50% 100%, rgba(13, 35, 70, 0.14), transparent);
+}
+
+@container scroll-state(scrollable: block-start) {
+  .modulo-conteudo-scroll::before {
+    opacity: 1;
+  }
+}
+
+@container scroll-state(scrollable: block-end) {
+  .modulo-conteudo-scroll::after {
+    opacity: 1;
+  }
+}
+
+@supports not (container-type: scroll-state) {
+  .modulo-conteudo-scroll::before,
+  .modulo-conteudo-scroll::after {
+    animation: moduloShowScrollShadow linear both;
+    animation-timeline: scroll();
+  }
+
+  .modulo-conteudo-scroll::before {
+    animation-range: 0 2rem;
+  }
+
+  .modulo-conteudo-scroll::after {
+    animation-direction: reverse;
+    animation-range: calc(100% - 2rem) 100%;
+  }
+}
+
+@keyframes moduloShowScrollShadow {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Nível 3: Cards elevados dentro da bandeja rebaixada (preserva borderLeft inline temático) */
+.modulo-conteudo-scroll .card:not(.shadow-none),
+.academico-stage-well .card:not(.shadow-none) {
+  --bs-border-color: #dbe3ee;
+  box-shadow: 0 0 0 1px rgba(13, 35, 70, 0.05), 0 1px 3px rgba(13, 35, 70, 0.06), 0 4px 12px rgba(13, 35, 70, 0.035);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.modulo-conteudo-scroll .card:not(.shadow-none):hover,
+.academico-stage-well .card:not(.shadow-none):hover {
+  box-shadow: 0 0 0 1px rgba(13, 35, 70, 0.09), 0 4px 12px rgba(13, 35, 70, 0.09), 0 1px 3px rgba(13, 35, 70, 0.04);
+}
+
+.disciplina-card:hover {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 575.98px) {
+  .academico-stage-well,
+  .modulo-conteudo-scroll {
+    padding: 0.6rem;
+    border-radius: 10px;
+  }
+
+  .modulo-conteudo-scroll::before,
+  .modulo-conteudo-scroll::after {
+    margin-inline: -0.6rem;
+  }
 }
 
 /* Botão de colapsar ciclo (modern-web-guidance: accordion) */

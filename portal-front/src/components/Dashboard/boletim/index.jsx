@@ -139,7 +139,7 @@ export default function Boletim({ turmaId, alunoId }) {
             </div>
           </div>
 
-          <div className="boletim__content modulo-conteudo-scroll p-0">
+          <div className="boletim__content modulo-conteudo-scroll">
             {ABAS.map((aba) => (
               <div
                 key={aba.id}

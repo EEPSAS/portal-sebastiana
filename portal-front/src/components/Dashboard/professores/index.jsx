@@ -229,7 +229,7 @@ export default function ProfessoresContainer() {
         </div>
 
         {/* Conteúdo da Aba Ativa com rolagem interna confinada */}
-        <div className="modulo-conteudo-scroll pt-1 pb-2">
+        <div className="modulo-conteudo-scroll">
           {loading ? (
             <div className="text-center py-5">
               <div className="spinner-border text-primary" role="status"></div>

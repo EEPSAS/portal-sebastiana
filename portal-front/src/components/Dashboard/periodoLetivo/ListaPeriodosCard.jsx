@@ -23,7 +23,7 @@ export default function ListaPeriodosCard({
   };
 
   return (
-    <div className="row g-4">
+    <div className="row g-3">
       {periodos.map((periodo) => {
         const isProcessando = acaoEmProgressoId === periodo.id_periodo_letivo;
         const totalDivisoes = periodo.divisoes?.length || 0;
