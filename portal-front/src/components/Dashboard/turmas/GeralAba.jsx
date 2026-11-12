@@ -83,7 +83,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false, te
   }
 
   return (
-    <div className="geral-aba-container academico-stage-well">
+    <div className="geral-aba-container">
       {/* 1. Cards de Indicadores Globais */}
       <div className="row g-2 g-md-3 mb-2">
         {/* Total de Turmas */}
@@ -188,7 +188,7 @@ const GeralAba = ({ resumoGeral = [], totalMatriculados = 0, loading = false, te
       </div>
 
       {/* 2. Gráficos Analíticos com Recharts */}
-      <div className="row g-3">
+      <div className="row g-4">
         {/* Gráfico 1: Média Geral por Turma */}
         <div className="col-12 col-lg-6">
           <div className="turma-stat-card p-2 p-md-3 h-100">

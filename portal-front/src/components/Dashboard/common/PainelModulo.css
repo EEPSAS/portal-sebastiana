@@ -129,8 +129,7 @@
   box-shadow: 0 1px 2px rgba(13, 35, 70, 0.05), 0 3px 8px rgba(13, 35, 70, 0.04) !important;
 }
 
-/* Bandeja de profundidade compartilhada (nível rebaixado que destaca cards brancos acima dela) */
-.academico-stage-well,
+/* Bandeja de profundidade para o scroll de catálogos (nível rebaixado que destaca cards brancos acima dela) */
 .modulo-conteudo-scroll {
   background-color: #eef2f7;
   background-color: color-mix(in oklab, var(--dashboard-navy, #0d2346) 5.5%, #f8fafc);
@@ -214,15 +213,13 @@
 }
 
 /* Nível 3: Cards elevados dentro da bandeja rebaixada (preserva borderLeft inline temático) */
-.modulo-conteudo-scroll .card:not(.shadow-none),
-.academico-stage-well .card:not(.shadow-none) {
+.modulo-conteudo-scroll .card:not(.shadow-none) {
   --bs-border-color: #dbe3ee;
   box-shadow: 0 0 0 1px rgba(13, 35, 70, 0.05), 0 1px 3px rgba(13, 35, 70, 0.06), 0 4px 12px rgba(13, 35, 70, 0.035);
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
-.modulo-conteudo-scroll .card:not(.shadow-none):hover,
-.academico-stage-well .card:not(.shadow-none):hover {
+.modulo-conteudo-scroll .card:not(.shadow-none):hover {
   box-shadow: 0 0 0 1px rgba(13, 35, 70, 0.09), 0 4px 12px rgba(13, 35, 70, 0.09), 0 1px 3px rgba(13, 35, 70, 0.04);
 }
 
@@ -231,7 +228,6 @@
 }
 
 @media (max-width: 575.98px) {
-  .academico-stage-well,
   .modulo-conteudo-scroll {
     padding: 0.6rem;
     border-radius: 10px;
