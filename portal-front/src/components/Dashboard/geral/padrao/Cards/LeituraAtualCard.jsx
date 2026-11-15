@@ -1,4 +1,6 @@
 import { useState } from "react";
+import IndicadorTooltip from "../../../../common/IndicadorTooltip";
+import { DESCRICOES_INDICADORES } from "../../../../common/descricoesIndicadores";
 
 /**
  * LeituraAtualCard.jsx - Card de Acompanhamento de Empréstimo / Leitura Atual
@@ -50,12 +52,31 @@ export default function LeituraAtualCard({ leitura, onSave }) {
       >
         <div>
           <div className="d-flex align-items-center justify-content-between">
-            <span
-              className="fw-semibold text-white-50 text-uppercase small"
-              style={{ fontSize: "0.8rem", letterSpacing: "0.5px" }}
-            >
-              Leitura Atual
-            </span>
+            <div className="d-flex align-items-center gap-2">
+              <IndicadorTooltip
+                titulo={DESCRICOES_INDICADORES.aluno_leitura_atual.titulo}
+                texto={DESCRICOES_INDICADORES.aluno_leitura_atual.texto}
+              >
+                <span
+                  className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
+                  style={{
+                    backgroundColor: "rgba(255, 255, 255, 0.2)",
+                    color: "#ffffff",
+                    width: "28px",
+                    height: "28px",
+                  }}
+                  aria-hidden="true"
+                >
+                  <i className="bi bi-book-half" style={{ fontSize: "0.85rem" }}></i>
+                </span>
+              </IndicadorTooltip>
+              <span
+                className="fw-semibold text-white-50 text-uppercase small"
+                style={{ fontSize: "0.8rem", letterSpacing: "0.5px" }}
+              >
+                Leitura Atual
+              </span>
+            </div>
             <button
               type="button"
               className="btn btn-link text-white-50 p-0 border-0"

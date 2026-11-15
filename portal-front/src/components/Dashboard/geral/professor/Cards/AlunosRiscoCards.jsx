@@ -1,5 +1,7 @@
 import { Link } from "react-router";
 import ListaAlunosRisco from "../ListaAlunosRisco";
+import IndicadorTooltip from "../../../../common/IndicadorTooltip";
+import { DESCRICOES_INDICADORES } from "../../../../common/descricoesIndicadores";
 
 const CARDS_RISCO = [
   {
@@ -32,39 +34,50 @@ const CARDS_RISCO = [
 export default function AlunosRiscoCards({ dados, periodo, datasPeriodo = null, metaPontos = null, isReal = false }) {
   return (
     <>
-      {CARDS_RISCO.map((card) => (
-        <div className="col-12 col-md-6" key={card.id}>
-          <section
-            className="card dashboard-card-shadow rounded-3 h-100 p-2 p-md-3"
-            style={{
-              backgroundColor: card.fundo,
-              border: `1px solid ${card.borda}`,
-            }}
-            aria-label={card.titulo}
-          >
-            <div className="d-flex align-items-center justify-content-between gap-3">
-              <div className="d-flex align-items-center gap-3">
-                <span
-                  className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{
-                    width: "2.25rem",
-                    height: "2.25rem",
-                    color: card.cor,
-                    backgroundColor: `${card.cor}1a`,
-                  }}
-                  aria-hidden="true"
-                >
-                  <i className={`bi ${card.icone} fs-5`} />
-                </span>
-                <div>
-                  <h2 className="h6 fw-bold mb-1" style={{ color: "#26344a" }}>
-                    {card.titulo}
-                  </h2>
-                  <p className="small mb-0" style={{ color: "#687386" }}>
-                    {card.id === "notas" && metaPontos ? `Abaixo de 60% (${metaPontos} pts)` : card.descricao}
-                  </p>
+      {CARDS_RISCO.map((card) => {
+        // Obtém o texto pedagógico explicativo da métrica de risco
+        const chaveDescricao = card.id === "notas" ? "risco_nota" : "risco_frequencia";
+        const infoTooltip = DESCRICOES_INDICADORES[chaveDescricao];
+
+        return (
+          <div className="col-12 col-md-6" key={card.id}>
+            <section
+              className="card dashboard-card-shadow rounded-3 h-100 p-2 p-md-3"
+              style={{
+                backgroundColor: card.fundo,
+                border: `1px solid ${card.borda}`,
+              }}
+              aria-label={card.titulo}
+            >
+              <div className="d-flex align-items-center justify-content-between gap-3">
+                <div className="d-flex align-items-center gap-3">
+                  {/* Ícone com balão explicativo Dark Navy no hover/toque */}
+                  <IndicadorTooltip
+                    titulo={infoTooltip?.titulo || card.titulo}
+                    texto={infoTooltip?.texto}
+                  >
+                    <span
+                      className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                      style={{
+                        width: "2.25rem",
+                        height: "2.25rem",
+                        color: card.cor,
+                        backgroundColor: `${card.cor}1a`,
+                      }}
+                      aria-hidden="true"
+                    >
+                      <i className={`bi ${card.icone} fs-5`} />
+                    </span>
+                  </IndicadorTooltip>
+                  <div>
+                    <h2 className="h6 fw-bold mb-1" style={{ color: "#26344a" }}>
+                      {card.titulo}
+                    </h2>
+                    <p className="small mb-0" style={{ color: "#687386" }}>
+                      {card.id === "notas" && metaPontos ? `Abaixo de 60% (${metaPontos} pts)` : card.descricao}
+                    </p>
+                  </div>
                 </div>
-              </div>
               <div className="d-flex align-items-center gap-2">
                 <span
                   className="badge rounded-pill fw-normal"
@@ -121,7 +134,8 @@ export default function AlunosRiscoCards({ dados, periodo, datasPeriodo = null, 
             </div>
           </section>
         </div>
-      ))}
+        );
+      })}
     </>
   );
 }

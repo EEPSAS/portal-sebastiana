@@ -1,4 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import IndicadorTooltip from "../../../../common/IndicadorTooltip";
+import { DESCRICOES_INDICADORES } from "../../../../common/descricoesIndicadores";
 
 /**
  * FrequenciaGeralCard.jsx - Indicador de Frequência do Estudante com Recharts
@@ -31,33 +33,38 @@ export default function FrequenciaGeralCard({
           backgroundColor: bgColor,
         }}
       >
-        {/* Gráfico Circular Recharts */}
-        <div
-          style={{ width: "95px", height: "95px", position: "relative" }}
-          className="flex-shrink-0"
-          aria-hidden="true"
+        {/* Gráfico Circular Recharts com balão explicativo Dark Navy */}
+        <IndicadorTooltip
+          titulo={DESCRICOES_INDICADORES.aluno_frequencia.titulo}
+          texto={DESCRICOES_INDICADORES.aluno_frequencia.texto}
         >
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius={28}
-                outerRadius={40}
-                startAngle={90}
-                endAngle={-270}
-                paddingAngle={0}
-                dataKey="value"
-                stroke="none"
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+          <div
+            style={{ width: "95px", height: "95px", position: "relative" }}
+            className="flex-shrink-0"
+            aria-hidden="true"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={28}
+                  outerRadius={40}
+                  startAngle={90}
+                  endAngle={-270}
+                  paddingAngle={0}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </IndicadorTooltip>
 
         {/* Textos informativos de frequência */}
         <div className="ms-3 d-flex flex-column justify-content-center">

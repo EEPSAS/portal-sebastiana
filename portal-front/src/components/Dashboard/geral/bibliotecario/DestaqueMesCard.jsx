@@ -1,3 +1,6 @@
+import IndicadorTooltip from "../../../common/IndicadorTooltip";
+import { DESCRICOES_INDICADORES } from "../../../common/descricoesIndicadores";
+
 /** Agrupa o Destaque do Mês e o ranking real das 3 obras mais emprestadas no acervo escolar. */
 export default function DestaqueMesCard({
   destaque,
@@ -13,7 +16,26 @@ export default function DestaqueMesCard({
       <div className="row g-4 h-100">
         <div className="col-12 col-md-5 d-flex flex-column">
           <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
-            <h2 className="h6 fw-bold text-uppercase mb-0">Destaque do mês</h2>
+            <div className="d-flex align-items-center gap-2">
+              <IndicadorTooltip
+                titulo={DESCRICOES_INDICADORES.biblioteca_destaque.titulo}
+                texto={DESCRICOES_INDICADORES.biblioteca_destaque.texto}
+              >
+                <span
+                  className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
+                  style={{
+                    backgroundColor: "rgba(255, 255, 255, 0.2)",
+                    color: "#ffffff",
+                    width: "28px",
+                    height: "28px",
+                  }}
+                  aria-hidden="true"
+                >
+                  <i className="bi bi-trophy-fill" style={{ fontSize: "0.85rem" }}></i>
+                </span>
+              </IndicadorTooltip>
+              <h2 className="h6 fw-bold text-uppercase mb-0">Destaque do mês</h2>
+            </div>
             <span className="small text-white-50 text-capitalize">{mesAtual}</span>
           </div>
 

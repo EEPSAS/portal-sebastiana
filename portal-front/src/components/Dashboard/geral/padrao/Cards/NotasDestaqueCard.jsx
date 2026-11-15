@@ -1,3 +1,6 @@
+import IndicadorTooltip from "../../../../common/IndicadorTooltip";
+import { DESCRICOES_INDICADORES } from "../../../../common/descricoesIndicadores";
+
 /**
  * NotasDestaqueCard.jsx - Cards de Melhor Nota e Atenção Pedagógica
  *
@@ -17,18 +20,23 @@ export function MelhorNotaCard({
       <div className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-3 p-2 px-md-3 d-flex flex-column justify-content-between bg-white">
         <div>
           <div className="d-flex align-items-center gap-2 mb-2">
-            <span
-              className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
-              style={{
-                backgroundColor: "var(--dashboard-navy-soft)",
-                color: "var(--dashboard-navy)",
-                width: "28px",
-                height: "28px",
-              }}
-              aria-hidden="true"
+            <IndicadorTooltip
+              titulo={DESCRICOES_INDICADORES.aluno_melhor_nota.titulo}
+              texto={DESCRICOES_INDICADORES.aluno_melhor_nota.texto}
             >
-              <i className="bi bi-star-fill" style={{ fontSize: "0.85rem" }}></i>
-            </span>
+              <span
+                className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
+                style={{
+                  backgroundColor: "var(--dashboard-navy-soft)",
+                  color: "var(--dashboard-navy)",
+                  width: "28px",
+                  height: "28px",
+                }}
+                aria-hidden="true"
+              >
+                <i className="bi bi-star-fill" style={{ fontSize: "0.85rem" }}></i>
+              </span>
+            </IndicadorTooltip>
             <span className="small text-secondary fw-semibold">Melhor Nota</span>
           </div>
 
@@ -78,25 +86,30 @@ export function NotaAtencaoCard({
       <div className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-3 p-2 px-md-3 d-flex flex-column justify-content-between bg-white">
         <div>
           <div className="d-flex align-items-center gap-2 mb-2">
-            <span
-              className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
-              style={{
-                backgroundColor: emAlerta
-                  ? "var(--dashboard-pink-soft)"
-                  : "var(--dashboard-navy-soft)",
-                color: emAlerta ? "var(--dashboard-pink)" : "var(--dashboard-navy)",
-                width: "28px",
-                height: "28px",
-              }}
-              aria-hidden="true"
+            <IndicadorTooltip
+              titulo={DESCRICOES_INDICADORES.aluno_nota_atencao.titulo}
+              texto={DESCRICOES_INDICADORES.aluno_nota_atencao.texto}
             >
-              <i
-                className={`bi ${
-                  emAlerta ? "bi-exclamation-circle-fill" : "bi-check-circle-fill"
-                }`}
-                style={{ fontSize: "0.85rem" }}
-              ></i>
-            </span>
+              <span
+                className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
+                style={{
+                  backgroundColor: emAlerta
+                    ? "var(--dashboard-pink-soft)"
+                    : "var(--dashboard-navy-soft)",
+                  color: emAlerta ? "var(--dashboard-pink)" : "var(--dashboard-navy)",
+                  width: "28px",
+                  height: "28px",
+                }}
+                aria-hidden="true"
+              >
+                <i
+                  className={`bi ${
+                    emAlerta ? "bi-exclamation-circle-fill" : "bi-check-circle-fill"
+                  }`}
+                  style={{ fontSize: "0.85rem" }}
+                ></i>
+              </span>
+            </IndicadorTooltip>
             <span className="small text-secondary fw-semibold">
               {emAlerta ? "Nota que precisa de mais atenção" : "Menor Nota Atual"}
             </span>

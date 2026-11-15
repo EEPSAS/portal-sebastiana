@@ -1,4 +1,6 @@
 import { Link } from "react-router";
+import IndicadorTooltip from "../../../../common/IndicadorTooltip";
+import { DESCRICOES_INDICADORES } from "../../../../common/descricoesIndicadores";
 
 /**
  * EstatisticaDocenteCard.jsx - Card Unitário de Indicador Rápido (KPI)
@@ -40,6 +42,13 @@ function RenderIcon({ tipo }) {
   }
 }
 
+const MAPA_DESCRICOES = {
+  alunos: "total_alunos",
+  notas: "media_geral",
+  frequencia: "frequencia_media",
+  noticias: "noticias_publicadas",
+};
+
 export default function GeralSmallCards({
   titulo,
   valor,
@@ -47,6 +56,8 @@ export default function GeralSmallCards({
   href,
 }) {
   const classeCorIcone = `geral-kpi-icon--${tipoIcone || "alunos"}`;
+  const chaveTooltip = MAPA_DESCRICOES[tipoIcone] || "total_alunos";
+  const infoTooltip = DESCRICOES_INDICADORES[chaveTooltip];
 
   return (
     <div className="col-12 col-sm-6 col-lg-3">
@@ -54,9 +65,15 @@ export default function GeralSmallCards({
         {/* Bloco Superior: Ícone Pastel + Rótulo + Valor */}
         <div>
           <div className="d-flex align-items-center gap-3">
-            <div className={`geral-kpi-icon ${classeCorIcone}`} aria-hidden="true">
-              <RenderIcon tipo={tipoIcone} />
-            </div>
+            {/* Ícone com balão explicativo Dark Navy no hover/toque */}
+            <IndicadorTooltip
+              titulo={infoTooltip?.titulo || titulo}
+              texto={infoTooltip?.texto}
+            >
+              <div className={`geral-kpi-icon ${classeCorIcone}`} aria-hidden="true">
+                <RenderIcon tipo={tipoIcone} />
+              </div>
+            </IndicadorTooltip>
 
             <div className="d-flex flex-column">
               <span className="geral-kpi-label">{titulo}</span>

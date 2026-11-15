@@ -1,0 +1,101 @@
+/**
+ * IndicadorTooltip.css - Estilos do Balão Explicativo de Indicadores
+ *
+ * Papel Didático:
+ * Renderiza um balão flutuante Dark Navy (#1e293b) posicionado relativamente
+ * sobre o ícone do indicador escolar com seta indicadora e suporte acessível.
+ */
+
+.indicador-tooltip-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  outline: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-decoration: none;
+}
+
+.indicador-tooltip-container:focus-visible {
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.35);
+}
+
+.indicador-tooltip-balao {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background-color: #1e293b;
+  color: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  white-space: normal;
+  width: max-content;
+  max-width: 250px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.25);
+  z-index: 1070;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s ease-in-out, transform 0.18s ease-in-out, visibility 0.18s;
+  text-align: left;
+}
+
+/* Seta indicadora apontando para o ícone */
+.indicador-tooltip-balao::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1e293b transparent transparent transparent;
+}
+
+/* Estado ativo (hover no desktop ou toque em mobile) */
+.indicador-tooltip-container.is-ativo .indicador-tooltip-balao,
+.indicador-tooltip-container:hover .indicador-tooltip-balao,
+.indicador-tooltip-container:focus-visible .indicador-tooltip-balao {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Variante com posição abaixo (bottom) */
+.indicador-tooltip-container--bottom .indicador-tooltip-balao {
+  bottom: auto;
+  top: calc(100% + 9px);
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.indicador-tooltip-container--bottom .indicador-tooltip-balao::after {
+  top: auto;
+  bottom: 100%;
+  border-color: transparent transparent #1e293b transparent;
+}
+
+.indicador-tooltip-container--bottom.is-ativo .indicador-tooltip-balao,
+.indicador-tooltip-container--bottom:hover .indicador-tooltip-balao,
+.indicador-tooltip-container--bottom:focus-visible .indicador-tooltip-balao {
+  transform: translateX(-50%) translateY(0);
+}
+
+.indicador-tooltip-titulo {
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: #38bdf8;
+  margin-bottom: 2px;
+  display: block;
+}
+
+.indicador-tooltip-texto {
+  display: block;
+  color: #e2e8f0;
+}
