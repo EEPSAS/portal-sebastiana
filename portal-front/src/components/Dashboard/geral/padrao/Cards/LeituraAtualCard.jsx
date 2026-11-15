@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import IndicadorTooltip from "../../../../common/IndicadorTooltip";
 import { DESCRICOES_INDICADORES } from "../../../../common/descricoesIndicadores";
 
@@ -77,14 +78,25 @@ export default function LeituraAtualCard({ leitura, onSave }) {
                 Leitura Atual
               </span>
             </div>
-            <button
-              type="button"
-              className="btn btn-link text-white-50 p-0 border-0"
-              onClick={handleOpenModal}
-              aria-label="Editar anotação de leitura atual"
-            >
-              <i className="bi bi-pencil-fill" style={{ fontSize: "0.9rem" }} aria-hidden="true"></i>
-            </button>
+            <div className="d-flex align-items-center gap-1 ms-2 flex-shrink-0">
+              <button
+                type="button"
+                className="btn btn-link text-white-50 p-1 border-0"
+                onClick={handleOpenModal}
+                aria-label="Editar anotação de leitura atual"
+                title="Editar anotação de leitura"
+              >
+                <i className="bi bi-pencil-fill" style={{ fontSize: "0.85rem" }} aria-hidden="true"></i>
+              </button>
+              <Link
+                to="/dashboard/biblioteca"
+                className="geral-kpi-arrow-btn geral-kpi-arrow-btn--sm geral-kpi-arrow-btn--light"
+                aria-label="Abrir Biblioteca Escolar"
+                title="Abrir Biblioteca Escolar"
+              >
+                <i className="bi bi-arrow-right" aria-hidden="true"></i>
+              </Link>
+            </div>
           </div>
 
           <h3

@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import IndicadorTooltip from "../../../../common/IndicadorTooltip";
 import { DESCRICOES_INDICADORES } from "../../../../common/descricoesIndicadores";
@@ -28,55 +29,67 @@ export default function FrequenciaGeralCard({
   return (
     <div className="col-12 col-sm-6 col-lg-3">
       <div
-        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-3 text-white p-2 px-md-3 d-flex flex-row align-items-center"
+        className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-3 text-white p-2 px-md-3 d-flex flex-row align-items-center justify-content-between"
         style={{
           backgroundColor: bgColor,
         }}
       >
-        {/* Gráfico Circular Recharts com balão explicativo Dark Navy */}
-        <IndicadorTooltip
-          titulo={DESCRICOES_INDICADORES.aluno_frequencia.titulo}
-          texto={DESCRICOES_INDICADORES.aluno_frequencia.texto}
-        >
-          <div
-            style={{ width: "95px", height: "95px", position: "relative" }}
-            className="flex-shrink-0"
-            aria-hidden="true"
+        <div className="d-flex align-items-center min-w-0">
+          {/* Gráfico Circular Recharts com balão explicativo Dark Navy projetando para dentro */}
+          <IndicadorTooltip
+            titulo={DESCRICOES_INDICADORES.aluno_frequencia.titulo}
+            texto={DESCRICOES_INDICADORES.aluno_frequencia.texto}
           >
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={28}
-                  outerRadius={40}
-                  startAngle={90}
-                  endAngle={-270}
-                  paddingAngle={0}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {data.map((entry, index) => (
-                    <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </IndicadorTooltip>
+            <div
+              style={{ width: "86px", height: "86px", position: "relative" }}
+              className="flex-shrink-0"
+              aria-hidden="true"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={25}
+                    outerRadius={36}
+                    startAngle={90}
+                    endAngle={-270}
+                    paddingAngle={0}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {data.map((entry, index) => (
+                      <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </IndicadorTooltip>
 
-        {/* Textos informativos de frequência */}
-        <div className="ms-3 d-flex flex-column justify-content-center">
-          <span
-            className="fw-semibold text-white-50 text-uppercase small"
-            style={{ fontSize: "0.8rem", letterSpacing: "0.5px" }}
-          >
-            Frequência Geral
-          </span>
-          <span className="fw-bold fs-1 lh-1 my-1 text-white">{valorSeguro}%</span>
-          <span className="text-white-50 small fw-medium">{classificacao}</span>
+          {/* Textos informativos de frequência */}
+          <div className="ms-2 ms-md-3 d-flex flex-column justify-content-center min-w-0">
+            <span
+              className="fw-semibold text-white-50 text-uppercase small text-truncate"
+              style={{ fontSize: "0.78rem", letterSpacing: "0.5px" }}
+            >
+              Frequência Geral
+            </span>
+            <span className="fw-bold fs-2 lh-1 my-1 text-white">{valorSeguro}%</span>
+            <span className="text-white-50 small fw-medium text-truncate">{classificacao}</span>
+          </div>
         </div>
+
+        {/* Botão de aprofundamento para o Boletim na extrema direita */}
+        <Link
+          to="/dashboard/boletim"
+          className="geral-kpi-arrow-btn geral-kpi-arrow-btn--light ms-2 flex-shrink-0"
+          aria-label="Abrir Frequência Detalhada no Boletim"
+          title="Abrir Frequência Detalhada no Boletim"
+        >
+          <i className="bi bi-arrow-right" aria-hidden="true"></i>
+        </Link>
       </div>
     </div>
   );

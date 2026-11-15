@@ -61,41 +61,38 @@ export default function GeralSmallCards({
 
   return (
     <div className="col-12 col-sm-6 col-lg-3">
-      <div className="geral-kpi-card h-100 d-flex flex-column justify-content-between">
-        {/* Bloco Superior: Ícone Pastel + Rótulo + Valor */}
-        <div>
-          <div className="d-flex align-items-center gap-3">
-            {/* Ícone com balão explicativo Dark Navy no hover/toque */}
-            <IndicadorTooltip
-              titulo={infoTooltip?.titulo || titulo}
-              texto={infoTooltip?.texto}
-            >
-              <div className={`geral-kpi-icon ${classeCorIcone}`} aria-hidden="true">
-                <RenderIcon tipo={tipoIcone} />
-              </div>
-            </IndicadorTooltip>
-
-            <div className="d-flex flex-column">
-              <span className="geral-kpi-label">{titulo}</span>
-              <span className="geral-kpi-value">
-                {valor !== undefined && valor !== null ? valor : "—"}
-              </span>
+      <div className="geral-kpi-card d-flex align-items-center justify-content-between h-100">
+        {/* Bloco Esquerda: Ícone Pastel + Rótulo + Valor */}
+        <div className="d-flex align-items-center gap-3 min-w-0">
+          {/* Ícone com balão explicativo Dark Navy projetando para dentro da tela */}
+          <IndicadorTooltip
+            titulo={infoTooltip?.titulo || titulo}
+            texto={infoTooltip?.texto}
+          >
+            <div className={`geral-kpi-icon ${classeCorIcone}`} aria-hidden="true">
+              <RenderIcon tipo={tipoIcone} />
             </div>
+          </IndicadorTooltip>
+
+          <div className="d-flex flex-column min-w-0">
+            <span className="geral-kpi-label text-truncate">{titulo}</span>
+            <span className="geral-kpi-value text-truncate">
+              {valor !== undefined && valor !== null ? valor : "—"}
+            </span>
           </div>
         </div>
 
-        <div className="geral-kpi-footer">
-          {href && (
-            <Link
-              to={href}
-              className="geral-kpi-arrow-btn"
-              aria-label={`Abrir ${titulo}`}
-              title={`Abrir ${titulo}`}
-            >
-              <i className="bi bi-arrow-right" aria-hidden="true"></i>
-            </Link>
-          )}
-        </div>
+        {/* Botão de detalhamento reposicionado na lateral direita para formato compacto */}
+        {href && (
+          <Link
+            to={href}
+            className="geral-kpi-arrow-btn ms-2 flex-shrink-0"
+            aria-label={`Abrir ${titulo}`}
+            title={`Abrir ${titulo}`}
+          >
+            <i className="bi bi-arrow-right" aria-hidden="true"></i>
+          </Link>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@
  * Papel Didático:
  * Renderiza um balão flutuante Dark Navy (#1e293b) posicionado relativamente
  * sobre o ícone do indicador escolar com seta indicadora e suporte acessível.
+ * Garante que o balão sempre projete 'para dentro' da tela, evitando cortes na barra lateral.
  */
 
 .indicador-tooltip-container {
@@ -27,8 +28,6 @@
 .indicador-tooltip-balao {
   position: absolute;
   bottom: calc(100% + 9px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
   background-color: #1e293b;
   color: #f8fafc;
   padding: 8px 12px;
@@ -37,9 +36,9 @@
   line-height: 1.35;
   white-space: normal;
   width: max-content;
-  max-width: 250px;
+  max-width: min(260px, 85vw);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.25);
-  z-index: 1070;
+  z-index: 1080;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
@@ -47,32 +46,89 @@
   text-align: left;
 }
 
-/* Seta indicadora apontando para o ícone */
+/* Seta indicadora base */
 .indicador-tooltip-balao::after {
   content: "";
   position: absolute;
   top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
   border-width: 5px;
   border-style: solid;
   border-color: #1e293b transparent transparent transparent;
 }
 
-/* Estado ativo (hover no desktop ou toque em mobile) */
-.indicador-tooltip-container.is-ativo .indicador-tooltip-balao,
-.indicador-tooltip-container:hover .indicador-tooltip-balao,
-.indicador-tooltip-container:focus-visible .indicador-tooltip-balao {
+/* --------------------------------------------------------------------------
+   1. Alinhamento Horizontal Inteligente (Sempre 'para dentro' da tela)
+   -------------------------------------------------------------------------- */
+
+/* Alinhamento Start: Balão alinha à esquerda do ícone e projeta para a direita */
+.indicador-tooltip-container--align-start .indicador-tooltip-balao {
+  left: -6px;
+  right: auto;
+  transform: translateY(4px);
+}
+
+.indicador-tooltip-container--align-start .indicador-tooltip-balao::after {
+  left: 18px;
+  right: auto;
+  transform: none;
+}
+
+.indicador-tooltip-container--align-start.is-ativo .indicador-tooltip-balao,
+.indicador-tooltip-container--align-start:hover .indicador-tooltip-balao,
+.indicador-tooltip-container--align-start:focus-visible .indicador-tooltip-balao {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Alinhamento End: Balão alinha à direita do ícone e projeta para a esquerda */
+.indicador-tooltip-container--align-end .indicador-tooltip-balao {
+  left: auto;
+  right: -6px;
+  transform: translateY(4px);
+}
+
+.indicador-tooltip-container--align-end .indicador-tooltip-balao::after {
+  left: auto;
+  right: 18px;
+  transform: none;
+}
+
+.indicador-tooltip-container--align-end.is-ativo .indicador-tooltip-balao,
+.indicador-tooltip-container--align-end:hover .indicador-tooltip-balao,
+.indicador-tooltip-container--align-end:focus-visible .indicador-tooltip-balao {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Alinhamento Center: Balão centralizado sobre o ícone */
+.indicador-tooltip-container--align-center .indicador-tooltip-balao {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%) translateY(4px);
+}
+
+.indicador-tooltip-container--align-center .indicador-tooltip-balao::after {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+.indicador-tooltip-container--align-center.is-ativo .indicador-tooltip-balao,
+.indicador-tooltip-container--align-center:hover .indicador-tooltip-balao,
+.indicador-tooltip-container--align-center:focus-visible .indicador-tooltip-balao {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(0);
 }
 
-/* Variante com posição abaixo (bottom) */
+/* --------------------------------------------------------------------------
+   2. Variante com Posição Abaixo (bottom)
+   -------------------------------------------------------------------------- */
 .indicador-tooltip-container--bottom .indicador-tooltip-balao {
   bottom: auto;
   top: calc(100% + 9px);
-  transform: translateX(-50%) translateY(-4px);
 }
 
 .indicador-tooltip-container--bottom .indicador-tooltip-balao::after {
@@ -81,12 +137,37 @@
   border-color: transparent transparent #1e293b transparent;
 }
 
-.indicador-tooltip-container--bottom.is-ativo .indicador-tooltip-balao,
-.indicador-tooltip-container--bottom:hover .indicador-tooltip-balao,
-.indicador-tooltip-container--bottom:focus-visible .indicador-tooltip-balao {
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-start .indicador-tooltip-balao {
+  transform: translateY(-4px);
+}
+
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-start.is-ativo .indicador-tooltip-balao,
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-start:hover .indicador-tooltip-balao,
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-start:focus-visible .indicador-tooltip-balao {
+  transform: translateY(0);
+}
+
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-end .indicador-tooltip-balao {
+  transform: translateY(-4px);
+}
+
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-end.is-ativo .indicador-tooltip-balao,
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-end:hover .indicador-tooltip-balao,
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-end:focus-visible .indicador-tooltip-balao {
+  transform: translateY(0);
+}
+
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-center .indicador-tooltip-balao {
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-center.is-ativo .indicador-tooltip-balao,
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-center:hover .indicador-tooltip-balao,
+.indicador-tooltip-container--bottom.indicador-tooltip-container--align-center:focus-visible .indicador-tooltip-balao {
   transform: translateX(-50%) translateY(0);
 }
 
+/* Tipografia interna do balão */
 .indicador-tooltip-titulo {
   font-weight: 700;
   font-size: 0.78rem;

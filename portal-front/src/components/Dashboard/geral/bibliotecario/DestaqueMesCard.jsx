@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import IndicadorTooltip from "../../../common/IndicadorTooltip";
 import { DESCRICOES_INDICADORES } from "../../../common/descricoesIndicadores";
 
@@ -36,7 +37,17 @@ export default function DestaqueMesCard({
               </IndicadorTooltip>
               <h2 className="h6 fw-bold text-uppercase mb-0">Destaque do mês</h2>
             </div>
-            <span className="small text-white-50 text-capitalize">{mesAtual}</span>
+            <div className="d-flex align-items-center gap-2">
+              <span className="small text-white-50 text-capitalize">{mesAtual}</span>
+              <Link
+                to="/dashboard/biblioteca?tab=acervo"
+                className="geral-kpi-arrow-btn geral-kpi-arrow-btn--sm geral-kpi-arrow-btn--light"
+                aria-label="Abrir Acervo da Biblioteca"
+                title="Abrir Acervo da Biblioteca"
+              >
+                <i className="bi bi-arrow-right" aria-hidden="true"></i>
+              </Link>
+            </div>
           </div>
 
           {destaque ? (

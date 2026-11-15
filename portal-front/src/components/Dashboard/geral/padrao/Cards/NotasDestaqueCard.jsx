@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import IndicadorTooltip from "../../../../common/IndicadorTooltip";
 import { DESCRICOES_INDICADORES } from "../../../../common/descricoesIndicadores";
 
@@ -19,25 +20,35 @@ export function MelhorNotaCard({
     <div className="col-12 col-sm-6 col-lg-3">
       <div className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-3 p-2 px-md-3 d-flex flex-column justify-content-between bg-white">
         <div>
-          <div className="d-flex align-items-center gap-2 mb-2">
-            <IndicadorTooltip
-              titulo={DESCRICOES_INDICADORES.aluno_melhor_nota.titulo}
-              texto={DESCRICOES_INDICADORES.aluno_melhor_nota.texto}
-            >
-              <span
-                className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
-                style={{
-                  backgroundColor: "var(--dashboard-navy-soft)",
-                  color: "var(--dashboard-navy)",
-                  width: "28px",
-                  height: "28px",
-                }}
-                aria-hidden="true"
+          <div className="d-flex align-items-center justify-content-between mb-2">
+            <div className="d-flex align-items-center gap-2 min-w-0">
+              <IndicadorTooltip
+                titulo={DESCRICOES_INDICADORES.aluno_melhor_nota.titulo}
+                texto={DESCRICOES_INDICADORES.aluno_melhor_nota.texto}
               >
-                <i className="bi bi-star-fill" style={{ fontSize: "0.85rem" }}></i>
-              </span>
-            </IndicadorTooltip>
-            <span className="small text-secondary fw-semibold">Melhor Nota</span>
+                <span
+                  className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
+                  style={{
+                    backgroundColor: "var(--dashboard-navy-soft)",
+                    color: "var(--dashboard-navy)",
+                    width: "28px",
+                    height: "28px",
+                  }}
+                  aria-hidden="true"
+                >
+                  <i className="bi bi-star-fill" style={{ fontSize: "0.85rem" }}></i>
+                </span>
+              </IndicadorTooltip>
+              <span className="small text-secondary fw-semibold text-truncate">Melhor Nota</span>
+            </div>
+            <Link
+              to="/dashboard/boletim"
+              className="geral-kpi-arrow-btn geral-kpi-arrow-btn--sm flex-shrink-0 ms-2"
+              aria-label="Abrir Boletim Escolar Completo"
+              title="Abrir Boletim Escolar Completo"
+            >
+              <i className="bi bi-arrow-right" aria-hidden="true"></i>
+            </Link>
           </div>
 
           <div className="d-flex align-items-baseline gap-2 flex-wrap">
@@ -85,34 +96,44 @@ export function NotaAtencaoCard({
     <div className="col-12 col-sm-6 col-lg-3">
       <div className="student-overview__metric-card card h-100 w-100 border-0 shadow-sm rounded-3 p-2 px-md-3 d-flex flex-column justify-content-between bg-white">
         <div>
-          <div className="d-flex align-items-center gap-2 mb-2">
-            <IndicadorTooltip
-              titulo={DESCRICOES_INDICADORES.aluno_nota_atencao.titulo}
-              texto={DESCRICOES_INDICADORES.aluno_nota_atencao.texto}
-            >
-              <span
-                className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
-                style={{
-                  backgroundColor: emAlerta
-                    ? "var(--dashboard-pink-soft)"
-                    : "var(--dashboard-navy-soft)",
-                  color: emAlerta ? "var(--dashboard-pink)" : "var(--dashboard-navy)",
-                  width: "28px",
-                  height: "28px",
-                }}
-                aria-hidden="true"
+          <div className="d-flex align-items-center justify-content-between mb-2">
+            <div className="d-flex align-items-center gap-2 min-w-0">
+              <IndicadorTooltip
+                titulo={DESCRICOES_INDICADORES.aluno_nota_atencao.titulo}
+                texto={DESCRICOES_INDICADORES.aluno_nota_atencao.texto}
               >
-                <i
-                  className={`bi ${
-                    emAlerta ? "bi-exclamation-circle-fill" : "bi-check-circle-fill"
-                  }`}
-                  style={{ fontSize: "0.85rem" }}
-                ></i>
+                <span
+                  className="badge rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
+                  style={{
+                    backgroundColor: emAlerta
+                      ? "var(--dashboard-pink-soft)"
+                      : "var(--dashboard-navy-soft)",
+                    color: emAlerta ? "var(--dashboard-pink)" : "var(--dashboard-navy)",
+                    width: "28px",
+                    height: "28px",
+                  }}
+                  aria-hidden="true"
+                >
+                  <i
+                    className={`bi ${
+                      emAlerta ? "bi-exclamation-circle-fill" : "bi-check-circle-fill"
+                    }`}
+                    style={{ fontSize: "0.85rem" }}
+                  ></i>
+                </span>
+              </IndicadorTooltip>
+              <span className="small text-secondary fw-semibold text-truncate">
+                {emAlerta ? "Nota em Atenção" : "Menor Nota Atual"}
               </span>
-            </IndicadorTooltip>
-            <span className="small text-secondary fw-semibold">
-              {emAlerta ? "Nota que precisa de mais atenção" : "Menor Nota Atual"}
-            </span>
+            </div>
+            <Link
+              to="/dashboard/boletim"
+              className="geral-kpi-arrow-btn geral-kpi-arrow-btn--sm flex-shrink-0 ms-2"
+              aria-label="Abrir Boletim Escolar Completo"
+              title="Abrir Boletim Escolar Completo"
+            >
+              <i className="bi bi-arrow-right" aria-hidden="true"></i>
+            </Link>
           </div>
 
           <div className="d-flex align-items-baseline gap-2 flex-wrap">
