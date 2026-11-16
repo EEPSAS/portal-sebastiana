@@ -324,9 +324,9 @@ class AlunoDashboardService
             ->whereIn('usuario_id', $alunosAtivosIds);
         $this->aplicarFiltroDataFrequencia($queryFreqGeral, $trimestre);
 
-        // Agrupado por disciplina_id e usuario_id
+        // Agrupado por disciplina_id e usuario_id (usa aspas simples 'Falta' em conformidade com o padrão ANSI SQL do PostgreSQL)
         $dadosFreqAgrupados = $queryFreqGeral
-            ->selectRaw('disciplina_id, usuario_id, sum(quantidade_aulas) as total_aulas, sum(case when status_presenca = "Falta" then quantidade_aulas else 0 end) as total_faltas')
+            ->selectRaw("disciplina_id, usuario_id, sum(quantidade_aulas) as total_aulas, sum(case when status_presenca = 'Falta' then quantidade_aulas else 0 end) as total_faltas")
             ->groupBy('disciplina_id', 'usuario_id')
             ->get()
             ->groupBy('disciplina_id');

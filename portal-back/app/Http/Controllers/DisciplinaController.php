@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreDisciplinaRequest;
 use App\Http\Requests\UpdateDisciplinaRequest;
+use App\Http\Requests\VincularDisciplinaProfessorRequest;
 use App\Http\Resources\DisciplinaResource;
 use App\Models\Ciclo;
 use App\Models\Disciplina;
@@ -214,14 +215,12 @@ class DisciplinaController extends Controller
     /**
      * Vincula o professor responsável por lecionar uma disciplina em determinada turma.
      */
-    public function vincularProfessor(Request $request, Disciplina $disciplina): JsonResponse
+    public function vincularProfessor(VincularDisciplinaProfessorRequest $request, Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('update', $disciplina);
 
-        $validated = $request->validate([
-            'turma_id' => ['required', 'exists:turmas,id_turma'],
-            'professor_id' => ['required', 'exists:users,id'],
-        ]);
+        // Obtém os parâmetros já validados pela Form Request dedicada
+        $validated = $request->validated();
 
         $vinculo = TurmaDisciplina::updateOrCreate(
             [

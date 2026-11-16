@@ -20,7 +20,6 @@ use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\PeriodoLetivoController;
 use App\Http\Controllers\PlanoEstudoController;
 use App\Http\Controllers\ProfessorController;
-use App\Http\Controllers\RadioatividadeController;
 use App\Http\Controllers\TurmaController;
 use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\UsuarioController;
@@ -77,7 +76,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/notificacoes/{notificacao}/lida', [NotificacaoController::class, 'marcarLida']);
 
     Route::apiResource('noticias', NoticiaController::class)->except(['index', 'show']);
-    Route::apiResource('radioatividades', RadioatividadeController::class);
     Route::get('/biblioteca', [BibliotecaController::class, 'show'])->name('biblioteca.show');
     Route::put('/biblioteca', [BibliotecaController::class, 'update'])->middleware('throttle:60,1')->name('biblioteca.update');
 

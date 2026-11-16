@@ -331,7 +331,19 @@ export const TurnoConfigItemSchema = z
     quantidade_aulas: z.number().optional(),
     ativo: z.boolean(),
     descricao: z.string().optional(),
-  });
+  })
+  .refine(
+    (turno) => {
+      if (!turno.ativo) return true;
+      const inicio = turno.inicio || turno.hora_inicio || "00:00";
+      const fim = turno.fim || turno.hora_fim || "23:59";
+      return fim > inicio;
+    },
+    {
+      message: "O horário de término deve ser posterior ao horário de início.",
+      path: ["fim"],
+    }
+  );
 
 export const ListaTurnosConfigSchema = z.array(TurnoConfigItemSchema);
 

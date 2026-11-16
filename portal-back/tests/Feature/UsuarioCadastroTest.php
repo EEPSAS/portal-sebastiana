@@ -4,6 +4,7 @@ use App\Enums\UserRole;
 use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -144,7 +145,7 @@ test('administrador atualiza dados cadastrais, senha e turma do usuario', functi
     $aluno->refresh();
     expect($aluno->name)->toBe('Aluno Nome Atualizado')
         ->and($aluno->turma_ativa?->id_turma)->toBe($turmaB->id_turma)
-        ->and(Illuminate\Support\Facades\Hash::check('NovaSenhaSegura999!', $aluno->password))->toBeTrue();
+        ->and(Hash::check('NovaSenhaSegura999!', $aluno->password))->toBeTrue();
 });
 
 test('administrador inativa usuario logicamente preservando registro no banco', function () {

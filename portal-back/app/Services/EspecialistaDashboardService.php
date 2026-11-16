@@ -2381,6 +2381,10 @@ class EspecialistaDashboardService
             ->whereIn('role', [UserRole::BIBLIOTECARIA->value, 'bibliotecario'])
             ->pluck('id');
 
+        $isPgsql = DB::getDriverName() === 'pgsql';
+        $expressaoEventKey = $isPgsql ? "data->>'event_key'" : "json_extract(data, '\$.event_key')";
+        $expressaoMaxId = $isPgsql ? 'MAX(id::text)' : 'MAX(id)';
+
         $eventos = DatabaseNotification::query()
             ->where('type', NotificacaoPortal::class)
             ->whereNotNull('data->event_key')
@@ -2393,9 +2397,9 @@ class EspecialistaDashboardService
                         ->whereIn('notifiable_id', $bibliotecariasIds);
                 });
             })
-            ->selectRaw("MAX(id) as id, MAX(created_at) as created_at, json_extract(data, '$.event_key') as event_key")
-            ->groupByRaw("json_extract(data, '$.event_key')")
-            ->orderByDesc('created_at')
+            ->selectRaw("{$expressaoMaxId} as id, MAX(created_at) as created_at, {$expressaoEventKey} as event_key")
+            ->groupByRaw($expressaoEventKey)
+            ->orderByRaw('MAX(created_at) DESC')
             ->limit(5)
             ->get();
 

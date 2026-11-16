@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\DonaNanaConfig;
 use App\Models\User;
 use Illuminate\Support\Facades\Config;
@@ -12,7 +13,7 @@ test('exige autenticação para conversar com a Dona Nana ou acessar sua configu
 });
 
 test('valida os campos obrigatórios da mensagem de chat', function () {
-    $aluno = User::factory()->create(['role' => 'aluno']);
+    $aluno = User::factory()->create(['role' => UserRole::ALUNO]);
 
     // Mensagem vazia
     $this->actingAs($aluno, 'sanctum')
@@ -27,7 +28,7 @@ test('retorna resposta acolhedora de fallback quando chave Gemini não está con
     $aluno = User::factory()->create([
         'name' => 'Yasmin Teixeira',
         'nickname' => 'Yasmin',
-        'role' => 'aluno',
+        'role' => UserRole::ALUNO,
     ]);
 
     $response = $this->actingAs($aluno, 'sanctum')
@@ -69,7 +70,7 @@ test('retorna resposta simulada do Gemini 3.8 Flash quando chave está configura
 
     $aluno = User::factory()->create([
         'name' => 'Carlos Silva',
-        'role' => 'aluno',
+        'role' => UserRole::ALUNO,
     ]);
 
     $response = $this->actingAs($aluno, 'sanctum')
@@ -87,22 +88,46 @@ test('retorna resposta simulada do Gemini 3.8 Flash quando chave está configura
         ->and($response->json('origem'))->toBe('gemini-3.8-flash');
 });
 
-test('bloqueia acesso de alunos e professores à configuração da persona', function () {
-    $aluno = User::factory()->create(['role' => 'aluno']);
-    $professor = User::factory()->create(['role' => 'professor']);
+test('retorna fallback gracioso quando API externa do Gemini responde com erro 500', function () {
+    Config::set('services.gemini.key', 'fake-gemini-key');
 
-    $this->actingAs($aluno, 'sanctum')
-        ->getJson('/api/dona-nana/config')
-        ->assertForbidden();
+    Http::fake([
+        'https://generativelanguage.googleapis.com/*' => Http::response(['error' => 'Unavailable'], 500),
+    ]);
 
-    $this->actingAs($professor, 'sanctum')
-        ->getJson('/api/dona-nana/config')
-        ->assertForbidden();
+    $aluno = User::factory()->create(['role' => UserRole::ALUNO]);
+
+    $response = $this->actingAs($aluno, 'sanctum')
+        ->postJson('/api/dona-nana/chat', ['mensagem' => 'Qual a programação da semana?'])
+        ->assertOk();
+
+    expect($response->json('origem'))->toBe('fallback-local')
+        ->and($response->json('resposta'))->toContain('Houve um pequeno contratempo ao consultar meus pensamentos');
+});
+
+test('bloqueia acesso de alunos e professores à leitura e atualização da configuração da persona', function () {
+    $aluno = User::factory()->create(['role' => UserRole::ALUNO]);
+    $professor = User::factory()->create(['role' => UserRole::PROFESSOR]);
+
+    foreach ([$aluno, $professor] as $usuarioRestrito) {
+        $this->actingAs($usuarioRestrito, 'sanctum')
+            ->getJson('/api/dona-nana/config')
+            ->assertForbidden();
+
+        $this->actingAs($usuarioRestrito, 'sanctum')
+            ->putJson('/api/dona-nana/config', [
+                'personalidade' => 'Persona alterada indevidamente.',
+                'conhecimento_portal' => 'Conhecimento.',
+                'historias_causos' => 'Histórias.',
+                'diretrizes_resposta' => 'Diretrizes.',
+            ])
+            ->assertForbidden();
+    }
 });
 
 test('permite que Especialista e Administrador consultem e atualizem os 4 campos da persona', function () {
-    $especialista = User::factory()->create(['role' => 'especialista']);
-    $admin = User::factory()->create(['role' => 'adm']);
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $admin = User::factory()->create(['role' => UserRole::ADM]);
 
     // Especialista obtém configuração atual
     $this->actingAs($especialista, 'sanctum')

@@ -2,13 +2,10 @@
 
 use App\Models\Noticia;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
-uses(RefreshDatabase::class);
-
-test('qualquer visitante pode listar notícias com paginação', function () {
+test('qualquer visitante pode listar notícias com paginação ou coleção completa via all=true', function () {
     $autor = User::factory()->adm()->create();
     Noticia::factory()->count(15)->create(['autor_id' => $autor->id]);
 
@@ -38,6 +35,10 @@ test('qualquer visitante pode listar notícias com paginação', function () {
         ]);
 
     expect(count($response->json('data')))->toBe(10);
+
+    // Quando all=true é enviado, retorna array direto com todos os 15 registros
+    $resAll = $this->getJson('/api/noticias?all=true')->assertOk();
+    expect(count($resAll->json()))->toBe(15);
 });
 
 test('qualquer visitante pode visualizar detalhes de uma notícia existente', function () {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CancelarMatriculaRequest;
 use App\Http\Requests\StoreMatriculaRequest;
+use App\Http\Requests\TransferirMatriculaRequest;
 use App\Http\Resources\MatriculaResource;
 use App\Http\Resources\TurmaResource;
 use App\Models\Matricula;
@@ -34,13 +35,14 @@ class MatriculaController extends Controller
             ->with(['turma', 'aluno:id,name,email'])
             ->orderBy('id_matricula', 'desc');
 
-        // Se o usuário for Professor, visualiza estritamente os alunos das turmas onde leciona
+        // Se o usuário for Professor, visualiza estritamente os alunos das turmas onde leciona (sem escrita N+1 no GET)
         if ($user && $user->isProfessor() && ! $user->isAdm()) {
-            foreach ($user->disciplinasDocente as $discDocente) {
-                $discDocente->sincronizarComTurmasDosCiclos();
-            }
-            $query->whereHas('turma.turmaDisciplinas', function ($q) use ($user) {
-                $q->where('professor_id', $user->id);
+            $query->where(function ($sub) use ($user) {
+                $sub->whereHas('turma.turmaDisciplinas', function ($q) use ($user) {
+                    $q->where('professor_id', $user->id);
+                })->orWhereHas('turma.ciclo.disciplinas.professores', function ($q) use ($user) {
+                    $q->where('users.id', $user->id);
+                });
             });
         }
 
@@ -118,13 +120,12 @@ class MatriculaController extends Controller
     /**
      * Transfere a matrícula do aluno para uma nova turma.
      */
-    public function transferirTurma(Request $request, Matricula $matricula): JsonResponse
+    public function transferirTurma(TransferirMatriculaRequest $request, Matricula $matricula): JsonResponse
     {
         Gate::authorize('update', $matricula->turma);
 
-        $validated = $request->validate([
-            'nova_turma_id' => ['required', 'exists:turmas,id_turma', 'different:turma_id'],
-        ]);
+        // Extrai o identificador da turma de destino já validado pela Form Request
+        $validated = $request->validated();
 
         $novaTurma = Turma::findOrFail($validated['nova_turma_id']);
 

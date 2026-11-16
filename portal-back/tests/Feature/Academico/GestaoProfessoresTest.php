@@ -6,9 +6,6 @@ use App\Models\Disciplina;
 use App\Models\Turma;
 use App\Models\TurmaDisciplina;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // Especialista da instituição
@@ -193,4 +190,45 @@ test('disciplinas do professor retornam os ciclos para exibir Nome - Ciclo', fun
         ->assertOk()
         ->assertJsonPath('data.0.disciplinas.0.nome', 'Física Quântica Básica')
         ->assertJsonPath('data.0.disciplinas.0.ciclos.0.nome', '2º Ano regular');
+});
+
+test('resumo de aprovacoes pendentes contabiliza alunos e professores e permite confirmar vinculos com turma e disciplina', function () {
+    $alunoPendente = User::factory()->create([
+        'name' => 'Estudante Novo',
+        'email' => 'estudante.novo@aluno.mg.gov.br',
+        'role' => UserRole::ALUNO,
+        'status_confirmacao' => 'pendente',
+    ]);
+
+    $profPendente = User::factory()->create([
+        'name' => 'Docente Novo',
+        'email' => 'docente.novo@educacao.mg.gov.br',
+        'role' => UserRole::PROFESSOR,
+        'status_confirmacao' => 'pendente',
+    ]);
+
+    $this->actingAs($this->especialista)
+        ->getJson('/api/usuarios/pendentes-resumo')
+        ->assertOk()
+        ->assertJsonPath('alunos_pendentes', 1)
+        ->assertJsonPath('professores_pendentes', 1)
+        ->assertJsonPath('total_pendentes', 2);
+
+    $this->actingAs($this->especialista)
+        ->patchJson("/api/usuarios/{$alunoPendente->id}/confirmar-vinculo-aluno", [
+            'turma_id' => $this->turma->id_turma,
+        ])
+        ->assertOk();
+
+    expect($alunoPendente->fresh()->status_confirmacao)->toBe('confirmado')
+        ->and($alunoPendente->fresh()->turma_ativa?->id_turma)->toBe($this->turma->id_turma);
+
+    $this->actingAs($this->especialista)
+        ->patchJson("/api/professores/{$profPendente->id}/confirmar", [
+            'disciplina_ids' => [$this->disciplina->id_disciplina],
+        ])
+        ->assertOk();
+
+    expect($profPendente->fresh()->status_confirmacao)->toBe('confirmado')
+        ->and($profPendente->fresh()->disciplinasDocente()->count())->toBe(1);
 });

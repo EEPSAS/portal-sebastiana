@@ -2,19 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CalcularMediaPeriodoRequest;
 use App\Http\Requests\StoreNotaRequest;
 use App\Http\Resources\NotaResource;
 use App\Models\Disciplina;
 use App\Models\Nota;
 use App\Models\Turma;
-use App\Services\NotificacaoService;
 use App\Models\User;
+use App\Services\NotificacaoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
-// Controller responsável pelo lançamento oficial de notas, médias e boletim escolar.
+// Controller responsável pela consulta oficial de notas, médias por período e boletim escolar.
 class NotaController extends Controller
 {
     public function __construct(private readonly NotificacaoService $notificacaoService) {}
@@ -54,44 +55,13 @@ class NotaController extends Controller
         return response()->json(new NotaResource($nota), 201);
     }
 
-    // Atualiza os dados ou pontuação de uma nota já registrada.
-    public function atualizarNota(Request $request, Nota $nota): JsonResponse
-    {
-        Gate::authorize('manage', Nota::class);
-
-        $validated = $request->validate([
-            'valor_nota' => ['sometimes', 'required', 'numeric', 'min:0'],
-            'valor_maximo' => ['nullable', 'numeric', 'min:0.1'],
-            'tipo_avaliacao' => ['sometimes', 'required', 'string', 'max:100'],
-            'periodo_letivo' => ['sometimes', 'required', 'string', 'max:50'],
-            'observacoes' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $nota->update($validated);
-
-        return response()->json($nota->load(['aluno:id,name,email', 'disciplina', 'turma']), 200);
-    }
-
-    // Remove o registro de uma nota.
-    public function deletarNota(Nota $nota): JsonResponse
-    {
-        Gate::authorize('manage', Nota::class);
-
-        $nota->delete();
-
-        return response()->json(null, 204);
-    }
-
     // Calcula a média das notas da turma por período letivo e disciplina.
-    public function calcularMediaPeriodo(Request $request): JsonResponse
+    public function calcularMediaPeriodo(CalcularMediaPeriodoRequest $request): JsonResponse
     {
         Gate::authorize('manage', Nota::class);
 
-        $validated = $request->validate([
-            'turma_id' => ['required', 'exists:turmas,id_turma'],
-            'disciplina_id' => ['required', 'exists:disciplinas,id_disciplina'],
-            'periodo_letivo' => ['required', 'string'],
-        ]);
+        // Obtém filtros de turma, disciplina e período validados pela Form Request
+        $validated = $request->validated();
 
         $turma = Turma::findOrFail($validated['turma_id']);
         $disciplina = Disciplina::findOrFail($validated['disciplina_id']);

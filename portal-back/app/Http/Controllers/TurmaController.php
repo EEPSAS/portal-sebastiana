@@ -7,6 +7,7 @@ use App\Data\Academico\SalvarTurmaData;
 use App\Enums\UserRole;
 use App\Http\Requests\StoreTurmaRequest;
 use App\Http\Requests\UpdateTurmaRequest;
+use App\Http\Requests\VincularTurmaDisciplinaRequest;
 use App\Http\Resources\AlunoTurmaResource;
 use App\Http\Resources\NotaResource;
 use App\Http\Resources\TurmaResource;
@@ -40,13 +41,14 @@ class TurmaController extends Controller
         $user = $request->user();
         $query = Turma::query()->with(['ciclo', 'periodoLetivo'])->withCount(['alunos', 'disciplinas']);
 
-        // Se o usuário for Professor, filtra estritamente as turmas em que ele leciona
+        // Se o usuário for Professor, filtra estritamente as turmas em que ele leciona (sem escrita N+1 em rota GET)
         if ($user && $user->isProfessor() && ! $user->isAdm()) {
-            foreach ($user->disciplinasDocente as $discDocente) {
-                $discDocente->sincronizarComTurmasDosCiclos();
-            }
-            $query->whereHas('turmaDisciplinas', function ($q) use ($user) {
-                $q->where('professor_id', $user->id);
+            $query->where(function ($sub) use ($user) {
+                $sub->whereHas('turmaDisciplinas', function ($q) use ($user) {
+                    $q->where('professor_id', $user->id);
+                })->orWhereHas('ciclo.disciplinas.professores', function ($q) use ($user) {
+                    $q->where('users.id', $user->id);
+                });
             });
         }
 
@@ -165,13 +167,14 @@ class TurmaController extends Controller
             $query->where('ano_letivo', $anoAtivo);
         }
 
-        // Se o usuário for Professor, filtra estritamente suas turmas vinculadas no resumo gerencial
+        // Se o usuário for Professor, filtra estritamente suas turmas vinculadas no resumo gerencial (sem escrita N+1 no GET)
         if ($user->isProfessor() && ! $user->isAdm()) {
-            foreach ($user->disciplinasDocente as $discDocente) {
-                $discDocente->sincronizarComTurmasDosCiclos();
-            }
-            $query->whereHas('turmaDisciplinas', function ($q) use ($user) {
-                $q->where('professor_id', $user->id);
+            $query->where(function ($sub) use ($user) {
+                $sub->whereHas('turmaDisciplinas', function ($q) use ($user) {
+                    $q->where('professor_id', $user->id);
+                })->orWhereHas('ciclo.disciplinas.professores', function ($q) use ($user) {
+                    $q->where('users.id', $user->id);
+                });
             });
         }
 
@@ -209,9 +212,15 @@ class TurmaController extends Controller
     /**
      * Lista os alunos matriculados na turma encapsulados pelo AlunoTurmaResource.
      */
-    public function alunos(Turma $turma): JsonResponse
+    public function alunos(Request $request, Turma $turma): JsonResponse
     {
         Gate::authorize('view', $turma);
+
+        // Blindagem de privacidade: bloqueia acesso de estudantes à listagem nominal de colegas da turma
+        $user = $request->user();
+        if (! $user || (! $user->canManageAcademic() && ! $user->isProfessor())) {
+            abort(403, 'Acesso restrito ao corpo docente e pedagógico.');
+        }
 
         $alunos = $turma->alunos()->orderBy('name')->get();
 
@@ -270,14 +279,12 @@ class TurmaController extends Controller
     /**
      * Vincula uma disciplina à turma com professor responsável opcional.
      */
-    public function vincularDisciplina(Request $request, Turma $turma): JsonResponse
+    public function vincularDisciplina(VincularTurmaDisciplinaRequest $request, Turma $turma): JsonResponse
     {
         Gate::authorize('update', $turma);
 
-        $validated = $request->validate([
-            'disciplina_id' => ['required', 'exists:disciplinas,id_disciplina'],
-            'professor_id' => ['nullable', 'exists:users,id'],
-        ]);
+        // Consome disciplina_id e professor_id opcional validados pela Form Request
+        $validated = $request->validated();
 
         $vinculo = TurmaDisciplina::updateOrCreate(
             [
@@ -338,10 +345,16 @@ class TurmaController extends Controller
             $query->where('disciplina_id', $filtros->disciplina_id);
         }
 
-        // Filtro por aluno individual
-        $idEstudante = $filtros->obterIdEstudante();
-        if ($idEstudante !== null) {
-            $query->where('usuario_id', $idEstudante);
+        // Blindagem contra IDOR: se o solicitante for aluno, restringe estritamente às suas próprias notas
+        $user = $request->user();
+        if ($user && $user->isAluno() && ! $user->canManageAcademic() && ! $user->isProfessor()) {
+            $query->where('usuario_id', $user->id);
+        } else {
+            // Filtro por aluno individual para consulta docente e pedagógica
+            $idEstudante = $filtros->obterIdEstudante();
+            if ($idEstudante !== null) {
+                $query->where('usuario_id', $idEstudante);
+            }
         }
 
         $notasColecao = $query->orderByDesc('id_nota')->get();

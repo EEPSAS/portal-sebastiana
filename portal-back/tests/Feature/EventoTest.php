@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Notification;
 
 test('unauthenticated users can read institutional calendar events but cannot see private events or mutate', function () {
     $especialista = User::factory()->especialista()->create();
-    $aluno = User::factory()->padrao()->create();
+    $aluno = User::factory()->aluno()->create();
 
     Evento::factory()->importante()->create([
         'titulo' => 'Feira Pedagógica Institucional',
@@ -39,9 +39,9 @@ test('unauthenticated users can read institutional calendar events but cannot se
 });
 
 test('standard user can create personal events and manage only their own', function () {
-    $user = User::factory()->padrao()->create();
+    $user = User::factory()->aluno()->create();
     $especialista = User::factory()->especialista()->create();
-    $outroUser = User::factory()->padrao()->create();
+    $outroUser = User::factory()->aluno()->create();
 
     $eventoEspecialista = Evento::factory()->create([
         'titulo' => 'Semana Cultural',
@@ -152,7 +152,7 @@ test('aluno can delete a personal event returned by the calendar resource', func
 
 test('professor events are shared with authenticated users but remain private to public visitors', function () {
     $professor = User::factory()->professor()->create();
-    $aluno = User::factory()->padrao()->create();
+    $aluno = User::factory()->aluno()->create();
 
     $eventoProfessor = Evento::factory()->create([
         'titulo' => 'Plantão de Dúvidas de Física',
@@ -188,7 +188,7 @@ test('professor events are shared with authenticated users but remain private to
 
 test('especialista can create, update, delete and view events', function () {
     $especialista = User::factory()->especialista()->create();
-    $aluno = User::factory()->padrao()->create();
+    $aluno = User::factory()->aluno()->create();
 
     $eventoAluno = Evento::factory()->create([
         'titulo' => 'Tarefa Particular do Estudante',
@@ -260,7 +260,7 @@ test('especialista pode cadastrar sábados letivos e feriados em massa', functio
 
 test('administrator has full access to calendar operations', function () {
     $admin = User::factory()->adm()->create();
-    $aluno = User::factory()->padrao()->create();
+    $aluno = User::factory()->aluno()->create();
 
     $eventoAluno = Evento::factory()->create([
         'titulo' => 'Estudo Individual Aluno',
@@ -448,7 +448,7 @@ test('validates and accepts all TipoEvento enum options and normalizes loose val
 });
 
 test('can filter calendar events by month, year, type and fetch important dates', function () {
-    $user = User::factory()->padrao()->create();
+    $user = User::factory()->aluno()->create();
     $especialista = User::factory()->especialista()->create();
 
     // Eventos normais
@@ -503,7 +503,7 @@ test('can filter calendar events by month, year, type and fetch important dates'
 
 test('gestor can batch store events and standard users are blocked', function () {
     $especialista = User::factory()->especialista()->create();
-    $aluno = User::factory()->padrao()->create();
+    $aluno = User::factory()->aluno()->create();
 
     $payload = [
         'eventos' => [
@@ -540,8 +540,8 @@ test('marcar evento importante dispara notificacao super importante para usuario
     Notification::fake();
 
     $especialista = User::factory()->especialista()->create();
-    $usuarioAtivo = User::factory()->padrao()->create(['ativo' => true]);
-    $usuarioInativo = User::factory()->padrao()->create(['ativo' => false]);
+    $usuarioAtivo = User::factory()->aluno()->create(['ativo' => true]);
+    $usuarioInativo = User::factory()->aluno()->create(['ativo' => false]);
 
     $this->actingAs($especialista, 'sanctum')
         ->postJson('/api/eventos', [

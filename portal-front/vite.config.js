@@ -31,5 +31,11 @@ export default defineConfig(({ mode }) => {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
       },
     },
+    // Configuração do Vitest para testes unitários e de integração em memória (jsdom)
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: './src/test/setup.js',
+    },
   }
 })

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Models\Ciclo;
 use App\Models\Disciplina;
 use App\Models\Livro;
 use App\Models\Matricula;
@@ -333,4 +334,67 @@ test('aluno visualiza apenas seus proprios planos e planos compartilhados pelo p
             'turma_ids' => [$turma1->id_turma],
         ])
         ->assertForbidden();
+});
+
+test('planos de estudos vinculam disciplina_id, salvam conteudo e bloqueiam compartilhamento com turma nao lecionada pelo professor', function () {
+    $ciclo1 = Ciclo::create(['nome' => '1º Ano Médio']);
+    $ciclo2 = Ciclo::create(['nome' => '2º Ano Médio']);
+
+    $turma1 = Turma::create([
+        'nome_identificador' => 'Turma 101',
+        'ciclo_id' => $ciclo1->id_ciclo,
+        'turno' => 'Matutino',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+
+    $turma2 = Turma::create([
+        'nome_identificador' => 'Turma 201',
+        'ciclo_id' => $ciclo2->id_ciclo,
+        'turno' => 'Vespertino',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+
+    $discMat = Disciplina::create(['nome' => 'Matemática Avançada', 'aulas_semanais' => 3]);
+    $discMat->ciclos()->sync([$ciclo1->id_ciclo]);
+
+    $discHist = Disciplina::create(['nome' => 'História Contemporânea', 'aulas_semanais' => 2]);
+    $discHist->ciclos()->sync([$ciclo2->id_ciclo]);
+
+    $profCarlos = User::factory()->create([
+        'name' => 'Prof. Carlos',
+        'role' => UserRole::PROFESSOR,
+        'status_confirmacao' => 'confirmado',
+    ]);
+    $profCarlos->disciplinasDocente()->sync([$discMat->id_disciplina]);
+
+    $discMat->sincronizarComTurmasDosCiclos();
+    $discHist->sincronizarComTurmasDosCiclos();
+
+    $this->actingAs($profCarlos, 'sanctum');
+
+    $resPlano = $this->postJson('/api/planos-estudos', [
+        'nome' => 'Trilha Especial de Funções',
+        'disciplina_id' => $discMat->id_disciplina,
+        'conteudo' => 'Informática e Modelagem Matemática',
+        'descricao' => 'Plano focado em funções e algoritmos.',
+    ])->assertCreated()
+        ->assertJsonPath('disciplina_id', $discMat->id_disciplina)
+        ->assertJsonPath('disciplina', 'Matemática Avançada')
+        ->assertJsonPath('conteudo', 'Informática e Modelagem Matemática');
+
+    $planoId = $resPlano->json('id');
+
+    // Compartilhar com turma onde o professor NÃO leciona deve ser rejeitado com 422
+    $this->putJson("/api/planos-estudos/{$planoId}/compartilhar", [
+        'turma_ids' => [$turma2->id_turma],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['turma_ids']);
+
+    // Compartilhar com sua turma vinculada (Turma 101) deve ser aprovado com 200
+    $this->putJson("/api/planos-estudos/{$planoId}/compartilhar", [
+        'turma_ids' => [$turma1->id_turma],
+    ])->assertOk()
+        ->assertJsonPath('turma_ids.0', $turma1->id_turma);
 });

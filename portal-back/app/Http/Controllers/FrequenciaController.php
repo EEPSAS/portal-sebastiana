@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ConsolidarChamadaRequest;
+use App\Http\Requests\GerarRelatorioFaltasRequest;
 use App\Http\Requests\StoreFrequenciaManualRequest;
 use App\Http\Resources\FrequenciaResource;
 use App\Models\Frequencia;
@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
-// Controller responsável pelo lançamento, consolidação e relatório de frequências.
+// Controller responsável pela consulta e relatório consolidado de frequências.
 class FrequenciaController extends Controller
 {
     public function __construct(private readonly NotificacaoService $notificacaoService) {}
@@ -61,67 +61,13 @@ class FrequenciaController extends Controller
         return response()->json(new FrequenciaResource($frequencia), 201);
     }
 
-    // Consolida a chamada diária para todos os alunos de uma turma em lote.
-    public function consolidarChamadaDiaria(ConsolidarChamadaRequest $request): JsonResponse
-    {
-        Gate::authorize('manage', Frequencia::class);
-
-        $dados = $request->validated();
-        $registrosSalvos = [];
-
-        DB::transaction(function () use ($dados, &$registrosSalvos) {
-            foreach ($dados['chamada'] as $item) {
-                $registro = Frequencia::updateOrCreate(
-                    [
-                        'turma_id' => $dados['turma_id'],
-                        'disciplina_id' => $dados['disciplina_id'],
-                        'usuario_id' => $item['usuario_id'],
-                        'data_aula' => $dados['data_aula'],
-                    ],
-                    [
-                        'quantidade_aulas' => $dados['quantidade_aulas'] ?? 1,
-                        'status_presenca' => $item['status_presenca'],
-                        'justificativa' => $item['justificativa'] ?? null,
-                        'remessa_origem_id' => $dados['remessa_origem_id'] ?? null,
-                    ]
-                );
-
-                $registrosSalvos[] = $registro;
-            }
-        });
-
-        return response()->json([
-            'message' => 'Chamada consolidada com sucesso.',
-            'total' => count($registrosSalvos),
-            'frequencias' => $registrosSalvos,
-        ], 201);
-    }
-
-    // Atualiza a presença ou falta de um aluno individualmente.
-    public function atualizarPresencaIndividual(Request $request, Frequencia $frequencia): JsonResponse
-    {
-        Gate::authorize('manage', Frequencia::class);
-
-        $validated = $request->validate([
-            'status_presenca' => ['required', 'string', 'in:Presente,Falta,Falta Justificada'],
-            'quantidade_aulas' => ['nullable', 'integer', 'min:1', 'max:10'],
-            'justificativa' => ['nullable', 'string', 'max:500'],
-        ]);
-
-        $frequencia->update($validated);
-
-        return response()->json($frequencia->load(['aluno:id,name,email', 'disciplina', 'turma']), 200);
-    }
-
     // Gera relatório consolidado de faltas e taxa de presença da turma.
-    public function gerarRelatorioFaltas(Request $request): JsonResponse
+    public function gerarRelatorioFaltas(GerarRelatorioFaltasRequest $request): JsonResponse
     {
         Gate::authorize('manage', Frequencia::class);
 
-        $validated = $request->validate([
-            'turma_id' => ['required', 'exists:turmas,id_turma'],
-            'disciplina_id' => ['nullable', 'exists:disciplinas,id_disciplina'],
-        ]);
+        // Consome filtros validados na camada de Form Request
+        $validated = $request->validated();
 
         $turma = Turma::findOrFail($validated['turma_id']);
         $alunos = $turma->alunos()->wherePivot('status_matricula', 'Ativo')->get();

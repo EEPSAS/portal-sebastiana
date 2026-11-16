@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -15,8 +16,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Biblioteca extends Model
 {
-    // Permite atribuição em massa da coluna JSON de preferências
-    protected $fillable = ['dados'];
+    use HasFactory;
+
+    // Permite atribuição em massa do usuário proprietário e da coluna JSON de preferências
+    protected $fillable = ['user_id', 'dados'];
 
     // Converte automaticamente a coluna 'dados' entre JSON no banco e array no PHP
     protected function casts(): array

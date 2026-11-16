@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
 use App\Http\Requests\AlterarPapelRequest;
+use App\Http\Requests\AtribuirPermissoesUsuarioRequest;
 use App\Http\Requests\ConfirmarAlunoVinculoRequest;
 use App\Http\Requests\DesvincularUsuarioRequest;
 use App\Http\Requests\StoreUsuarioRequest;
@@ -573,15 +574,12 @@ class UsuarioController extends Controller
     /**
      * Atribui ou revoga permissões específicas diretamente ao usuário.
      */
-    public function atribuirPermissoes(Request $request, User $usuario): JsonResponse
+    public function atribuirPermissoes(AtribuirPermissoesUsuarioRequest $request, User $usuario): JsonResponse
     {
         Gate::authorize('gerenciar_papeis_permissoes');
 
-        $validated = $request->validate([
-            'permissoes' => ['required', 'array'],
-            'permissoes.*.permission' => ['required', 'string', 'exists:permissions,slug'],
-            'permissoes.*.concedida' => ['required', 'boolean'],
-        ]);
+        // Extrai o array de permissões validado pela Form Request
+        $validated = $request->validated();
 
         foreach ($validated['permissoes'] as $item) {
             $permission = Permission::where('slug', $item['permission'])->first();
