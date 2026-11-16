@@ -45,5 +45,11 @@ RUN composer dump-autoload --optimize --no-dev \
 # Porta padrão exposta pelo container (o Render injeta a variável $PORT dinamicamente)
 EXPOSE 8000
 
+# Workers do servidor embutido do PHP: por padrão ele usa 1 único processo e atende 1 requisição por vez,
+# enfileirando as demais. Com 4 workers, as chamadas paralelas do painel passam a ser atendidas simultaneamente.
+# Pode ser sobrescrito pela variável de ambiente no painel do Render (ex.: reduzir se faltar memória no plano Free).
+# Atenção: o `artisan serve` só respeita essa variável com a flag `--no-reload` (usada no CMD abaixo).
+ENV PHP_CLI_SERVER_WORKERS=4
+
 # Comando de inicialização: cria link de storage, aplica migrations em produção e sobe o servidor HTTP
-CMD ["sh", "-c", "php artisan storage:link --force && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
+CMD ["sh", "-c", "php artisan storage:link --force && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000} --no-reload"]
