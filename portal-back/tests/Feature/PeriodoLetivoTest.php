@@ -5,10 +5,7 @@ use App\Models\Evento;
 use App\Models\PeriodoLetivo;
 use App\Models\Turma;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-
-uses(RefreshDatabase::class);
 
 function criarUsuarioPapel(UserRole $role): User
 {
@@ -162,4 +159,45 @@ test('exclusão de periodo letivo é bloqueada caso existam turmas vinculadas ao
         ->assertJsonValidationErrors('periodo');
 
     $this->assertDatabaseHas('periodos_letivos', ['id_periodo_letivo' => $periodo->id_periodo_letivo]);
+});
+
+test('especialista lista, visualiza, atualiza, sincroniza agenda e exclui periodo letivo sem turmas, e /ativo retorna 404 quando nenhum estiver ativo', function () {
+    Sanctum::actingAs(criarUsuarioPapel(UserRole::ESPECIALISTA));
+
+    // Nenhum período ativo configurado -> 404
+    $this->getJson('/api/periodos-letivos/ativo')->assertNotFound();
+
+    $periodo = PeriodoLetivo::factory()->comTrimestres()->create(['ano' => 2030, 'ativo' => false]);
+
+    $this->getJson('/api/periodos-letivos')
+        ->assertOk()
+        ->assertJsonFragment(['ano' => 2030]);
+
+    $this->getJson("/api/periodos-letivos/{$periodo->id_periodo_letivo}")
+        ->assertOk()
+        ->assertJsonPath('ano', 2030);
+
+    $this->putJson("/api/periodos-letivos/{$periodo->id_periodo_letivo}", [
+        'ano' => 2030,
+        'tipo_divisao' => 'trimestre',
+        'total_pontos' => 100.00,
+        'data_inicio' => '2030-02-04',
+        'data_fim' => '2030-12-18',
+        'ativo' => true,
+        'divisoes' => [
+            ['numero' => 1, 'nome' => '1º Trimestre', 'pontos' => 30.00, 'data_inicio' => '2030-02-04', 'data_fim' => '2030-05-10', 'ordem' => 1],
+            ['numero' => 2, 'nome' => '2º Trimestre', 'pontos' => 30.00, 'data_inicio' => '2030-05-13', 'data_fim' => '2030-08-30', 'ordem' => 2],
+            ['numero' => 3, 'nome' => '3º Trimestre', 'pontos' => 40.00, 'data_inicio' => '2030-09-02', 'data_fim' => '2030-12-18', 'ordem' => 3],
+        ],
+    ])->assertOk()
+        ->assertJsonPath('ativo', true);
+
+    $this->postJson("/api/periodos-letivos/{$periodo->id_periodo_letivo}/sincronizar-agenda")
+        ->assertOk()
+        ->assertJsonStructure(['message', 'marcos_sincronizados']);
+
+    $this->deleteJson("/api/periodos-letivos/{$periodo->id_periodo_letivo}")
+        ->assertOk();
+
+    $this->assertDatabaseMissing('periodos_letivos', ['id_periodo_letivo' => $periodo->id_periodo_letivo]);
 });

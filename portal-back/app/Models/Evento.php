@@ -70,20 +70,24 @@ class Evento extends Model
         return $query->where('importante', true);
     }
 
-    // Escopo local para filtrar eventos a partir de uma data ou entre duas datas
+    // Escopo local para filtrar eventos a partir de uma data ou entre duas datas sem embrulhar a coluna em função
     public function scopePorPeriodo(Builder $query, string $inicio, ?string $fim = null): Builder
     {
         if (! $fim) {
-            return $query->whereDate('data_inicio', '>=', $inicio);
+            return $query->where('data_inicio', '>=', $inicio);
         }
 
         return $query->whereBetween('data_inicio', [$inicio, $fim]);
     }
 
-    // Escopo local para filtrar eventos de um mes e ano especificos
+    // Escopo local para filtrar eventos de um mes e ano especificos preservando o uso de índice B-Tree
     public function scopePorMesAno(Builder $query, int|string $mes, int|string $ano): Builder
     {
-        return $query->whereMonth('data_inicio', $mes)
-            ->whereYear('data_inicio', $ano);
+        $mesInt = max(1, min(12, (int) $mes));
+        $anoInt = (int) $ano;
+        $inicioMes = sprintf('%04d-%02d-01', $anoInt, $mesInt);
+        $fimMes = date('Y-m-t', strtotime($inicioMes));
+
+        return $query->whereBetween('data_inicio', [$inicioMes, $fimMes]);
     }
 }

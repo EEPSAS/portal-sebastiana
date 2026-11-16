@@ -1,0 +1,25 @@
+# Orquestração local do banco PostgreSQL para desenvolvimento do Portal Sebastiana.
+# Permite rodar o mesmo motor de banco utilizado em produção (Railway / Render).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: portal-sebastiana-postgres
+    restart: unless-stopped
+    ports:
+      # Expõe a porta padrão do PostgreSQL para conexão direta do PHP no host Windows
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-portal_sebastiana}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      # Persiste os dados das tabelas entre reinicializações do container
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-portal_sebastiana}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

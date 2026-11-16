@@ -198,3 +198,62 @@ test('apelido so aparece para o proprio dono e nao para outros usuarios', functi
     Sanctum::actingAs($admin);
     $this->getJson("/api/usuarios/{$dono->id}")->assertOk()->assertJsonPath('nickname', null);
 });
+
+test('gestao de usuarios lista os 15 ultimos, filtra por role e busca, edita com notificacao super-importante e inativa em 2 etapas', function () {
+    $admin = User::factory()->create([
+        'name' => 'Administrador Geral',
+        'role' => UserRole::ADM,
+        'status_confirmacao' => 'confirmado',
+    ]);
+
+    User::factory()->count(17)->create([
+        'role' => UserRole::ALUNO,
+        'status_confirmacao' => 'confirmado',
+    ]);
+
+    $alvo = User::factory()->create([
+        'name' => 'Carlos Drummond de Andrade',
+        'email' => 'carlos.drummond@educacao.mg.gov.br',
+        'role' => UserRole::PROFESSOR,
+        'status_confirmacao' => 'confirmado',
+        'autorizado_por_id' => $admin->id,
+        'confirmado_em' => now(),
+    ]);
+
+    Sanctum::actingAs($admin);
+
+    // Carregamento padrão retorna 15 usuários
+    $resLista = $this->getJson('/api/usuarios')->assertOk();
+    expect(count($resLista->json('data')))->toBe(15);
+
+    // Filtro por Role e busca pelo nome
+    $resBusca = $this->getJson('/api/usuarios?role=professor&busca=Drummond')->assertOk();
+    expect($resBusca->json('data.0.name'))->toBe('Carlos Drummond de Andrade');
+
+    // Editar usuário (Role, comentário administrativo e notificação super-importante)
+    $this->putJson("/api/usuarios/{$alvo->id}", [
+        'role' => 'especialista',
+        'comentario_admin' => 'Promovido à coordenação pedagógica.',
+        'mensagem_notificacao' => 'Favor comparecer à reunião da diretoria.',
+        'super_importante' => true,
+    ])->assertOk()
+        ->assertJsonPath('role', 'especialista')
+        ->assertJsonPath('comentario_admin', 'Promovido à coordenação pedagógica.');
+
+    expect($alvo->fresh()->notifications()->count())->toBe(1);
+
+    // Exclusão em 2 etapas exige digitação exata do nome completo
+    $this->deleteJson("/api/usuarios/{$alvo->id}", [
+        'confirmacao_nome' => 'Nome Incorreto',
+    ])->assertUnprocessable();
+
+    $this->deleteJson("/api/usuarios/{$alvo->id}", [
+        'confirmacao_nome' => 'Carlos Drummond de Andrade',
+    ])->assertOk();
+
+    // Verifica inativação lógica sem exclusão física do usuário
+    $alvoAtualizado = $alvo->fresh();
+    expect($alvoAtualizado)->not->toBeNull()
+        ->and($alvoAtualizado->ativo)->toBeFalse()
+        ->and($alvoAtualizado->status_confirmacao)->toBe('inativo');
+});

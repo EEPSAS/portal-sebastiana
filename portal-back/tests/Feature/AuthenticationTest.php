@@ -81,3 +81,41 @@ test('allows logging in via direct /api/login endpoint as well as /api/auth/logi
         'password' => 'password',
     ])->assertOk()->assertJsonStructure(['user', 'token', 'token_type']);
 });
+
+test('cadastro publico ignora tentativa de escalacao de papel e atribui sempre aluno', function () {
+    $response = $this->postJson('/api/auth/register', [
+        'name' => 'Tentativa Admin',
+        'email' => 'tentativa.admin@aluno.mg.gov.br',
+        'password' => 'password123',
+        'password_confirmation' => 'password123',
+        'role' => 'adm',
+    ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('user.role', 'aluno');
+});
+
+test('cadastro publico rejeita email duplicado ou senha curta com 422', function () {
+    User::factory()->create(['email' => 'duplicado@aluno.mg.gov.br']);
+
+    $this->postJson('/api/auth/register', [
+        'name' => 'Outro',
+        'email' => 'duplicado@aluno.mg.gov.br',
+        'password' => '123',
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['email', 'password']);
+});
+
+test('login de usuario bloqueado pelo administrador retorna 403 forbidden', function () {
+    $user = User::factory()->create([
+        'email' => 'bloqueado@aluno.mg.gov.br',
+        'password' => Hash::make('password123'),
+        'ativo' => false,
+    ]);
+
+    $this->postJson('/api/auth/login', [
+        'email' => $user->email,
+        'password' => 'password123',
+    ])->assertForbidden()
+        ->assertJsonPath('message', 'Usuário bloqueado pelo administrador. Acesso negado.');
+});

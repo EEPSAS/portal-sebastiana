@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\Livro;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -87,8 +88,8 @@ test('can filter books by search query, genre and availability', function () {
 });
 
 test('aluno and professor only have read access and cannot create, update, delete or import books', function () {
-    $aluno = User::factory()->create(['role' => 'aluno']);
-    $professor = User::factory()->create(['role' => 'professor']);
+    $aluno = User::factory()->create(['role' => UserRole::ALUNO]);
+    $professor = User::factory()->create(['role' => UserRole::PROFESSOR]);
     $livro = Livro::factory()->create();
 
     $csvFile = UploadedFile::fake()->createWithContent(
@@ -133,8 +134,8 @@ test('aluno and professor only have read access and cannot create, update, delet
 });
 
 test('bibliotecaria, especialista and adm can create, update, delete and import books via csv', function () {
-    $bibliotecaria = User::factory()->create(['role' => 'bibliotecaria']);
-    $especialista = User::factory()->create(['role' => 'especialista']);
+    $bibliotecaria = User::factory()->create(['role' => UserRole::BIBLIOTECARIA]);
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
 
     // Bibliotecária cria livro
     $response = $this->actingAs($bibliotecaria, 'sanctum')
@@ -206,7 +207,7 @@ test('bibliotecaria, especialista and adm can create, update, delete and import 
 });
 
 test('validates book creation fields', function () {
-    $adm = User::factory()->create(['role' => 'adm']);
+    $adm = User::factory()->create(['role' => UserRole::ADM]);
 
     $this->actingAs($adm, 'sanctum')
         ->postJson('/api/livros', [])

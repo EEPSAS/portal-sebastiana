@@ -172,17 +172,20 @@ class PlanoEstudoController extends Controller
             ->withCount(['alunos', 'disciplinas'])
             ->where('status', 'Ativa');
 
-        // Filtra estritamente pelas turmas vinculadas ao professor
+        // Filtra estritamente pelas turmas vinculadas ao professor (sem escrita N+1 em rota GET)
         if ($usuario->isProfessor() && ! $usuario->isAdm()) {
-            foreach ($usuario->disciplinasDocente as $discDocente) {
-                $discDocente->sincronizarComTurmasDosCiclos();
-            }
-
-            $query->whereHas('turmaDisciplinas', function ($q) use ($usuario, $request) {
-                $q->where('professor_id', $usuario->id);
-                if ($request->filled('disciplina_id')) {
-                    $q->where('disciplina_id', $request->integer('disciplina_id'));
-                }
+            $query->where(function ($sub) use ($usuario, $request) {
+                $sub->whereHas('turmaDisciplinas', function ($q) use ($usuario, $request) {
+                    $q->where('professor_id', $usuario->id);
+                    if ($request->filled('disciplina_id')) {
+                        $q->where('disciplina_id', $request->integer('disciplina_id'));
+                    }
+                })->orWhereHas('ciclo.disciplinas', function ($q) use ($usuario, $request) {
+                    if ($request->filled('disciplina_id')) {
+                        $q->where('disciplinas.id_disciplina', $request->integer('disciplina_id'));
+                    }
+                    $q->whereHas('professores', fn ($qp) => $qp->where('users.id', $usuario->id));
+                });
             });
         } elseif ($request->filled('disciplina_id')) {
             $query->whereHas('turmaDisciplinas', function ($q) use ($request) {

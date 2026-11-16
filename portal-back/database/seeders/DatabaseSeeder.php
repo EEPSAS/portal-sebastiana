@@ -19,7 +19,6 @@ class DatabaseSeeder extends Seeder
             UsuarioSeeder::class,
             EventoSeeder::class,
             NoticiaSeeder::class,
-            RadioatividadeSeeder::class,
             BibliotecaSeeder::class,
             PeriodoLetivoSeeder::class,
             AcademicoSeeder::class,

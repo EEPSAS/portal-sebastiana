@@ -15,7 +15,8 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('type');
             $table->morphs('notifiable');
-            $table->text('data');
+            // Utiliza jsonb para suportar operadores JSON (-> e ->>) nativamente no PostgreSQL
+            $table->jsonb('data');
             $table->timestamp('read_at')->nullable();
             $table->timestamp('reminded_at')->nullable();
             $table->timestamps();

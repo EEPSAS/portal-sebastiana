@@ -25,12 +25,8 @@ class CicloController extends Controller
     {
         $user = $request->user();
 
-        // 1. Visão Isolada do Professor (Visualiza única e exclusivamente suas disciplinas e turmas vinculadas)
+        // 1. Visão Isolada do Professor (Visualiza única e exclusivamente suas disciplinas e turmas vinculadas sem escrita N+1 no GET)
         if ($user && $user->isProfessor() && ! $user->isAdm()) {
-            foreach ($user->disciplinasDocente as $discDocente) {
-                $discDocente->sincronizarComTurmasDosCiclos();
-            }
-
             $disciplinaIds = $user->disciplinasDocente()->pluck('disciplinas.id_disciplina')
                 ->merge($user->turmaDisciplinasDocente()->pluck('disciplina_id'))
                 ->filter()

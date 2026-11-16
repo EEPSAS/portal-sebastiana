@@ -62,6 +62,18 @@ test('administrador possui acesso total e pode gerenciar usuarios, papeis e bloq
     $this->actingAs($admin, 'sanctum')->getJson('/api/permissoes')
         ->assertOk()
         ->assertJsonFragment(['slug' => 'gerenciar_usuarios']);
+
+    // 6. Admin atribui/revoga permissões granulares ao usuário e valida FormRequest (422 quando vazio)
+    $this->actingAs($admin, 'sanctum')->postJson("/api/usuarios/{$novoId}/permissoes", [])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['permissoes']);
+
+    $this->actingAs($admin, 'sanctum')->postJson("/api/usuarios/{$novoId}/permissoes", [
+        'permissoes' => [
+            ['permission' => 'gerenciar_noticias', 'concedida' => true],
+        ],
+    ])->assertOk()
+        ->assertJsonPath('message', 'Permissões do usuário atualizadas com sucesso.');
 });
 
 test('usuario nao-administrador e impedido de acessar painel de gestao de usuarios', function () {
@@ -118,7 +130,7 @@ test('bibliotecaria pode gerenciar livros e emprestimos mas nao tem acesso a ges
     ])->assertForbidden();
 });
 
-test('professor pode criar e editar apenas noticias proprias e enviar remessas somente onde for vinculado', function () {
+test('professor pode criar e editar apenas noticias proprias e e impedido de editar noticias de colegas', function () {
     $profCarlos = User::where('email', 'carlos.silva@sebastiana.edu.br')->first();
     $profaMarina = User::where('email', 'marina.souza@sebastiana.edu.br')->first();
 

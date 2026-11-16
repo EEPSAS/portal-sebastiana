@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Models\Ciclo;
 use App\Models\Disciplina;
 use App\Models\Frequencia;
 use App\Models\Matricula;
@@ -103,12 +104,41 @@ test('especialista e admin podem gerenciar disciplinas e vincular professor', fu
     expect(TurmaDisciplina::where('turma_id', $turma->id_turma)
         ->where('disciplina_id', $disciplinaId)
         ->exists())->toBeFalse();
+
+    // Consultar, atualizar e excluir disciplina, além de validar FormRequests de vínculo (422)
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson("/api/disciplinas/{$disciplinaId}/vincular-professor", [])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['professor_id', 'turma_id']);
+
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson("/api/turmas/{$turma->id_turma}/disciplinas", [])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['disciplina_id']);
+
+    $this->actingAs($especialista, 'sanctum')
+        ->getJson("/api/disciplinas/{$disciplinaId}")
+        ->assertOk()
+        ->assertJsonPath('nome', 'Banco de Dados');
+
+    $this->actingAs($especialista, 'sanctum')
+        ->putJson("/api/disciplinas/{$disciplinaId}", [
+            'nome' => 'Banco de Dados Relacional',
+            'aulas_semanais' => 3,
+        ])
+        ->assertOk()
+        ->assertJsonPath('nome', 'Banco de Dados Relacional')
+        ->assertJsonPath('carga_horaria_anual', 120);
+
+    $this->actingAs($especialista, 'sanctum')
+        ->deleteJson("/api/disciplinas/{$disciplinaId}")
+        ->assertNoContent();
 });
 
 test('matricula de aluno respeita capacidade maxima e permite transferir e cancelar', function () {
     $admin = User::factory()->create(['role' => UserRole::ADM]);
-    $aluno1 = User::factory()->create(['role' => UserRole::PADRAO]);
-    $aluno2 = User::factory()->create(['role' => UserRole::PADRAO]);
+    $aluno1 = User::factory()->create(['role' => UserRole::ALUNO]);
+    $aluno2 = User::factory()->create(['role' => UserRole::ALUNO]);
 
     $turmaA = Turma::factory()->create(['capacidade_maxima' => 1, 'status' => 'Ativa']);
     $turmaB = Turma::factory()->create(['capacidade_maxima' => 30, 'status' => 'Ativa']);
@@ -136,7 +166,11 @@ test('matricula de aluno respeita capacidade maxima e permite transferir e cance
         ->assertOk()
         ->assertJsonFragment(['id' => $aluno1->id]);
 
-    // Transferir aluno 1 para turma B
+    // Transferir aluno 1 para turma B (valida FormRequest 422 primeiro)
+    $this->actingAs($admin, 'sanctum')->patchJson("/api/matriculas/{$matriculaId}/transferir", [])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['nova_turma_id']);
+
     $this->actingAs($admin, 'sanctum')->patchJson("/api/matriculas/{$matriculaId}/transferir", [
         'nova_turma_id' => $turmaB->id_turma,
     ])->assertOk()
@@ -533,4 +567,154 @@ test('importacao csv com mapeamentos_alunos resolve homonimos e sincroniza notas
     // Nota vinculada especificamente ao aluno2
     expect(Nota::where('turma_id', $turma->id_turma)->where('usuario_id', $aluno2->id)->value('valor_nota'))->toEqual(10.0);
     expect(Nota::where('turma_id', $turma->id_turma)->where('usuario_id', $aluno1->id)->exists())->toBeFalse();
+});
+
+test('disciplinas por ciclos calculam carga anual, propagam para turmas do ciclo e conciliam CSV com ciclo_id', function () {
+    $especialista = User::factory()->create([
+        'role' => UserRole::ESPECIALISTA,
+        'status_confirmacao' => 'confirmado',
+    ]);
+    $professor = User::factory()->create([
+        'role' => UserRole::PROFESSOR,
+        'status_confirmacao' => 'confirmado',
+    ]);
+    $aluno = User::factory()->create([
+        'name' => 'Helena Soares',
+        'email' => 'helena.soares@aluno.mg.gov.br',
+        'role' => UserRole::ALUNO,
+        'status_confirmacao' => 'confirmado',
+    ]);
+
+    $this->actingAs($especialista, 'sanctum');
+
+    $resDisc = $this->postJson('/api/disciplinas', [
+        'nome' => 'Biologia Molecular',
+        'aulas_semanais' => 4,
+        'novo_ciclo_nome' => '1º Ano',
+        'ementa' => 'Estudo das células e genética.',
+        'habilidades_bncc' => 'EM13CNT201',
+        'objetivo_geral' => 'Compreender os processos celulares.',
+        'objetivo_especifico' => 'Analisar DNA e RNA.',
+        'professor_ids' => [$professor->id],
+    ])->assertCreated()
+        ->assertJsonPath('aulas_semanais', 4)
+        ->assertJsonPath('carga_horaria_anual', 160);
+
+    $ciclo = Ciclo::where('nome', '1º Ano')->firstOrFail();
+
+    $resTurma = $this->postJson('/api/turmas', [
+        'nome_identificador' => '1º Ano B - Integral',
+        'ciclo_id' => $ciclo->id_ciclo,
+        'turno' => 'Integral',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ])->assertCreated();
+
+    $turmaId = $resTurma->json('id_turma');
+    $turma = Turma::findOrFail($turmaId);
+    expect($turma->turmaDisciplinas()->where('professor_id', $professor->id)->count())->toBe(1);
+
+    $this->postJson('/api/matriculas', [
+        'turma_id' => $turmaId,
+        'usuario_id' => $aluno->id,
+    ])->assertCreated();
+
+    $csvConteudo = "Aluno;Biologia Molecular;Robótica Educacional\nHelena Soares;9,0;8,5";
+    $arquivo = UploadedFile::fake()->createWithContent('notas.csv', $csvConteudo);
+
+    $this->post("/api/turmas/{$turmaId}/importar-relatorio", [
+        'arquivo' => $arquivo,
+        'periodo_letivo' => '1º Trimestre',
+        'exigir_conciliacao_disciplinas' => '1',
+    ], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonPath('status', 'pendente_confirmacao')
+        ->assertJsonPath('tipo_pendencia', 'conciliacao_disciplinas');
+
+    $arquivoConfirmado = UploadedFile::fake()->createWithContent('notas.csv', $csvConteudo);
+    $this->post("/api/turmas/{$turmaId}/importar-relatorio", [
+        'arquivo' => $arquivoConfirmado,
+        'periodo_letivo' => '1º Trimestre',
+        'exigir_conciliacao_disciplinas' => '1',
+        'mapeamentos_disciplinas' => json_encode([
+            'Robótica Educacional' => [
+                'acao' => 'criar_nova',
+                'nome_nova' => 'Robótica Educacional',
+                'aulas_semanais' => 2,
+                'ciclo_id' => $ciclo->id_ciclo,
+            ],
+        ]),
+    ], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonPath('status', 'sucesso');
+
+    $novaDisc = Disciplina::where('nome', 'Robótica Educacional')->first();
+    expect($novaDisc)->not->toBeNull()
+        ->and($novaDisc->aulas_semanais)->toBe(2)
+        ->and($novaDisc->carga_horaria_anual)->toBe(80)
+        ->and($novaDisc->ciclos->pluck('id_ciclo')->all())->toContain($ciclo->id_ciclo);
+});
+
+test('separacao de jornadas garante isolamento estrito de ciclos, disciplinas e notas entre professor e especialista', function () {
+    $ciclo1 = Ciclo::firstOrCreate(['nome' => '1º Ano EM']);
+    $ciclo2 = Ciclo::firstOrCreate(['nome' => '2º Ano EM']);
+
+    $turma1 = Turma::create([
+        'nome_identificador' => '1º Ano A',
+        'ciclo_id' => $ciclo1->id_ciclo,
+        'turno' => 'Matutino',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+    $turma2 = Turma::create([
+        'nome_identificador' => '2º Ano A',
+        'ciclo_id' => $ciclo2->id_ciclo,
+        'turno' => 'Matutino',
+        'ano_letivo' => 2026,
+        'status' => 'Ativa',
+    ]);
+
+    $discQuimica = Disciplina::create(['nome' => 'Química Orgânica', 'aulas_semanais' => 2]);
+    $discQuimica->ciclos()->sync([$ciclo1->id_ciclo]);
+
+    $discBiologia = Disciplina::create(['nome' => 'Biologia Celular', 'aulas_semanais' => 2]);
+    $discBiologia->ciclos()->sync([$ciclo2->id_ciclo]);
+
+    $profQuimica = User::factory()->create([
+        'name' => 'Prof. Walter',
+        'email' => 'walter.quimica@educacao.mg.gov.br',
+        'role' => UserRole::PROFESSOR,
+        'status_confirmacao' => 'confirmado',
+    ]);
+    $profQuimica->disciplinasDocente()->sync([$discQuimica->id_disciplina]);
+
+    $especialista = User::factory()->create([
+        'name' => 'Especialista Mariana',
+        'email' => 'mariana.esp@sebastiana.edu.br',
+        'role' => UserRole::ESPECIALISTA,
+        'status_confirmacao' => 'confirmado',
+    ]);
+
+    $discQuimica->sincronizarComTurmasDosCiclos();
+    $discBiologia->sincronizarComTurmasDosCiclos();
+
+    $this->actingAs($profQuimica, 'sanctum');
+    $resCiclosProf = $this->getJson('/api/ciclos')->assertOk();
+    $cicloNomes = collect($resCiclosProf->json('data') ?? [])->pluck('nome')->all();
+
+    expect($cicloNomes)->toContain('1º Ano EM')
+        ->and($cicloNomes)->not->toContain('2º Ano EM');
+
+    $resDiscProf = $this->getJson('/api/disciplinas')->assertOk();
+    $discIdsProf = collect($resDiscProf->json())->pluck('id_disciplina')->all();
+    expect($discIdsProf)->toContain($discQuimica->id_disciplina)
+        ->and($discIdsProf)->not->toContain($discBiologia->id_disciplina);
+
+    $this->getJson("/api/turmas/{$turma2->id_turma}/notas")->assertForbidden();
+    $this->getJson("/api/turmas/{$turma1->id_turma}/notas")->assertOk();
+
+    $this->actingAs($especialista, 'sanctum');
+    $resCiclosEsp = $this->getJson('/api/ciclos')->assertOk();
+    $todosCiclosNomes = collect($resCiclosEsp->json('data'))->pluck('nome')->all();
+    expect($todosCiclosNomes)->toContain('1º Ano EM', '2º Ano EM');
 });

@@ -1,50 +1,49 @@
 <?php
 
+use App\Enums\UserRole;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /*
 |--------------------------------------------------------------------------
-| Test Case
+| Configuração Global da Suíte Pest
 |--------------------------------------------------------------------------
 |
-| The closure you provide to your test functions is always bound to a specific PHPUnit test
-| case class. By default, that class is "PHPUnit\Framework\TestCase". Of course, you may
-| need to change it using the "pest()" function to bind different classes or traits.
+| Vincula o TestCase do Laravel e o RefreshDatabase (PostgreSQL de testes)
+| aos testes de Feature, e o TestCase leve aos testes de Unit.
+| Ativa globalmente Http::preventStrayRequests() para bloquear chamadas
+| HTTP externas reais não mockadas (ex.: Google OAuth ou Gemini API).
 |
 */
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
+    ->beforeEach(function () {
+        // Impede chamadas de rede reais acidentais durante a execução dos testes
+        Http::preventStrayRequests();
+    })
     ->in('Feature');
 
-/*
-|--------------------------------------------------------------------------
-| Expectations
-|--------------------------------------------------------------------------
-|
-| When you're writing tests, you often need to check that values meet certain conditions. The
-| "expect()" function gives you access to a set of "expectations" methods that you can use
-| to assert different things. Of course, you may extend the Expectation API at any time.
-|
-*/
+pest()->extend(TestCase::class)
+    ->beforeEach(function () {
+        Http::preventStrayRequests();
+    })
+    ->in('Unit');
 
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
-
-/*
-|--------------------------------------------------------------------------
-| Functions
-|--------------------------------------------------------------------------
-|
-| While Pest is very powerful out-of-the-box, you may have some testing code specific to your
-| project that you don't want to repeat in every file. Here you can also expose helpers as
-| global functions to help you to reduce the number of lines of code in your test files.
-|
-*/
-
-function something()
+/**
+ * Helper global compartilhado para instanciar e persistir um usuário com papel institucional.
+ *
+ * @param  array<string, mixed>  $atributos
+ */
+function criarUsuarioComPapel(UserRole|string $role, array $atributos = []): User
 {
-    // ..
+    $roleEnum = $role instanceof UserRole ? $role : UserRole::from($role);
+
+    return User::factory()->create(array_merge([
+        'role' => $roleEnum,
+        'status_confirmacao' => 'confirmado',
+        'ativo' => true,
+    ], $atributos));
 }

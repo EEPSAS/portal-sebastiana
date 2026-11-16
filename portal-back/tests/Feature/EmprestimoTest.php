@@ -1,13 +1,14 @@
 <?php
 
 use App\Enums\EmprestimoStatus;
+use App\Enums\UserRole;
 use App\Models\Emprestimo;
 use App\Models\Livro;
 use App\Models\User;
 use Carbon\Carbon;
 
 test('authenticated user can request a book loan', function () {
-    $user = User::factory()->create(['role' => 'padrao']);
+    $user = User::factory()->create(['role' => UserRole::ALUNO]);
     $livro = Livro::factory()->create(['quantidade_disponivel' => 2]);
 
     $response = $this->actingAs($user, 'sanctum')
@@ -25,7 +26,7 @@ test('authenticated user can request a book loan', function () {
 });
 
 test('cannot request an unavailable book or duplicate active request', function () {
-    $user = User::factory()->create(['role' => 'padrao']);
+    $user = User::factory()->create(['role' => UserRole::ALUNO]);
     $livroEsgotado = Livro::factory()->indisponivel()->create();
     $livroNormal = Livro::factory()->create(['quantidade_disponivel' => 1]);
 
@@ -52,7 +53,7 @@ test('cannot request an unavailable book or duplicate active request', function 
 });
 
 test('admin can approve loan which decrements available book quantity', function () {
-    $adm = User::factory()->create(['role' => 'adm']);
+    $adm = User::factory()->create(['role' => UserRole::ADM]);
     $livro = Livro::factory()->create(['quantidade_disponivel' => 3]);
     $emprestimo = Emprestimo::factory()->solicitado()->create([
         'livro_id' => $livro->id_livro,
@@ -69,7 +70,7 @@ test('admin can approve loan which decrements available book quantity', function
 });
 
 test('standard user cannot approve or register return', function () {
-    $user = User::factory()->create(['role' => 'padrao']);
+    $user = User::factory()->create(['role' => UserRole::ALUNO]);
     $emprestimo = Emprestimo::factory()->solicitado()->create();
 
     $this->actingAs($user, 'sanctum')
@@ -82,7 +83,7 @@ test('standard user cannot approve or register return', function () {
 });
 
 test('user can renew their active loan extending the return deadline', function () {
-    $user = User::factory()->create(['role' => 'padrao']);
+    $user = User::factory()->create(['role' => UserRole::ALUNO]);
     $dataInicial = now()->addDays(5);
     $emprestimo = Emprestimo::factory()->create([
         'usuario_id' => $user->id,
@@ -101,7 +102,7 @@ test('user can renew their active loan extending the return deadline', function 
 });
 
 test('registering return updates status to devolvido and increments book quantity', function () {
-    $especialista = User::factory()->create(['role' => 'especialista']);
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
     $livro = Livro::factory()->create(['quantidade_disponivel' => 1]);
     $emprestimo = Emprestimo::factory()->create([
         'livro_id' => $livro->id_livro,
@@ -119,7 +120,7 @@ test('registering return updates status to devolvido and increments book quantit
 });
 
 test('admin can manually update loan status', function () {
-    $adm = User::factory()->create(['role' => 'adm']);
+    $adm = User::factory()->create(['role' => UserRole::ADM]);
     $emprestimo = Emprestimo::factory()->solicitado()->create();
 
     $response = $this->actingAs($adm, 'sanctum')
@@ -133,9 +134,9 @@ test('admin can manually update loan status', function () {
 });
 
 test('user views only their loans whereas admin views all loans', function () {
-    $user1 = User::factory()->create(['role' => 'padrao']);
-    $user2 = User::factory()->create(['role' => 'padrao']);
-    $adm = User::factory()->create(['role' => 'adm']);
+    $user1 = User::factory()->create(['role' => UserRole::ALUNO]);
+    $user2 = User::factory()->create(['role' => UserRole::ALUNO]);
+    $adm = User::factory()->create(['role' => UserRole::ADM]);
 
     Emprestimo::factory()->create(['usuario_id' => $user1->id]);
     Emprestimo::factory()->create(['usuario_id' => $user2->id]);

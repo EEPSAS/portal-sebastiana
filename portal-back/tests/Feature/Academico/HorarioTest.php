@@ -350,3 +350,23 @@ test('movimentação impede três aulas seguidas do mesmo professor', function (
 
     expect($aulaMovida->fresh()->aula_numero)->toBe(3);
 });
+
+test('gerar horario para turma inativa retorna 422 e mover aula de outro horario retorna 404', function () {
+    $especialista = User::factory()->create(['role' => UserRole::ESPECIALISTA]);
+    $turmaInativa = Turma::factory()->create(['status' => 'Encerrada']);
+
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson("/api/turmas/{$turmaInativa->id_turma}/horario/gerar")
+        ->assertUnprocessable();
+
+    $horarioA = Horario::factory()->create();
+    $horarioB = Horario::factory()->create();
+    $aulaDeB = HorarioAula::factory()->create(['horario_id' => $horarioB->id]);
+
+    $this->actingAs($especialista, 'sanctum')
+        ->patchJson("/api/horarios/{$horarioA->id}/aulas/{$aulaDeB->id}", [
+            'destino_dia_semana' => 2,
+            'destino_aula_numero' => 2,
+        ])
+        ->assertNotFound();
+});
