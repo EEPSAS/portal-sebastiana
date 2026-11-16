@@ -12,6 +12,7 @@ use App\Notifications\NotificacaoPortal;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -257,4 +258,25 @@ test('professor sem disciplinas vinculadas recebe lista vazia sem dados ficticio
     expect($respAdm->json('disciplinas_detalhadas'))->not->toBeEmpty()
         ->and($respAdm->json('disciplinas_detalhadas.0.modo_simulacao'))->toBeTrue()
         ->and($respAdm->json('disciplinas_detalhadas.0'))->toHaveKeys(['medias', 'frequencias', 'risco']);
+});
+
+// Regressão de performance (C2/C3): o GET do painel deve apenas LER e manter quantidade fixa de queries,
+// independentemente do número de disciplinas, turmas e alunos (sem N+1).
+test('dashboard geral nao grava no banco e executa quantidade fixa de queries', function () {
+    foreach (['clara.mendes@sebastiana.edu.br', 'carlos.silva@sebastiana.edu.br'] as $email) {
+        $usuario = User::where('email', $email)->first();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->actingAs($usuario, 'sanctum')->getJson('/api/dashboard/geral')->assertOk();
+        $queries = collect(DB::getQueryLog())->pluck('query');
+        DB::disableQueryLog();
+
+        // Ignora a atualização de last_used_at do token Sanctum, que não pertence ao painel
+        $escritas = $queries->filter(fn (string $sql) => preg_match('/^\s*(insert|update|delete)/i', $sql)
+            && ! str_contains($sql, 'personal_access_tokens'));
+
+        expect($escritas)->toBeEmpty()
+            ->and($queries->count())->toBeLessThanOrEqual(30);
+    }
 });

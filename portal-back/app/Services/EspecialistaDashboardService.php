@@ -1913,11 +1913,9 @@ class EspecialistaDashboardService
         $totalDivisoesPeriodo = max(1, $periodoAtivo?->divisoes?->count() ?: 3);
 
         if ($isDocenteEstrito) {
-            // Diretriz 3.4a: Garante que as disciplinas vinculadas ao professor propaguem seus vínculos com os Ciclos e Turmas
-            $disciplinasDoProfessor = $usuario->disciplinasDocente()->with('ciclos.turmas')->get();
-            foreach ($disciplinasDoProfessor as $discDocente) {
-                $discDocente->sincronizarComTurmasDosCiclos();
-            }
+            // Diretriz 3.4a: a propagação dos vínculos Disciplina → Ciclos → Turmas acontece nas rotas de escrita
+            // (CicloController/DisciplinaController). Aqui o GET apenas LÊ, evitando DELETE/INSERT a cada acesso ao painel.
+            $disciplinasDoProfessor = $usuario->disciplinasDocente()->get();
 
             // Identifica as turmas e disciplinas onde o professor atua (diretas ou herdadas dos ciclos)
             $vinculosDocente = TurmaDisciplina::where('professor_id', $usuario->id)->get();
@@ -1969,6 +1967,72 @@ class EspecialistaDashboardService
 
         $turmasIdsList = $turmas->pluck('id_turma')->toArray();
 
+        // 1.1 Pré-carregamento único (elimina o N+1): em vez de consultar o banco dentro dos laços
+        // disciplina × turma × aluno, buscamos tudo de uma vez e agrupamos em memória por chaves compostas.
+        $filtrarPorDivisao = $divisaoEfetiva && $divisaoEfetiva !== 'todos';
+
+        // Notas do escopo já filtradas pela etapa (mesmo filtro que antes era aplicado em cada consulta)
+        $notasEscopo = empty($turmasIdsList)
+            ? collect()
+            : Nota::whereIn('turma_id', $turmasIdsList)
+                ->when($filtrarPorDivisao, fn ($q) => $q->where('periodo_letivo', $divisaoEfetiva))
+                ->get();
+        $notasPorTurma = $notasEscopo->groupBy('turma_id');
+        $notasPorTurmaDisc = $notasEscopo->groupBy(fn (Nota $n) => "{$n->turma_id}_{$n->disciplina_id}");
+        $notasPorAluno = $notasEscopo->groupBy(fn (Nota $n) => "{$n->turma_id}_{$n->disciplina_id}_{$n->usuario_id}");
+
+        // Frequências do escopo sem filtro de data: o recorte por etapa/intervalo é feito em memória,
+        // pois registros via CSV usam marcador textual e registros regulares usam data_aula
+        $freqsEscopo = empty($turmasIdsList)
+            ? collect()
+            : Frequencia::with('disciplina')->whereIn('turma_id', $turmasIdsList)->get();
+        $freqsPorTurma = $freqsEscopo->groupBy('turma_id');
+        $freqsPorTurmaDisc = $freqsEscopo->groupBy(fn (Frequencia $f) => "{$f->turma_id}_{$f->disciplina_id}");
+        $freqsPorAluno = $freqsEscopo->groupBy(fn (Frequencia $f) => "{$f->turma_id}_{$f->disciplina_id}_{$f->usuario_id}");
+
+        // Matrículas ativas com o aluno carregado (2 queries no total, em vez de 2 por disciplina)
+        $matriculasAtivasEscopo = empty($turmasIdsList)
+            ? collect()
+            : Matricula::with('aluno')
+                ->whereIn('turma_id', $turmasIdsList)
+                ->where('status_matricula', 'Ativo')
+                ->get();
+
+        // Intervalo de datas equivalente ao antigo whereBetween('data_aula', ...) aplicado aos registros regulares
+        $intervaloFrequencia = null;
+        if ($divisaoEfetiva === 'todos') {
+            if ($periodoAtivo !== null && $periodoAtivo->data_inicio && $periodoAtivo->data_fim) {
+                $intervaloFrequencia = [$periodoAtivo->data_inicio, $periodoAtivo->data_fim];
+            }
+        } elseif ($divisaoObjeto !== null && $divisaoObjeto->data_inicio && $divisaoObjeto->data_fim) {
+            $intervaloFrequencia = [$divisaoObjeto->data_inicio, $divisaoObjeto->data_fim];
+        }
+
+        /**
+         * Soma aulas e faltas de registros regulares (não CSV) respeitando o intervalo da etapa.
+         * Retorna [aulas, faltas], reproduzindo os antigos SUM(quantidade_aulas) feitos no banco.
+         *
+         * @return array{0: int, 1: int}
+         */
+        $somarFrequenciaRegular = function (Collection $freqs) use ($intervaloFrequencia): array {
+            if ($intervaloFrequencia !== null) {
+                // Normaliza para 'Y-m-d' para comparar datas como texto, de forma inclusiva (igual ao BETWEEN)
+                $inicio = Carbon::parse($intervaloFrequencia[0])->format('Y-m-d');
+                $fim = Carbon::parse($intervaloFrequencia[1])->format('Y-m-d');
+                $freqs = $freqs->filter(function (Frequencia $f) use ($inicio, $fim) {
+                    // Carbon::parse aceita tanto string quanto objeto de data, normalizando para 'Y-m-d'
+                    $data = Carbon::parse($f->data_aula)->format('Y-m-d');
+
+                    return $data >= $inicio && $data <= $fim;
+                });
+            }
+
+            return [
+                (int) $freqs->sum('quantidade_aulas'),
+                (int) $freqs->whereIn('status_presenca', ['Falta', 'Falta Justificada'])->sum('quantidade_aulas'),
+            ];
+        };
+
         // 2. Calcula os indicadores por turma (Médias de notas e Frequências)
         $mediasTurmas = [];
         $frequenciasTurmas = [];
@@ -1978,15 +2042,11 @@ class EspecialistaDashboardService
         $turmasComFrequencia = 0;
 
         foreach ($turmas as $turma) {
-            // Consulta de notas da turma (filtrando disciplinas do docente e período letivo)
-            $queryNotas = Nota::where('turma_id', $turma->id_turma);
+            // Notas da turma lidas do agrupamento em memória (já filtradas pela etapa); o docente vê só suas disciplinas
+            $notas = $notasPorTurma->get($turma->id_turma, collect());
             if ($isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()) {
-                $queryNotas->whereIn('disciplina_id', $disciplinasIdsProf);
+                $notas = $notas->whereIn('disciplina_id', $disciplinasIdsProf);
             }
-            if ($divisaoEfetiva && $divisaoEfetiva !== 'todos') {
-                $queryNotas->where('periodo_letivo', $divisaoEfetiva);
-            }
-            $notas = $queryNotas->get();
             $mediaTurma = 0.0;
 
             if ($notas->isNotEmpty()) {
@@ -2002,12 +2062,11 @@ class EspecialistaDashboardService
                 $turmasComNota++;
             }
 
-            // Consulta de faltas e presenças da turma (compatível com chamadas regulares e diário CSV)
-            $queryFreqBase = Frequencia::with('disciplina')->where('turma_id', $turma->id_turma);
+            // Faltas e presenças da turma lidas da memória (compatível com chamadas regulares e diário CSV)
+            $freqsTurmaBrutas = $freqsPorTurma->get($turma->id_turma, collect());
             if ($isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()) {
-                $queryFreqBase->whereIn('disciplina_id', $disciplinasIdsProf);
+                $freqsTurmaBrutas = $freqsTurmaBrutas->whereIn('disciplina_id', $disciplinasIdsProf);
             }
-            $freqsTurmaBrutas = $queryFreqBase->get();
             $temOrigemCsvTurma = $freqsTurmaBrutas->contains(
                 fn (Frequencia $f) => str_contains((string) $f->justificativa, 'via diário escolar')
             );
@@ -2039,19 +2098,8 @@ class EspecialistaDashboardService
                     $aulasTurma += $aulasGrupo;
                 }
             } else {
-                $queryFreq = Frequencia::where('turma_id', $turma->id_turma);
-                if ($isDocenteEstrito && $disciplinasIdsProf->isNotEmpty()) {
-                    $queryFreq->whereIn('disciplina_id', $disciplinasIdsProf);
-                }
-                if ($divisaoEfetiva === 'todos') {
-                    if ($periodoAtivo !== null && $periodoAtivo->data_inicio && $periodoAtivo->data_fim) {
-                        $queryFreq->whereBetween('data_aula', [$periodoAtivo->data_inicio, $periodoAtivo->data_fim]);
-                    }
-                } elseif ($divisaoObjeto !== null && $divisaoObjeto->data_inicio && $divisaoObjeto->data_fim) {
-                    $queryFreq->whereBetween('data_aula', [$divisaoObjeto->data_inicio, $divisaoObjeto->data_fim]);
-                }
-                $aulasTurma = (int) (clone $queryFreq)->sum('quantidade_aulas');
-                $faltasTurma = (int) (clone $queryFreq)->whereIn('status_presenca', ['Falta', 'Falta Justificada'])->sum('quantidade_aulas');
+                // Registros regulares: soma em memória dentro do intervalo da etapa (antes: 2 SUMs no banco por turma)
+                [$aulasTurma, $faltasTurma] = $somarFrequenciaRegular($freqsTurmaBrutas);
             }
 
             if ($notas->isNotEmpty()) {
@@ -2105,8 +2153,8 @@ class EspecialistaDashboardService
                     ->get()
                 : collect();
         } else {
-            // Sincroniza herança de ciclos das disciplinas institucionais para visão consultiva/simulação
-            Disciplina::with('ciclos.turmas')->get()->each(fn (Disciplina $disc) => $disc->sincronizarComTurmasDosCiclos());
+            // Visão consultiva/simulação: somente leitura. A sincronização da herança de ciclos já ocorre
+            // quando ciclos/disciplinas são alterados, então não é repetida aqui (GET não deve gravar no banco).
             $disciplinasDocenteColecao = Disciplina::with(['ciclos', 'turmas' => fn ($q) => $q->withCount('alunos')])
                 ->orderBy('nome')
                 ->get();
@@ -2117,11 +2165,16 @@ class EspecialistaDashboardService
             $turmas,
             $turmasIdsList,
             $divisaoEfetiva,
-            $divisaoObjeto,
             $periodoAtivo,
             $pontosDivisao,
             $totalDivisoesPeriodo,
-            $isDocenteEstrito
+            $isDocenteEstrito,
+            $notasPorTurmaDisc,
+            $notasPorAluno,
+            $freqsPorTurmaDisc,
+            $freqsPorAluno,
+            $matriculasAtivasEscopo,
+            $somarFrequenciaRegular
         ) {
             $turmasVinculadas = $d->turmas->whereIn('id_turma', $turmasIdsList)->values();
             if ($turmasVinculadas->isEmpty() && ! empty($turmasIdsList)) {
@@ -2146,12 +2199,9 @@ class EspecialistaDashboardService
             $aulasEtapaDisciplina = $this->calcularAulasPrevistasDisciplina($d, $totalDivisoesPeriodo, false);
 
             foreach ($turmasVinculadas as $turmaDisc) {
-                $qNotasDiscTurma = Nota::where('turma_id', $turmaDisc->id_turma)
-                    ->where('disciplina_id', $d->id_disciplina);
-                if ($divisaoEfetiva && $divisaoEfetiva !== 'todos') {
-                    $qNotasDiscTurma->where('periodo_letivo', $divisaoEfetiva);
-                }
-                $notasDiscTurma = $qNotasDiscTurma->get();
+                // Chave composta turma_disciplina usada para ler os agrupamentos pré-carregados
+                $chaveTurmaDisc = "{$turmaDisc->id_turma}_{$d->id_disciplina}";
+                $notasDiscTurma = $notasPorTurmaDisc->get($chaveTurmaDisc, collect());
 
                 if ($notasDiscTurma->isNotEmpty()) {
                     $aproveitamento10 = (float) $notasDiscTurma->map(function ($nota) use ($pontosDivisao) {
@@ -2168,9 +2218,7 @@ class EspecialistaDashboardService
                     ];
                 }
 
-                $freqsDiscBrutas = Frequencia::where('turma_id', $turmaDisc->id_turma)
-                    ->where('disciplina_id', $d->id_disciplina)
-                    ->get();
+                $freqsDiscBrutas = $freqsPorTurmaDisc->get($chaveTurmaDisc, collect());
                 $csvDiscTurma = $freqsDiscBrutas->contains(
                     fn (Frequencia $f) => str_contains((string) $f->justificativa, 'via diário escolar')
                 );
@@ -2189,17 +2237,8 @@ class EspecialistaDashboardService
                         $faltasDisc += $faltasAl;
                     }
                 } else {
-                    $qFreqDisc = Frequencia::where('turma_id', $turmaDisc->id_turma)
-                        ->where('disciplina_id', $d->id_disciplina);
-                    if ($divisaoEfetiva === 'todos') {
-                        if ($periodoAtivo !== null && $periodoAtivo->data_inicio && $periodoAtivo->data_fim) {
-                            $qFreqDisc->whereBetween('data_aula', [$periodoAtivo->data_inicio, $periodoAtivo->data_fim]);
-                        }
-                    } elseif ($divisaoObjeto !== null && $divisaoObjeto->data_inicio && $divisaoObjeto->data_fim) {
-                        $qFreqDisc->whereBetween('data_aula', [$divisaoObjeto->data_inicio, $divisaoObjeto->data_fim]);
-                    }
-                    $aulasDisc = (int) (clone $qFreqDisc)->sum('quantidade_aulas');
-                    $faltasDisc = (int) (clone $qFreqDisc)->whereIn('status_presenca', ['Falta', 'Falta Justificada'])->sum('quantidade_aulas');
+                    // Registros regulares da disciplina na turma somados em memória dentro do intervalo da etapa
+                    [$aulasDisc, $faltasDisc] = $somarFrequenciaRegular($freqsDiscBrutas);
                 }
 
                 if ($aulasDisc > 0) {
@@ -2211,12 +2250,9 @@ class EspecialistaDashboardService
                 }
             }
 
-            // Consulta alunos matriculados ativos nessas turmas para apuração de risco na disciplina
+            // Alunos matriculados ativos nessas turmas, filtrados da coleção pré-carregada (preserva a ordem original por id)
             $matriculas = $turmasIdsDaDisciplina->isNotEmpty()
-                ? Matricula::with('aluno')
-                    ->whereIn('turma_id', $turmasIdsDaDisciplina)
-                    ->where('status_matricula', 'Ativo')
-                    ->get()
+                ? $matriculasAtivasEscopo->whereIn('turma_id', $turmasIdsDaDisciplina)
                 : collect();
 
             $alunosPorNota = [];
@@ -2228,14 +2264,9 @@ class EspecialistaDashboardService
                     continue;
                 }
 
-                // Consulta de notas na disciplina somando proporcionalmente etapas selecionadas
-                $qNota = Nota::where('turma_id', $mat->turma_id)
-                    ->where('disciplina_id', $d->id_disciplina)
-                    ->where('usuario_id', $aluno->id);
-                if ($divisaoEfetiva && $divisaoEfetiva !== 'todos') {
-                    $qNota->where('periodo_letivo', $divisaoEfetiva);
-                }
-                $notasAluno = $qNota->get();
+                // Notas do aluno na disciplina (já filtradas pela etapa) lidas do agrupamento em memória
+                $chaveAluno = "{$mat->turma_id}_{$d->id_disciplina}_{$aluno->id}";
+                $notasAluno = $notasPorAluno->get($chaveAluno, collect());
 
                 if ($notasAluno->isNotEmpty()) {
                     $somaNotasAluno = (float) $notasAluno->sum('valor_nota');
@@ -2255,11 +2286,8 @@ class EspecialistaDashboardService
                     }
                 }
 
-                // Consulta de frequência na disciplina respeitando a etapa avaliativa e origem CSV
-                $freqsAlunoBrutas = Frequencia::where('turma_id', $mat->turma_id)
-                    ->where('disciplina_id', $d->id_disciplina)
-                    ->where('usuario_id', $aluno->id)
-                    ->get();
+                // Frequência do aluno na disciplina lida da memória, respeitando a etapa avaliativa e a origem CSV
+                $freqsAlunoBrutas = $freqsPorAluno->get($chaveAluno, collect());
                 $csvAluno = $freqsAlunoBrutas->contains(
                     fn (Frequencia $f) => str_contains((string) $f->justificativa, 'via diário escolar')
                 );
@@ -2273,18 +2301,8 @@ class EspecialistaDashboardService
                         ? max($faltas, $aulasEtapaDisciplina * max(1, $freqsAlunoFiltradas->count()))
                         : 0;
                 } else {
-                    $qFreq = Frequencia::where('turma_id', $mat->turma_id)
-                        ->where('disciplina_id', $d->id_disciplina)
-                        ->where('usuario_id', $aluno->id);
-                    if ($divisaoEfetiva === 'todos') {
-                        if ($periodoAtivo !== null && $periodoAtivo->data_inicio && $periodoAtivo->data_fim) {
-                            $qFreq->whereBetween('data_aula', [$periodoAtivo->data_inicio, $periodoAtivo->data_fim]);
-                        }
-                    } elseif ($divisaoObjeto !== null && $divisaoObjeto->data_inicio && $divisaoObjeto->data_fim) {
-                        $qFreq->whereBetween('data_aula', [$divisaoObjeto->data_inicio, $divisaoObjeto->data_fim]);
-                    }
-                    $aulas = (int) (clone $qFreq)->sum('quantidade_aulas');
-                    $faltas = (int) (clone $qFreq)->whereIn('status_presenca', ['Falta', 'Falta Justificada'])->sum('quantidade_aulas');
+                    // Registros regulares do aluno somados em memória dentro do intervalo da etapa
+                    [$aulas, $faltas] = $somarFrequenciaRegular($freqsAlunoBrutas);
                 }
 
                 if ($aulas > 0) {
