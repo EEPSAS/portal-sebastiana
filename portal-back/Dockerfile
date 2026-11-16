@@ -2,6 +2,8 @@
 FROM php:8.5-cli-alpine
 
 # Instala dependências de sistema e bibliotecas para compilar extensões PostgreSQL, Zip e String
+# Nota didática: No PHP 8.5+, o OPcache foi incorporado nativamente ao núcleo do PHP e não
+# compila mais como módulo compartilhado avulso, evitando o erro "can't stat 'modules/*'".
 RUN apk add --no-cache \
     bash \
     curl \
@@ -15,11 +17,11 @@ RUN apk add --no-cache \
     bcmath \
     intl \
     mbstring \
-    opcache \
     pcntl \
     pdo_pgsql \
     pgsql \
-    zip
+    zip \
+    && docker-php-ext-enable opcache || true
 
 # Copia o binário oficial do Composer para gerenciamento de pacotes PHP
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
