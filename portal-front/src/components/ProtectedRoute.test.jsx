@@ -10,15 +10,16 @@ import { AuthContext } from "../contexts/authContext";
  * Papel Didático:
  * Verifica os 4 estados do ProtectedRoute:
  * 1. Exibição do spinner durante carregamento inicial;
- * 2. Redirecionamento de visitante anônimo para `/login`;
+ * 2. Redirecionamento de visitante anônimo para o Portal Público (`/`);
  * 3. Redirecionamento de usuário com `status_confirmacao === 'pendente'` para `/dashboard/espera`;
- * 4. Controle de acesso por perfil (`allowedRoles`) redirecionando perfis não autorizados para `/dashboard/geral`.
+ * 4. Controle de acesso por perfil (`allowedRoles`) redirecionando rotas não autorizadas para o Portal Público (`/`).
  */
 const renderComRota = (authValue, initialEntry = "/dashboard/usuarios", allowedRoles) =>
   render(
     <AuthContext.Provider value={authValue}>
       <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
+          <Route path="/" element={<div>Portal Público</div>} />
           <Route path="/login" element={<div>Tela de Login</div>} />
           <Route path="/dashboard/espera" element={<div>Sala de Espera</div>} />
           <Route path="/dashboard/geral" element={<div>Painel Geral</div>} />
@@ -36,9 +37,9 @@ describe("ProtectedRoute", () => {
     expect(screen.getByText(/Verificando credenciais de acesso/i)).toBeInTheDocument();
   });
 
-  test("redireciona visitante deslogado para /login", () => {
+  test("redireciona visitante deslogado para o portal público (/)", () => {
     renderComRota({ user: null, isAuthenticated: false, loading: false });
-    expect(screen.getByText("Tela de Login")).toBeInTheDocument();
+    expect(screen.getByText("Portal Público")).toBeInTheDocument();
   });
 
   test("redireciona usuário com aprovação pendente para /dashboard/espera", () => {
@@ -50,7 +51,7 @@ describe("ProtectedRoute", () => {
     expect(screen.getByText("Sala de Espera")).toBeInTheDocument();
   });
 
-  test("bloqueia perfil não incluído em allowedRoles e libera perfil autorizado", () => {
+  test("bloqueia perfil não incluído em allowedRoles redirecionando para o portal público e libera perfil autorizado", () => {
     const { unmount } = renderComRota(
       {
         user: { id: 3, role: "aluno", status_confirmacao: "confirmado" },
@@ -61,7 +62,7 @@ describe("ProtectedRoute", () => {
       ["adm"]
     );
 
-    expect(screen.getByText("Painel Geral")).toBeInTheDocument();
+    expect(screen.getByText("Portal Público")).toBeInTheDocument();
     unmount();
 
     renderComRota(

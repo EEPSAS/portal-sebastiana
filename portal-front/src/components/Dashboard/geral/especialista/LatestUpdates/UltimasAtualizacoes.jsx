@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, memo } from "react";
 import UpdateItem from "./UltimasAtualizacoesLista.jsx";
 import { fetchDashboardNotificacoes } from "../../../../../services/geralService";
 
@@ -9,8 +9,9 @@ import { fetchDashboardNotificacoes } from "../../../../../services/geralService
  * - Exibe por padrão as 5 notificações mais recentes (preload leve).
  * - Permite expandir sob demanda para 25 ou 50 notificações sem sobrecarregar o backend.
  * - Suporta filtros por quem enviou (remetente), quem recebeu (destinatário) e categoria.
+ * - Desacoplado de filtros de etapas avaliativas (não recarrega nem oculta a lista quando notas/médias mudam).
  */
-export default function LatestUpdates({
+function LatestUpdatesComponent({
   updates = [],
   loading = false,
   error = null,
@@ -108,7 +109,14 @@ export default function LatestUpdates({
         <h5 className="geral-updates-title mb-0 d-flex align-items-center gap-2">
           <i className="bi bi-bell-fill text-primary fs-5" aria-hidden="true"></i>
           <span>Últimas Notificações</span>
-          {notificacoesCustom !== null && (
+          {carregandoSobDemanda && (
+            <div
+              className="spinner-border spinner-border-sm text-primary"
+              role="status"
+              aria-label="Atualizando lista..."
+            ></div>
+          )}
+          {notificacoesCustom !== null && !carregandoSobDemanda && (
             <span className="badge rounded-pill bg-light text-secondary border small fw-normal">
               {totalExibido} encontrada(s)
             </span>
@@ -228,30 +236,38 @@ export default function LatestUpdates({
         </form>
       )}
 
-      {/* 3. Estados de Carregamento e Erro */}
-      {estaCarregando && (
-        <div className="text-muted py-3 text-center d-flex align-items-center justify-content-center gap-2">
-          <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
-          <span className="small">Carregando atualizações...</span>
-        </div>
-      )}
-
+      {/* 3. Erro na consulta */}
       {erroAtual && (
         <div className="alert alert-danger py-2 small mb-2" role="alert">
           {erroAtual}
         </div>
       )}
 
-      {/* 4. Estado Vazio */}
-      {!estaCarregando && !erroAtual && totalExibido === 0 && (
+      {/* 4. Estado de Carregamento Inicial (apenas se a lista estiver totalmente vazia) */}
+      {totalExibido === 0 && estaCarregando && (
+        <div className="text-muted py-3 text-center d-flex align-items-center justify-content-center gap-2">
+          <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
+          <span className="small">Carregando atualizações...</span>
+        </div>
+      )}
+
+      {/* 5. Estado Vazio Legítimo */}
+      {totalExibido === 0 && !estaCarregando && !erroAtual && (
         <div className="text-muted py-4 text-center small">
           Nenhuma notificação encontrada com os critérios informados.
         </div>
       )}
 
-      {/* 5. Lista com rolagem interna confinada no card */}
-      {!estaCarregando && !erroAtual && totalExibido > 0 && (
-        <div className="d-flex flex-column geral-updates-scroll min-h-0 flex-grow-1">
+      {/* 6. Lista com rolagem interna confinada no card (permanece visível sem recarregar ou desmontar) */}
+      {totalExibido > 0 && (
+        <div
+          className="d-flex flex-column geral-updates-scroll min-h-0 flex-grow-1"
+          style={{
+            opacity: carregandoSobDemanda ? 0.65 : 1,
+            pointerEvents: carregandoSobDemanda ? "none" : "auto",
+            transition: "opacity 0.2s ease-in-out",
+          }}
+        >
           {listaExibida.map((update, idx) => (
             <UpdateItem
               key={update.id || `notif-${idx}`}
@@ -271,3 +287,6 @@ export default function LatestUpdates({
     </div>
   );
 }
+
+const LatestUpdates = memo(LatestUpdatesComponent);
+export default LatestUpdates;

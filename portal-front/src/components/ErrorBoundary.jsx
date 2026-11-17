@@ -1,10 +1,10 @@
 /**
- * ErrorBoundary.jsx - Capturador de Exceções de Renderização no React
+ * ErrorBoundary.jsx - Capturador de Exceções com Redirecionamento de Segurança
  *
  * Papel Didático:
- * Em React, um ErrorBoundary captura exceções de renderização que ocorram em
- * qualquer componente filho (como mutações de nós por extensões ou traduções automáticas),
- * impedindo que a aplicação inteira caia em tela branca e oferecendo recuperação amigável.
+ * Captura qualquer exceção de renderização no React e, em conformidade com as diretrizes
+ * da plataforma, redireciona o usuário de forma limpa para o portal público (`/`),
+ * evitando telas quebradas ou travamentos de interface.
  */
 
 import { Component } from 'react';
@@ -20,31 +20,38 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.warn('ErrorBoundary capturou um erro de reconciliação:', error?.message, errorInfo);
+    console.warn('ErrorBoundary capturou uma falha na rota. Redirecionando para o portal público...', error?.message, errorInfo);
+    if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+      window.location.replace('/');
+    }
   }
 
-  handleReset = () => {
+  handleRedirecionarPortal = () => {
     this.setState({ hasError: false, error: null });
-    window.location.reload();
+    if (typeof window !== 'undefined') {
+      window.location.replace('/');
+    }
   };
 
   render() {
     if (this.state.hasError) {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+        return null;
+      }
       return (
         <div className="container py-5 text-center">
           <div className="alert alert-warning p-4 rounded-4 shadow-sm mx-auto" style={{ maxWidth: '520px' }}>
             <span className="fs-1 d-block mb-2">⚠️</span>
-            <h5 className="fw-bold mb-2 text-dark">Falha temporária ao renderizar este componente</h5>
+            <h5 className="fw-bold mb-2 text-dark">Portal Sebastiana</h5>
             <p className="text-muted small mb-3">
-              Isso costuma ocorrer quando uma extensão (ou o tradutor automático do navegador)
-              modifica os nós de texto da página durante a renderização.
+              Ocorreu uma instabilidade inesperada na página.
             </p>
             <button
               type="button"
-              onClick={this.handleReset}
+              onClick={this.handleRedirecionarPortal}
               className="btn btn-sm btn-primary rounded-pill px-4 fw-semibold"
             >
-              Recarregar página
+              Ir para o Portal Público
             </button>
           </div>
         </div>

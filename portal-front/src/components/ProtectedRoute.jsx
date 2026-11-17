@@ -15,7 +15,6 @@
 
 import { Navigate, Outlet, useLocation } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
-import { getRotaInicial } from '../utils/rolesRoutes';
 
 const ProtectedRoute = ({ allowedRoles }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -33,9 +32,9 @@ const ProtectedRoute = ({ allowedRoles }) => {
     );
   }
 
-  // Estado 2: Usuário não autenticado
+  // Estado 2: Usuário não autenticado (redireciona imediatamente para o portal público)
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Estado 3: Usuário (Aluno ou Professor) pendente de aprovação institucional (Diretriz 2.1)
@@ -59,9 +58,8 @@ const ProtectedRoute = ({ allowedRoles }) => {
     const temPermissao = allowedRoles.includes(userRole);
 
     if (!temPermissao) {
-      // Redireciona para o destino padrão seguro de acordo com o perfil
-      const rotaPadrao = getRotaInicial(userRole);
-      return <Navigate to={rotaPadrao} replace />;
+      // Rota não autorizada para o perfil: redireciona para o portal público
+      return <Navigate to="/" replace />;
     }
   }
 

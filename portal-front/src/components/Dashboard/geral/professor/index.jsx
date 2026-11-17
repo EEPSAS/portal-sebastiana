@@ -28,7 +28,6 @@ const GeralProfessor = () => {
   const selecionarDivisao = (divisao) => {
     if (divisao === divisaoSelecionada) return;
     setErroCarregamento("");
-    setLoading(true);
     setDivisaoSelecionada(divisao);
   };
 
@@ -38,7 +37,17 @@ const GeralProfessor = () => {
     fetchDashboardGeral({ divisao: divisaoSelecionada })
       .then((payload) => {
         if (ativo) {
-          setDadosApi(payload || null);
+          setDadosApi((prev) => {
+            if (!prev) return payload || null;
+            return {
+              ...payload,
+              // Preserva as notificações existentes para que a troca de etapa não cause reload
+              ultimas_notificacoes:
+                prev.ultimas_notificacoes?.length > 0
+                  ? prev.ultimas_notificacoes
+                  : (payload?.ultimas_notificacoes || []),
+            };
+          });
           if (!divisaoSelecionada && payload?.periodo_contexto?.divisao_selecionada) {
             setDivisaoSelecionada(payload.periodo_contexto.divisao_selecionada);
           }
@@ -194,12 +203,12 @@ const GeralProfessor = () => {
         />
       </div>
 
-      {/* 3. Feed das últimas notificações dos alunos acessíveis, ocupando o restante da tela */}
+      {/* 3. Feed das últimas notificações dos alunos acessíveis, ocupando o restante da tela (isolado da etapa avaliativa) */}
       <div className="geral-fill-row d-flex flex-column min-h-0">
         <LatestUpdates
           updates={dadosApi?.ultimas_notificacoes || []}
-          loading={loading}
-          error={erroCarregamento}
+          loading={false}
+          error={null}
         />
       </div>
     </div>

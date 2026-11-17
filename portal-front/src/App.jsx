@@ -10,7 +10,7 @@
  *    para assegurar que apenas usuários logados com perfis autorizados acessem páginas específicas.
  */
 
-import { BrowserRouter, Route, Routes } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import PortalLayout from "./layouts/Portal/PortalLayout";
 import DashboardLayout from "./layouts/Dashboard/DashboardLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -21,7 +21,6 @@ import PublicHome from "./pages/Portal/Home";
 import NoticiaPage from "./pages/Portal/Noticia";
 import Login from "./pages/Portal/Login";
 import WikiPublica from "./pages/Portal/WikiPublica";
-import NotFound from "./pages/NotFound";
 
 // Páginas da Área Logada (Dashboard)
 import DashboardIndexRedirect from "./components/Dashboard/common/DashboardIndexRedirect";
@@ -129,9 +128,9 @@ const App = () => {
         </Route>
 
         {/* ======================================================== */}
-        {/* 3. Rota de Fallback (Página 404)                          */}
+        {/* 3. Rota de Fallback: Qualquer rota desconhecida ou inválida redireciona para o Portal Público */}
         {/* ======================================================== */}
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

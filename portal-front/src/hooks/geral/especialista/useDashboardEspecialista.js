@@ -17,6 +17,7 @@ export function useDashboardEspecialista() {
   const [divisaoSelecionada, setDivisaoSelecionada] = useState("");
   const [periodoContexto, setPeriodoContexto] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingEtapa, setLoadingEtapa] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -24,7 +25,8 @@ export function useDashboardEspecialista() {
 
     async function carregarPainelGeral() {
       try {
-        setLoading(true);
+        // Indica carregamento de etapa apenas se já existirem cards carregados (evita spinner de tela inteira)
+        setLoadingEtapa(true);
         setError(null);
 
         // Realiza uma única chamada ao backend e distribui as fatias do payload para os estados locais
@@ -36,7 +38,16 @@ export function useDashboardEspecialista() {
         setMedias(payload?.resumo_turmas?.medias || []);
         setFrequencias(payload?.resumo_turmas?.frequencias || []);
         setDisciplinasDocente(payload?.disciplinas_docente || []);
-        setUpdates(payload?.ultimas_notificacoes || []);
+
+        // Preserva a lista e a referência de atualizações caso já tenham sido carregadas,
+        // garantindo que filtros de etapas avaliativas nunca causem reload no feed de notificações
+        setUpdates((anteriores) => {
+          if (anteriores && anteriores.length > 0) {
+            return anteriores;
+          }
+          return payload?.ultimas_notificacoes || [];
+        });
+
         setPeriodoContexto(payload?.periodo_contexto || null);
       } catch (err) {
         if (isMounted) {
@@ -45,6 +56,7 @@ export function useDashboardEspecialista() {
       } finally {
         if (isMounted) {
           setLoading(false);
+          setLoadingEtapa(false);
         }
       }
     }
@@ -66,6 +78,7 @@ export function useDashboardEspecialista() {
     setDivisaoSelecionada,
     periodoContexto,
     loading,
+    loadingEtapa,
     error,
   };
 }

@@ -103,4 +103,17 @@ describe("LatestUpdates Component", () => {
 
     expect(await screen.findByText("Prof. Carlos: Entrega adiada")).toBeInTheDocument();
   });
+
+  it("mantém as notificações visíveis e sem desmontar ou piscar mesmo se loading for passado", () => {
+    const { rerender } = render(<LatestUpdates updates={updatesMock} loading={false} />);
+
+    expect(screen.getByText("Prof. Carlos: Prova bimestral")).toBeInTheDocument();
+
+    // Simula re-render externo com loading=true (ex: troca de etapa no pai)
+    rerender(<LatestUpdates updates={updatesMock} loading={true} />);
+
+    // As notificações continuam presentes na tela e não são destruídas
+    expect(screen.getByText("Prof. Carlos: Prova bimestral")).toBeInTheDocument();
+    expect(screen.getByText("Biblioteca: Livro atrasado")).toBeInTheDocument();
+  });
 });

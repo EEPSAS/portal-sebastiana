@@ -1,29 +1,16 @@
 /**
- * NotFound.jsx - Página de Rota Não Encontrada (404)
+ * NotFound.jsx - Redirecionamento Universal para o Portal Público
  *
  * Papel Didático:
- * Em SPAs com React Router, a rota `*` captura qualquer URL digitada pelo usuário
- * que não coincida com as rotas registradas. Em vez de apresentar tela branca ou erro de rede,
- * orientamos o usuário com uma mensagem clara e um botão para retornar à Home.
+ * Em consonância com a diretriz de experiência do usuário do Portal Sebastiana,
+ * qualquer rota não validada, inexistente ou com falha redireciona o usuário
+ * imediatamente para a Home do Portal Público (`/`).
  */
 
-import { Link } from 'react-router';
+import { Navigate } from 'react-router';
 
 const NotFound = () => {
-  return (
-    <div className="min-vh-100 d-flex flex-column align-items-center justify-content-center bg-light text-center p-4">
-      <div className="card shadow-sm border-0 p-5 rounded-4" style={{ maxWidth: '480px' }}>
-        <h1 className="display-1 fw-bold text-primary mb-3">404</h1>
-        <h2 className="fs-4 fw-semibold text-dark mb-2">Página não encontrada</h2>
-        <p className="text-muted mb-4">
-          O endereço que você tentou acessar não existe ou foi movido.
-        </p>
-        <Link to="/" className="btn btn-primary fw-semibold px-4 py-2 rounded-pill">
-          <i className="bi bi-house-door me-2"></i> Voltar ao Portal
-        </Link>
-      </div>
-    </div>
-  );
+  return <Navigate to="/" replace />;
 };
 
 export default NotFound;

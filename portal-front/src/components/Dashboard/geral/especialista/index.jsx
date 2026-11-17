@@ -129,12 +129,12 @@ const GeralEspecialista = () => {
         />
       </div>
 
-      {/* Linha inferior: Feed das últimas notificações escolares preenchendo a viewport com scroll interno */}
+      {/* Linha inferior: Feed das últimas notificações escolares preenchendo a viewport com scroll interno (isolado da etapa avaliativa) */}
       <div className="geral-fill-row d-flex flex-column min-h-0">
         <LatestUpdates
           updates={updates}
-          loading={loading}
-          error={error}
+          loading={false}
+          error={null}
         />
       </div>
     </div>
