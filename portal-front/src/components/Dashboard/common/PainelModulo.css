@@ -24,29 +24,30 @@
   margin-top: 0.15rem;
   border-bottom: 1px solid #e5eaf2 !important;
   min-height: 2.35rem;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
 }
 
 .modulo-nav-abas {
   display: flex;
-  flex: 1 1 auto;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0 0.85rem;
   min-width: 0;
 }
 
 .modulo-nav-acoes {
   display: flex;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   align-items: center;
   justify-content: flex-end;
   gap: 0.35rem;
   min-height: 2rem;
   margin-left: auto;
+  min-width: 0;
 }
 
 .disciplinas-nav-acoes,
@@ -100,6 +101,18 @@
     flex: 1 1 0%;
     min-height: 0;
     padding-top: 0.5rem;
+    overflow: hidden;
+  }
+
+  /* Faz a tabela ocupar 100% da altura restante da viewport e exibir barra de rolagem própria */
+  .painel-modulo-conteudo-viewport-lock > .dashboard-table-scroll {
+    flex: 1 1 0%;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overflow-x: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
 
   .modulo-page-viewport-lock,
@@ -272,4 +285,98 @@
     flex-wrap: wrap;
     justify-content: flex-start;
   }
+}
+
+/* ==========================================================================
+   Tabela Zebra (Linhas Alternadas na Paleta Navy) e Cabeçalhos Ordenáveis
+   ========================================================================== */
+.dashboard-table-zebra {
+  --bs-table-bg: #ffffff;
+  --bs-table-striped-bg: #f3f6fb;
+  --bs-table-hover-bg: #e8eef8;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.dashboard-table-zebra > thead > tr > th {
+  background-color: #eef3fa;
+  color: var(--dashboard-navy, #0d2346);
+  border-bottom: 2px solid #d5e0ef;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* Remove o padding da célula th apenas quando ela contém um botão de ordenação (sortable-table) */
+.dashboard-table-zebra > thead > tr > th:has(> .table-sort-btn) {
+  padding: 0;
+}
+
+/* Botão de ordenação preenchendo toda a célula th com alvo mínimo de 24px */
+.table-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 2.4rem;
+  padding: 0.5rem 0.65rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.table-sort-btn--center {
+  justify-content: center;
+  text-align: center;
+}
+
+.table-sort-btn:hover {
+  background-color: rgba(13, 35, 70, 0.06);
+}
+
+.table-sort-btn:focus-visible {
+  outline: 2px solid var(--dashboard-navy, #0d2346);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+.table-sort-icon {
+  font-size: 0.78rem;
+  opacity: 0.45;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+th[aria-sort] .table-sort-btn {
+  color: var(--dashboard-blue-accent, #1e3d70);
+  background-color: rgba(13, 35, 70, 0.045);
+}
+
+th[aria-sort] .table-sort-icon {
+  opacity: 1;
+  color: var(--dashboard-pink, #e22a71);
+}
+
+/* Linhas ímpares brancas (#ffffff) e linhas pares em tom azul-gelo suave (#f3f6fb) da paleta */
+.dashboard-table-zebra > tbody > tr:nth-child(odd) > td,
+.dashboard-table-zebra > tbody > tr:nth-child(odd) > th {
+  background-color: #ffffff;
+  --bs-table-bg-type: #ffffff;
+}
+
+.dashboard-table-zebra > tbody > tr:nth-child(even) > td,
+.dashboard-table-zebra > tbody > tr:nth-child(even) > th {
+  background-color: #f3f6fb;
+  --bs-table-bg-type: #f3f6fb;
+}
+
+.dashboard-table-zebra > tbody > tr:hover > td,
+.dashboard-table-zebra > tbody > tr:hover > th {
+  background-color: #e8eef8 !important;
+  --bs-table-bg-state: #e8eef8;
 }

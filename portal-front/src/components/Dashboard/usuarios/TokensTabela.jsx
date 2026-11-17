@@ -2,12 +2,15 @@
  * TokensTabela.jsx - Tabela Administrativa de Tokens Sanctum (Módulo 6)
  *
  * Papel Didático:
- * Renderiza a listagem tabular e acessível dos tokens registrados no sistema:
+ * Renderiza a listagem tabular, ordenável e acessível dos tokens registrados no sistema:
  * 1. Confirma a existência do token pelo seu ID de registro (sem jamais exibir o hash/segredo);
  * 2. Exibe de onde o token surgiu (fluxo de autenticação, navegador/SO e endereço IP);
  * 3. Mostra a data/hora de criação, último uso e o limite de expiração (6 horas);
- * 4. Permite revogar/deletar manualmente um token individual ou todas as sessões de um usuário.
+ * 4. Permite reordenar registros clicando nos cabeçalhos superiores (sortable-table) e
+ *    revogar/deletar manualmente um token individual ou todas as sessões de um usuário.
  */
+
+import { useMemo, useState } from "react";
 
 const ROLE_LABELS = {
   aluno: { label: "Aluno", badge: "bg-primary-subtle text-primary" },
@@ -34,6 +37,11 @@ const ORIGEM_ESTILOS = {
   },
 };
 
+const collatorPtBr = new Intl.Collator("pt-BR", {
+  numeric: true,
+  sensitivity: "base",
+});
+
 const formatarDataHora = (valorIso) => {
   if (!valorIso) return "—";
   try {
@@ -44,6 +52,12 @@ const formatarDataHora = (valorIso) => {
   } catch {
     return valorIso;
   }
+};
+
+const obterTimestamp = (valorIso) => {
+  if (!valorIso) return 0;
+  const ts = Date.parse(valorIso);
+  return Number.isNaN(ts) ? 0 : ts;
 };
 
 export default function TokensTabela({
@@ -58,10 +72,87 @@ export default function TokensTabela({
   onRevogarDoUsuario,
   onPaginaChange,
 }) {
+  // Estado de ordenação por coluna: { coluna: string, direcao: "ascending" | "descending" }
+  const [ordenacao, setOrdenacao] = useState({
+    coluna: "created_at",
+    direcao: "descending",
+  });
+
+  // Alterna a coluna ordenada (inicia em ascending ao trocar de coluna, ou inverte a direção na mesma coluna)
+  const handleOrdenar = (coluna) => {
+    setOrdenacao((atual) => ({
+      coluna,
+      direcao:
+        atual.coluna === coluna && atual.direcao === "ascending"
+          ? "descending"
+          : "ascending",
+    }));
+  };
+
+  // Ordena os registros em memória preservando estabilidade e tipagem (datas/números vs texto com Intl.Collator)
+  const tokensOrdenados = useMemo(() => {
+    if (!Array.isArray(tokens) || tokens.length <= 1) return tokens || [];
+    const fator = ordenacao.direcao === "ascending" ? 1 : -1;
+
+    return [...tokens].sort((a, b) => {
+      switch (ordenacao.coluna) {
+        case "usuario": {
+          const compNome = collatorPtBr.compare(
+            a.usuario?.name || "",
+            b.usuario?.name || ""
+          );
+          return fator * (compNome !== 0 ? compNome : Number(a.id) - Number(b.id));
+        }
+        case "origem":
+          return (
+            fator *
+            collatorPtBr.compare(a.origem_label || a.origem || "", b.origem_label || b.origem || "")
+          );
+        case "dispositivo":
+          return (
+            fator *
+            collatorPtBr.compare(
+              `${a.dispositivo_resumo || ""} ${a.ip_address || ""}`,
+              `${b.dispositivo_resumo || ""} ${b.ip_address || ""}`
+            )
+          );
+        case "created_at":
+          return fator * (obterTimestamp(a.created_at) - obterTimestamp(b.created_at));
+        case "expires_at":
+          return fator * (obterTimestamp(a.expires_at) - obterTimestamp(b.expires_at));
+        case "status":
+          return fator * (Number(Boolean(a.expirado)) - Number(Boolean(b.expirado)));
+        default:
+          return 0;
+      }
+    });
+  }, [tokens, ordenacao]);
+
+  const renderIconeOrdenacao = (coluna) => {
+    if (ordenacao.coluna !== coluna) {
+      return <i className="bi bi-arrow-down-up table-sort-icon" aria-hidden="true"></i>;
+    }
+    return ordenacao.direcao === "ascending" ? (
+      <i className="bi bi-sort-up table-sort-icon" aria-hidden="true"></i>
+    ) : (
+      <i className="bi bi-sort-down table-sort-icon" aria-hidden="true"></i>
+    );
+  };
+
+  const obterAriaSort = (coluna) =>
+    ordenacao.coluna === coluna ? ordenacao.direcao : undefined;
+
   return (
     <>
+      {/* Anúncio acessível de ordenação para leitores de tela (sortable-table) */}
+      <div role="status" className="visually-hidden">
+        {`Tabela ordenada por ${ordenacao.coluna} em ordem ${
+          ordenacao.direcao === "ascending" ? "crescente" : "decrescente"
+        }`}
+      </div>
+
       {/* Faixa informativa de política de ciclo de vida e segurança dos tokens */}
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 p-2 px-3 mb-2 rounded-3 bg-light border small">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 p-2 px-3 mb-2 rounded-3 bg-light border small flex-shrink-0">
         <div className="d-flex align-items-center gap-2 text-secondary">
           <i className="bi bi-shield-lock-fill text-primary fs-6" aria-hidden="true"></i>
           <span>
@@ -82,22 +173,76 @@ export default function TokensTabela({
         )}
       </div>
 
-      {/* Container rolável acessível via teclado (tabIndex=0 e role=region) */}
+      {/* Container rolável acessível via teclado que ocupa 100% da altura disponível */}
       <div
         className="dashboard-table-scroll border"
         tabIndex={0}
         role="region"
         aria-label="Tabela de sessões e tokens Sanctum"
       >
-        <table className="table table-hover align-middle mb-0">
+        <table className="table table-hover dashboard-table-zebra align-middle mb-0">
           <thead>
             <tr>
-              <th scope="col">Registro / Usuário</th>
-              <th scope="col">De Onde Surgiu (Origem)</th>
-              <th scope="col">Dispositivo & IP</th>
-              <th scope="col">Data de Criação</th>
-              <th scope="col">Expiração (Máx. 6h)</th>
-              <th scope="col">Status</th>
+              <th scope="col" aria-sort={obterAriaSort("usuario")}>
+                <button
+                  type="button"
+                  className="table-sort-btn"
+                  onClick={() => handleOrdenar("usuario")}
+                >
+                  <span>Registro / Usuário</span>
+                  {renderIconeOrdenacao("usuario")}
+                </button>
+              </th>
+              <th scope="col" aria-sort={obterAriaSort("origem")}>
+                <button
+                  type="button"
+                  className="table-sort-btn"
+                  onClick={() => handleOrdenar("origem")}
+                >
+                  <span>De Onde Surgiu (Origem)</span>
+                  {renderIconeOrdenacao("origem")}
+                </button>
+              </th>
+              <th scope="col" aria-sort={obterAriaSort("dispositivo")}>
+                <button
+                  type="button"
+                  className="table-sort-btn"
+                  onClick={() => handleOrdenar("dispositivo")}
+                >
+                  <span>Dispositivo & IP</span>
+                  {renderIconeOrdenacao("dispositivo")}
+                </button>
+              </th>
+              <th scope="col" aria-sort={obterAriaSort("created_at")}>
+                <button
+                  type="button"
+                  className="table-sort-btn"
+                  onClick={() => handleOrdenar("created_at")}
+                >
+                  <span>Data de Criação</span>
+                  {renderIconeOrdenacao("created_at")}
+                </button>
+              </th>
+              <th scope="col" aria-sort={obterAriaSort("expires_at")}>
+                <button
+                  type="button"
+                  className="table-sort-btn"
+                  onClick={() => handleOrdenar("expires_at")}
+                >
+                  <span>Expiração (Máx. 6h)</span>
+                  {renderIconeOrdenacao("expires_at")}
+                </button>
+              </th>
+              <th scope="col" className="text-center" aria-sort={obterAriaSort("status")}>
+                <button
+                  type="button"
+                  className="table-sort-btn table-sort-btn--center"
+                  onClick={() => handleOrdenar("status")}
+                >
+                  <span>Status</span>
+                  {renderIconeOrdenacao("status")}
+                </button>
+              </th>
               <th scope="col" className="text-end">
                 Ações
               </th>
@@ -111,14 +256,14 @@ export default function TokensTabela({
                   Carregando registros de tokens Sanctum...
                 </td>
               </tr>
-            ) : tokens.length === 0 ? (
+            ) : tokensOrdenados.length === 0 ? (
               <tr>
                 <td colSpan={7} className="text-center py-5 text-muted">
                   Nenhum token de sessão encontrado para os filtros informados.
                 </td>
               </tr>
             ) : (
-              tokens.map((t) => {
+              tokensOrdenados.map((t) => {
                 const u = t.usuario;
                 const roleInfo = ROLE_LABELS[u?.role] || {
                   label: u?.role || "Usuário",
@@ -129,7 +274,7 @@ export default function TokensTabela({
                 const estaRevogandoUsuario = u?.id && revogandoUsuarioId === u.id;
 
                 return (
-                  <tr key={t.id} className={t.expirado ? "table-light opacity-75" : ""}>
+                  <tr key={t.id} className={t.expirado ? "opacity-75" : ""}>
                     {/* 1. Identificação do Registro (sem exibir a chave secreta) e Usuário Dono */}
                     <th scope="row" className="fw-semibold text-dark">
                       <div className="d-flex flex-column">
@@ -198,9 +343,9 @@ export default function TokensTabela({
                       </span>
                     </td>
 
-                    {/* 6. Status do Token */}
-                    <td className="text-nowrap">
-                      <div className="d-flex flex-column align-items-start gap-1">
+                    {/* 6. Status do Token (Centralizado) */}
+                    <td className="text-center text-nowrap">
+                      <div className="d-inline-flex flex-column align-items-center justify-content-center gap-1">
                         {t.expirado ? (
                           <span className="badge bg-secondary text-white rounded-pill px-2.5 py-1 small fw-semibold">
                             <i className="bi bi-clock-history me-1" aria-hidden="true"></i>
@@ -262,12 +407,12 @@ export default function TokensTabela({
         </table>
       </div>
 
-      {/* Rodapé de Paginação */}
+      {/* Rodapé de Paginação fixo na base do painel */}
       {meta && (
-        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mt-3 small text-muted">
+        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mt-2 pt-1 small text-muted flex-shrink-0">
           <span>
-            Exibindo <strong>{tokens.length}</strong> de{" "}
-            <strong>{meta.total ?? tokens.length}</strong> registro(s) de token · Página{" "}
+            Exibindo <strong>{tokensOrdenados.length}</strong> de{" "}
+            <strong>{meta.total ?? tokensOrdenados.length}</strong> registro(s) de token · Página{" "}
             <strong>{meta.current_page ?? pagina}</strong> de{" "}
             <strong>{meta.last_page ?? 1}</strong>
           </span>

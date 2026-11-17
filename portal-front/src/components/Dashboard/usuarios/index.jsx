@@ -331,7 +331,7 @@ export default function UsuariosContainer({ defaultTab = "usuarios" }) {
     );
 
   return (
-    <div className="position-relative">
+    <div className="position-relative modulo-page-viewport-lock">
       {/* Toast flutuante de confirmação */}
       {feedback && (
         <div
@@ -343,6 +343,8 @@ export default function UsuariosContainer({ defaultTab = "usuarios" }) {
       )}
 
       <PainelModulo
+        className="painel-modulo-viewport-lock"
+        conteudoClassName="painel-modulo-conteudo-viewport-lock"
         titulo={
           abaAtiva === "tokens"
             ? "Sessões Conectadas e Tokens Sanctum"
@@ -360,7 +362,7 @@ export default function UsuariosContainer({ defaultTab = "usuarios" }) {
         acoes={acoesAtivas}
       >
         {erro && (
-          <div className="alert alert-danger rounded-3 small mb-3" role="alert">
+          <div className="alert alert-danger rounded-3 small mb-2 py-2 px-3 flex-shrink-0" role="alert">
             <i className="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
             {erro}
           </div>
