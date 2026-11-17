@@ -56,35 +56,84 @@ export default function DesempenhoAlunosCard({
   const listaPiores = rankingAtual?.piores ?? fallbackPiores;
   const listaMelhores = rankingAtual?.melhores ?? [];
 
-  const sufixo = "%";
-  const rotuloIndicador = isNota ? "Aproveitamento" : "Frequência";
+  // Padrão de dados: Notas exibem valor absoluto numérico (sem %); Frequência exibe porcentagem (%)
+  const sufixo = isNota ? "" : "%";
+  const rotuloIndicador = isNota ? "Nota" : "Frequência";
+  const metaMinimaNota = pontosDivisao > 0 ? pontosDivisao * 0.6 : 18;
+  const alertaAbaixo = isNota ? metaMinimaNota : 75;
   const metaTexto = isNota
-    ? `Meta mínima: 60% (${pontosDivisao > 0 ? (pontosDivisao * 0.6).toFixed(1) : 18} pts)`
+    ? `Meta mínima: 60% (${metaMinimaNota.toFixed(1).replace(".", ",")} pts)`
     : "Meta mínima: 75% de presença";
 
+  // Padrão visual semântico:
+  // Notas -> Azul Marinho (#0d2346 / #1d4ed8)
+  // Frequência -> Verde Esmeralda (#059669 / #10b981)
+  const temaCor = isNota ? "var(--dashboard-navy, #0d2346)" : "#059669";
+  const temaBgSoft = isNota ? "rgba(13, 35, 70, 0.08)" : "rgba(5, 150, 105, 0.12)";
+
   return (
-    <div className="card border-0 shadow-sm rounded-4 p-3 bg-white w-100 mb-3">
+    <div
+      className="card border-0 shadow-sm rounded-4 p-3 bg-white w-100 mb-3"
+      style={{
+        borderTop: `3px solid ${temaCor}`,
+        transition: "border-color 0.25s ease",
+      }}
+    >
       {/* 1. Cabeçalho com Título, Seletor de Disciplina e Alternância Nota/Frequência */}
       <div className="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 pb-2 border-bottom">
-        <div className="d-flex align-items-center gap-3">
+        <div className="d-flex align-items-center gap-3 min-w-0">
           <div
-            className="rounded-3 d-flex align-items-center justify-content-center p-2 text-primary flex-shrink-0"
-            style={{ backgroundColor: "var(--dashboard-navy-soft)", width: "42px", height: "42px" }}
+            className="rounded-3 d-flex align-items-center justify-content-center p-2 flex-shrink-0"
+            style={{
+              backgroundColor: temaBgSoft,
+              color: temaCor,
+              width: "42px",
+              height: "42px",
+              transition: "background-color 0.25s ease, color 0.25s ease",
+            }}
             aria-hidden="true"
           >
-            <i className={`bi ${isNota ? "bi-mortarboard-fill" : "bi-people-fill"} fs-5`}></i>
+            <i className={`bi ${isNota ? "bi-mortarboard-fill" : "bi-calendar-check-fill"} fs-5`}></i>
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="d-flex align-items-center gap-2 flex-wrap">
               <h3 className="fs-5 fw-bold mb-0 text-dark">
                 Desempenho dos Alunos
               </h3>
-              <span className="badge rounded-pill bg-light text-secondary border small fw-normal">
-                {isNota ? "Avaliações & Notas" : "Presença & Diário"}
-              </span>
+              {isNota ? (
+                <span
+                  className="badge rounded-pill fw-semibold d-inline-flex align-items-center gap-1"
+                  style={{
+                    backgroundColor: "#eff6ff",
+                    color: "#1d4ed8",
+                    border: "1px solid #bfdbfe",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  <i className="bi bi-mortarboard-fill"></i> Avaliações & Notas
+                </span>
+              ) : (
+                <span
+                  className="badge rounded-pill fw-semibold d-inline-flex align-items-center gap-1"
+                  style={{
+                    backgroundColor: "#ecfdf5",
+                    color: "#065f46",
+                    border: "1px solid #a7f3d0",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  <i className="bi bi-calendar-check-fill"></i> Presença & Diário
+                </span>
+              )}
             </div>
-            <p className="text-secondary small mb-0">
-              Acompanhe os melhores e piores índices da turma na disciplina selecionada.
+            <p
+              className="text-secondary small mb-0 text-truncate"
+              style={{ maxWidth: "440px" }}
+              title={isNota ? "Melhores e menores notas da turma no período." : "Melhores e menores taxas de frequência no período."}
+            >
+              {isNota
+                ? "Melhores e menores notas da turma no período."
+                : "Melhores e menores taxas de frequência no período."}
             </p>
           </div>
         </div>
@@ -128,9 +177,18 @@ export default function DesempenhoAlunosCard({
           >
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 fw-semibold ${
-                isNota ? "btn-primary shadow-sm text-white" : "text-secondary border-0"
+              className={`btn btn-sm rounded-pill px-3 fw-semibold transition ${
+                isNota ? "text-white" : "text-secondary border-0"
               }`}
+              style={
+                isNota
+                  ? {
+                      backgroundColor: "var(--dashboard-navy, #0d2346)",
+                      borderColor: "var(--dashboard-navy, #0d2346)",
+                      boxShadow: "0 2px 6px rgba(13, 35, 70, 0.25)",
+                    }
+                  : {}
+              }
               aria-pressed={isNota}
               onClick={() => setIndicadorAtivo("nota")}
             >
@@ -138,9 +196,18 @@ export default function DesempenhoAlunosCard({
             </button>
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 fw-semibold ${
-                !isNota ? "btn-primary shadow-sm text-white" : "text-secondary border-0"
+              className={`btn btn-sm rounded-pill px-3 fw-semibold transition ${
+                !isNota ? "text-white" : "text-secondary border-0"
               }`}
+              style={
+                !isNota
+                  ? {
+                      backgroundColor: "#059669",
+                      borderColor: "#059669",
+                      boxShadow: "0 2px 6px rgba(5, 150, 105, 0.3)",
+                    }
+                  : {}
+              }
               aria-pressed={!isNota}
               onClick={() => setIndicadorAtivo("frequencia")}
             >
@@ -234,19 +301,20 @@ export default function DesempenhoAlunosCard({
               rotuloColuna={rotuloIndicador}
               corDestaque="var(--dashboard-pink, #e6396f)"
               sufixo={sufixo}
-              alertaAbaixo={isNota ? 60 : 75}
+              alertaAbaixo={alertaAbaixo}
               mensagemVazia={`Nenhum registro de ${rotuloIndicador.toLowerCase()} encontrado nesta etapa.`}
             />
           </section>
         </div>
 
-        {/* Coluna Direita: Melhor Desempenho (Top 5) */}
+        {/* Coluna Direita: Melhor Desempenho (Top 5) com Padrão Visual Notas vs Frequência */}
         <div className="col-12 col-md-6">
           <section
             className="card border-0 rounded-3 p-3 h-100"
             style={{
-              backgroundColor: "#f7fafe",
-              border: "1px solid #dce8f8",
+              backgroundColor: isNota ? "#f7fafe" : "#f0fdf4",
+              border: isNota ? "1px solid #dce8f8" : "1px solid #bbf7d0",
+              transition: "background-color 0.25s ease, border-color 0.25s ease",
             }}
             aria-label={`Melhor Desempenho ${rotuloIndicador}`}
           >
@@ -257,8 +325,9 @@ export default function DesempenhoAlunosCard({
                   style={{
                     width: "28px",
                     height: "28px",
-                    backgroundColor: "var(--dashboard-navy, #0d2346)",
+                    backgroundColor: isNota ? "var(--dashboard-navy, #0d2346)" : "#059669",
                     fontSize: "0.85rem",
+                    transition: "background-color 0.25s ease",
                   }}
                   aria-hidden="true"
                 >
@@ -276,9 +345,9 @@ export default function DesempenhoAlunosCard({
               <span
                 className="badge rounded-pill fw-semibold"
                 style={{
-                  color: "#0d2346",
-                  backgroundColor: "#0d234614",
-                  border: "1px solid #0d234630",
+                  color: isNota ? "#0d2346" : "#065f46",
+                  backgroundColor: isNota ? "#0d234614" : "#05966918",
+                  border: isNota ? "1px solid #0d234630" : "1px solid #05966935",
                 }}
               >
                 Top 5
@@ -288,7 +357,7 @@ export default function DesempenhoAlunosCard({
             <TabelaRankingAlunos
               alunos={listaMelhores}
               rotuloColuna={rotuloIndicador}
-              corDestaque="var(--dashboard-navy, #0d2346)"
+              corDestaque={isNota ? "var(--dashboard-navy, #0d2346)" : "#059669"}
               sufixo={sufixo}
               mensagemVazia={`Nenhum registro de ${rotuloIndicador.toLowerCase()} encontrado nesta etapa.`}
             />

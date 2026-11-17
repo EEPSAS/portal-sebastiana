@@ -2281,18 +2281,22 @@ class EspecialistaDashboardService
                         $percentualNota = ($somaNotasAluno / $somaMaxAluno) * 100;
                         $turmaRef = $turmasVinculadas->firstWhere('id_turma', $mat->turma_id);
                         $turmaNome = $turmaRef ? $turmaRef->nome_identificador : 'Turma';
+                        // Para notas, o valor exposto é o valor absoluto dos pontos obtidos pelo estudante na etapa
                         $todosPorNota[] = [
                             'id' => "nota-{$aluno->id}-{$d->id_disciplina}",
                             'nome' => $aluno->name,
                             'turma' => $turmaNome,
-                            'valor' => round($percentualNota, 1),
+                            'valor' => round($somaNotasAluno, 1),
+                            'pontos_maximos' => round($somaMaxAluno, 1),
+                            'percentual' => round($percentualNota, 1),
                         ];
                         if ($percentualNota < 60.0) {
                             $alunosPorNota[] = [
                                 'id' => "nota-{$aluno->id}-{$d->id_disciplina}",
                                 'nome' => $aluno->name,
                                 'turma' => $turmaNome,
-                                'mediaAtual' => round($percentualNota, 1),
+                                'mediaAtual' => round($somaNotasAluno, 1),
+                                'percentual' => round($percentualNota, 1),
                             ];
                         }
                     }

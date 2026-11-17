@@ -91,7 +91,9 @@ export const AuthProvider = ({ children }) => {
 
   /**
    * Função para encerrar a sessão do usuário.
-   * Redireciona obrigatoriamente para a página inicial pública do portal (/).
+   * Redireciona imediatamente e expressamente para a página inicial pública do portal (/),
+   * utilizando window.location.replace para descarregar o SPA diretamente na raiz pública,
+   * prevenindo que o guard de rotas (ProtectedRoute) desvie temporariamente para /login.
    */
   const logout = async () => {
     try {
@@ -100,11 +102,8 @@ export const AuthProvider = ({ children }) => {
       // Ignora erro de rede para assegurar a limpeza dos dados locais
     }
     localStorage.removeItem('admin_simulated_role');
-    setSimulatedRole(null);
-    setToken(null);
-    setUser(null);
-    // Redireciona diretamente para o portal público
-    window.location.href = '/';
+    // Redireciona diretamente para o portal público sem passar pela tela de login
+    window.location.replace('/');
   };
 
   /**

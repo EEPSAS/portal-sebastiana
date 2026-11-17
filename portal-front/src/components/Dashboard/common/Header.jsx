@@ -54,8 +54,9 @@ const Header = ({
   const handleLogout = async () => {
     if (onLogout) {
       await onLogout();
+    } else {
+      window.location.replace("/");
     }
-    window.location.href = "/";
   };
 
   // Abre o modal de confirmação ao clicar em um papel no menu

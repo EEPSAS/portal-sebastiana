@@ -57,26 +57,75 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
   const sufixo = isNotas ? "" : "%";
   const semLancamentosNaAba = listaMelhores.length === 0 && listaPiores.length === 0;
 
+  // Padrão visual semântico:
+  // Notas -> Azul Marinho (#0d2346 / #1d4ed8)
+  // Frequência -> Verde Esmeralda (#059669 / #10b981)
+  const temaCor = isNotas ? "var(--dashboard-navy, #0d2346)" : "#059669";
+  const temaBgSoft = isNotas ? "rgba(13, 35, 70, 0.08)" : "rgba(5, 150, 105, 0.12)";
+
   return (
-    <div className="card border-0 shadow-sm rounded-3 p-2 px-md-3 bg-white h-100 w-100">
-      {/* Cabeçalho do Card com Seletor Disciplina vs Frequência */}
+    <div
+      className="card border-0 shadow-sm rounded-4 p-2 px-md-3 bg-white h-100 w-100"
+      style={{
+        borderTop: `3px solid ${temaCor}`,
+        transition: "border-color 0.25s ease",
+      }}
+    >
+      {/* Cabeçalho do Card com Seletor Notas vs Frequência */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
-        <div className="d-flex align-items-center gap-3">
+        <div className="d-flex align-items-center gap-3 min-w-0">
           <div
-            className="rounded-3 d-flex align-items-center justify-content-center p-2 text-primary"
-            style={{ backgroundColor: "var(--dashboard-navy-soft)", width: "42px", height: "42px" }}
+            className="rounded-3 d-flex align-items-center justify-content-center p-2 flex-shrink-0"
+            style={{
+              backgroundColor: temaBgSoft,
+              color: temaCor,
+              width: "42px",
+              height: "42px",
+              transition: "background-color 0.25s ease, color 0.25s ease",
+            }}
             aria-hidden="true"
           >
-            <i className="bi bi-bar-chart-line-fill fs-5"></i>
+            <i className={`bi ${isNotas ? "bi-mortarboard-fill" : "bi-calendar-check-fill"} fs-5`}></i>
           </div>
-          <div>
-            <h3 className="fs-5 fw-bold mb-0 text-dark">
-              {isNotas ? "Desempenho por Disciplina" : "Desempenho por Frequência"}
-            </h3>
-            <p className="text-secondary small mb-0">
+          <div className="min-w-0">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h3 className="fs-5 fw-bold mb-0 text-dark">
+                {isNotas ? "Desempenho por Notas" : "Desempenho por Frequência"}
+              </h3>
+              {isNotas ? (
+                <span
+                  className="badge rounded-pill fw-semibold d-inline-flex align-items-center gap-1"
+                  style={{
+                    backgroundColor: "#eff6ff",
+                    color: "#1d4ed8",
+                    border: "1px solid #bfdbfe",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  <i className="bi bi-mortarboard-fill"></i> Notas & Avaliações
+                </span>
+              ) : (
+                <span
+                  className="badge rounded-pill fw-semibold d-inline-flex align-items-center gap-1"
+                  style={{
+                    backgroundColor: "#ecfdf5",
+                    color: "#065f46",
+                    border: "1px solid #a7f3d0",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  <i className="bi bi-calendar-check-fill"></i> Presença & Diário
+                </span>
+              )}
+            </div>
+            <p
+              className="text-secondary small mb-0 text-truncate"
+              style={{ maxWidth: "440px" }}
+              title={isNotas ? "Suas melhores e menores notas no período." : "Seus índices de presença por componente curricular."}
+            >
               {isNotas
-                ? "Acompanhe suas melhores e piores notas lançadas no período."
-                : "Acompanhe seus índices reais de presença por componente curricular."}
+                ? "Suas melhores e menores notas no período."
+                : "Seus índices de presença por componente curricular."}
             </p>
           </div>
         </div>
@@ -90,18 +139,36 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
           <button
             type="button"
             className={`btn btn-sm rounded-pill px-3 fw-semibold transition ${
-              isNotas ? "btn-primary shadow-sm text-white" : "text-secondary border-0"
+              isNotas ? "text-white" : "text-secondary border-0"
             }`}
+            style={
+              isNotas
+                ? {
+                    backgroundColor: "var(--dashboard-navy, #0d2346)",
+                    borderColor: "var(--dashboard-navy, #0d2346)",
+                    boxShadow: "0 2px 6px rgba(13, 35, 70, 0.25)",
+                  }
+                : {}
+            }
             aria-pressed={isNotas}
             onClick={() => setVisaoAtiva("disciplina")}
           >
-            Disciplina
+            Notas
           </button>
           <button
             type="button"
             className={`btn btn-sm rounded-pill px-3 fw-semibold transition ${
-              !isNotas ? "btn-primary shadow-sm text-white" : "text-secondary border-0"
+              !isNotas ? "text-white" : "text-secondary border-0"
             }`}
+            style={
+              !isNotas
+                ? {
+                    backgroundColor: "#059669",
+                    borderColor: "#059669",
+                    boxShadow: "0 2px 6px rgba(5, 150, 105, 0.3)",
+                  }
+                : {}
+            }
             aria-pressed={!isNotas}
             onClick={() => setVisaoAtiva("frequencia")}
           >
@@ -135,9 +202,12 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
                   <div
                     className="p-3 rounded-4 h-100 d-flex flex-column justify-content-between"
                     style={{
-                      backgroundColor: "#f8fafc",
-                      border: "1px solid #dce5f2",
-                      boxShadow: "0 1px 3px rgba(13, 35, 70, 0.03)",
+                      backgroundColor: isNotas ? "#f8fafc" : "#f0fdf4",
+                      border: isNotas ? "1px solid #dce5f2" : "1px solid #bbf7d0",
+                      boxShadow: isNotas
+                        ? "0 1px 3px rgba(13, 35, 70, 0.03)"
+                        : "0 1px 3px rgba(5, 150, 105, 0.04)",
+                      transition: "background-color 0.25s ease, border-color 0.25s ease",
                     }}
                   >
                     <div className="d-flex align-items-center gap-3 mb-2">
@@ -146,8 +216,9 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
                         style={{
                           width: "32px",
                           height: "32px",
-                          backgroundColor: "var(--dashboard-navy, #0d2346)",
+                          backgroundColor: temaCor,
                           fontSize: "0.85rem",
+                          transition: "background-color 0.25s ease",
                         }}
                       >
                         {item.posicao}
@@ -169,7 +240,7 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
                     <MiniProgressBar
                       valor={item.valor}
                       max={maxEscala}
-                      cor="var(--dashboard-navy, #0d2346)"
+                      cor={temaCor}
                       sufixo={sufixo}
                     />
                   </div>
