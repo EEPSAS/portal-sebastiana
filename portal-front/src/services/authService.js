@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, clearApiCache } from './api';
 
 /**
  * authService.js - Serviço de Autenticação e Sessão (Módulo 1)
@@ -89,6 +89,8 @@ export const logout = async () => {
   } finally {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
+    // Limpa o cache em memória para que outro usuário não veja dados cacheados nesta máquina
+    clearApiCache();
   }
 };
 

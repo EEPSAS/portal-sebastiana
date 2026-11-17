@@ -11,12 +11,14 @@
  * importado do módulo unificado `dona-nana`, ficando fixado no canto inferior direito.
  */
 
+import { useEffect } from "react";
 import { Outlet } from "react-router";
 // Importações de componentes estruturais comuns do painel
 import Aside from "../../components/Dashboard/common/Aside";
 import Header from "../../components/Dashboard/common/Header";
 import { DonaNanaFloatingWidget } from "../../components/Dashboard/dona-nana";
 import { useAuth } from "../../hooks/useAuth";
+import { executarPrefetchPorPapel } from "../../services/prefetchService";
 
 const ROLE_DISPLAY_NAMES = {
   aluno: "Aluno",
@@ -35,6 +37,13 @@ const DashboardLayout = () => {
   const roleLabel = ROLE_DISPLAY_NAMES[role] || "Usuário";
   const displayName = user?.nickname || user?.name || "Usuário";
   const userPhoto = user?.avatar || null;
+
+  // Dispara o pré-carregamento assíncrono em momentos ociosos da CPU ao entrar no Dashboard
+  useEffect(() => {
+    if (user) {
+      executarPrefetchPorPapel(user);
+    }
+  }, [user]);
 
   return (
     <div className="dashboard-shell d-flex vh-100 overflow-hidden bg-light">
