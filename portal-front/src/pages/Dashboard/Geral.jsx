@@ -39,7 +39,7 @@ const GeralPage = () => {
 
   return (
     <>
-      <div className="bg-white rounded-3 shadow-sm p-2 px-md-3 py-md-2 mb-2">
+      <div className="bg-white rounded-3 shadow-sm p-2 px-md-3 py-md-2 mb-2 flex-shrink-0">
         <BoasVindasCard />
       </div>
       <GeralDaRole />

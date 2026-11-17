@@ -166,6 +166,19 @@ class AlunoDashboardService
         $metricasConsolidadas = $this->montarDestaquesEDesempenho($alunoId, $turma, $trimestre);
         $studentStats['destaques'] = $metricasConsolidadas['destaques'];
 
+        $periodoAtivo = PeriodoLetivo::ativo()->with('divisoes')->first();
+        $periodoContexto = $periodoAtivo ? [
+            'ano' => (int) $periodoAtivo->ano,
+            'tipo_divisao' => $periodoAtivo->tipo_divisao,
+            'divisao_selecionada' => $trimestre ? "{$trimestre}º Trimestre" : 'todos',
+            'divisoes_disponiveis' => $periodoAtivo->divisoes->map(fn ($div) => [
+                'id_divisao' => $div->id_divisao,
+                'nome' => $div->nome,
+                'pontos' => (float) $div->pontos,
+                'is_atual' => $div->isVigente(),
+            ])->values()->all(),
+        ] : null;
+
         return [
             'aluno' => [
                 'id' => $aluno->id,
@@ -180,6 +193,7 @@ class AlunoDashboardService
                 'ano_letivo' => $turma->ano_letivo,
             ],
             'periodo_selecionado' => $trimestre ? "{$trimestre}º Trimestre" : 'Consolidado Anual',
+            'periodo_contexto' => $periodoContexto,
             'media_geral' => $mediaGeral,
             'frequencia_global' => $frequenciaGlobal,
             'total_alertas_risco' => count($alertasRisco),

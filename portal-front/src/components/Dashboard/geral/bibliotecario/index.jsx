@@ -49,13 +49,13 @@ const GeralBibliotecario = () => {
   }
 
   return (
-    <div className="librarian-overview">
+    <div className="librarian-overview geral-page-viewport-lock">
       {mensagemSucesso && (
-        <div className="alert alert-success py-2" role="status">
+        <div className="alert alert-success py-2 flex-shrink-0" role="status">
           {mensagemSucesso}
         </div>
       )}
-      <div className="row g-3 mb-3">
+      <div className="row g-3 mb-3 flex-shrink-0">
         <div className="col-12 col-xl-6">
           <DestaqueMesCard
             destaque={destaqueDoMes}
@@ -72,8 +72,8 @@ const GeralBibliotecario = () => {
         </div>
       </div>
 
-      <div className="row g-3 align-items-stretch">
-        <div className="col-12 col-lg-4">
+      <div className="row g-3 align-items-stretch geral-fill-row min-h-0">
+        <div className="col-12 col-lg-4 d-flex flex-column min-h-0">
           <DevolucoesTabela
             titulo="Devoluções em atraso"
             emprestimos={devolucoesEmAtraso}
@@ -83,7 +83,7 @@ const GeralBibliotecario = () => {
             onNotificar={setEmprestimoSelecionado}
           />
         </div>
-        <div className="col-12 col-lg-4">
+        <div className="col-12 col-lg-4 d-flex flex-column min-h-0">
           <DevolucoesTabela
             titulo="Devoluções para hoje"
             emprestimos={devolucoesHoje}
@@ -93,7 +93,7 @@ const GeralBibliotecario = () => {
             onNotificar={setEmprestimoSelecionado}
           />
         </div>
-        <div className="col-12 col-lg-4">
+        <div className="col-12 col-lg-4 d-flex flex-column min-h-0">
           <DevolucoesTabela
             titulo="Devoluções nos próximos 3 dias"
             emprestimos={devolucoesProximosDias}

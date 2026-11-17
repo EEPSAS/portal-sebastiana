@@ -4,6 +4,7 @@ use App\Http\Controllers\AlunoDashboardController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BibliotecaController;
 use App\Http\Controllers\CicloController;
+use App\Http\Controllers\DashboardAdminController;
 use App\Http\Controllers\DashboardGeralController;
 use App\Http\Controllers\DisciplinaController;
 use App\Http\Controllers\DonaNanaController;
@@ -119,6 +120,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Dashboard Geral Consolidado (Visão Docente e Especialista)
     Route::get('/dashboard/geral', [DashboardGeralController::class, 'geral']);
+    Route::get('/dashboard/admin', [DashboardAdminController::class, 'geral']);
 
     // Dashboard do Especialista (Inteligência Acadêmica e Gestão Pedagógica)
     Route::post('/turmas/{turma_id}/importar-relatorio', [EspecialistaDashboardController::class, 'importarRelatorio']);

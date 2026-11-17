@@ -25,6 +25,7 @@ class AlunoResumoGlobalResource extends JsonResource
             'aluno' => $this->resource['aluno'] ?? null,
             'turma' => $this->resource['turma'] ?? null,
             'periodo_selecionado' => $this->resource['periodo_selecionado'] ?? 'Consolidado Anual',
+            'periodo_contexto' => $this->resource['periodo_contexto'] ?? null,
             'media_geral' => (float) ($this->resource['media_geral'] ?? 0.0),
             'frequencia_global' => (float) ($this->resource['frequencia_global'] ?? 100.0),
             'total_alertas_risco' => (int) ($this->resource['total_alertas_risco'] ?? 0),

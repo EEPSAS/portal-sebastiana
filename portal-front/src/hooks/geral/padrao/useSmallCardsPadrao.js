@@ -126,6 +126,7 @@ export function useStudentStats() {
     desempenho: resumo?.desempenho || null,
     turmaInfo: resumo?.turma || null,
     alunoInfo: resumo?.aluno || null,
+    periodoContexto: resumo?.periodo_contexto || null,
     periodoSelecionado: resumo?.periodo_selecionado || "Consolidado Anual",
     semMatricula: !loading && estado.semMatricula,
     simulacaoInfo: estado.simulacaoInfo,

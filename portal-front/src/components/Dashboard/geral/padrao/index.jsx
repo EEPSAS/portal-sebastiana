@@ -8,11 +8,13 @@
  * 3. Seção Principal (Rankings Top 3 de Notas e Frequências + Cardápio Escolar preservado).
  */
 
+import { useMemo } from "react";
 import FrequenciaGeralCard from "./Cards/FrequenciaGeralCard";
 import { MelhorNotaCard, NotaAtencaoCard } from "./Cards/NotasDestaqueCard";
 import LeituraAtualCard from "./Cards/LeituraAtualCard";
 import DesempenhoDisciplinasCard from "./Cards/DesempenhoDisciplinasCard";
 import CardapioSemanalCard from "./Cards/CardapioSemanalCard";
+import PainelPeriodoGeral from "../common/PainelPeriodoGeral";
 import { useStudentStats } from "../../../../hooks/geral/padrao/useSmallCardsPadrao";
 import "../especialista/GeralEspecialista.css";
 
@@ -29,6 +31,7 @@ const GeralPadrao = () => {
     destaques,
     desempenho,
     turmaInfo,
+    periodoContexto,
     semMatricula,
     simulacaoInfo,
     trimestreSelecionado,
@@ -37,6 +40,19 @@ const GeralPadrao = () => {
     error,
     handleUpdateReading,
   } = useStudentStats();
+
+  const opcoesEtapa = useMemo(() => {
+    if (periodoContexto?.divisoes_disponiveis?.length) {
+      return [
+        { valor: "", rotulo: "Consolidado Anual" },
+        ...periodoContexto.divisoes_disponiveis.map((div, idx) => ({
+          valor: String(idx + 1),
+          rotulo: `${div.nome}${div.pontos ? ` (${div.pontos} pts)` : ""}${div.is_atual ? " • Atual" : ""}`,
+        })),
+      ];
+    }
+    return OPCOES_ETAPA;
+  }, [periodoContexto]);
 
   // 1. Estado Assíncrono: Carregando (sem live region ruidosa em estados transitórios)
   if (loading && !stats && !semMatricula) {
@@ -97,10 +113,10 @@ const GeralPadrao = () => {
   const notaAtencao = destaques?.nota_atencao;
 
   return (
-    <div className="student-overview">
+    <div className="student-overview geral-page-viewport-lock">
       {/* Aviso transparente quando o Administrador simula a visão de um aluno real */}
       {simulacaoInfo && (
-        <div className="alert alert-info rounded-3 py-2 px-3 mb-2 small d-flex align-items-center gap-2">
+        <div className="alert alert-info rounded-3 py-2 px-3 mb-2 small d-flex align-items-center gap-2 flex-shrink-0">
           <i className="bi bi-eye-fill" aria-hidden="true"></i>
           <span>
             <strong>Modo de Simulação:</strong> exibindo indicadores reais do(a) estudante{" "}
@@ -109,51 +125,33 @@ const GeralPadrao = () => {
         </div>
       )}
 
-      {/* Barra contextual de Turma, Ciclo Escolar e Filtro de Etapa Avaliativa */}
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 p-2 px-3 bg-white rounded-3 border shadow-xs">
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <span className="small fw-bold text-dark text-uppercase d-flex align-items-center gap-1 me-1">
-            <i className="bi bi-calendar-range text-primary" aria-hidden="true"></i>
-            Período:
-          </span>
-          <div
-            className="btn-group btn-group-sm flex-wrap p-1 bg-light rounded-pill border"
-            role="group"
-            aria-label="Filtrar indicadores do estudante por etapa avaliativa"
-          >
-            {OPCOES_ETAPA.map((opcao) => {
-              const isAtiva = trimestreSelecionado === opcao.valor;
-              return (
-                <button
-                  key={opcao.valor || "anual"}
-                  type="button"
-                  className={`btn-pill-filter ${isAtiva ? "is-active" : ""}`}
-                  aria-pressed={isAtiva}
-                  onClick={() => setTrimestreSelecionado(opcao.valor)}
-                >
-                  {opcao.rotulo}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {turmaInfo && (
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            <span className="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
-              {turmaInfo.nome_identificador}
-            </span>
-            {turmaInfo.ciclo && (
-              <span className="badge bg-light text-secondary border rounded-pill px-3 py-2">
-                {turmaInfo.ciclo}
+      {/* Barra padronizada de Período / Etapa Avaliativa */}
+      <PainelPeriodoGeral
+        rotulo="Período:"
+        opcoes={opcoesEtapa}
+        valorSelecionado={trimestreSelecionado}
+        onSelecionar={(v) => setTrimestreSelecionado(v)}
+        anoLetivo={periodoContexto?.ano || turmaInfo?.ano_letivo}
+        badgeExtra={
+          turmaInfo && (
+            <>
+              <span className="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
+                {turmaInfo.nome_identificador}
               </span>
-            )}
-          </div>
-        )}
-      </div>
+              {turmaInfo.ciclo && (
+                <span className="badge bg-light text-secondary border rounded-pill px-3 py-2">
+                  {turmaInfo.ciclo}
+                </span>
+              )}
+            </>
+          )
+        }
+        ariaLabel="Filtrar indicadores do estudante por etapa avaliativa"
+        className="flex-shrink-0"
+      />
 
       {/* 1. Grid de 4 Cards Superiores alimentados exclusivamente pelo backend */}
-      <div className="student-overview__metrics row g-3 mb-3">
+      <div className="student-overview__metrics row g-3 mb-3 flex-shrink-0">
         <FrequenciaGeralCard
           porcentagem={stats?.frequenciaGeral?.porcentagem ?? 0}
           classificacao={stats?.frequenciaGeral?.classificacao ?? "Sem registros"}
@@ -181,14 +179,14 @@ const GeralPadrao = () => {
       </div>
 
       {/* 2. Seção Principal: Desempenho Real (8 colunas) e Cardápio (4 colunas) */}
-      <div className="student-overview__details row g-3 align-items-stretch">
-        <div className="col-12 col-lg-8 d-flex">
+      <div className="student-overview__details row g-3 align-items-stretch geral-fill-row min-h-0">
+        <div className="col-12 col-lg-8 d-flex min-h-0">
           <DesempenhoDisciplinasCard
             dadosDisciplinas={desempenho?.disciplinas}
             dadosFrequencias={desempenho?.frequencias}
           />
         </div>
-        <div className="col-12 col-lg-4 d-flex">
+        <div className="col-12 col-lg-4 d-flex min-h-0">
           <CardapioSemanalCard />
         </div>
       </div>

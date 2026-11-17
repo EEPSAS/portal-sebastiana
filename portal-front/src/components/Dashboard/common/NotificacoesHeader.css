@@ -12,3 +12,73 @@
     opacity: 0;
   }
 }
+
+/* Feedback visual do botão do sino: dimensão tátil fixa, realce no hover, clique e foco. */
+.notificacoes-sino {
+  width: 38px;
+  height: 38px;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.notificacoes-sino:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 10px rgba(13, 35, 70, 0.18);
+}
+
+.notificacoes-sino:active {
+  transform: scale(0.94);
+}
+
+.notificacoes-sino:focus-visible {
+  box-shadow: 0 0 0 0.25rem rgba(13, 35, 70, 0.28);
+}
+
+/* Itens da lista de notificações: evita utilitários !important que bloqueavam o hover/active. */
+.notificacoes-item {
+  cursor: pointer;
+  background-color: #ffffff;
+  border-left: 3px solid transparent;
+  transition:
+    background-color 0.15s ease,
+    border-left-color 0.15s ease,
+    padding-left 0.15s ease;
+}
+
+.notificacoes-item:hover,
+.notificacoes-item:focus-visible {
+  background-color: rgba(13, 35, 70, 0.07);
+  border-left-color: var(--dashboard-navy, #0d2346);
+}
+
+.notificacoes-item:active {
+  background-color: rgba(13, 35, 70, 0.14);
+}
+
+.notificacoes-item--importante {
+  background-color: rgba(226, 42, 113, 0.08);
+  border-left-color: rgba(226, 42, 113, 0.45);
+}
+
+.notificacoes-item--importante:hover,
+.notificacoes-item--importante:focus-visible {
+  background-color: rgba(226, 42, 113, 0.16);
+  border-left-color: var(--dashboard-pink, #e22a71);
+}
+
+.notificacoes-item--importante:active {
+  background-color: rgba(226, 42, 113, 0.24);
+}
+
+.notificacoes-item-seta {
+  transition: transform 0.15s ease;
+}
+
+.notificacoes-item:hover .notificacoes-item-seta,
+.notificacoes-item:focus-visible .notificacoes-item-seta {
+  transform: translateX(3px);
+}

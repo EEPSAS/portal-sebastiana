@@ -290,10 +290,20 @@ test('CSV import creates individual grade and attendance alerts after successful
         'usuario_id' => $aluno->id,
     ]);
 
+    $alunoSemRisco = User::factory()->aluno()->create([
+        'name' => 'Bruno Sem Risco',
+        'email' => 'bruno.sem.risco@aluno.mg.gov.br',
+    ]);
+    Matricula::factory()->create([
+        'turma_id' => $turma->id_turma,
+        'usuario_id' => $alunoSemRisco->id,
+    ]);
+
     $csv = implode("\n", [
         'ALUNO;Física;',
         ';1º Trimestre;FALTAS',
         'ALUNO ALERTA CSV;10;6',
+        'BRUNO SEM RISCO;28;1',
     ]);
     $arquivo = UploadedFile::fake()->createWithContent('alertas.csv', $csv);
 
@@ -304,11 +314,13 @@ test('CSV import creates individual grade and attendance alerts after successful
         ])
         ->assertOk()
         ->assertJsonPath('status', 'sucesso')
-        ->assertJsonPath('dados.notas_sincronizadas', 1)
-        ->assertJsonPath('dados.frequencias_sincronizadas', 1);
+        ->assertJsonPath('dados.notas_sincronizadas', 2)
+        ->assertJsonPath('dados.frequencias_sincronizadas', 2);
 
+    // Somente o aluno com nota baixa (< 60%) e presença crítica (<= 75%) recebe alertas
     expect($aluno->notifications()->where('data->tipo', 'nota_alerta')->count())->toBe(1)
-        ->and($aluno->notifications()->where('data->tipo', 'frequencia_risco')->count())->toBe(1);
+        ->and($aluno->notifications()->where('data->tipo', 'frequencia_risco')->count())->toBe(1)
+        ->and($alunoSemRisco->notifications()->count())->toBe(0);
 });
 
 test('lembrete apos tres dias e enviado uma unica vez ao aluno e ao criador', function () {

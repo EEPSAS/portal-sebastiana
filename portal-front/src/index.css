@@ -477,6 +477,7 @@ button {
 
 /* Em telas desktop (>= 992px), páginas com viewport-lock travam o dashboard-panel para rolagem interna pura */
 @media (min-width: 992px) {
+  .dashboard-panel:has(.geral-page-viewport-lock),
   .dashboard-panel:has(.modulo-page-viewport-lock),
   .dashboard-panel:has(.turmas-page-viewport-lock),
   .dashboard-panel:has(.boletim-page-viewport-lock),

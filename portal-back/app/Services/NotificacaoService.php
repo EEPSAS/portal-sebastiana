@@ -250,7 +250,8 @@ class NotificacaoService
                 }
 
                 $percentual = ((float) $nota->valor_nota / (float) $nota->valor_maximo) * 100;
-                $categoria = $percentual < 60 ? 'alerta' : ($percentual >= 80 ? 'destaque' : null);
+                // Só notas de risco (< 60%) geram aviso; desempenho bom não notifica ninguém.
+                $categoria = $percentual < 60 ? 'alerta' : null;
                 if ($categoria === null) {
                     continue;
                 }
@@ -258,12 +259,8 @@ class NotificacaoService
                 $percentualFormatado = number_format($percentual, 1, ',', '.');
                 $notaFormatada = number_format((float) $nota->valor_nota, 2, ',', '.');
                 $maximoFormatado = number_format((float) $nota->valor_maximo, 2, ',', '.');
-                $titulo = $categoria === 'alerta'
-                    ? "Atenção à nota em {$disciplina->nome}"
-                    : "Bom desempenho em {$disciplina->nome}";
-                $assuntoAluno = $categoria === 'alerta'
-                    ? "Sua nota foi {$notaFormatada} de {$maximoFormatado} ({$percentualFormatado}%). Consulte seu boletim e converse com a equipe pedagógica."
-                    : "Sua nota foi {$notaFormatada} de {$maximoFormatado} ({$percentualFormatado}%). Continue se dedicando!";
+                $titulo = "Atenção à nota em {$disciplina->nome}";
+                $assuntoAluno = "Sua nota foi {$notaFormatada} de {$maximoFormatado} ({$percentualFormatado}%). Consulte seu boletim e converse com a equipe pedagógica.";
                 $eventKey = "academico:nota:{$nota->id_nota}:{$categoria}";
                 $payload = [
                     'titulo' => $titulo,

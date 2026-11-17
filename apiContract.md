@@ -511,7 +511,8 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
 
 | Método | Endpoint | Acesso | API Resource (Back) | Serviço Front | Dados Retornados por Perfil |
 |---|---|---|---|---|---|
-| `GET` | `/api/dashboard/geral?divisao={nome|todos}` | Especialista / Prof / Adm | `DashboardGeralResource` | `geralService()` / `fetchDashboardGeral()` | KPIs, médias/frequências por turma filtrados pela etapa ou pelo ano consolidado, `disciplinas_detalhadas` com médias/frequências/risco por matéria e cinco últimas notificações únicas |
+| `GET` | `/api/dashboard/geral?divisao={nome|todos}` | Especialista / Prof / Adm | `DashboardGeralResource` | `geralService()` / `fetchDashboardGeral()` | KPIs, médias/frequências por turma filtrados pela etapa ou pelo ano consolidado, `disciplinas_detalhadas` com médias/frequências/risco/desempenho por matéria e cinco últimas notificações únicas |
+| `GET` | `/api/dashboard/admin` | Adm | JSON (DashboardAdmin) | `fetchDashboardAdmin()` | Indicadores de gestão do sistema: distribuição e status de usuários, pendências de aprovação, sessões ativas, cadastros recentes e checklist de saúde da configuração escolar |
 | `GET` | `/api/alunos/{aluno_id}/turmas/{turma_id}/resumo-global?trimestre={1|2|3}` | Aluno / Prof / Esp / Adm | `AlunoResumoGlobalResource` | `dashboardService.obterResumoAluno()` | Média geral, frequência global, turma/ciclo, empréstimo de leitura atual, destaques (`melhor_nota` / `nota_atencao`) e rankings Top 3 (`desempenho.disciplinas` e `desempenho.frequencias`) |
 | `GET` | `/api/turmas/{turma_id}/resumo-gerencial` | Especialista / Adm | `EspecialistaResumoGerencialResource` | `dashboardService.obterResumoEspecialista()` | Médias por componente, evasão e índice de frequência |
 | `GET` | `/api/turmas/{turma_id}/alunos-criticos` | Especialista / Adm | `AlunoCriticoResource` | `dashboardService.obterAlunosCriticos()` | Alunos com risco de retenção por falta ou nota |
@@ -561,6 +562,16 @@ Payload retornado em `/api/dashboard/geral` para Especialistas, Professores e Ad
         "alunosComFrequenciaInsuficiente": 0,
         "alunosPorNota": [],
         "alunosPorFrequencia": []
+      },
+      "desempenho": {
+        "nota": {
+          "piores": [{ "posicao": 1, "id": "nota-1-1", "nome": "Aluno A", "turma": "1º Ano A", "valor": 45.0 }],
+          "melhores": [{ "posicao": 1, "id": "nota-2-1", "nome": "Aluno B", "turma": "1º Ano A", "valor": 95.0 }]
+        },
+        "frequencia": {
+          "piores": [{ "posicao": 1, "id": "freq-1-1", "nome": "Aluno A", "turma": "1º Ano A", "valor": 70.0 }],
+          "melhores": [{ "posicao": 1, "id": "freq-2-1", "nome": "Aluno B", "turma": "1º Ano A", "valor": 100.0 }]
+        }
       }
     }
   ],

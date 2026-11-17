@@ -45,8 +45,25 @@ test('specialist can manually create a grade using the existing grade table and 
         ->assertJsonPath('valor_nota', 27)
         ->assertJsonPath('usuario_id', $aluno->id);
 
+    // Notas altas (>= 60%) não devem disparar notificações de desempenho positivo
     expect(Nota::query()->where('usuario_id', $aluno->id)->count())->toBe(1)
-        ->and($aluno->notifications()->where('data->tipo', 'nota_destaque')->count())->toBe(1);
+        ->and($aluno->notifications()->count())->toBe(0);
+
+    // Somente notas abaixo de 60% geram alerta de cunho negativo
+    $this->actingAs($especialista, 'sanctum')
+        ->postJson('/api/notas', [
+            'turma_id' => $turma->id_turma,
+            'disciplina_id' => $disciplina->id_disciplina,
+            'usuario_id' => $aluno->id,
+            'periodo_letivo' => '2º Trimestre',
+            'tipo_avaliacao' => 'Avaliação manual',
+            'valor_nota' => 12,
+            'valor_maximo' => 30,
+            'data_registro' => '2026-06-10',
+        ])
+        ->assertCreated();
+
+    expect($aluno->notifications()->where('data->tipo', 'nota_alerta')->count())->toBe(1);
 });
 
 test('specialist can manually create individual attendance and trigger low attendance alerts', function () {

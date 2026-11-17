@@ -312,3 +312,50 @@
   box-shadow: 0 2px 8px rgba(13, 35, 70, 0.18);
   border-color: var(--dashboard-navy, #0d2346);
 }
+
+/* ==========================================================================
+   4. Viewport Lock e Confinamento de Scroll do Geral (Desktop >= 992px)
+   ========================================================================== */
+@media (min-width: 992px) {
+  .geral-page-viewport-lock {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .geral-page-viewport-lock > :not(.geral-fill-row) {
+    flex-shrink: 0;
+  }
+
+  .geral-fill-row {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+    margin-top: 0.35rem !important;
+  }
+
+  .geral-fill-row > .row {
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+
+  .geral-updates-card {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+
+  .geral-updates-scroll {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+  }
+}
+

@@ -655,6 +655,20 @@ export const AlunoResumoGlobalSchema = z.object({
       }),
     })
     .nullable(),
+  periodo_contexto: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+
+// Ranking Top 5 (pior/melhor desempenho) de alunos por disciplina
+const ItemRankingDesempenhoSchema = z.object({
+  posicao: z.number().int(),
+  id: z.string(),
+  nome: z.string(),
+  turma: z.string().nullable().optional(),
+  valor: z.number(),
+});
+const RankingDesempenhoSchema = z.object({
+  piores: z.array(ItemRankingDesempenhoSchema),
+  melhores: z.array(ItemRankingDesempenhoSchema),
 });
 
 // Espelha 1:1 App\Http\Resources\DashboardGeralResource
@@ -727,8 +741,51 @@ export const DashboardGeralSchema = z.object({
           alunosPorFrequencia: z.array(z.record(z.string(), z.unknown())),
         })
         .optional(),
+      desempenho: z
+        .object({
+          nota: RankingDesempenhoSchema,
+          frequencia: RankingDesempenhoSchema,
+        })
+        .optional(),
     })
   ),
   ultimas_notificacoes: z.array(z.record(z.string(), z.unknown())),
   periodo_contexto: z.record(z.string(), z.unknown()).nullable(),
+});
+
+// Espelha 1:1 App\Services\AdminDashboardService::obterVisaoAdmin (GET /api/dashboard/admin)
+export const DashboardAdminSchema = z.object({
+  usuarios: z.object({
+    total: z.number().int(),
+    por_perfil: z.record(z.string(), z.number().int()),
+    ativos: z.number().int(),
+    inativos: z.number().int(),
+    pendentes: z.number().int(),
+  }),
+  pendencias: z.object({
+    alunos_pendentes: z.number().int(),
+    professores_pendentes: z.number().int(),
+  }),
+  sessoes_ativas: z.number().int(),
+  cadastros_recentes: z.array(
+    z.object({
+      id: z.number().int(),
+      name: z.string(),
+      email: z.string().nullable().optional(),
+      role: z.string(),
+      ativo: z.boolean(),
+      status_confirmacao: z.string().nullable().optional(),
+      created_at: z.string().nullable().optional(),
+      tempoAtras: z.string().nullable().optional(),
+    })
+  ),
+  saude_sistema: z.array(
+    z.object({
+      id: z.string(),
+      titulo: z.string(),
+      status: z.enum(['ok', 'alerta']),
+      detalhe: z.string(),
+      destino: z.string(),
+    })
+  ),
 });

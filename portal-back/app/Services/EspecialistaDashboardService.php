@@ -2142,7 +2142,12 @@ class EspecialistaDashboardService
         // Total de notícias publicadas no sistema
         $noticiasCount = Noticia::count();
 
-        $ultimasNotificacoes = $this->obterUltimasNotificacoes();
+        // Professor enxerga apenas notificações destinadas aos alunos das suas turmas
+        $ultimasNotificacoes = $this->obterUltimasNotificacoes(
+            $isDocenteEstrito
+                ? $matriculasAtivasEscopo->pluck('usuario_id')->filter()->unique()->values()->all()
+                : null
+        );
 
         // Nomes e detalhes das disciplinas sob regência do docente ou catálogo institucional na simulação Adm/Especialista
         if ($isDocenteEstrito) {
@@ -2257,7 +2262,8 @@ class EspecialistaDashboardService
 
             $alunosPorNota = [];
             $alunosPorFreq = [];
-
+            $todosPorNota = [];
+            $todosPorFreq = [];
             foreach ($matriculas as $mat) {
                 $aluno = $mat->aluno;
                 if (! $aluno) {
@@ -2273,9 +2279,15 @@ class EspecialistaDashboardService
                     $somaMaxAluno = (float) $notasAluno->sum(fn ($n) => $n->valor_maximo > 0 ? (float) $n->valor_maximo : $pontosDivisao);
                     if ($somaMaxAluno > 0) {
                         $percentualNota = ($somaNotasAluno / $somaMaxAluno) * 100;
+                        $turmaRef = $turmasVinculadas->firstWhere('id_turma', $mat->turma_id);
+                        $turmaNome = $turmaRef ? $turmaRef->nome_identificador : 'Turma';
+                        $todosPorNota[] = [
+                            'id' => "nota-{$aluno->id}-{$d->id_disciplina}",
+                            'nome' => $aluno->name,
+                            'turma' => $turmaNome,
+                            'valor' => round($percentualNota, 1),
+                        ];
                         if ($percentualNota < 60.0) {
-                            $turmaRef = $turmasVinculadas->firstWhere('id_turma', $mat->turma_id);
-                            $turmaNome = $turmaRef ? $turmaRef->nome_identificador : 'Turma';
                             $alunosPorNota[] = [
                                 'id' => "nota-{$aluno->id}-{$d->id_disciplina}",
                                 'nome' => $aluno->name,
@@ -2307,9 +2319,15 @@ class EspecialistaDashboardService
 
                 if ($aulas > 0) {
                     $percentualPresenca = (1 - ($faltas / $aulas)) * 100;
+                    $turmaRef = $turmasVinculadas->firstWhere('id_turma', $mat->turma_id);
+                    $turmaNome = $turmaRef ? $turmaRef->nome_identificador : 'Turma';
+                    $todosPorFreq[] = [
+                        'id' => "freq-{$aluno->id}-{$d->id_disciplina}",
+                        'nome' => $aluno->name,
+                        'turma' => $turmaNome,
+                        'valor' => round($percentualPresenca, 1),
+                    ];
                     if ($percentualPresenca < 75.0) {
-                        $turmaRef = $turmasVinculadas->firstWhere('id_turma', $mat->turma_id);
-                        $turmaNome = $turmaRef ? $turmaRef->nome_identificador : 'Turma';
                         $alunosPorFreq[] = [
                             'id' => "freq-{$aluno->id}-{$d->id_disciplina}",
                             'nome' => $aluno->name,
@@ -2339,6 +2357,11 @@ class EspecialistaDashboardService
                     'alunosComFrequenciaInsuficiente' => count($alunosPorFreq),
                     'alunosPorNota' => $alunosPorNota,
                     'alunosPorFrequencia' => $alunosPorFreq,
+                ],
+                // Rankings Top 5 (pior/melhor desempenho) dos alunos com lançamento na etapa
+                'desempenho' => [
+                    'nota' => $this->montarRankingDesempenho($todosPorNota),
+                    'frequencia' => $this->montarRankingDesempenho($todosPorFreq),
                 ],
             ];
         })->values()->toArray();
@@ -2379,11 +2402,35 @@ class EspecialistaDashboardService
     }
 
     /**
+     * Monta os rankings de pior e melhor desempenho (Top N) a partir de itens com `valor` percentual.
+     * Desempata pelo nome para manter a ordem estável.
+     *
+     * @param  array<int, array<string, mixed>>  $itens
+     * @return array{piores: array<int, array<string, mixed>>, melhores: array<int, array<string, mixed>>}
+     */
+    private function montarRankingDesempenho(array $itens, int $limite = 5): array
+    {
+        $posicionar = fn (Collection $colecao) => $colecao
+            ->take($limite)
+            ->values()
+            ->map(fn (array $item, int $indice) => ['posicao' => $indice + 1] + $item)
+            ->all();
+
+        $colecao = collect($itens);
+
+        return [
+            'piores' => $posicionar($colecao->sortBy([['valor', 'asc'], ['nome', 'asc']])),
+            'melhores' => $posicionar($colecao->sortBy([['valor', 'desc'], ['nome', 'asc']])),
+        ];
+    }
+
+    /**
      * Agrupa as cópias por destinatário para exibir cada notificação uma única vez.
      *
+     * @param  array<int, int>|null  $alunosIds  Quando informado, restringe aos destinatários indicados (escopo do professor).
      * @return array<int, array<string, mixed>>
      */
-    private function obterUltimasNotificacoes(): array
+    private function obterUltimasNotificacoes(?array $alunosIds = null): array
     {
         $autoresIds = User::query()
             ->whereIn('role', [
@@ -2414,6 +2461,10 @@ class EspecialistaDashboardService
                     $query->where('notifiable_type', User::class)
                         ->whereIn('notifiable_id', $bibliotecariasIds);
                 });
+            })
+            ->when($alunosIds !== null, function ($query) use ($alunosIds) {
+                $query->where('notifiable_type', User::class)
+                    ->whereIn('notifiable_id', $alunosIds);
             })
             ->selectRaw("{$expressaoMaxId} as id, MAX(created_at) as created_at, {$expressaoEventKey} as event_key")
             ->groupByRaw($expressaoEventKey)

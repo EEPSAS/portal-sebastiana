@@ -3,6 +3,8 @@ import { useDashboardEspecialista } from "../../../../hooks/geral/especialista/u
 import GeralSmallCards from "./Cards/EstatisticaDocenteCard.jsx";
 import GeralMediumCards from "./Cards/ResumoTurmasCard.jsx";
 import LatestUpdates from "./LatestUpdates/UltimasAtualizacoes.jsx";
+import PainelPeriodoGeral from "../common/PainelPeriodoGeral.jsx";
+import { montarOpcoesPeriodoContexto } from "../common/geralPeriodoUtils.js";
 
 /**
  * GeralEspecialista (index.jsx) - Painel Analítico do Especialista Pedagógico
@@ -72,57 +74,27 @@ const GeralEspecialista = () => {
   }
 
   return (
-    <div className="geral-especialista-page">
+    <div className="geral-especialista-page geral-page-viewport-lock">
       {error && (
-        <div className="alert alert-danger rounded-3 py-2" role="alert">
+        <div className="alert alert-danger rounded-3 py-2 flex-shrink-0" role="alert">
           Não foi possível atualizar os dados da etapa selecionada: {error}
         </div>
       )}
+
       {periodoContexto && (
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 p-2 px-3 bg-white rounded-3 border shadow-xs">
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span className="small fw-bold text-dark text-uppercase d-flex align-items-center gap-1 me-2">
-              <i className="bi bi-calendar-range text-primary" aria-hidden="true"></i>
-              Etapa Avaliativa:
-            </span>
-            <div
-              className="btn-group btn-group-sm flex-wrap p-1 bg-light rounded-pill border"
-              role="group"
-              aria-label="Filtrar indicadores por etapa do período letivo"
-            >
-              <button
-                type="button"
-                className={`btn-pill-filter ${divisaoAtiva === "todos" ? "is-active" : ""}`}
-                aria-pressed={divisaoAtiva === "todos"}
-                onClick={() => setDivisaoSelecionada("todos")}
-              >
-                Consolidado Geral
-              </button>
-              {(periodoContexto.divisoes_disponiveis || []).map((divisao) => {
-                const isAtiva = divisaoAtiva === divisao.nome;
-                return (
-                  <button
-                    type="button"
-                    key={divisao.id_divisao || divisao.nome}
-                    className={`btn-pill-filter ${isAtiva ? "is-active" : ""}`}
-                    aria-pressed={isAtiva}
-                    onClick={() => setDivisaoSelecionada(divisao.nome)}
-                  >
-                    {divisao.nome} ({divisao.pontos} pts)
-                    {divisao.is_atual ? " • Atual" : ""}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <span className="badge bg-light text-secondary border rounded-pill px-3 py-2 small">
-            Ano Letivo {periodoContexto.ano}
-          </span>
-        </div>
+        <PainelPeriodoGeral
+          rotulo="Etapa Avaliativa:"
+          opcoes={montarOpcoesPeriodoContexto(periodoContexto, "Consolidado Geral")}
+          valorSelecionado={divisaoAtiva || "todos"}
+          onSelecionar={(v) => setDivisaoSelecionada(v)}
+          anoLetivo={periodoContexto.ano}
+          ariaLabel="Filtrar indicadores por etapa do período letivo"
+          className="flex-shrink-0"
+        />
       )}
 
       {/* Linha superior: 4 Small Cards de KPIs pedagógicos */}
-      <div className="row g-2 g-md-3">
+      <div className="row g-2 g-md-3 flex-shrink-0">
         {cards.map((card) => (
           <GeralSmallCards
             key={card.id}
@@ -137,30 +109,34 @@ const GeralEspecialista = () => {
       </div>
 
       {/* Linha intermediária: Gráficos Recharts de Médias e Frequências por Turma */}
-      <GeralMediumCards
-        medias={medias.map((item) => ({
-          ...item,
-          nota: Number(item.nota ?? 0) * 10,
-        }))}
-        frequencias={frequencias}
-        loading={false}
-        error={null}
-        escalaNotaMaxima={100}
-        mostrarLinhasReferencia={false}
-        badgeMedia={
-          divisaoAtiva && divisaoAtiva !== "todos" && pontosDivisaoSelecionada > 0
-            ? `Meta mín. 60% (${(pontosDivisaoSelecionada * 0.6).toFixed(1)} pts)`
-            : "Meta mín. 60%"
-        }
-        href="/dashboard/turmas?aba=notas"
-      />
+      <div className="flex-shrink-0">
+        <GeralMediumCards
+          medias={medias.map((item) => ({
+            ...item,
+            nota: Number(item.nota ?? 0) * 10,
+          }))}
+          frequencias={frequencias}
+          loading={false}
+          error={null}
+          escalaNotaMaxima={100}
+          mostrarLinhasReferencia={false}
+          badgeMedia={
+            divisaoAtiva && divisaoAtiva !== "todos" && pontosDivisaoSelecionada > 0
+              ? `Meta mín. 60% (${(pontosDivisaoSelecionada * 0.6).toFixed(1)} pts)`
+              : "Meta mín. 60%"
+          }
+          href="/dashboard/turmas?aba=notas"
+        />
+      </div>
 
-      {/* Linha inferior: Feed das últimas notificações escolares */}
-      <LatestUpdates
-        updates={updates}
-        loading={loading}
-        error={error}
-      />
+      {/* Linha inferior: Feed das últimas notificações escolares preenchendo a viewport com scroll interno */}
+      <div className="geral-fill-row d-flex flex-column min-h-0">
+        <LatestUpdates
+          updates={updates}
+          loading={loading}
+          error={error}
+        />
+      </div>
     </div>
   );
 };

@@ -280,3 +280,37 @@ test('dashboard geral nao grava no banco e executa quantidade fixa de queries', 
             ->and($queries->count())->toBeLessThanOrEqual(30);
     }
 });
+
+test('disciplinas detalhadas expoem rankings de pior e melhor desempenho limitados a 5', function () {
+    $professor = User::where('email', 'carlos.silva@sebastiana.edu.br')->first();
+
+    $response = $this->actingAs($professor, 'sanctum')->getJson('/api/dashboard/geral');
+    $response->assertOk();
+
+    foreach ($response->json('disciplinas_detalhadas') as $disciplina) {
+        foreach (['nota', 'frequencia'] as $indicador) {
+            $ranking = $disciplina['desempenho'][$indicador];
+            expect($ranking)->toHaveKeys(['piores', 'melhores'])
+                ->and(count($ranking['piores']))->toBeLessThanOrEqual(5)
+                ->and(count($ranking['melhores']))->toBeLessThanOrEqual(5);
+
+            $piores = collect($ranking['piores'])->pluck('valor')->all();
+            $melhores = collect($ranking['melhores'])->pluck('valor')->all();
+            $ordenadosAsc = $piores;
+            sort($ordenadosAsc);
+            $ordenadosDesc = $melhores;
+            rsort($ordenadosDesc);
+
+            expect($piores)->toBe($ordenadosAsc)->and($melhores)->toBe($ordenadosDesc);
+        }
+    }
+});
+
+test('professor sem alunos nas turmas nao recebe notificacoes globais', function () {
+    $professor = User::factory()->create(['role' => UserRole::PROFESSOR, 'status_confirmacao' => 'confirmado']);
+
+    $response = $this->actingAs($professor, 'sanctum')->getJson('/api/dashboard/geral');
+
+    $response->assertOk();
+    expect($response->json('ultimas_notificacoes'))->toBeEmpty();
+});

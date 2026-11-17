@@ -135,8 +135,9 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
                   <div
                     className="p-3 rounded-4 h-100 d-flex flex-column justify-content-between"
                     style={{
-                      backgroundColor: "var(--dashboard-gray-soft)",
-                      border: "1px solid var(--dashboard-gray-soft)",
+                      backgroundColor: "#f8fafc",
+                      border: "1px solid #dce5f2",
+                      boxShadow: "0 1px 3px rgba(13, 35, 70, 0.03)",
                     }}
                   >
                     <div className="d-flex align-items-center gap-3 mb-2">
@@ -145,17 +146,20 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
                         style={{
                           width: "32px",
                           height: "32px",
-                          backgroundColor: "var(--dashboard-navy)",
+                          backgroundColor: "var(--dashboard-navy, #0d2346)",
                           fontSize: "0.85rem",
                         }}
                       >
                         {item.posicao}
                       </span>
                       <div className="overflow-hidden">
-                        <span className="d-block small text-secondary fw-semibold text-truncate">
+                        <span
+                          className="d-block fw-bold text-truncate"
+                          style={{ color: "#0f2b5c", fontSize: "0.88rem", letterSpacing: "-0.01em" }}
+                        >
                           {item.nome}
                         </span>
-                        <span className="fw-bold fs-5 text-dark lh-1">
+                        <span className="fw-bolder fs-5 text-dark lh-1 mt-0.5 d-block">
                           {String(item.valor).replace(".", ",")}
                           {sufixo}
                         </span>
@@ -165,7 +169,7 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
                     <MiniProgressBar
                       valor={item.valor}
                       max={maxEscala}
-                      cor="var(--dashboard-navy)"
+                      cor="var(--dashboard-navy, #0d2346)"
                       sufixo={sufixo}
                     />
                   </div>
@@ -185,8 +189,9 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
                   <div
                     className="p-3 rounded-4 h-100 d-flex flex-column justify-content-between"
                     style={{
-                      backgroundColor: "var(--dashboard-gray-soft)",
-                      border: "1px solid var(--dashboard-gray-soft)",
+                      backgroundColor: "#fffafa",
+                      border: "1px solid #f3d8e0",
+                      boxShadow: "0 1px 3px rgba(230, 57, 111, 0.04)",
                     }}
                   >
                     <div className="d-flex align-items-center gap-3 mb-2">
@@ -195,17 +200,23 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
                         style={{
                           width: "32px",
                           height: "32px",
-                          backgroundColor: "var(--dashboard-pink)",
+                          backgroundColor: "var(--dashboard-pink, #e6396f)",
                           fontSize: "0.85rem",
                         }}
                       >
                         {item.posicao}
                       </span>
                       <div className="overflow-hidden">
-                        <span className="d-block small text-secondary fw-semibold text-truncate">
+                        <span
+                          className="d-block fw-bold text-truncate"
+                          style={{ color: "#0f2b5c", fontSize: "0.88rem", letterSpacing: "-0.01em" }}
+                        >
                           {item.nome}
                         </span>
-                        <span className="fw-bold fs-5 text-dark lh-1">
+                        <span
+                          className="fw-bolder fs-5 lh-1 mt-0.5 d-block"
+                          style={{ color: "var(--dashboard-pink, #e6396f)" }}
+                        >
                           {String(item.valor).replace(".", ",")}
                           {sufixo}
                         </span>
@@ -215,7 +226,7 @@ export default function DesempenhoDisciplinasCard({ dadosDisciplinas, dadosFrequ
                     <MiniProgressBar
                       valor={item.valor}
                       max={maxEscala}
-                      cor="var(--dashboard-pink)"
+                      cor="var(--dashboard-pink, #e6396f)"
                       sufixo={sufixo}
                     />
                   </div>

@@ -1,6 +1,7 @@
 import { api } from './api';
 import {
   AlunoResumoGlobalSchema,
+  DashboardAdminSchema,
   DashboardGeralSchema,
   validarContratoZod,
 } from '../utils/academicoSchemas';
@@ -300,7 +301,27 @@ export async function fetchAlunoDesempenho(alunoId = null, turmaId = null, trime
   return resumo?.desempenho || null;
 }
 
+/**
+ * GET /api/dashboard/admin
+ * Indicadores de governança e saúde do sistema para o Geral do Administrador.
+ */
+export async function fetchDashboardAdmin() {
+  const response = await api('/dashboard/admin');
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => null);
+    throw new Error(
+      errData?.message || 'Não foi possível carregar os dados administrativos no momento.'
+    );
+  }
+
+  const json = await response.json();
+  const payload = json?.data && json?.data?.usuarios ? json.data : json;
+  return validarContratoZod(DashboardAdminSchema, payload, 'GET /dashboard/admin');
+}
+
 export const dashboardService = {
+  fetchDashboardAdmin,
   fetchDashboardGeral,
   obterResumoAluno,
   resolverContextoSimulacaoAluno,

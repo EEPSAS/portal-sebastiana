@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import {
   listarNotificacoes,
@@ -30,6 +30,25 @@ const NotificacoesHeader = () => {
   const [confirmando, setConfirmando] = useState(false);
   const [erro, setErro] = useState("");
   const [notificacoesNovas, setNotificacoesNovas] = useState(null);
+  // Referência do contêiner do sino para detectar cliques fora dele.
+  const raizRef = useRef(null);
+
+  // Fecha a caixa ao clicar fora ou apertar Esc; só escuta enquanto estiver aberta.
+  useEffect(() => {
+    if (!aberta) return;
+    const fecharFora = (event) => {
+      if (!raizRef.current?.contains(event.target)) setAberta(false);
+    };
+    const fecharEsc = (event) => {
+      if (event.key === "Escape") setAberta(false);
+    };
+    document.addEventListener("mousedown", fecharFora);
+    document.addEventListener("keydown", fecharEsc);
+    return () => {
+      document.removeEventListener("mousedown", fecharFora);
+      document.removeEventListener("keydown", fecharEsc);
+    };
+  }, [aberta]);
 
   useEffect(() => {
     let ativo = true;
@@ -188,16 +207,18 @@ const NotificacoesHeader = () => {
 
   return (
     <>
-      <div className="position-relative">
+      <div className="position-relative" ref={raizRef}>
         <button
           type="button"
-          className="btn btn-outline-primary btn-sm rounded-circle position-relative"
+          className={`btn btn-sm rounded-circle position-relative d-inline-flex align-items-center justify-content-center notificacoes-sino ${
+            aberta ? "btn-primary shadow-sm is-open" : "btn-outline-primary"
+          }`}
           aria-label="Abrir notificações"
           aria-expanded={aberta}
           title="Notificações"
           onClick={abrirCaixa}
         >
-          <i className="bi bi-bell"></i>
+          <i className={`bi ${aberta ? "bi-bell-fill" : "bi-bell"}`}></i>
           {meta.total > 0 && (
             <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
               {meta.total > 99 ? "99+" : meta.total}
@@ -226,11 +247,12 @@ const NotificacoesHeader = () => {
               <h2 className="h6 fw-bold mb-0">Notificações</h2>
               <button
                 type="button"
-                className="btn btn-sm btn-outline-secondary rounded-pill"
+                className="btn btn-sm btn-outline-primary rounded-pill fw-semibold notificacoes-acao-lidas"
                 disabled={!temNotificacoesPendentes}
+                title="Marcar notificações padrão como lidas"
                 onClick={confirmarTodasPadrao}
               >
-                Verificar padrões
+                Marcar como lidas
               </button>
             </div>
 
@@ -255,12 +277,16 @@ const NotificacoesHeader = () => {
                     <button
                       key={notificacao.id}
                       type="button"
-                      className={`list-group-item list-group-item-action text-start fw-semibold ${
-                        importante ? "bg-danger-subtle text-danger" : "bg-white text-dark"
+                      className={`list-group-item list-group-item-action d-flex align-items-center justify-content-between gap-2 text-start fw-semibold notificacoes-item ${
+                        importante ? "notificacoes-item--importante text-danger" : "text-dark"
                       }`}
                       onClick={() => abrirDetalhes(notificacao)}
                     >
-                      {notificacao.titulo}
+                      <span className="text-truncate">{notificacao.titulo}</span>
+                      <i
+                        className="bi bi-chevron-right small opacity-75 flex-shrink-0 notificacoes-item-seta"
+                        aria-hidden="true"
+                      ></i>
                     </button>
                   );
                 })}

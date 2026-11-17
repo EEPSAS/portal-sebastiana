@@ -24,13 +24,13 @@ export default function LatestUpdates({ updates = [], loading = false, error = n
       {error && <div className="text-danger py-2">Erro ao carregar: {error}</div>}
 
       {/* 3. Estado Assíncrono: Vazio */}
-      {!loading && !error && updates.length === 0 && (
+      {!loading && !error && (!updates || updates.length === 0) && (
         <div className="text-muted py-3 text-center">Nenhuma atualização recente no momento.</div>
       )}
 
-      {/* Cada linha representa um evento único, ainda que tenha vários destinatários. */}
-      <div className="d-flex flex-column">
-        {updates.map((update) => (
+      {/* Cada linha representa um evento único com rolagem interna confinada no card */}
+      <div className="d-flex flex-column geral-updates-scroll">
+        {(updates || []).map((update) => (
           <UpdateItem
             key={update.id}
             tipo={update.tipo}

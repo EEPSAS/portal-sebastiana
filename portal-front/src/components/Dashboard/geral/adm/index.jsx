@@ -1,165 +1,93 @@
-import "../especialista/GeralEspecialista.css";
-import { useDashboardEspecialista } from "../../../../hooks/geral/especialista/useDashboardEspecialista.js";
-import GeralSmallCards from "../especialista/Cards/EstatisticaDocenteCard.jsx";
-import GeralMediumCards from "../especialista/Cards/ResumoTurmasCard.jsx";
-import LatestUpdates from "../especialista/LatestUpdates/UltimasAtualizacoes.jsx";
-
 /**
- * GeralAdm (index.jsx) - Painel Analítico Geral do Administrador
+ * GeralAdm (index.jsx) - Painel Geral de Governança do Administrador
  *
  * Papel Didático:
- * Renderiza a visão executiva de toda a escola conectada aos dados reais de turmas, notas,
- * frequências, períodos letivos e notificações, alinhando filtro de etapa e escalas gráficas.
+ * Focado na gestão técnica do sistema, integridade dos cadastros e infraestrutura escolar:
+ * 1. KPIs Superiores: Total de Usuários, Aprovações Pendentes, Contas Inativas e Sessões Ativas;
+ * 2. Linha Intermediária: Distribuição de Contas por Perfil, Saúde do Sistema e Acessos Rápidos;
+ * 3. Seção Inferior: Últimos Cadastros Realizados (com rolagem interna pura, travado na viewport).
  */
-const GeralAdm = () => {
-  const {
-    cards,
-    medias,
-    frequencias,
-    updates,
-    divisaoSelecionada,
-    setDivisaoSelecionada,
-    periodoContexto,
-    loading,
-    error,
-  } = useDashboardEspecialista();
 
-  // 1. Estado Assíncrono: Carregando
-  if (loading && cards.length === 0) {
+import "../especialista/GeralEspecialista.css";
+import { useDashboardAdmin } from "../../../../hooks/geral/adm/useDashboardAdmin";
+import UsuariosKpisCard from "./Cards/UsuariosKpisCard";
+import DistribuicaoPerfisCard from "./Cards/DistribuicaoPerfisCard";
+import SaudeSistemaCard from "./Cards/SaudeSistemaCard";
+import AtalhosGestaoCard from "./Cards/AtalhosGestaoCard";
+import CadastrosRecentesCard from "./Cards/CadastrosRecentesCard";
+
+const GeralAdm = () => {
+  const { dados, loading, error, recarregar } = useDashboardAdmin();
+
+  if (loading && !dados) {
     return (
       <div className="text-center py-5">
         <div className="spinner-border text-primary" aria-hidden="true"></div>
         <p className="text-muted mt-2 small mb-0">
-          Carregando indicadores da escola...
+          Carregando indicadores de governança do sistema...
         </p>
       </div>
     );
   }
 
-  // 2. Estado Assíncrono: Erro Amigável
-  if (error && cards.length === 0) {
+  if (error && !dados) {
     return (
-      <div className="alert alert-danger rounded-3 shadow-sm" role="alert">
-        Não foi possível carregar os dados no momento: {error}
+      <div className="alert alert-danger rounded-4 shadow-sm p-4 text-center" role="alert">
+        <i className="bi bi-exclamation-triangle-fill fs-3 text-danger d-block mb-2" aria-hidden="true"></i>
+        <h5 className="fw-bold mb-1">Não foi possível carregar os dados administrativos</h5>
+        <p className="text-secondary small mb-3">{error}</p>
+        <button
+          type="button"
+          className="btn btn-outline-danger btn-sm rounded-pill px-4"
+          onClick={recarregar}
+        >
+          Tentar Novamente
+        </button>
       </div>
     );
   }
 
-  // 3. Estado Assíncrono: Vazio
-  const semDadosGlobais =
-    cards.length === 0 && medias.length === 0 && frequencias.length === 0 && updates.length === 0;
-  const divisaoAtiva = divisaoSelecionada || periodoContexto?.divisao_selecionada;
-  const pontosDivisaoSelecionada =
-    divisaoAtiva === "todos"
-      ? periodoContexto?.pontos_consolidados ?? 0
-      : periodoContexto?.pontos_divisao ?? 30;
-  const destinosCards = {
-    "total-alunos": "/dashboard/turmas?aba=turmas",
-    "media-geral": "/dashboard/turmas?aba=notas",
-    frequencia: "/dashboard/turmas?aba=notas",
-    noticias: "/dashboard/noticias",
-  };
-
-  if (semDadosGlobais) {
-    return (
-      <div className="card border-0 shadow-sm rounded-3 p-4 text-center text-muted">
-        Nenhum indicador acadêmico consolidado disponível no momento.
-      </div>
-    );
-  }
+  const usuarios = dados?.usuarios || {};
+  const pendencias = dados?.pendencias || {};
+  const sessoesAtivas = dados?.sessoes_ativas ?? 0;
+  const cadastrosRecentes = dados?.cadastros_recentes || [];
+  const saudeSistema = dados?.saude_sistema || [];
 
   return (
-    <div className="geral-adm-page">
+    <div className="geral-adm-page geral-page-viewport-lock">
       {error && (
-        <div className="alert alert-danger rounded-3 py-2" role="alert">
-          Não foi possível atualizar os dados da etapa selecionada: {error}
+        <div className="alert alert-danger rounded-3 py-2 flex-shrink-0" role="alert">
+          Houve um erro ao atualizar os dados: {error}
         </div>
       )}
 
-      {/* Filtro de Etapa Avaliativa do Período Letivo */}
-      {periodoContexto && (
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 p-2 px-3 bg-white rounded-3 border shadow-xs">
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span className="small fw-bold text-dark text-uppercase d-flex align-items-center gap-1 me-2">
-              <i className="bi bi-calendar-range text-primary" aria-hidden="true"></i>
-              Etapa Avaliativa:
-            </span>
-            <div
-              className="btn-group btn-group-sm flex-wrap p-1 bg-light rounded-pill border"
-              role="group"
-              aria-label="Filtrar indicadores institucionais por etapa do período letivo"
-            >
-              <button
-                type="button"
-                className={`btn-pill-filter ${divisaoAtiva === "todos" ? "is-active" : ""}`}
-                aria-pressed={divisaoAtiva === "todos"}
-                onClick={() => setDivisaoSelecionada("todos")}
-              >
-                Consolidado Geral
-              </button>
-              {(periodoContexto.divisoes_disponiveis || []).map((divisao) => {
-                const isAtiva = divisaoAtiva === divisao.nome;
-                return (
-                  <button
-                    type="button"
-                    key={divisao.id_divisao || divisao.nome}
-                    className={`btn-pill-filter ${isAtiva ? "is-active" : ""}`}
-                    aria-pressed={isAtiva}
-                    onClick={() => setDivisaoSelecionada(divisao.nome)}
-                  >
-                    {divisao.nome} ({divisao.pontos} pts)
-                    {divisao.is_atual ? " • Atual" : ""}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <span className="badge bg-light text-secondary border rounded-pill px-3 py-2 small">
-            Ano Letivo {periodoContexto.ano}
-          </span>
-        </div>
-      )}
+      {/* 1. Linha Superior: 4 Small Cards de KPIs de Governança */}
+      <UsuariosKpisCard
+        usuarios={usuarios}
+        pendencias={pendencias}
+        sessoesAtivas={sessoesAtivas}
+      />
 
-      {/* Linha superior: Small Cards de KPIs globais da instituição */}
-      <div className="row g-2 g-md-3">
-        {cards.map((card) => (
-          <GeralSmallCards
-            key={card.id}
-            titulo={card.titulo}
-            valor={card.valor}
-            bgIcone={card.bgIcone}
-            textIcone={card.textIcone}
-            tipoIcone={card.tipoIcone}
-            href={destinosCards[card.id]}
+      {/* 2. Linha Intermediária: Distribuição por Perfil, Saúde e Atalhos */}
+      <div className="row g-3 mb-2 flex-shrink-0">
+        <div className="col-12 col-lg-4 d-flex flex-column">
+          <DistribuicaoPerfisCard
+            porPerfil={usuarios.por_perfil || {}}
+            total={usuarios.total || 0}
           />
-        ))}
+        </div>
+        <div className="col-12 col-lg-4 d-flex flex-column">
+          <SaudeSistemaCard saude={saudeSistema} />
+        </div>
+        <div className="col-12 col-lg-4 d-flex flex-column">
+          <AtalhosGestaoCard />
+        </div>
       </div>
 
-      {/* Linha intermediária: Gráficos de Médias e Frequências por Turma */}
-      <GeralMediumCards
-        medias={medias.map((item) => ({
-          ...item,
-          nota: Number(item.nota ?? 0) * 10,
-        }))}
-        frequencias={frequencias}
-        loading={false}
-        error={null}
-        escalaNotaMaxima={100}
-        mostrarLinhasReferencia={false}
-        badgeMedia={
-          divisaoAtiva && divisaoAtiva !== "todos" && pontosDivisaoSelecionada > 0
-            ? `Meta mín. 60% (${(pontosDivisaoSelecionada * 0.6).toFixed(1)} pts)`
-            : "Meta mín. 60%"
-        }
-        href="/dashboard/turmas?aba=notas"
-      />
-
-      {/* Linha inferior: Feed das últimas notificações escolares */}
-      <LatestUpdates
-        updates={updates}
-        loading={loading}
-        error={error}
-      />
+      {/* 3. Linha Inferior: Últimos Cadastros preenchendo a altura com scroll interno */}
+      <div className="geral-fill-row d-flex flex-column min-h-0">
+        <CadastrosRecentesCard cadastros={cadastrosRecentes} />
+      </div>
     </div>
   );
 };

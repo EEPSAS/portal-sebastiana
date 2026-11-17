@@ -19,17 +19,19 @@ export default function DevolucoesTabela({
         </span>
       </div>
       {emprestimos.length === 0 ? (
-        <p className="text-muted small mb-0">{mensagemVazia}</p>
+        <div className="d-flex align-items-center justify-content-center flex-grow-1 p-3">
+          <p className="text-muted small mb-0 text-center">{mensagemVazia}</p>
+        </div>
       ) : (
         <div
-          className="table-responsive flex-grow-1"
-          style={{ maxHeight: "300px", overflowY: "auto" }}
+          className="table-responsive flex-grow-1 min-h-0"
+          style={{ overflowY: "auto", scrollbarGutter: "stable" }}
         >
           <table
             className="table table-sm table-hover align-middle mb-0"
             style={{ minWidth: onNotificar ? "390px" : "350px" }}
           >
-            <thead className="table-light">
+            <thead className="table-light sticky-top">
               <tr>
                 <th scope="col">Pessoa</th>
                 <th scope="col">Livro e prazo</th>
