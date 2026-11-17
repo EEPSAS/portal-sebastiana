@@ -120,6 +120,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Dashboard Geral Consolidado (Visão Docente e Especialista)
     Route::get('/dashboard/geral', [DashboardGeralController::class, 'geral']);
+    Route::get('/dashboard/notificacoes', [DashboardGeralController::class, 'notificacoes']);
     Route::get('/dashboard/admin', [DashboardAdminController::class, 'geral']);
 
     // Dashboard do Especialista (Inteligência Acadêmica e Gestão Pedagógica)

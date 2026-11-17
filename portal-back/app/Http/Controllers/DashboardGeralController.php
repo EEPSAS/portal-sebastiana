@@ -44,4 +44,39 @@ class DashboardGeralController extends Controller
 
         return (new DashboardGeralResource($dados))->response()->setStatusCode(200);
     }
+
+    /**
+     * GET /api/dashboard/notificacoes
+     *
+     * Endpoint sob demanda para carregar e filtrar o feed de atualizações (5, 25 ou 50 itens),
+     * permitindo filtrar por quem enviou, por usuário que recebeu e por categoria.
+     */
+    public function notificacoes(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || (! $user->canManageAcademic() && ! $user->isProfessor())) {
+            abort(403, 'Acesso restrito ao corpo docente e pedagógico.');
+        }
+
+        $limite = (int) $request->query('limite', 5);
+        if (! in_array($limite, [5, 25, 50], true)) {
+            $limite = 5;
+        }
+
+        $filtros = [
+            'destinatario' => $request->query('destinatario'),
+            'remetente' => $request->query('remetente'),
+            'categoria' => $request->query('categoria'),
+        ];
+
+        $notificacoes = $this->dashboardService->obterNotificacoesPaginadas($user, $limite, $filtros);
+
+        return response()->json([
+            'data' => $notificacoes,
+            'total' => count($notificacoes),
+            'limite' => $limite,
+            'filtros' => $filtros,
+        ], 200);
+    }
 }

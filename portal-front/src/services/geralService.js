@@ -124,6 +124,35 @@ export async function fetchLatestUpdates() {
 }
 
 /**
+ * GET /api/dashboard/notificacoes
+ * Busca notificações sob demanda com paginação (5, 25 ou 50 itens)
+ * e filtros avançados por destinatário, remetente e categoria.
+ */
+export async function fetchDashboardNotificacoes({
+  limite = 5,
+  destinatario = '',
+  remetente = '',
+  categoria = '',
+} = {}) {
+  const params = new URLSearchParams();
+  if (limite) params.append('limite', String(limite));
+  if (destinatario && destinatario.trim()) params.append('destinatario', destinatario.trim());
+  if (remetente && remetente.trim()) params.append('remetente', remetente.trim());
+  if (categoria && categoria !== 'todos') params.append('categoria', categoria.trim());
+
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const response = await api(`/dashboard/notificacoes${queryString}`);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || 'Falha ao buscar notificações.');
+  }
+
+  const json = await response.json();
+  return json?.data || [];
+}
+
+/**
  * GET /api/alunos/{aluno_id}/turmas/{turma_id}/resumo-global
  * Obtém o resumo global real do estudante (média, frequência, destaques e rankings Top 3)
  * validado estritamente contra AlunoResumoGlobalSchema.

@@ -367,3 +367,19 @@
   }
 }
 
+/* ==========================================================================
+   5. Tabela de Ranking de Alunos (Desempenho Geral)
+   ========================================================================== */
+.ranking-tabela-scroll {
+  max-height: 180px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+@media (min-width: 768px) {
+  .ranking-tabela-scroll {
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+}
+

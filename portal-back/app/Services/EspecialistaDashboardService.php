@@ -2429,12 +2429,52 @@ class EspecialistaDashboardService
     }
 
     /**
-     * Agrupa as cópias por destinatário para exibir cada notificação uma única vez.
+     * Retorna o feed de notificações com paginação flexível (5, 25, 50) e filtros por remetente, destinatário e categoria.
      *
-     * @param  array<int, int>|null  $alunosIds  Quando informado, restringe aos destinatários indicados (escopo do professor).
+     * @param  User  $usuario  Usuário autenticado (docente ou especialista/admin)
+     * @param  int  $limite  Quantidade máxima (5, 25 ou 50)
+     * @param  array{destinatario?: ?string, remetente?: ?string, categoria?: ?string}  $filtros
      * @return array<int, array<string, mixed>>
      */
-    private function obterUltimasNotificacoes(?array $alunosIds = null): array
+    public function obterNotificacoesPaginadas(User $usuario, int $limite = 5, array $filtros = []): array
+    {
+        $isDocenteEstrito = $usuario->isProfessor() && ! $usuario->canManageAcademic();
+        $alunosIdsDocente = null;
+
+        if ($isDocenteEstrito) {
+            $periodoAtivo = PeriodoLetivo::where('status', 'ativo')->first() ?? PeriodoLetivo::latest('ano_letivo')->first();
+            $turmasIdsProf = $usuario->disciplinasLecionadas()
+                ->with('turmas')
+                ->get()
+                ->pluck('turmas')
+                ->flatten()
+                ->pluck('id_turma')
+                ->unique()
+                ->values()
+                ->all();
+
+            $alunosIdsDocente = Matricula::whereIn('turma_id', $turmasIdsProf)
+                ->where('status', 'ativa')
+                ->when($periodoAtivo, fn ($q) => $q->where('ano_letivo', $periodoAtivo->ano_letivo))
+                ->pluck('usuario_id')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return $this->obterUltimasNotificacoes($alunosIdsDocente, $limite, $filtros);
+    }
+
+    /**
+     * Agrupa as cópias por destinatário para exibir cada notificação uma única vez, aplicando filtros e paginação sob demanda.
+     *
+     * @param  array<int, int>|null  $alunosIds  Quando informado, restringe aos destinatários indicados (escopo do professor).
+     * @param  int  $limite  Quantidade máxima de eventos (5, 25 ou 50)
+     * @param  array{destinatario?: ?string, remetente?: ?string, categoria?: ?string}  $filtros
+     * @return array<int, array<string, mixed>>
+     */
+    private function obterUltimasNotificacoes(?array $alunosIds = null, int $limite = 5, array $filtros = []): array
     {
         $autoresIds = User::query()
             ->whereIn('role', [
@@ -2454,7 +2494,7 @@ class EspecialistaDashboardService
         $expressaoEventKey = $isPgsql ? "data->>'event_key'" : "json_extract(data, '\$.event_key')";
         $expressaoMaxId = $isPgsql ? 'MAX(id::text)' : 'MAX(id)';
 
-        $eventos = DatabaseNotification::query()
+        $query = DatabaseNotification::query()
             ->where('type', NotificacaoPortal::class)
             ->whereNotNull('data->event_key')
             ->where(function ($query) use ($autoresIds, $bibliotecariasIds) {
@@ -2469,11 +2509,39 @@ class EspecialistaDashboardService
             ->when($alunosIds !== null, function ($query) use ($alunosIds) {
                 $query->where('notifiable_type', User::class)
                     ->whereIn('notifiable_id', $alunosIds);
-            })
+            });
+
+        // 1. Filtro por destinatário (quem recebeu)
+        if (! empty($filtros['destinatario'])) {
+            $termoDest = trim($filtros['destinatario']);
+            $destinatariosIds = User::query()
+                ->where('name', 'like', "%{$termoDest}%")
+                ->orWhere('email', 'like', "%{$termoDest}%")
+                ->pluck('id');
+            $query->whereIn('notifiable_id', $destinatariosIds);
+        }
+
+        // 2. Filtro por remetente (quem enviou)
+        if (! empty($filtros['remetente'])) {
+            $termoRem = trim($filtros['remetente']);
+            $query->where(function ($q) use ($termoRem) {
+                $q->where('data->criador_nome', 'like', "%{$termoRem}%")
+                    ->orWhere('data->criador_id', $termoRem);
+            });
+        }
+
+        // 3. Filtro por categoria (tipo da notificação)
+        if (! empty($filtros['categoria']) && $filtros['categoria'] !== 'todos') {
+            $query->where('data->tipo', $filtros['categoria']);
+        }
+
+        $limiteEfetivo = in_array($limite, [5, 25, 50], true) ? $limite : 5;
+
+        $eventos = $query
             ->selectRaw("{$expressaoMaxId} as id, MAX(created_at) as created_at, {$expressaoEventKey} as event_key")
             ->groupByRaw($expressaoEventKey)
             ->orderByRaw('MAX(created_at) DESC')
-            ->limit(5)
+            ->limit($limiteEfetivo)
             ->get();
 
         $notificacoes = DatabaseNotification::query()
@@ -2481,21 +2549,47 @@ class EspecialistaDashboardService
             ->get()
             ->keyBy('id');
 
-        return $eventos->map(function ($evento) use ($notificacoes) {
+        $destinatariosIds = $notificacoes->pluck('notifiable_id')->unique()->filter()->all();
+        $destinatarios = User::query()
+            ->whereIn('id', $destinatariosIds)
+            ->get()
+            ->keyBy('id');
+
+        $categoriaLabels = [
+            'manual' => 'Comunicação Escolar',
+            'biblioteca' => 'Biblioteca',
+            'aprovacao_login' => 'Acesso e Contas',
+            'sistema' => 'Aviso do Sistema',
+            'nota' => 'Desempenho de Notas',
+            'frequencia' => 'Frequência Escolar',
+        ];
+
+        return $eventos->map(function ($evento) use ($notificacoes, $destinatarios, $categoriaLabels) {
             $notificacao = $notificacoes->get($evento->id);
             $dados = $notificacao?->data ?? [];
             $titulo = $dados['titulo'] ?? 'Notificação escolar';
             $criador = $dados['criador_nome'] ?? 'Sistema';
+            $tipo = $dados['tipo'] ?? 'manual';
+            $destinatario = $destinatarios->get($notificacao?->notifiable_id);
+            $destinatarioNome = $destinatario?->name ?? 'Estudante';
 
             return [
                 'id' => (string) $evento->event_key,
                 'tipo' => 'notificacao',
+                'categoria' => $tipo,
+                'categoria_rotulo' => $categoriaLabels[$tipo] ?? 'Geral',
                 'texto' => "{$criador}: {$titulo}",
+                'titulo' => $titulo,
                 'assunto' => $dados['assunto'] ?? '',
+                'criador_nome' => $criador,
+                'criador_id' => $dados['criador_id'] ?? null,
+                'destinatario_nome' => $destinatarioNome,
+                'destinatario_id' => $notificacao?->notifiable_id,
                 'tempoAtras' => $notificacao?->created_at
                     ? $notificacao->created_at->locale('pt_BR')->diffForHumans()
                     : 'recentemente',
+                'data_criacao' => $notificacao?->created_at?->toIso8601String(),
             ];
-        })->all();
+        })->values()->all();
     }
 }

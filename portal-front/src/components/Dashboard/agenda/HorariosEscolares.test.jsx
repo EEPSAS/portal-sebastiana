@@ -73,7 +73,9 @@ describe("HorariosEscolares", () => {
     expect(await screen.findByText("Matemática - 1º Ano")).toBeInTheDocument();
     expect(screen.getByText("Prof. Carlos")).toBeInTheDocument();
     expect(screen.getByText("Segunda-feira")).toBeInTheDocument();
-    expect(acoesRegistradas).not.toBeNull();
+    await waitFor(() => {
+      expect(acoesRegistradas).not.toBeNull();
+    });
   });
 
   test("permite ao Especialista acionar gerarHorario e exibe erro amigável caso falhe", async () => {

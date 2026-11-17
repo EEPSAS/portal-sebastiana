@@ -345,17 +345,14 @@ function TabelaRankingAlunos({
   }
 
   return (
-    <div
-      className="table-responsive flex-grow-1"
-      style={{ overflowY: "auto", scrollbarGutter: "stable", maxHeight: "180px" }}
-    >
+    <div className="table-responsive flex-grow-1 ranking-tabela-scroll">
       <table className="table table-sm table-hover align-middle mb-0 small">
         <thead className="table-light sticky-top">
           <tr>
-            <th scope="col" style={{ width: "36px" }} className="text-center">#</th>
-            <th scope="col">Estudante</th>
-            <th scope="col">Turma</th>
-            <th scope="col" className="text-end">{rotuloColuna}</th>
+            <th scope="col" style={{ width: "32px" }} className="text-center py-1">#</th>
+            <th scope="col" className="py-1">Estudante</th>
+            <th scope="col" className="py-1">Turma</th>
+            <th scope="col" className="text-end py-1">{rotuloColuna}</th>
           </tr>
         </thead>
         <tbody>
@@ -365,26 +362,26 @@ function TabelaRankingAlunos({
 
             return (
               <tr key={item.id || `${item.nome}-${idx}`}>
-                <td className="text-center">
+                <td className="text-center py-1">
                   <span
                     className="badge rounded-circle fw-bold text-white d-inline-flex align-items-center justify-content-center"
                     style={{
-                      width: "22px",
-                      height: "22px",
+                      width: "20px",
+                      height: "20px",
                       backgroundColor: corDestaque,
-                      fontSize: "0.72rem",
+                      fontSize: "0.7rem",
                     }}
                   >
                     {item.posicao || idx + 1}
                   </span>
                 </td>
-                <td className="fw-semibold text-dark text-truncate" style={{ maxWidth: "160px" }}>
+                <td className="fw-semibold text-dark text-truncate py-1" style={{ maxWidth: "160px" }}>
                   {item.nome}
                 </td>
-                <td className="text-secondary text-truncate" style={{ maxWidth: "120px" }}>
+                <td className="text-secondary text-truncate py-1" style={{ maxWidth: "120px" }}>
                   {item.turma || "—"}
                 </td>
-                <td className="text-end fw-bold">
+                <td className="text-end fw-bold py-1">
                   <span
                     className={emAlerta ? "badge bg-danger-subtle text-danger border border-danger-subtle" : ""}
                     style={!emAlerta ? { color: corDestaque } : {}}
