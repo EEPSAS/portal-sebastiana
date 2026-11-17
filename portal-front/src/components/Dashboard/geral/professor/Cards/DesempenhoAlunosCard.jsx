@@ -65,6 +65,9 @@ export default function DesempenhoAlunosCard({
     ? `Meta mínima: 60% (${metaMinimaNota.toFixed(1).replace(".", ",")} pts)`
     : "Meta mínima: 75% de presença";
 
+  const tituloMelhores = isNota ? "Maiores notas registradas" : "Maiores taxas de presença";
+  const tituloPiores = isNota ? "Menores notas registradas" : "Menores taxas de frequência";
+
   // Padrão visual semântico:
   // Notas -> Azul Marinho (#0d2346 / #1d4ed8)
   // Frequência -> Verde Esmeralda (#059669 / #10b981)
@@ -126,15 +129,6 @@ export default function DesempenhoAlunosCard({
                 </span>
               )}
             </div>
-            <p
-              className="text-secondary small mb-0 text-truncate"
-              style={{ maxWidth: "440px" }}
-              title={isNota ? "Melhores e menores notas da turma no período." : "Melhores e menores taxas de frequência no período."}
-            >
-              {isNota
-                ? "Melhores e menores notas da turma no período."
-                : "Melhores e menores taxas de frequência no período."}
-            </p>
           </div>
         </div>
 
@@ -249,65 +243,9 @@ export default function DesempenhoAlunosCard({
         </div>
       </div>
 
-      {/* 3. Seções Lado a Lado: Pior Desempenho vs Melhor Desempenho */}
+      {/* 3. Seções Lado a Lado: Melhor Desempenho à esquerda e Pior Desempenho à direita */}
       <div className="row g-3 mt-0">
-        {/* Coluna Esquerda: Pior Desempenho (Top 5) */}
-        <div className="col-12 col-md-6">
-          <section
-            className="card border-0 rounded-3 p-3 h-100"
-            style={{
-              backgroundColor: "#fffafa",
-              border: "1px solid #f2dfe4",
-            }}
-            aria-label={`Pior Desempenho ${rotuloIndicador}`}
-          >
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <div className="d-flex align-items-center gap-2">
-                <span
-                  className="rounded-circle d-flex align-items-center justify-content-center text-white"
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    backgroundColor: "var(--dashboard-pink, #e6396f)",
-                    fontSize: "0.85rem",
-                  }}
-                  aria-hidden="true"
-                >
-                  <i className="bi bi-arrow-down-short fs-5"></i>
-                </span>
-                <div>
-                  <h4 className="h6 fw-bold mb-0" style={{ color: "#26344a" }}>
-                    Pior Desempenho
-                  </h4>
-                  <small className="text-muted" style={{ fontSize: "0.75rem" }}>
-                    {isNota ? "Menores notas registradas" : "Menores taxas de frequência"}
-                  </small>
-                </div>
-              </div>
-              <span
-                className="badge rounded-pill fw-semibold"
-                style={{
-                  color: "#991b3b",
-                  backgroundColor: "#991b3b18",
-                  border: "1px solid #991b3b30",
-                }}
-              >
-                Top 5
-              </span>
-            </div>
-
-            <TabelaRankingAlunos
-              alunos={listaPiores}
-              rotuloColuna={rotuloIndicador}
-              corDestaque="var(--dashboard-pink, #e6396f)"
-              sufixo={sufixo}
-              alertaAbaixo={alertaAbaixo}
-              mensagemVazia={`Nenhum registro de ${rotuloIndicador.toLowerCase()} encontrado nesta etapa.`}
-            />
-          </section>
-        </div>
-
-        {/* Coluna Direita: Melhor Desempenho (Top 5) com Padrão Visual Notas vs Frequência */}
+        {/* Coluna Esquerda: Melhor Desempenho com Padrão Visual Notas vs Frequência */}
         <div className="col-12 col-md-6">
           <section
             className="card border-0 rounded-3 p-3 h-100"
@@ -316,42 +254,25 @@ export default function DesempenhoAlunosCard({
               border: isNota ? "1px solid #dce8f8" : "1px solid #bbf7d0",
               transition: "background-color 0.25s ease, border-color 0.25s ease",
             }}
-            aria-label={`Melhor Desempenho ${rotuloIndicador}`}
+            aria-label={tituloMelhores}
           >
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <div className="d-flex align-items-center gap-2">
-                <span
-                  className="rounded-circle d-flex align-items-center justify-content-center text-white"
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    backgroundColor: isNota ? "var(--dashboard-navy, #0d2346)" : "#059669",
-                    fontSize: "0.85rem",
-                    transition: "background-color 0.25s ease",
-                  }}
-                  aria-hidden="true"
-                >
-                  <i className="bi bi-arrow-up-short fs-5"></i>
-                </span>
-                <div>
-                  <h4 className="h6 fw-bold mb-0" style={{ color: "#26344a" }}>
-                    Melhor Desempenho
-                  </h4>
-                  <small className="text-muted" style={{ fontSize: "0.75rem" }}>
-                    {isNota ? "Maiores notas registradas" : "Maiores taxas de presença"}
-                  </small>
-                </div>
-              </div>
+            <div className="d-flex align-items-center gap-2 mb-2">
               <span
-                className="badge rounded-pill fw-semibold"
+                className="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0"
                 style={{
-                  color: isNota ? "#0d2346" : "#065f46",
-                  backgroundColor: isNota ? "#0d234614" : "#05966918",
-                  border: isNota ? "1px solid #0d234630" : "1px solid #05966935",
+                  width: "26px",
+                  height: "26px",
+                  backgroundColor: isNota ? "var(--dashboard-navy, #0d2346)" : "#059669",
+                  fontSize: "0.85rem",
+                  transition: "background-color 0.25s ease",
                 }}
+                aria-hidden="true"
               >
-                Top 5
+                <i className="bi bi-arrow-up-short fs-5"></i>
               </span>
+              <h4 className="h6 fw-bold mb-0" style={{ color: "#26344a" }}>
+                {tituloMelhores}
+              </h4>
             </div>
 
             <TabelaRankingAlunos
@@ -359,6 +280,45 @@ export default function DesempenhoAlunosCard({
               rotuloColuna={rotuloIndicador}
               corDestaque={isNota ? "var(--dashboard-navy, #0d2346)" : "#059669"}
               sufixo={sufixo}
+              mensagemVazia={`Nenhum registro de ${rotuloIndicador.toLowerCase()} encontrado nesta etapa.`}
+            />
+          </section>
+        </div>
+
+        {/* Coluna Direita: Pior Desempenho com Alerta de Risco */}
+        <div className="col-12 col-md-6">
+          <section
+            className="card border-0 rounded-3 p-3 h-100"
+            style={{
+              backgroundColor: "#fffafa",
+              border: "1px solid #f2dfe4",
+            }}
+            aria-label={tituloPiores}
+          >
+            <div className="d-flex align-items-center gap-2 mb-2">
+              <span
+                className="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                style={{
+                  width: "26px",
+                  height: "26px",
+                  backgroundColor: "var(--dashboard-pink, #e6396f)",
+                  fontSize: "0.85rem",
+                }}
+                aria-hidden="true"
+              >
+                <i className="bi bi-arrow-down-short fs-5"></i>
+              </span>
+              <h4 className="h6 fw-bold mb-0" style={{ color: "#26344a" }}>
+                {tituloPiores}
+              </h4>
+            </div>
+
+            <TabelaRankingAlunos
+              alunos={listaPiores}
+              rotuloColuna={rotuloIndicador}
+              corDestaque="var(--dashboard-pink, #e6396f)"
+              sufixo={sufixo}
+              alertaAbaixo={alertaAbaixo}
               mensagemVazia={`Nenhum registro de ${rotuloIndicador.toLowerCase()} encontrado nesta etapa.`}
             />
           </section>

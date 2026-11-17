@@ -49,8 +49,8 @@ describe("DesempenhoAlunosCard", () => {
     );
 
     expect(screen.getByText("Desempenho dos Alunos")).toBeInTheDocument();
-    expect(screen.getByText("Pior Desempenho")).toBeInTheDocument();
-    expect(screen.getByText("Melhor Desempenho")).toBeInTheDocument();
+    expect(screen.getByText("Menores notas registradas")).toBeInTheDocument();
+    expect(screen.getByText("Maiores notas registradas")).toBeInTheDocument();
 
     // Visualização padrão: Por Nota
     expect(screen.getByText("Carlos Risco")).toBeInTheDocument();
@@ -61,6 +61,9 @@ describe("DesempenhoAlunosCard", () => {
     // Alterna para Por Frequência
     const botaoFreq = screen.getByRole("button", { name: "Por Frequência" });
     fireEvent.click(botaoFreq);
+
+    expect(screen.getByText("Menores taxas de frequência")).toBeInTheDocument();
+    expect(screen.getByText("Maiores taxas de presença")).toBeInTheDocument();
 
     expect(screen.getByText("Marcos Falta")).toBeInTheDocument();
     expect(screen.getByText("Julia Presente")).toBeInTheDocument();

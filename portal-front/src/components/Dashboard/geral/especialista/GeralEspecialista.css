@@ -331,10 +331,18 @@
 
   .geral-fill-row {
     display: flex;
-    flex-direction: column;
     flex: 1 1 0%;
     min-height: 0;
     margin-top: 0.35rem !important;
+  }
+
+  .geral-fill-row:not(.row) {
+    flex-direction: column;
+  }
+
+  .geral-fill-row.row {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 
   .geral-fill-row > .row {

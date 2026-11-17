@@ -72,36 +72,38 @@ const GeralBibliotecario = () => {
         </div>
       </div>
 
-      <div className="row g-3 align-items-stretch geral-fill-row min-h-0">
-        <div className="col-12 col-lg-4 d-flex flex-column min-h-0">
-          <DevolucoesTabela
-            titulo="Devoluções em atraso"
-            emprestimos={devolucoesEmAtraso}
-            formatarData={formatarData}
-            mensagemVazia="Não há devoluções em atraso."
-            corBadge="text-bg-danger"
-            onNotificar={setEmprestimoSelecionado}
-          />
-        </div>
-        <div className="col-12 col-lg-4 d-flex flex-column min-h-0">
-          <DevolucoesTabela
-            titulo="Devoluções para hoje"
-            emprestimos={devolucoesHoje}
-            formatarData={formatarData}
-            mensagemVazia="Não há devoluções previstas para hoje."
-            corBadge="text-bg-warning"
-            onNotificar={setEmprestimoSelecionado}
-          />
-        </div>
-        <div className="col-12 col-lg-4 d-flex flex-column min-h-0">
-          <DevolucoesTabela
-            titulo="Devoluções nos próximos 3 dias"
-            emprestimos={devolucoesProximosDias}
-            formatarData={formatarData}
-            mensagemVazia="Não há devoluções previstas nos próximos 3 dias."
-            corBadge="text-bg-primary"
-            onNotificar={setEmprestimoSelecionado}
-          />
+      <div className="geral-fill-row min-h-0">
+        <div className="row g-3 align-items-stretch flex-grow-1 min-h-0 h-100">
+          <div className="col-12 col-md-4 d-flex flex-column min-h-0 h-100">
+            <DevolucoesTabela
+              titulo="Devoluções em atraso"
+              emprestimos={devolucoesEmAtraso}
+              formatarData={formatarData}
+              mensagemVazia="Não há devoluções em atraso."
+              corBadge="text-bg-danger"
+              onNotificar={setEmprestimoSelecionado}
+            />
+          </div>
+          <div className="col-12 col-md-4 d-flex flex-column min-h-0 h-100">
+            <DevolucoesTabela
+              titulo="Devoluções para hoje"
+              emprestimos={devolucoesHoje}
+              formatarData={formatarData}
+              mensagemVazia="Não há devoluções previstas para hoje."
+              corBadge="text-bg-warning"
+              onNotificar={setEmprestimoSelecionado}
+            />
+          </div>
+          <div className="col-12 col-md-4 d-flex flex-column min-h-0 h-100">
+            <DevolucoesTabela
+              titulo="Devoluções nos próximos 3 dias"
+              emprestimos={devolucoesProximosDias}
+              formatarData={formatarData}
+              mensagemVazia="Não há devoluções previstas nos próximos 3 dias."
+              corBadge="text-bg-primary"
+              onNotificar={setEmprestimoSelecionado}
+            />
+          </div>
         </div>
       </div>
       {matriculaNotificacao && (

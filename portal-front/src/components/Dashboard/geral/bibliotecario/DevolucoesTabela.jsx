@@ -9,11 +9,11 @@ export default function DevolucoesTabela({
 }) {
   return (
     <section
-      className="card border-0 dashboard-card-shadow rounded-3 h-100 p-2 px-md-3"
+      className="card border-0 dashboard-card-shadow rounded-4 h-100 p-3 bg-white d-flex flex-column min-h-0"
       aria-label={titulo}
     >
-      <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
-        <h2 className="h6 fw-bold mb-0">{titulo}</h2>
+      <div className="d-flex align-items-center justify-content-between gap-2 mb-3 flex-shrink-0">
+        <h2 className="h6 fw-bold mb-0 text-dark">{titulo}</h2>
         <span className={`badge rounded-pill ${corBadge}`}>
           {emprestimos.length}
         </span>
