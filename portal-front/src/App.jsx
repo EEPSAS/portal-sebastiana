@@ -110,9 +110,10 @@ const App = () => {
               <Route path="disciplinas" element={<DisciplinasPage />} />
             </Route>
 
-            {/* Rota restrita: Controle de Usuários (exclusivo do Administrador) */}
+            {/* Rota restrita: Controle de Usuários e Tokens Sanctum (exclusivo do Administrador) */}
             <Route element={<ProtectedRoute allowedRoles={["adm"]} />}>
               <Route path="usuarios" element={<UsuariosPage />} />
+              <Route path="tokens" element={<UsuariosPage defaultTab="tokens" />} />
             </Route>
 
             {/* Rota restrita: Gestão de Notícias (especialistas e administradores) */}

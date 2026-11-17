@@ -11,3 +11,8 @@ Artisan::command('inspire', function () {
 Schedule::command('app:enviar-lembretes-notificacoes')
     ->daily()
     ->withoutOverlapping();
+
+// Rotina agendada a cada 8 horas para expurgar tokens Sanctum vencidos (que duram no máximo 6h)
+Schedule::command('app:limpar-tokens-expirados')
+    ->cron('0 */8 * * *')
+    ->withoutOverlapping();

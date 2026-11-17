@@ -443,6 +443,19 @@ export const obterContextoModulo = (pathname, search = "", role = "aluno") => {
     };
   }
 
+  if (pathname === "/dashboard/tokens") {
+    return {
+      moduloId: "usuarios",
+      titulo: "Sessões Conectadas e Tokens Sanctum",
+      subtitulo:
+        "Auditoria de existência, origem de login, validade de 6 horas e revogação manual de tokens (limpeza automática a cada 8h).",
+      icone: "bi-key-fill",
+      abas: [],
+      abaAtivaId: "usuarios",
+      pertenceAGrupo: false,
+    };
+  }
+
   // 3. Procura nos grupos (Acadêmico, Agenda, Conteúdo)
   for (const entry of NAV_STRUCTURE) {
     if (entry.type === "group") {

@@ -10,7 +10,6 @@ use App\Models\Turma;
 use App\Models\TurmaDisciplina;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * AdminDashboardService
@@ -25,6 +24,10 @@ class AdminDashboardService
     /** Perfis exibidos na distribuição de usuários. */
     private const PERFIS = ['aluno', 'professor', 'especialista', 'bibliotecaria', 'adm'];
 
+    public function __construct(
+        protected TokenSessaoService $tokenSessaoService
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -33,7 +36,8 @@ class AdminDashboardService
         return [
             'usuarios' => $this->resumirUsuarios(),
             'pendencias' => $this->resumirPendencias(),
-            'sessoes_ativas' => PersonalAccessToken::query()->count(),
+            // Contabiliza apenas os tokens Sanctum ativos (dentro do prazo de 6 horas)
+            'sessoes_ativas' => $this->tokenSessaoService->contarSessoesAtivas(),
             'cadastros_recentes' => $this->listarCadastrosRecentes(),
             'saude_sistema' => $this->montarSaudeSistema(),
         ];

@@ -21,6 +21,7 @@ use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\PeriodoLetivoController;
 use App\Http\Controllers\PlanoEstudoController;
 use App\Http\Controllers\ProfessorController;
+use App\Http\Controllers\TokenSessaoController;
 use App\Http\Controllers\TurmaController;
 use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\UsuarioController;
@@ -211,7 +212,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/usuarios/{usuario}/bloquear', [UsuarioController::class, 'bloquear']);
     Route::patch('/usuarios/{usuario}/papel', [UsuarioController::class, 'alterarPapel']);
     Route::post('/usuarios/{usuario}/permissoes', [UsuarioController::class, 'atribuirPermissoes']);
+    Route::delete('/usuarios/{usuario}/tokens', [TokenSessaoController::class, 'revogarDoUsuario']);
     Route::apiResource('usuarios', UsuarioController::class);
+
+    // Gestão de Sessões Conectadas e Tokens Sanctum (Administrador)
+    Route::get('/tokens', [TokenSessaoController::class, 'index']);
+    Route::delete('/tokens/expirados', [TokenSessaoController::class, 'limparExpirados']);
+    Route::delete('/tokens/{token}', [TokenSessaoController::class, 'destroy']);
 
     // Assistente Virtual Inteligente: Dona Nana (Gemini 3.8 Flash)
     Route::post('/dona-nana/chat', [DonaNanaController::class, 'chat'])

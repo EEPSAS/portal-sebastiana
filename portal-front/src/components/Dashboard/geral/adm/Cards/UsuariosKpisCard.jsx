@@ -43,7 +43,7 @@ export default function UsuariosKpisCard({ usuarios = {}, pendencias = {}, sesso
       tipoIcone: "bi-shield-lock-fill",
       bgIcone: "#f1e7fa",
       corIcone: "#8435d6",
-      href: "/dashboard/configuracoes",
+      href: "/dashboard/usuarios?tab=tokens",
     },
   ];
 

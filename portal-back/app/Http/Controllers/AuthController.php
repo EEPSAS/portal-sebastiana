@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * Controller responsável pela autenticação via Laravel Sanctum (registro, login e logout).
@@ -41,7 +42,7 @@ class AuthController extends Controller
         // Persiste o usuário no banco (a senha é hasheada via cast do model)
         $user = User::create($validated);
 
-        return $this->tokenResponse($user, 201, 'Cadastro realizado com sucesso.');
+        return $this->tokenResponse($user, 201, 'Cadastro realizado com sucesso.', 'auto_cadastro', $request);
     }
 
     /**
@@ -70,7 +71,7 @@ class AuthController extends Controller
             ], 403);
         }
 
-        return $this->tokenResponse($user, 200, 'Login realizado com sucesso.');
+        return $this->tokenResponse($user, 200, 'Login realizado com sucesso.', 'login_senha', $request);
     }
 
     /**
@@ -215,7 +216,7 @@ class AuthController extends Controller
             }
         }
 
-        return $this->tokenResponse($user, 200, 'Login institucional com Google realizado com sucesso.');
+        return $this->tokenResponse($user, 200, 'Login institucional com Google realizado com sucesso.', 'login_google', $request);
     }
 
     /**
@@ -223,8 +224,11 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        // Deleta o token atual do dispositivo
-        $request->user()->currentAccessToken()?->delete();
+        // Deleta fisicamente o token atual do dispositivo no banco ao realizar logout
+        $tokenAtual = $request->user()?->currentAccessToken();
+        if ($tokenAtual instanceof PersonalAccessToken) {
+            $tokenAtual->delete();
+        }
 
         return response()->json([
             'message' => 'Logout realizado com sucesso.',
@@ -232,17 +236,36 @@ class AuthController extends Controller
     }
 
     /**
-     * Gera o token Bearer e monta a resposta encapsulada pelo AuthUserResource.
+     * Gera o token Bearer (válido por 6 horas) com metadados de origem e monta a resposta encapsulada pelo AuthUserResource.
      *
      * @param  User  $user  Model do usuário autenticado
      * @param  int  $status  Código HTTP (200 ou 201)
      * @param  string  $message  Mensagem amigável de sucesso
+     * @param  string  $origem  Identificador de onde o token surgiu (login_senha, login_google, auto_cadastro)
+     * @param  Request|null  $request  Requisição HTTP para captura de IP e User-Agent
      */
-    private function tokenResponse(User $user, int $status = 200, string $message = 'Autenticado com sucesso.'): JsonResponse
-    {
+    private function tokenResponse(
+        User $user,
+        int $status = 200,
+        string $message = 'Autenticado com sucesso.',
+        string $origem = 'login_senha',
+        ?Request $request = null
+    ): JsonResponse {
         $user->load('roleModel.permissions');
 
-        $token = $user->createToken('portal-front')->plainTextToken;
+        // Define a validade máxima de 6 horas (360 minutos) para o token emitido
+        $minutosExpiracao = (int) config('sanctum.expiration', 360);
+        $expiraEm = now()->addMinutes($minutosExpiracao > 0 ? $minutosExpiracao : 360);
+        $novoToken = $user->createToken('portal-front', ['*'], $expiraEm);
+
+        // Registra de onde o token surgiu (fluxo, IP e navegador) para auditoria administrativa
+        $novoToken->accessToken->forceFill([
+            'origem' => $origem,
+            'ip_address' => $request?->ip(),
+            'user_agent' => $request?->userAgent(),
+        ])->save();
+
+        $token = $novoToken->plainTextToken;
 
         return (new AuthUserResource($user, $token, $message))
             ->response()

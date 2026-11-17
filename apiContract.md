@@ -503,6 +503,38 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
 | `PATCH` | `/api/usuarios/{id}/confirmar-vinculo-aluno` | Especialista / Adm | `ConfirmarAlunoVinculoRequest` | `UsuarioResource` | `usuarioService.confirmarVinculoAluno()` | Aprova login institucional de estudante (`@aluno`) vinculando-o a uma turma (`turma_id`) |
 | `PATCH`| `/api/usuarios/{id}/bloquear` | Adm | N/A | `UsuarioResource` | `usuarioService.alternarBloqueio()` | Ativa ou desativa acesso do usuário |
 | `PATCH`| `/api/usuarios/{id}/papel` | Adm | `AlterarPapelRequest` | `UsuarioResource` | `usuarioService.alterarPapel()` | Atualiza o `UserRole` do usuário |
+| `GET` | `/api/tokens` | Adm | `IndexTokenSessaoRequest` | `TokenSessaoResource` (Coleção paginada + `resumo`) | `tokenService.listarTokens()` | Lista tokens registrados em `personal_access_tokens` (sem exibir o hash secreto), informando origem (`login_senha`, `login_google`, `auto_cadastro`), IP, navegador, criação, último uso e expiração (6h) |
+| `DELETE` | `/api/tokens/{id}` | Adm | N/A | Mensagem 200 | `tokenService.revogarToken()` | Revoga e remove fisicamente um token específico do banco de dados |
+| `DELETE` | `/api/usuarios/{id}/tokens` | Adm | N/A | Mensagem 200 (`removidos`) | `tokenService.revogarTokensDoUsuario()` | Revoga todas as sessões de um usuário específico (preservando a sessão atual se for o próprio Adm) |
+| `DELETE` | `/api/tokens/expirados` | Adm | N/A | Mensagem 200 (`removidos`) | `tokenService.limparTokensExpirados()` | Expurga imediatamente os tokens que já ultrapassaram 6 horas de vida (rotina automática via `app:limpar-tokens-expirados` a cada 8 horas) |
+
+#### Especificação de Payload: `TokenSessaoResource`
+Envelope seguro de auditoria de sessão retornado em `GET /api/tokens` (o atributo `token` com o hash SHA-256 nunca é exposto):
+```json
+{
+  "id": 14,
+  "name": "portal-front",
+  "origem": "login_google",
+  "origem_label": "Login Institucional Google",
+  "ip_address": "192.168.1.42",
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0.0.0",
+  "dispositivo_resumo": "Chrome • Windows",
+  "created_at": "2026-11-17T12:00:00+00:00",
+  "criado_ha": "há 10 minutos",
+  "last_used_at": "2026-11-17T12:05:00+00:00",
+  "ultimo_uso_ha": "há 5 minutos",
+  "expires_at": "2026-11-17T18:00:00+00:00",
+  "expirado": false,
+  "sessao_atual": false,
+  "usuario": {
+    "id": 5,
+    "name": "Yasmin Teixeira",
+    "email": "yasmin.teixeira@aluno.mg.gov.br",
+    "role": "aluno"
+  }
+}
+```
+* **Ciclo de Vida do Token Sanctum**: Todo token emitido possui validade máxima de **6 horas** (`config/sanctum.php` `expiration = 360` e `expires_at = now()->addHours(6)`), é revogado imediatamente no logout (`POST /api/auth/logout`) e os tokens vencidos são removidos automaticamente do banco a cada **8 horas** pelo comando agendado `app:limpar-tokens-expirados` (`cron('0 */8 * * *')` em `routes/console.php`).
 
 ---
 

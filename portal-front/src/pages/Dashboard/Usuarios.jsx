@@ -9,6 +9,6 @@
 
 import UsuariosContainer from "../../components/Dashboard/usuarios";
 
-export default function UsuariosPage() {
-  return <UsuariosContainer />;
+export default function UsuariosPage({ defaultTab = "usuarios" }) {
+  return <UsuariosContainer defaultTab={defaultTab} />;
 }

@@ -50,7 +50,8 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Define o tempo máximo de vida do token em 360 minutos (6 horas)
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 360),
 
     /*
     |--------------------------------------------------------------------------
