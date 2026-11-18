@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TipoEvento;
 use App\Enums\UserRole;
 use App\Traits\HasRolesAndPermissions;
+use App\Traits\PossuiRegistroAcoes;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -26,8 +27,8 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    // Autenticacao via API, criacao por factory e notificacoes
-    use HasApiTokens, HasFactory, HasRolesAndPermissions, Notifiable;
+    // Autenticacao via API, criacao por factory, notificacoes e auditoria de acoes
+    use HasApiTokens, HasFactory, HasRolesAndPermissions, Notifiable, PossuiRegistroAcoes;
 
     // Conversoes de tipos de atributos
     protected function casts(): array

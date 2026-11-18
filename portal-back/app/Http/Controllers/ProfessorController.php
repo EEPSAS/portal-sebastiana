@@ -10,6 +10,7 @@ use App\Models\Disciplina;
 use App\Models\Turma;
 use App\Models\TurmaDisciplina;
 use App\Models\User;
+use App\Services\RegistroAcaoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -46,7 +47,7 @@ class ProfessorController extends Controller
         $this->autorizarGestao($request);
 
         $query = User::where('role', UserRole::PROFESSOR)
-            ->with(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
+            ->with(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma', 'registrosAcoes']);
 
         // Filtro por termo de busca (nome ou e-mail institucional)
         if ($request->filled('q')) {
@@ -107,7 +108,7 @@ class ProfessorController extends Controller
             abort(404, 'Usuário informado não é um professor.');
         }
 
-        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
+        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma', 'registrosAcoes']);
 
         return response()->json(new ProfessorResource($professor), 200);
     }
@@ -146,7 +147,29 @@ class ProfessorController extends Controller
             $this->aplicarVinculoDisciplina($professor, $disciplinaId);
         }
 
-        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
+        $executor = $request->user();
+        $executorUser = $executor instanceof User ? $executor : null;
+
+        // Registra a confirmação institucional do docente na auditoria
+        $professor->registrarAcao(
+            'professor_confirmado',
+            "Aprovou o vínculo institucional do(a) docente {$professor->name}",
+            $executorUser
+        );
+
+        // Caso disciplinas tenham sido vinculadas na aprovação, registra na trilha de cada disciplina
+        if ($disciplinaIds->isNotEmpty()) {
+            $disciplinasVinculadas = Disciplina::whereIn('id_disciplina', $disciplinaIds->all())->get();
+            foreach ($disciplinasVinculadas as $disc) {
+                $disc->registrarAcao(
+                    'disciplina_vinculada',
+                    "Vinculou a disciplina {$disc->nome} ao(à) docente {$professor->name}",
+                    $executorUser
+                );
+            }
+        }
+
+        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma', 'registrosAcoes']);
 
         return response()->json([
             'message' => "Professor(a) {$professor->name} confirmado(a) com sucesso na instituição.",
@@ -176,7 +199,14 @@ class ProfessorController extends Controller
         $professor->disciplinasDocente()->detach();
         TurmaDisciplina::where('professor_id', $professor->id)->update(['professor_id' => null]);
 
-        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
+        $executor = $request->user();
+        $professor->registrarAcao(
+            'professor_recusado',
+            "Recusou a solicitação de vínculo docente de {$professor->name}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma', 'registrosAcoes']);
 
         return response()->json([
             'message' => "Acesso institucional do professor(a) {$professor->name} recusado.",
@@ -210,7 +240,16 @@ class ProfessorController extends Controller
 
         $this->aplicarVinculoDisciplina($professor, $disciplinaId);
 
-        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
+        $executor = $request->user();
+        // Propaga o vínculo da disciplina para o histórico do docente e da própria disciplina
+        app(RegistroAcaoService::class)->registrarPropagado(
+            [$professor, $disciplina],
+            'disciplina_vinculada',
+            "Vinculou a disciplina {$disciplina->nome} ao(à) docente {$professor->name}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma', 'registrosAcoes']);
 
         return response()->json([
             'message' => "Disciplina '{$disciplina->nome}' vinculada com sucesso ao professor {$professor->name}.",
@@ -275,7 +314,16 @@ class ProfessorController extends Controller
             ->where('professor_id', $professor->id)
             ->update(['professor_id' => null]);
 
-        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma']);
+        $executor = $request->user();
+        // Propaga o desvínculo da disciplina para o histórico do docente e da disciplina
+        app(RegistroAcaoService::class)->registrarPropagado(
+            [$professor, $disciplina],
+            'disciplina_desvinculada',
+            "Desvinculou a disciplina {$disciplina->nome} do(a) docente {$professor->name}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $professor->load(['disciplinasDocente.ciclos', 'turmaDisciplinasDocente.turma', 'registrosAcoes']);
 
         return response()->json([
             'message' => "Disciplina '{$disciplina->nome}' desvinculada com sucesso do professor {$professor->name}.",

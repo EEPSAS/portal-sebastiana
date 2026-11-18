@@ -6,6 +6,7 @@
  */
 
 import { formatarDisciplinaCiclo } from "../../../utils/formatters";
+import HistoricoAcoesResumo from "../common/HistoricoAcoesResumo";
 
 export default function ModalDetalhesDisciplina({ disciplina, onFechar }) {
   if (!disciplina) return null;
@@ -91,6 +92,14 @@ export default function ModalDetalhesDisciplina({ disciplina, onFechar }) {
               <strong className="d-block text-dark mb-1">Objetivo Específico:</strong>
               <p className="text-muted mb-0">{disciplina.objetivo_especifico || "Não informado."}</p>
             </div>
+
+            {/* Faixa de auditoria da disciplina (oculta automaticamente para Aluno/Professor) */}
+            <HistoricoAcoesResumo
+              ultimaAcao={disciplina.ultima_acao}
+              ultimasAcoes={disciplina.ultimas_acoes}
+              rotuloEntidade="disciplina"
+              className="mt-3"
+            />
           </div>
 
           <div className="modal-footer border-top-0 pt-0">

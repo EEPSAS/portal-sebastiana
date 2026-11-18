@@ -10,6 +10,7 @@ use App\Http\Resources\TurmaResource;
 use App\Models\Matricula;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\RegistroAcaoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -30,9 +31,15 @@ class MatriculaController extends Controller
         Gate::authorize('viewAny', Turma::class);
 
         $user = $request->user();
+        $relacoes = ['turma', 'aluno:id,name,email'];
+        // Carrega o histórico de ações apenas para perfis com acesso à auditoria
+        if ($user && ($user->isAdm() || $user->isEspecialista())) {
+            $relacoes[] = 'registrosAcoes';
+        }
+
         $query = Matricula::query()
             ->where('status_matricula', 'Ativo')
-            ->with(['turma', 'aluno:id,name,email'])
+            ->with($relacoes)
             ->orderBy('id_matricula', 'desc');
 
         // Se o usuário for Professor, visualiza estritamente os alunos das turmas onde leciona (sem escrita N+1 no GET)
@@ -94,7 +101,17 @@ class MatriculaController extends Controller
                 $alunoModel->registrarVinculoEscolar($request->user()->id, "Vinculado à turma {$turma->nome_identificador}");
             }
 
-            $matriculaExistente->load(['turma', 'aluno:id,name,email']);
+            $nomeAluno = $alunoModel !== null ? $alunoModel->name : 'Estudante';
+            $executor = $request->user();
+            // Propaga o registro de matrícula para matrícula, turma e estudante
+            app(RegistroAcaoService::class)->registrarPropagado(
+                [$matriculaExistente, $turma, $alunoModel],
+                'matricula_realizada',
+                "Matriculou o(a) estudante {$nomeAluno} na turma {$turma->nome_identificador}",
+                $executor instanceof User ? $executor : null
+            );
+
+            $matriculaExistente->load(['turma', 'aluno:id,name,email', 'registrosAcoes']);
 
             return response()->json(new MatriculaResource($matriculaExistente), 200);
         }
@@ -112,7 +129,17 @@ class MatriculaController extends Controller
             $alunoModel->registrarVinculoEscolar($request->user()->id, "Vinculado à turma {$turma->nome_identificador}");
         }
 
-        $matricula->load(['turma', 'aluno:id,name,email']);
+        $nomeAluno = $alunoModel !== null ? $alunoModel->name : 'Estudante';
+        $executor = $request->user();
+        // Propaga o registro de matrícula para matrícula, turma e estudante
+        app(RegistroAcaoService::class)->registrarPropagado(
+            [$matricula, $turma, $alunoModel],
+            'matricula_realizada',
+            "Matriculou o(a) estudante {$nomeAluno} na turma {$turma->nome_identificador}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $matricula->load(['turma', 'aluno:id,name,email', 'registrosAcoes']);
 
         return response()->json(new MatriculaResource($matricula), 201);
     }
@@ -127,7 +154,7 @@ class MatriculaController extends Controller
         // Extrai o identificador da turma de destino já validado pela Form Request
         $validated = $request->validated();
 
-        $novaTurma = Turma::findOrFail($validated['nova_turma_id']);
+        $novaTurma = Turma::findOrFail((int) $validated['nova_turma_id']);
 
         if ($novaTurma->matriculas()->where('status_matricula', 'Ativo')->count() >= $novaTurma->capacidade_maxima) {
             return response()->json([
@@ -146,9 +173,19 @@ class MatriculaController extends Controller
             'status_matricula' => 'Ativo',
         ]);
 
+        $nomeAluno = $matricula->aluno !== null ? $matricula->aluno->name : 'Estudante';
+        $executor = $request->user();
+        // Propaga a transferência entre matrícula antiga, nova matrícula e as duas turmas envolvidas
+        app(RegistroAcaoService::class)->registrarPropagado(
+            [$matricula, $novaMatricula, $matricula->turma, $novaTurma],
+            'matricula_transferida',
+            "Transferiu o(a) estudante {$nomeAluno} para a turma {$novaTurma->nome_identificador}",
+            $executor instanceof User ? $executor : null
+        );
+
         return response()->json([
-            'matricula_anterior' => new MatriculaResource($matricula),
-            'nova_matricula' => new MatriculaResource($novaMatricula->load(['turma', 'aluno:id,name,email'])),
+            'matricula_anterior' => new MatriculaResource($matricula->load(['turma', 'aluno:id,name,email', 'registrosAcoes'])),
+            'nova_matricula' => new MatriculaResource($novaMatricula->load(['turma', 'aluno:id,name,email', 'registrosAcoes'])),
         ], 200);
     }
 
@@ -164,6 +201,18 @@ class MatriculaController extends Controller
         $matricula->update([
             'status_matricula' => $validated['status_matricula'] ?? 'Evadido',
         ]);
+
+        $nomeAluno = $matricula->aluno !== null ? $matricula->aluno->name : 'Estudante';
+        $executor = $request->user();
+        // Propaga a mudança de status para a matrícula e a turma de origem
+        app(RegistroAcaoService::class)->registrarPropagado(
+            [$matricula, $matricula->turma],
+            'matricula_status_alterado',
+            "Alterou situação da matrícula de {$nomeAluno} para {$matricula->status_matricula}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $matricula->load(['turma', 'aluno:id,name,email', 'registrosAcoes']);
 
         return response()->json(new MatriculaResource($matricula), 200);
     }

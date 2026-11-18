@@ -7,6 +7,9 @@
  * 2. Distribuição das etapas avaliativas (Bimestres/Trimestres) com pesos em pontos e datas;
  * 3. Botões de ação para Especialistas/Adm (Ativação, Sincronização de Agenda, Edição e Exclusão).
  */
+
+import HistoricoAcoesResumo from "../common/HistoricoAcoesResumo";
+
 export default function ListaPeriodosCard({
   periodos = [],
   podeGerenciar = false,
@@ -115,6 +118,15 @@ export default function ListaPeriodosCard({
                     );
                   })}
                 </div>
+
+                {/* Faixa compacta de auditoria com as últimas ações no período letivo */}
+                <HistoricoAcoesResumo
+                  ultimaAcao={periodo.ultima_acao}
+                  ultimasAcoes={periodo.ultimas_acoes}
+                  rotuloEntidade="período letivo"
+                  compacto
+                  className="mt-3"
+                />
               </div>
 
               {/* Rodapé de Ações (Especialista e Administrador) */}

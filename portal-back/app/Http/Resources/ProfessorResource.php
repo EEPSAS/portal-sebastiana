@@ -47,6 +47,10 @@ class ProfessorResource extends JsonResource
             ->unique('id_turma')
             ->values();
 
+        // Aplica blindagem RBAC na auditoria para expor apenas a Especialista/Adm
+        $solicitante = $request->user();
+        $auditoria = $this->obterAuditoriaParaApi($solicitante instanceof User ? $solicitante : null);
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -74,6 +78,8 @@ class ProfessorResource extends JsonResource
                     : [],
             ])->values(),
             'turmas' => $turmasResumo,
+            'ultima_acao' => $auditoria['ultima_acao'],
+            'ultimas_acoes' => $auditoria['ultimas_acoes'],
         ];
     }
 }

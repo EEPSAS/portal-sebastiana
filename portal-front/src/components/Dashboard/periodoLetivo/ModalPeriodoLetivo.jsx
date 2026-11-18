@@ -1,4 +1,5 @@
 import { useState } from "react";
+import HistoricoAcoesResumo from "../common/HistoricoAcoesResumo";
 
 /**
  * Funções auxiliares para geração inicial de divisões
@@ -339,6 +340,16 @@ function FormPeriodoLetivo({
             Definir imediatamente como o Período Letivo Vigente da escola
           </label>
         </div>
+
+        {/* Auditoria exibida somente na edição de um período letivo existente */}
+        {periodoEmEdicao && (
+          <HistoricoAcoesResumo
+            ultimaAcao={periodoEmEdicao.ultima_acao}
+            ultimasAcoes={periodoEmEdicao.ultimas_acoes}
+            rotuloEntidade="período letivo"
+            className="mt-3"
+          />
+        )}
       </div>
 
       {/* Rodapé Fixo do Modal */}

@@ -73,12 +73,15 @@ Envelope seguro de dados do usuário autenticado retornado em `/api/user`, `/api
   "turma": "1º Ano A - Ensino Médio",
   "turma_id": 1,
   "ativo": true,
-  "permissoes": []
+  "permissoes": [],
+  "ultima_acao": null,
+  "ultimas_acoes": []
 }
 ```
 * **Nota sobre `turma` e `turma_id`**: Retorna a string com o `nome_identificador` e o ID numérico da turma ativa do aluno (matrícula com status `Ativo`). Caso o usuário não seja aluno ou não possua matrícula ativa vinculada, os valores retornados são `null`.
 * **Nota sobre `nickname` (privado)**: o apelido só é retornado quando quem consulta é o próprio dono (`/api/user`, login, cadastro e atualização do próprio perfil). Para qualquer outro usuário (inclusive Adm em `/api/usuarios`) o valor vem `null`. Em `NoticiaResource`, `autor.nickname` passa a repetir o `name` institucional.
 * **Nota sobre `avatar`**: em `/api/auth/google`, a foto do Google só é gravada se o usuário ainda não tiver avatar; uma foto enviada via `POST /api/usuarios/{id}/avatar` nunca é sobrescrita por novo login. Requer `php artisan storage:link` para servir `/storage/avatars/*`.
+* **Nota sobre `ultima_acao` e `ultimas_acoes` (Auditoria RBAC)**: Seguindo a **Regra Transversal de Auditoria e Blindagem RBAC**, estes campos retornam `null` e `[]` quando o usuário autenticado é `aluno`, `professor`, `bibliotecaria` ou `padrao` (como no exemplo de `/api/user` acima). Quando consultados por `especialista` ou `adm` (ver Módulo 6), retornam o objeto `RegistroAcao` mais recente e a lista de até 5 registros recentes.
 
 ---
 
@@ -355,9 +358,40 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
       { "periodo": null, "hora_inicio": "09:30", "hora_fim": "09:56", "is_intervalo": true },
       { "periodo": 4, "hora_inicio": "09:56", "hora_fim": "10:46", "is_intervalo": false },
       { "periodo": 5, "hora_inicio": "10:46", "hora_fim": "11:36", "is_intervalo": false }
+    ],
+    "ultima_acao": {
+      "id_registro_acao": 8,
+      "entidade_tipo": "App\\Models\\Turno",
+      "entidade_id": "Matutino",
+      "acao": "turno_atualizado",
+      "descricao": "Atualizou horários e módulo do turno Matutino",
+      "executado_por_id": 2,
+      "executado_por_nome": "Maria Souza",
+      "executado_por_role": "especialista",
+      "executado_por_role_label": "Especialista Pedagógico",
+      "metadados": null,
+      "created_at": "2026-11-18T11:15:00.000000Z",
+      "tempo_atras": "há 17 minutos"
+    },
+    "ultimas_acoes": [
+      {
+        "id_registro_acao": 8,
+        "entidade_tipo": "App\\Models\\Turno",
+        "entidade_id": "Matutino",
+        "acao": "turno_atualizado",
+        "descricao": "Atualizou horários e módulo do turno Matutino",
+        "executado_por_id": 2,
+        "executado_por_nome": "Maria Souza",
+        "executado_por_role": "especialista",
+        "executado_por_role_label": "Especialista Pedagógico",
+        "metadados": null,
+        "created_at": "2026-11-18T11:15:00.000000Z",
+        "tempo_atras": "há 17 minutos"
+      }
     ]
   }
   ```
+  *(Nota: `ultima_acao` e `ultimas_acoes` retornam populados apenas para `especialista` e `adm`; para outros perfis retornam `null` e `[]`.)*
 
 * **`TurmaResource` (`TurmaData` ↔ `TurmaSchema`)**:
   ```json
@@ -372,9 +406,40 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
     "capacidade_maxima": 40,
     "status": "Ativa",
     "total_alunos": 5,
-    "total_disciplinas": 12
+    "total_disciplinas": 12,
+    "ultima_acao": {
+      "id_registro_acao": 1,
+      "entidade_tipo": "App\\Models\\Turma",
+      "entidade_id": "1",
+      "acao": "matricula_realizada",
+      "descricao": "Matriculou o(a) estudante Ana Ramos na turma 3º Ano - ADS",
+      "executado_por_id": 2,
+      "executado_por_nome": "Maria Souza",
+      "executado_por_role": "especialista",
+      "executado_por_role_label": "Especialista Pedagógico",
+      "metadados": null,
+      "created_at": "2026-11-18T11:30:00.000000Z",
+      "tempo_atras": "há 2 minutos"
+    },
+    "ultimas_acoes": [
+      {
+        "id_registro_acao": 1,
+        "entidade_tipo": "App\\Models\\Turma",
+        "entidade_id": "1",
+        "acao": "matricula_realizada",
+        "descricao": "Matriculou o(a) estudante Ana Ramos na turma 3º Ano - ADS",
+        "executado_por_id": 2,
+        "executado_por_nome": "Maria Souza",
+        "executado_por_role": "especialista",
+        "executado_por_role_label": "Especialista Pedagógico",
+        "metadados": null,
+        "created_at": "2026-11-18T11:30:00.000000Z",
+        "tempo_atras": "há 2 minutos"
+      }
+    ]
   }
   ```
+  *(Nota: `ultima_acao` (`RegistroAcao | null`) e `ultimas_acoes` (`RegistroAcao[]`) são opcionais/condicionais conforme RBAC: populados para `especialista` e `adm`; para `professor` e demais perfis retornam `null` e `[]`.)*
 * **`TurmaResumoResource` (`TurmaResumoData` ↔ `TurmaResumoSchema`)**:
   ```json
   {
@@ -486,6 +551,9 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
   }
   ```
 
+* **Demais Resources Auditados do Módulo 5 (`MatriculaResource`, `ProfessorResource`, `DisciplinaResource`, `CicloResource` / `CicloData` ↔ `CicloSchema`, `PeriodoLetivoResource` ↔ `PeriodoLetivoSchema`)**:
+  Todos os endpoints/Resources dessas entidades monitoradas incluem condicionalmente os campos `ultima_acao` (`RegistroAcao | null`) e `ultimas_acoes` (`RegistroAcao[]`, até 5 modificações recentes). Pela **Regra Transversal de Auditoria e Blindagem RBAC**, os dados são populados exclusivamente para solicitantes `especialista` ou `adm`, retornando `ultima_acao: null` e `ultimas_acoes: []` para `professor`, `aluno` e demais papéis. Operações compostas (como matrícula/transferência/cancelamento, vínculo de disciplina em turma/ciclo/professor e confirmação de professor) propagam o registro entre a entidade de origem e as entidades diretamente afetadas.
+
 ---
 
 ### Módulo 6: Gestão do Usuário (Configurações)
@@ -507,6 +575,55 @@ Os endpoints do Módulo Acadêmico possuem dupla revalidação em runtime: **Spa
 | `DELETE` | `/api/tokens/{id}` | Adm | N/A | Mensagem 200 | `tokenService.revogarToken()` | Revoga e remove fisicamente um token específico do banco de dados |
 | `DELETE` | `/api/usuarios/{id}/tokens` | Adm | N/A | Mensagem 200 (`removidos`) | `tokenService.revogarTokensDoUsuario()` | Revoga todas as sessões de um usuário específico (preservando a sessão atual se for o próprio Adm) |
 | `DELETE` | `/api/tokens/expirados` | Adm | N/A | Mensagem 200 (`removidos`) | `tokenService.limparTokensExpirados()` | Expurga imediatamente os tokens que já ultrapassaram 6 horas de vida (rotina automática via `app:limpar-tokens-expirados` a cada 8 horas) |
+
+#### Especificação de Auditoria em `UsuarioResource` (Módulo 6)
+Nos endpoints de gestão de usuários e confirmação de vínculo, `UsuarioResource` (estrutura completa detalhada no Módulo 1) entrega os campos condicionais `ultima_acao` (`RegistroAcao | null`) e `ultimas_acoes` (`RegistroAcao[]`, até 5 entradas) quando o solicitante possui papel `especialista` ou `adm`:
+```json
+{
+  "id": 12,
+  "name": "Ana Ramos",
+  "nickname": null,
+  "email": "ana.ramos@aluno.mg.gov.br",
+  "role": "aluno",
+  "role_label": "Aluno",
+  "status_confirmacao": "confirmado",
+  "turma": "3º Ano - ADS",
+  "turma_id": 1,
+  "ativo": true,
+  "permissoes": [],
+  "ultima_acao": {
+    "id_registro_acao": 15,
+    "entidade_tipo": "App\\Models\\User",
+    "entidade_id": "12",
+    "acao": "vinculo_aluno_confirmado",
+    "descricao": "Confirmou o vínculo do(a) estudante Ana Ramos na turma 3º Ano - ADS",
+    "executado_por_id": 2,
+    "executado_por_nome": "Maria Souza",
+    "executado_por_role": "especialista",
+    "executado_por_role_label": "Especialista Pedagógico",
+    "metadados": null,
+    "created_at": "2026-11-18T11:30:00.000000Z",
+    "tempo_atras": "há 2 minutos"
+  },
+  "ultimas_acoes": [
+    {
+      "id_registro_acao": 15,
+      "entidade_tipo": "App\\Models\\User",
+      "entidade_id": "12",
+      "acao": "vinculo_aluno_confirmado",
+      "descricao": "Confirmou o vínculo do(a) estudante Ana Ramos na turma 3º Ano - ADS",
+      "executado_por_id": 2,
+      "executado_por_nome": "Maria Souza",
+      "executado_por_role": "especialista",
+      "executado_por_role_label": "Especialista Pedagógico",
+      "metadados": null,
+      "created_at": "2026-11-18T11:30:00.000000Z",
+      "tempo_atras": "há 2 minutos"
+    }
+  ]
+}
+```
+* **Blindagem e Preservação**: Para solicitantes sem papel `especialista` ou `adm`, `ultima_acao` retorna `null` e `ultimas_acoes` retorna `[]`. Caso a conta do administrador/especialista que executou a ação venha a ser excluída no futuro (`nullOnDelete`), `executado_por_id` torna-se `null`, mantendo `executado_por_nome` e `executado_por_role` preservados no histórico.
 
 #### Especificação de Payload: `TokenSessaoResource`
 Envelope seguro de auditoria de sessão retornado em `GET /api/tokens` (o atributo `token` com o hash SHA-256 nunca é exposto):
@@ -730,3 +847,133 @@ Para cada destinatário, o canal de banco nativo do Laravel cria um registro ind
 - A nota consolidada por aluno, disciplina e período é normalizada pelo valor máximo. Abaixo de `60%` gera alerta; a partir de `80%` gera destaque individual. Alunos recebem somente seus próprios dados; professor/especialista/adm veem nome e nota apenas dentro do escopo autorizado.
 - Os `event_key` estáveis impedem duplicação de alertas acadêmicos em reimportações equivalentes. Uma nova categoria de desempenho pode produzir um novo aviso para a mesma nota consolidada.
 - O agendamento `app:enviar-lembretes-notificacoes` envia uma única lembrança após três dias somente para notificações manuais não confirmadas, ao destinatário e ao criador. Alertas acadêmicos do sistema e os próprios lembretes não entram nesse fluxo. O ambiente publicado deve executar o scheduler Laravel diariamente.
+
+---
+
+## Módulo Transversal: Assistente Virtual Dona Nana
+*Mentora virtual inteligente integrada ao Google Gemini (com fallback amigável) e gestão pedagógica de persona para Especialistas e Administradores.*
+
+| Método | Endpoint | Acesso | Form Request (Back) | API Resource (Back) | Serviço Front (`src/services/donaNanaService.js`) | Descrição |
+|---|---|---|---|---|---|---|
+| `POST` | `/api/dona-nana/chat` | Logado | `ChatDonaNanaRequest` | `DonaNanaChatResource` | `donaNanaService.enviarMensagem()` | Envia pergunta contextualizada (`mensagem`, `historico` máx. 20 itens, `contexto_origem`: `'aba'` ou `'balao'`) |
+| `GET` | `/api/dona-nana/config` | Especialista / Adm | N/A | `DonaNanaConfigResource` | `donaNanaService.obterConfiguracao()` | Retorna os 4 pilares do System Prompt, parâmetros do modelo, prévia montada e auditoria recente |
+| `PUT` | `/api/dona-nana/config` | Especialista / Adm | `UpdateDonaNanaConfigRequest` | `DonaNanaConfigResource` | `donaNanaService.salvarConfiguracao()` | Atualiza a persona e configurações da Dona Nana, registrando a alteração em `registros_acoes` |
+
+#### Saída: `DonaNanaChatResource`
+```json
+{
+  "resposta": "Olá, meu querido aluno! Que alegria falar com você...",
+  "sugestoes": ["Ver meu boletim", "Consultar agenda escolar"],
+  "autor": "Professora Sebastiana (Dona Nana)",
+  "origem": "gemini-3.8-flash",
+  "timestamp": "2026-11-18T11:30:00+00:00"
+}
+```
+
+#### Entrada: `UpdateDonaNanaConfigRequest`
+```json
+{
+  "personalidade": "string (obrigatório, mín. 10, máx. 5000)",
+  "conhecimento_portal": "string (obrigatório, mín. 10, máx. 5000)",
+  "historias_causos": "string (obrigatório, mín. 10, máx. 5000)",
+  "diretrizes_resposta": "string (obrigatório, mín. 10, máx. 5000)",
+  "avatar_url": "string | null (máx. 500)",
+  "modelo": "string | null (máx. 50)",
+  "temperatura": "number | null (0.0 a 1.0)"
+}
+```
+
+#### Saída: `DonaNanaConfigResource`
+```json
+{
+  "id": 1,
+  "personalidade": "Texto dos traços da patrona...",
+  "conhecimento_portal": "Guia dos módulos do portal...",
+  "historias_causos": "Memórias de Jaguaraçu e da EEPSAS...",
+  "diretrizes_resposta": "Postura pedagógica das respostas...",
+  "avatar_url": "/img/escola-professora.jpeg",
+  "modelo": "gemini-3.8-flash",
+  "temperatura": 0.7,
+  "ativo": true,
+  "prompt_montado": "### SUA PERSONALIDADE:\n...",
+  "updated_at": "2026-11-18T11:25:00+00:00",
+  "ultima_acao": {
+    "id_registro_acao": 22,
+    "entidade_tipo": "App\\Models\\DonaNanaConfig",
+    "entidade_id": "1",
+    "acao": "dona_nana_config_atualizada",
+    "descricao": "Atualizou a persona e diretrizes pedagógicas da Dona Nana",
+    "executado_por_id": 2,
+    "executado_por_nome": "Maria Souza",
+    "executado_por_role": "especialista",
+    "executado_por_role_label": "Especialista Pedagógico",
+    "metadados": null,
+    "created_at": "2026-11-18T11:25:00.000000Z",
+    "tempo_atras": "há 7 minutos"
+  },
+  "ultimas_acoes": [
+    {
+      "id_registro_acao": 22,
+      "entidade_tipo": "App\\Models\\DonaNanaConfig",
+      "entidade_id": "1",
+      "acao": "dona_nana_config_atualizada",
+      "descricao": "Atualizou a persona e diretrizes pedagógicas da Dona Nana",
+      "executado_por_id": 2,
+      "executado_por_nome": "Maria Souza",
+      "executado_por_role": "especialista",
+      "executado_por_role_label": "Especialista Pedagógico",
+      "metadados": null,
+      "created_at": "2026-11-18T11:25:00.000000Z",
+      "tempo_atras": "há 7 minutos"
+    }
+  ]
+}
+```
+* **Nota sobre Auditoria em `DonaNanaConfigResource`**: Os campos `ultima_acao` e `ultimas_acoes` seguem a **Regra Transversal de Auditoria e Blindagem RBAC** (retornando os registros apenas para `especialista` e `adm`; caso ainda não haja registro persistido, retornam `null` e `[]`).
+
+---
+
+## Módulo Transversal: Auditoria e Registro de Ações (`registros_acoes`)
+*Trilha transversal de auditoria administrativa e pedagógica das alterações em entidades críticas do sistema.*
+
+### 1. Contrato Padrão do Objeto `RegistroAcao` (`RegistroAcaoResource` / `RegistroAcaoData` ↔ `RegistroAcaoSchema`)
+Espelhado 1:1 entre `App\Http\Resources\RegistroAcaoResource`, `App\Data\Auditoria\RegistroAcaoData` e `RegistroAcaoSchema` (Zod em `portal-front/src/utils/academicoSchemas.js`):
+```json
+{
+  "id_registro_acao": 1,
+  "entidade_tipo": "App\\Models\\Turma",
+  "entidade_id": "1",
+  "acao": "matricula_realizada",
+  "descricao": "Matriculou o(a) estudante Ana Ramos na turma 3º Ano - ADS",
+  "executado_por_id": 2,
+  "executado_por_nome": "Maria Souza",
+  "executado_por_role": "especialista",
+  "executado_por_role_label": "Especialista Pedagógico",
+  "metadados": null,
+  "created_at": "2026-11-18T11:30:00.000000Z",
+  "tempo_atras": "há 2 minutos"
+}
+```
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id_registro_acao` | `int` | Chave primária sequencial do registro na tabela `registros_acoes` |
+| `entidade_tipo` | `string` | Classe Eloquent monitorada (FQCN, ex.: `"App\\Models\\Turma"`) |
+| `entidade_id` | `string` | Identificador da entidade normalizado como texto (suporta IDs numéricos e textuais como `Turno`) |
+| `acao` | `string` | Identificador semântico da operação executada (ex.: `matricula_realizada`, `turma_atualizada`) |
+| `descricao` | `string` | Texto descritivo legível em pt-BR (máx. 255 caracteres) |
+| `executado_por_id` | `int` ou `null` | ID do usuário executor (`null` quando ação automática do sistema ou conta excluída posteriormente) |
+| `executado_por_nome` | `string` | Snapshot imutável do nome completo do executor no momento da ação |
+| `executado_por_role` | `string` | Snapshot imutável do papel (`UserRole` ou `"sistema"`) no momento da ação |
+| `executado_por_role_label` | `string` | Rótulo amigável do papel em pt-BR (ex.: `"Especialista Pedagógico"`, `"Administrador"`, `"Sistema"`) |
+| `metadados` | `object` ou `null` | Estrutura JSON opcional com contexto técnico complementar |
+| `created_at` | `string` ou `null` | Data e hora da ação em formato ISO 8601 UTC |
+| `tempo_atras` | `string` | Tempo relativo humanizado em pt-BR (ex.: `"há 2 minutos"`) |
+
+### 2. Regra Transversal de Auditoria e Blindagem RBAC
+* **Entidades Monitoradas**: Os endpoints e API Resources das 9 entidades monitoradas — **Turmas** (`TurmaResource`), **Matrículas** (`MatriculaResource`), **Professores** (`ProfessorResource`), **Disciplinas** (`DisciplinaResource`), **Ciclos** (`CicloResource`), **Turnos** (`TurnoResource`), **Períodos Letivos** (`PeriodoLetivoResource`), **Usuários** (`UsuarioResource`) e **Configuração da Dona Nana** (`DonaNanaConfigResource`) — incluem os campos:
+  * `ultima_acao`: objeto `RegistroAcao | null` representando a modificação mais recente da entidade.
+  * `ultimas_acoes`: array `RegistroAcao[]` contendo até as **5 últimas modificações** ordenadas da mais recente para a mais antiga.
+* **Blindagem RBAC**: `ultima_acao` e `ultimas_acoes` são populados **exclusivamente** quando o usuário autenticado possui papel `especialista` ou `adm`. Para todos os demais perfis (`professor`, `aluno`, `bibliotecaria`, `padrao`), a API retorna obrigatoriamente `ultima_acao: null` e `ultimas_acoes: []`, impedindo exposição de histórico administrativo a perfis de consulta.
+* **Propagação Inteligente**: Operações compostas — como **matrícula/transferência/cancelamento**, **vínculo ou desvínculo de disciplina em turma/ciclo/professor** e **confirmação/aprovação/recusa de vínculo** — registram o evento tanto na entidade de origem quanto nas entidades diretamente afetadas, sem duplicação para o mesmo alvo na mesma operação.
+* **Preservação Histórica**: Os campos `executado_por_nome` e `executado_por_role` armazenam um *snapshot* imutável do executor no instante da ação; caso a conta do executor seja excluída futuramente (`nullOnDelete` na chave estrangeira `executado_por_id`), `executado_por_id` torna-se `null`, preservando integralmente o registro histórico.

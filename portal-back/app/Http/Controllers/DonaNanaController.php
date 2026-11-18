@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateDonaNanaConfigRequest;
 use App\Http\Resources\DonaNanaChatResource;
 use App\Http\Resources\DonaNanaConfigResource;
 use App\Models\DonaNanaConfig;
+use App\Models\User;
 use App\Services\DonaNanaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -52,6 +53,11 @@ class DonaNanaController extends Controller
 
         $config = DonaNanaConfig::obterAtiva();
 
+        // Carrega trilha de ações apenas quando o registro já foi persistido no banco
+        if ($config->exists) {
+            $config->load('registrosAcoes');
+        }
+
         return new DonaNanaConfigResource($config);
     }
 
@@ -67,6 +73,14 @@ class DonaNanaController extends Controller
 
         $config->fill($dadosValidados);
         $config->save();
+
+        $executor = $request->user();
+        $config->registrarAcao(
+            'dona_nana_atualizada',
+            'Atualizou a persona e diretrizes pedagógicas da assistente Dona Nana',
+            $executor instanceof User ? $executor : null
+        );
+        $config->load('registrosAcoes');
 
         return (new DonaNanaConfigResource($config))->response()->setStatusCode(200);
     }

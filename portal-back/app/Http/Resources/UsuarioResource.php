@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Enums\UserRole;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -35,6 +36,10 @@ class UsuarioResource extends JsonResource
         $roleValue = $this->role instanceof UserRole ? $this->role->value : (string) $this->role;
         $roleLabel = $this->role instanceof UserRole ? $this->role->label() : ucfirst($roleValue);
         $isAdmSolicitante = (bool) $request->user()?->isAdm();
+
+        // Aplica blindagem RBAC na auditoria para expor apenas a Especialista/Adm
+        $solicitante = $request->user();
+        $auditoria = $this->resource->obterAuditoriaParaApi($solicitante instanceof User ? $solicitante : null);
 
         return [
             // Identificador e dados cadastrais
@@ -80,6 +85,8 @@ class UsuarioResource extends JsonResource
             'permissoes' => method_exists($this->resource, 'getPermissionsSlugs')
                 ? $this->getPermissionsSlugs()
                 : [],
+            'ultima_acao' => $auditoria['ultima_acao'],
+            'ultimas_acoes' => $auditoria['ultimas_acoes'],
         ];
     }
 }

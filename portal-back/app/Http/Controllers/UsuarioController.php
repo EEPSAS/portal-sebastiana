@@ -18,6 +18,7 @@ use App\Models\Turma;
 use App\Models\TurmaDisciplina;
 use App\Models\User;
 use App\Services\NotificacaoService;
+use App\Services\RegistroAcaoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +41,7 @@ class UsuarioController extends Controller
         Gate::authorize('gerenciar_usuarios');
 
         // Ordena pelos últimos usuários cadastrados para exibir os mais recentes por padrão
-        $query = User::with(['roleModel', 'autorizadoPor', 'vinculos.autorizadoPor'])
+        $query = User::with(['roleModel', 'autorizadoPor', 'vinculos.autorizadoPor', 'registrosAcoes'])
             ->orderByDesc('created_at')
             ->orderByDesc('id');
 
@@ -127,11 +128,23 @@ class UsuarioController extends Controller
 
         $usuario = User::create($dados);
 
+        $rawRole = $usuario->getAttribute('role');
+        $roleTexto = $rawRole instanceof UserRole ? $rawRole->value : (string) $rawRole;
+        $executor = $request->user();
+        $executorUser = $executor instanceof User ? $executor : null;
+
+        // Registra a criação administrativa do usuário em sua trilha de ações
+        $usuario->registrarAcao(
+            'usuario_criado',
+            "Cadastrou o usuário {$usuario->name} com perfil {$roleTexto}",
+            $executorUser
+        );
+
         // Se for aluno e possuir turma informada, matricula o aluno e vincula
         if ($usuario->isAluno() && ! empty($turmaId)) {
-            $turma = Turma::find($turmaId);
+            $turma = Turma::find((int) $turmaId);
             if ($turma) {
-                Matricula::create([
+                $matricula = Matricula::create([
                     'usuario_id' => $usuario->id,
                     'turma_id' => $turma->id_turma,
                     'data_matricula' => now()->toDateString(),
@@ -141,6 +154,14 @@ class UsuarioController extends Controller
                 $usuario->registrarVinculoEscolar(
                     $request->user()->id,
                     "Cadastrado diretamente pelo Administrador e vinculado à turma {$turma->nome_identificador}."
+                );
+
+                // Propaga o registro de matrícula para a turma e para a matrícula recém-criada
+                app(RegistroAcaoService::class)->registrarPropagado(
+                    [$turma, $matricula],
+                    'matricula_realizada',
+                    "Matriculou o(a) estudante {$usuario->name} na turma {$turma->nome_identificador}",
+                    $executorUser
                 );
             }
         } elseif ($statusConfirmacao === 'confirmado') {
@@ -155,7 +176,7 @@ class UsuarioController extends Controller
             $usuario->syncEventoAniversario($dados['data_nascimento']);
         }
 
-        $usuario->load(['roleModel.permissions', 'autorizadoPor', 'vinculos.autorizadoPor']);
+        $usuario->load(['roleModel.permissions', 'autorizadoPor', 'vinculos.autorizadoPor', 'registrosAcoes']);
 
         return response()->json(new UsuarioResource($usuario), 201);
     }
@@ -167,7 +188,7 @@ class UsuarioController extends Controller
     {
         Gate::authorize('gerenciar_usuarios');
 
-        $usuario->load(['roleModel.permissions', 'directPermissions']);
+        $usuario->load(['roleModel.permissions', 'directPermissions', 'registrosAcoes']);
 
         return response()->json(new UsuarioResource($usuario), 200);
     }
@@ -277,7 +298,17 @@ class UsuarioController extends Controller
             $usuario->syncEventoAniversario();
         }
 
-        $usuario->load(['roleModel.permissions', 'autorizadoPor', 'vinculos.autorizadoPor', 'turmas']);
+        if ($isAdm) {
+            $executor = $request->user();
+            // Registra atualização administrativa cadastral ou de vínculo na trilha do usuário
+            $usuario->registrarAcao(
+                'usuario_atualizado',
+                "Atualizou o cadastro/acesso do usuário {$usuario->name}",
+                $executor instanceof User ? $executor : null
+            );
+        }
+
+        $usuario->load(['roleModel.permissions', 'autorizadoPor', 'vinculos.autorizadoPor', 'turmas', 'registrosAcoes']);
 
         return response()->json(new UsuarioResource($usuario), 200);
     }
@@ -350,6 +381,14 @@ class UsuarioController extends Controller
             $usuario->tokens()->delete();
         }
 
+        $executor = $request->user();
+        $usuario->registrarAcao(
+            'usuario_bloqueio_alterado',
+            ($novoStatus ? 'Desbloqueou' : 'Bloqueou')." o acesso de {$usuario->name}",
+            $executor instanceof User ? $executor : null
+        );
+        $usuario->load('registrosAcoes');
+
         return response()->json([
             'message' => $novoStatus ? 'Usuário desbloqueado com sucesso.' : 'Usuário bloqueado com sucesso.',
             'usuario' => new UsuarioResource($usuario),
@@ -373,7 +412,14 @@ class UsuarioController extends Controller
             'role' => $roleValue,
         ]);
 
-        $usuario->load('roleModel.permissions');
+        $executor = $request->user();
+        $usuario->registrarAcao(
+            'papel_alterado',
+            "Alterou o papel institucional de {$usuario->name} para {$roleValue}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $usuario->load(['roleModel.permissions', 'registrosAcoes']);
 
         return response()->json([
             'message' => "Papel do usuário alterado com sucesso para {$roleValue}.",
@@ -467,6 +513,13 @@ class UsuarioController extends Controller
             'status_confirmacao' => 'inativo',
         ]);
 
+        $executor = $request->user();
+        $usuario->registrarAcao(
+            'vinculo_encerrado',
+            "Desabilitou o acesso e encerrou o vínculo vigente de {$nomeUsuario}",
+            $executor instanceof User ? $executor : null
+        );
+
         return response()->json([
             'message' => "Vínculo do usuário {$nomeUsuario} encerrado com sucesso. O histórico acadêmico foi preservado.",
             'excluido_permanente' => false,
@@ -514,7 +567,7 @@ class UsuarioController extends Controller
             ], 422);
         }
 
-        $turma = Turma::findOrFail($request->validated('turma_id'));
+        $turma = Turma::findOrFail((int) $request->validated('turma_id'));
 
         // Inativa eventuais matrículas anteriores e ativa a matrícula na turma escolhida
         Matricula::where('usuario_id', $usuario->id)
@@ -522,7 +575,7 @@ class UsuarioController extends Controller
             ->where('status_matricula', 'Ativo')
             ->update(['status_matricula' => 'Transferido']);
 
-        Matricula::updateOrCreate(
+        $matricula = Matricula::updateOrCreate(
             [
                 'usuario_id' => $usuario->id,
                 'turma_id' => $turma->id_turma,
@@ -539,7 +592,16 @@ class UsuarioController extends Controller
             "Aprovado e vinculado à turma {$turma->nome_identificador}"
         );
 
-        $usuario->load(['turmas', 'autorizadoPor', 'vinculos.autorizadoPor']);
+        $executor = $request->user();
+        // Propaga a aprovação e matrícula para aluno, registro de matrícula e turma
+        app(RegistroAcaoService::class)->registrarPropagado(
+            [$usuario, $matricula, $turma],
+            'aluno_aprovado',
+            "Aprovou o acesso do(a) estudante {$usuario->name} e matriculou na turma {$turma->nome_identificador}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $usuario->load(['turmas', 'autorizadoPor', 'vinculos.autorizadoPor', 'registrosAcoes']);
 
         return response()->json([
             'message' => "Aluno(a) {$usuario->name} aprovado(a) e vinculado(a) à turma {$turma->nome_identificador} com sucesso!",
@@ -590,7 +652,14 @@ class UsuarioController extends Controller
             }
         }
 
-        $usuario->load(['roleModel.permissions', 'directPermissions']);
+        $executor = $request->user();
+        $usuario->registrarAcao(
+            'permissoes_atualizadas',
+            "Atualizou permissões diretas do usuário {$usuario->name}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $usuario->load(['roleModel.permissions', 'directPermissions', 'registrosAcoes']);
 
         return response()->json([
             'message' => 'Permissões do usuário atualizadas com sucesso.',

@@ -59,9 +59,15 @@ class PeriodoLetivoController extends Controller
      *
      * Detalhes de um período letivo específico.
      */
-    public function show(PeriodoLetivo $periodo): PeriodoLetivoResource
+    public function show(Request $request, PeriodoLetivo $periodo): PeriodoLetivoResource
     {
-        return new PeriodoLetivoResource($periodo->load(['divisoes', 'turmas']));
+        $relacoes = ['divisoes', 'turmas'];
+        $user = $request->user();
+        if ($user && ($user->isAdm() || $user->isEspecialista())) {
+            $relacoes[] = 'registrosAcoes';
+        }
+
+        return new PeriodoLetivoResource($periodo->load($relacoes));
     }
 
     /**
@@ -101,7 +107,7 @@ class PeriodoLetivoController extends Controller
             abort(403, 'Apenas Especialistas e Administradores podem alterar o período letivo ativo.');
         }
 
-        $ativado = $this->service->ativar($periodo);
+        $ativado = $this->service->ativar($periodo, $request->user());
 
         return new PeriodoLetivoResource($ativado);
     }
@@ -136,6 +142,12 @@ class PeriodoLetivoController extends Controller
         }
 
         $total = $this->service->sincronizarMarcosAgenda($periodo, $request->user());
+
+        $periodo->registrarAcao(
+            'agenda_sincronizada',
+            "Sincronizou {$total} marcos do Período Letivo {$periodo->ano} com a Agenda",
+            $request->user()
+        );
 
         return response()->json([
             'message' => "{$total} marcos do ano letivo de {$periodo->ano} foram sincronizados com o calendário institucional.",

@@ -14,6 +14,7 @@
 
 import { useState } from "react";
 import { criarCiclo, atualizarCiclo } from "../../../services/disciplinasService";
+import HistoricoAcoesResumo from "../common/HistoricoAcoesResumo";
 
 // Limite do comentário (deve ser igual ao `max:256` do StoreCicloRequest no backend)
 const LIMITE_DESCRICAO = 256;
@@ -119,6 +120,16 @@ const ModalCiclo = ({ ciclo = null, onFechar, onSalvo }) => {
                   {descricao.length}/{LIMITE_DESCRICAO}
                 </div>
               </div>
+
+              {/* Auditoria exibida somente ao editar um ciclo já cadastrado */}
+              {editando && (
+                <HistoricoAcoesResumo
+                  ultimaAcao={ciclo?.ultima_acao}
+                  ultimasAcoes={ciclo?.ultimas_acoes}
+                  rotuloEntidade="ciclo"
+                  className="mt-3"
+                />
+              )}
             </div>
 
             <div className="modal-footer border-top-0 pt-0">

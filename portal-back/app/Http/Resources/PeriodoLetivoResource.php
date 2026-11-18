@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,6 +33,10 @@ class PeriodoLetivoResource extends JsonResource
             ? (float) $this->divisoes->filter(fn ($d) => $d->isConcluida())->sum('pontos')
             : 0.0;
 
+        // Aplica blindagem RBAC na auditoria para expor apenas a Especialista/Adm
+        $solicitante = $request->user();
+        $auditoria = $this->resource->obterAuditoriaParaApi($solicitante instanceof User ? $solicitante : null);
+
         return [
             'id_periodo_letivo' => $this->id_periodo_letivo,
             'ano' => (int) $this->ano,
@@ -59,6 +64,8 @@ class PeriodoLetivoResource extends JsonResource
                 : [],
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
+            'ultima_acao' => $auditoria['ultima_acao'],
+            'ultimas_acoes' => $auditoria['ultimas_acoes'],
         ];
     }
 }

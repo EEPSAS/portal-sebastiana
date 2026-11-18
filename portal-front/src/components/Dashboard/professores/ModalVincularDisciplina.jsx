@@ -14,6 +14,7 @@ import {
   listarCiclosDasDisciplinas,
 } from "../../../utils/formatters";
 import FiltroDisciplinas from "./FiltroDisciplinas";
+import HistoricoAcoesResumo from "../common/HistoricoAcoesResumo";
 
 const ModalVincularDisciplina = ({
   professor,
@@ -218,6 +219,14 @@ const ModalVincularDisciplina = ({
                 * Ao vincular a disciplina, o docente assumirá a matéria em todas as turmas ativas da instituição.
               </small>
             </form>
+
+            {/* Auditoria das últimas ações registradas para este docente */}
+            <HistoricoAcoesResumo
+              ultimaAcao={professor.ultima_acao}
+              ultimasAcoes={professor.ultimas_acoes}
+              rotuloEntidade="docente"
+              className="mt-3"
+            />
           </div>
 
           <div className="modal-footer border-top-0 pt-0">

@@ -9,6 +9,7 @@
  */
 
 import { formatarDisciplinaCiclo } from "../../../utils/formatters";
+import HistoricoAcoesResumo from "../common/HistoricoAcoesResumo";
 
 export default function ProfessoresConfirmadosAba({
   professoresConfirmados,
@@ -88,21 +89,32 @@ export default function ProfessoresConfirmadosAba({
               </div>
             </div>
 
-            {/* Rodapé do card: Resumo de turmas e Ação */}
-            <div className="d-flex align-items-center justify-content-between pt-3 border-top mt-2">
-              <span className="text-muted small">
-                <i className="bi bi-people-fill me-1 text-secondary"></i>
-                {prof.total_turmas || 0} turma(s) com regência
-              </span>
+            {/* Bloco inferior agrupado para manter a faixa de auditoria sempre junto ao rodapé */}
+            <div>
+              <HistoricoAcoesResumo
+                ultimaAcao={prof.ultima_acao}
+                ultimasAcoes={prof.ultimas_acoes}
+                rotuloEntidade="docente"
+                compacto
+                className="mt-2"
+              />
 
-              <button
-                type="button"
-                className="btn btn-primary btn-sm px-3 fw-semibold rounded-3"
-                onClick={() => onAbrirModalVincular(prof)}
-              >
-                <i className="bi bi-gear-fill me-1"></i>
-                Gerenciar Disciplinas
-              </button>
+              {/* Rodapé do card: Resumo de turmas e Ação */}
+              <div className="d-flex align-items-center justify-content-between pt-3 border-top mt-2">
+                <span className="text-muted small">
+                  <i className="bi bi-people-fill me-1 text-secondary"></i>
+                  {prof.total_turmas || 0} turma(s) com regência
+                </span>
+
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm px-3 fw-semibold rounded-3"
+                  onClick={() => onAbrirModalVincular(prof)}
+                >
+                  <i className="bi bi-gear-fill me-1"></i>
+                  Gerenciar Disciplinas
+                </button>
+              </div>
             </div>
           </div>
         </div>

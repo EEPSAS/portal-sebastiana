@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { atualizarTurma, criarTurma } from "../../../services/turmasService";
 import { listarCiclos } from "../../../services/disciplinasService";
 import { listarPeriodosLetivos } from "../../../services/periodosLetivosService";
+import HistoricoAcoesResumo from "../common/HistoricoAcoesResumo";
 
 /**
  * Conteúdo interno do formulário de criação/edição de turma.
@@ -247,6 +248,16 @@ const ModalTurmaContent = ({ turmaParaEditar, onClose, onSuccess }) => {
               <option value="Concluída">Concluída</option>
             </select>
           </div>
+
+          {/* Auditoria de alterações exibida apenas na edição de turma existente */}
+          {isEdicao && (
+            <HistoricoAcoesResumo
+              ultimaAcao={turmaParaEditar?.ultima_acao}
+              ultimasAcoes={turmaParaEditar?.ultimas_acoes}
+              rotuloEntidade="turma"
+              className="mb-3"
+            />
+          )}
 
           <div className="d-flex justify-content-end gap-2 pt-2 border-top">
             <button

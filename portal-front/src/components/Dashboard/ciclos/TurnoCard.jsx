@@ -8,6 +8,8 @@
  * 3. Permite alternância rápida de status (Ativo/Desativado) e edição inline com persistência na API.
  */
 
+import HistoricoAcoesResumo from "../common/HistoricoAcoesResumo";
+
 export default function TurnoCard({
   turno,
   turmas,
@@ -374,6 +376,15 @@ export default function TurnoCard({
             </div>
           )}
         </div>
+
+        {/* Faixa compacta de auditoria acima do rodapé com turmas ativas */}
+        <HistoricoAcoesResumo
+          ultimaAcao={turno.ultima_acao}
+          ultimasAcoes={turno.ultimas_acoes}
+          rotuloEntidade="turno"
+          compacto
+          className="mb-2"
+        />
 
         {/* Rodapé com Turmas Ativas */}
         <div className="mt-auto pt-2 border-top d-flex justify-content-between align-items-center">

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +22,10 @@ class DonaNanaConfigResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        // Aplica blindagem RBAC na auditoria para expor apenas a Especialista/Adm
+        $solicitante = $request->user();
+        $auditoria = $this->resource->obterAuditoriaParaApi($solicitante instanceof User ? $solicitante : null);
+
         return [
             'id' => $this->id,
             'personalidade' => $this->personalidade,
@@ -33,6 +38,8 @@ class DonaNanaConfigResource extends JsonResource
             'ativo' => (bool) $this->ativo,
             'prompt_montado' => $this->montarPromptCompleto(),
             'updated_at' => $this->updated_at?->toIso8601String(),
+            'ultima_acao' => $auditoria['ultima_acao'],
+            'ultimas_acoes' => $auditoria['ultimas_acoes'],
         ];
     }
 }

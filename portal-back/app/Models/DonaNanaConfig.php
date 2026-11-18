@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\PossuiRegistroAcoes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class DonaNanaConfig extends Model
 {
-    use HasFactory;
+    use HasFactory, PossuiRegistroAcoes;
 
     protected $table = 'dona_nana_configs';
 

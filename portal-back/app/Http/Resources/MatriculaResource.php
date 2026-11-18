@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,6 +18,10 @@ class MatriculaResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        // Aplica blindagem RBAC na auditoria para expor apenas a Especialista/Adm
+        $solicitante = $request->user();
+        $auditoria = $this->resource->obterAuditoriaParaApi($solicitante instanceof User ? $solicitante : null);
+
         return [
             // Identificador da matrícula escolar
             'id_matricula' => $this->id_matricula,
@@ -34,6 +39,8 @@ class MatriculaResource extends JsonResource
                 'id_turma' => $this->turma?->id_turma,
                 'nome_identificador' => $this->turma?->nome_identificador,
             ],
+            'ultima_acao' => $auditoria['ultima_acao'],
+            'ultimas_acoes' => $auditoria['ultimas_acoes'],
         ];
     }
 }

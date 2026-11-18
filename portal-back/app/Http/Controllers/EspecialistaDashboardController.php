@@ -10,6 +10,7 @@ use App\Http\Resources\EspecialistaResumoGerencialResource;
 use App\Http\Resources\RelatorioImportadoResource;
 use App\Models\Disciplina;
 use App\Models\Turma;
+use App\Models\User;
 use App\Services\EspecialistaDashboardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -61,6 +62,21 @@ class EspecialistaDashboardController extends Controller
             $inputValidado->decisao_divergencias,
             $inputValidado->mapeamentos_disciplinas
         );
+
+        // Registra a importação na trilha de ações somente quando concluída com sucesso
+        if (($resultado['status'] ?? 'sucesso') === 'sucesso') {
+            $executor = $request->user();
+            $turma->registrarAcao(
+                'csv_importado',
+                "Importou planilha CSV de notas e frequências na turma {$turma->nome_identificador}",
+                $executor instanceof User ? $executor : null,
+                [
+                    'periodo_aplicado' => $resultado['periodo_aplicado'] ?? null,
+                    'notas_sincronizadas' => $resultado['notas_sincronizadas'] ?? 0,
+                    'frequencias_sincronizadas' => $resultado['frequencias_sincronizadas'] ?? 0,
+                ]
+            );
+        }
 
         return (new RelatorioImportadoResource([
             'status' => $resultado['status'] ?? 'sucesso',

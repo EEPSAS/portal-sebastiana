@@ -11,6 +11,10 @@ use Spatie\LaravelData\Optional;
  */
 class TurmaData extends Data
 {
+    /**
+     * @param  array<string, mixed>|null  $ultima_acao
+     * @param  array<int, array<string, mixed>>  $ultimas_acoes
+     */
     public function __construct(
         public int $id_turma,
         public string $nome_identificador,
@@ -23,6 +27,8 @@ class TurmaData extends Data
         public string $status,
         public int|Optional $total_alunos,
         public int|Optional $total_disciplinas,
+        public ?array $ultima_acao = null,
+        public array $ultimas_acoes = [],
     ) {}
 
     /**
@@ -36,6 +42,9 @@ class TurmaData extends Data
                 ? (int) $turma->periodoLetivo->id_periodo_letivo
                 : null);
 
+        // Coleta trilha de ações somente para perfis autorizados (Especialista/Adm)
+        $auditoria = $turma->obterAuditoriaParaApi();
+
         return new self(
             id_turma: (int) $turma->id_turma,
             nome_identificador: (string) $turma->nome_identificador,
@@ -48,6 +57,8 @@ class TurmaData extends Data
             status: (string) ($turma->status ?? 'Ativa'),
             total_alunos: $turma->alunos_count !== null ? (int) $turma->alunos_count : Optional::create(),
             total_disciplinas: $turma->disciplinas_count !== null ? (int) $turma->disciplinas_count : Optional::create(),
+            ultima_acao: $auditoria['ultima_acao'],
+            ultimas_acoes: $auditoria['ultimas_acoes'],
         );
     }
 }

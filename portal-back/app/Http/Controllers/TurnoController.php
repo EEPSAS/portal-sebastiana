@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdateTurnoRequest;
 use App\Http\Resources\TurnoResource;
 use App\Models\Turno;
+use App\Models\User;
 use Database\Seeders\TurnoSeeder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,13 +21,20 @@ class TurnoController extends Controller
      * Lista todos os turnos escolares configurados na instituição.
      * Auto-popula a base com os 4 turnos canônicos caso a tabela esteja vazia.
      */
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
         if (Turno::count() === 0) {
             (new TurnoSeeder)->run();
         }
 
-        $turnos = Turno::orderBy('id')->get();
+        $query = Turno::orderBy('id');
+        $user = $request->user();
+        // Carrega histórico de auditoria apenas para perfis autorizados
+        if ($user && ($user->isAdm() || $user->isEspecialista())) {
+            $query->with('registrosAcoes');
+        }
+
+        $turnos = $query->get();
 
         return TurnoResource::collection($turnos);
     }
@@ -35,9 +43,13 @@ class TurnoController extends Controller
      * GET /api/turnos/{turno}
      * Detalhes de um turno específico e sua grade de horários.
      */
-    public function show(Turno|string $turno): TurnoResource
+    public function show(Request $request, Turno|string $turno): TurnoResource
     {
         $model = $this->resolverTurno($turno);
+        $user = $request->user();
+        if ($user && ($user->isAdm() || $user->isEspecialista())) {
+            $model->load('registrosAcoes');
+        }
 
         return new TurnoResource($model);
     }
@@ -60,6 +72,14 @@ class TurnoController extends Controller
 
         $model->save();
 
+        $executor = $request->user();
+        $model->registrarAcao(
+            'turno_atualizado',
+            "Atualizou os horários e módulos do turno {$model->nome}",
+            $executor instanceof User ? $executor : null
+        );
+        $model->load('registrosAcoes');
+
         return new TurnoResource($model);
     }
 
@@ -77,6 +97,13 @@ class TurnoController extends Controller
         $model = $this->resolverTurno($turno);
         $model->ativo = ! $model->ativo;
         $model->save();
+
+        $model->registrarAcao(
+            'turno_status_alterado',
+            ($model->ativo ? 'Ativou' : 'Desativou')." o funcionamento do turno {$model->nome}",
+            $user
+        );
+        $model->load('registrosAcoes');
 
         return response()->json([
             'status' => 'sucesso',

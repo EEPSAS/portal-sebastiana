@@ -19,6 +19,7 @@ import { obterConfiguracao, salvarConfiguracao } from '../../../services/donaNan
 import './configuracaoDonaNana.css';
 import BoasVindasCard from '../common/BoasVindasCard';
 import ModuloNav from '../common/ModuloNav';
+import HistoricoAcoesResumo from '../common/HistoricoAcoesResumo';
 
 const ConfiguracaoDonaNana = () => {
   const navigate = useNavigate();
@@ -39,6 +40,11 @@ const ConfiguracaoDonaNana = () => {
   });
 
   const [showLivePreview, setShowLivePreview] = useState(false);
+  // Armazena os dados de auditoria (última ação e histórico recente) das configurações
+  const [auditoria, setAuditoria] = useState({
+    ultima_acao: null,
+    ultimas_acoes: [],
+  });
 
   // Carrega configuração ativa ao montar a página
   useEffect(() => {
@@ -58,6 +64,10 @@ const ConfiguracaoDonaNana = () => {
             avatar_url: dados.avatar_url || '/img/escola-professora.jpeg',
             temperatura: dados.temperatura ?? 0.7,
             modelo: dados.modelo || 'gemini-3.8-flash',
+          });
+          setAuditoria({
+            ultima_acao: dados.ultima_acao || null,
+            ultimas_acoes: dados.ultimas_acoes || [],
           });
         }
       } catch (err) {
@@ -91,7 +101,12 @@ const ConfiguracaoDonaNana = () => {
     setErrorMsg('');
 
     try {
-      await salvarConfiguracao(formData);
+      const salvo = await salvarConfiguracao(formData);
+      // Atualiza imediatamente a faixa de auditoria com o novo registro retornado pela API
+      setAuditoria({
+        ultima_acao: salvo?.ultima_acao || null,
+        ultimas_acoes: salvo?.ultimas_acoes || [],
+      });
       setSuccessMsg('Configurações e persona da Dona Nana atualizadas com sucesso!');
     } catch (err) {
       setErrorMsg(err.message || 'Falha ao salvar as configurações. Verifique os campos.');
@@ -160,6 +175,13 @@ const ConfiguracaoDonaNana = () => {
           <span>{errorMsg}</span>
         </div>
       )}
+
+      {/* Histórico recente de modificações na configuração da Dona Nana */}
+      <HistoricoAcoesResumo
+        ultimaAcao={auditoria.ultima_acao}
+        ultimasAcoes={auditoria.ultimas_acoes}
+        rotuloEntidade="configuração da Dona Nana"
+      />
 
       {/* Visualização Prévia do System Prompt (Live Preview) */}
       {showLivePreview && (

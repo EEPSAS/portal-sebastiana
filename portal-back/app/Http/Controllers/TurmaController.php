@@ -20,6 +20,7 @@ use App\Models\Turma;
 use App\Models\TurmaDisciplina;
 use App\Models\User;
 use App\Services\EspecialistaDashboardService;
+use App\Services\RegistroAcaoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -39,7 +40,12 @@ class TurmaController extends Controller
         Gate::authorize('viewAny', Turma::class);
 
         $user = $request->user();
-        $query = Turma::query()->with(['ciclo', 'periodoLetivo'])->withCount(['alunos', 'disciplinas']);
+        $relacoes = ['ciclo', 'periodoLetivo'];
+        // Evita consultas de auditoria para perfis sem permissão de visualização
+        if ($user && ($user->isAdm() || $user->isEspecialista())) {
+            $relacoes[] = 'registrosAcoes';
+        }
+        $query = Turma::query()->with($relacoes)->withCount(['alunos', 'disciplinas']);
 
         // Se o usuário for Professor, filtra estritamente as turmas em que ele leciona (sem escrita N+1 em rota GET)
         if ($user && $user->isProfessor() && ! $user->isAdm()) {
@@ -90,7 +96,16 @@ class TurmaController extends Controller
 
         // Herda automaticamente as disciplinas e professores do Ciclo Escolar vinculado
         $turma->herdarDisciplinasDoCiclo();
-        $turma->load(['ciclo', 'periodoLetivo'])->loadCount(['alunos', 'disciplinas']);
+
+        $executor = $request->user();
+        // Registra a criação na auditoria antes de carregar as relações para o Resource
+        $turma->registrarAcao(
+            'turma_criada',
+            "Criou a turma {$turma->nome_identificador} ({$turma->turno} - {$turma->ano_letivo})",
+            $executor instanceof User ? $executor : null
+        );
+
+        $turma->load(['ciclo', 'periodoLetivo', 'registrosAcoes'])->loadCount(['alunos', 'disciplinas']);
 
         return response()->json(new TurmaResource($turma), 201);
     }
@@ -98,11 +113,17 @@ class TurmaController extends Controller
     /**
      * Exibe os detalhes de uma turma específica.
      */
-    public function show(Turma $turma): JsonResponse
+    public function show(Request $request, Turma $turma): JsonResponse
     {
         Gate::authorize('view', $turma);
 
-        $turma->load(['ciclo', 'periodoLetivo'])->loadCount(['alunos', 'disciplinas']);
+        $relacoes = ['ciclo', 'periodoLetivo'];
+        $user = $request->user();
+        if ($user && ($user->isAdm() || $user->isEspecialista())) {
+            $relacoes[] = 'registrosAcoes';
+        }
+
+        $turma->load($relacoes)->loadCount(['alunos', 'disciplinas']);
 
         return response()->json(new TurmaResource($turma), 200);
     }
@@ -120,7 +141,15 @@ class TurmaController extends Controller
 
         // Caso o Ciclo Escolar tenha sido atribuído ou alterado, sincroniza as disciplinas herdadas
         $turma->herdarDisciplinasDoCiclo();
-        $turma->load(['ciclo', 'periodoLetivo'])->loadCount(['alunos', 'disciplinas']);
+
+        $executor = $request->user();
+        $turma->registrarAcao(
+            'turma_atualizada',
+            "Atualizou os dados cadastrais da turma {$turma->nome_identificador}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $turma->load(['ciclo', 'periodoLetivo', 'registrosAcoes'])->loadCount(['alunos', 'disciplinas']);
 
         return response()->json(new TurmaResource($turma), 200);
     }
@@ -296,19 +325,38 @@ class TurmaController extends Controller
             ]
         );
 
+        // Propaga o vínculo para a auditoria da turma e da disciplina envolvidas
+        $disciplina = Disciplina::find((int) $validated['disciplina_id']);
+        $executor = $request->user();
+        app(RegistroAcaoService::class)->registrarPropagado(
+            [$turma, $disciplina],
+            'disciplina_vinculada_turma',
+            "Vinculou disciplina à turma {$turma->nome_identificador}",
+            $executor instanceof User ? $executor : null
+        );
+
         return response()->json($vinculo->load(['disciplina', 'professor:id,name,email']), 200);
     }
 
     /**
      * Remove o vínculo de uma disciplina com a turma.
      */
-    public function desvincularDisciplina(Turma $turma, Disciplina $disciplina): JsonResponse
+    public function desvincularDisciplina(Request $request, Turma $turma, Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('update', $turma);
 
         TurmaDisciplina::where('turma_id', $turma->id_turma)
             ->where('disciplina_id', $disciplina->id_disciplina)
             ->delete();
+
+        $executor = $request->user();
+        // Propaga o desvínculo para a auditoria da turma e da disciplina envolvidas
+        app(RegistroAcaoService::class)->registrarPropagado(
+            [$turma, $disciplina],
+            'disciplina_desvinculada_turma',
+            "Desvinculou a disciplina {$disciplina->nome} da turma {$turma->nome_identificador}",
+            $executor instanceof User ? $executor : null
+        );
 
         return response()->json(null, 204);
     }
@@ -468,6 +516,17 @@ class TurmaController extends Controller
         }
 
         $mensagemPeriodo = $periodoLetivo !== null ? " do período '{$periodoLetivo}'" : ' de todos os períodos';
+
+        // Registra a limpeza do CSV com o resumo quantitativo nos metadados para auditoria
+        $turma->registrarAcao(
+            'csv_excluido',
+            "Removeu notas e frequências CSV{$mensagemPeriodo} da turma {$turma->nome_identificador}",
+            $user,
+            [
+                'notas_removidas' => $notasRemovidas,
+                'frequencias_removidas' => $frequenciasRemovidas,
+            ]
+        );
 
         return response()->json([
             'message' => "Dados do diário escolar{$mensagemPeriodo} excluídos com sucesso.",

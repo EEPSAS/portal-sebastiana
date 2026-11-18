@@ -14,6 +14,8 @@ class CicloData extends Data
     /**
      * @param  array<int, mixed>  $disciplinas
      * @param  array<int, array{id_turma: int, nome_identificador: string, turno: string, ano_letivo: int}>  $turmas
+     * @param  array<string, mixed>|null  $ultima_acao
+     * @param  array<int, array<string, mixed>>  $ultimas_acoes
      */
     public function __construct(
         public int $id_ciclo,
@@ -25,6 +27,8 @@ class CicloData extends Data
         public int $carga_horaria_anual_total,
         public array $disciplinas,
         public array $turmas,
+        public ?array $ultima_acao = null,
+        public array $ultimas_acoes = [],
     ) {}
 
     /**
@@ -51,6 +55,9 @@ class CicloData extends Data
             )
             : 0;
 
+        // Coleta trilha de ações somente para perfis autorizados (Especialista/Adm)
+        $auditoria = $ciclo->obterAuditoriaParaApi();
+
         return new self(
             id_ciclo: (int) $ciclo->id_ciclo,
             nome: (string) $ciclo->nome,
@@ -65,6 +72,8 @@ class CicloData extends Data
             carga_horaria_anual_total: $somaAulasSemanais * 40,
             disciplinas: $disciplinas,
             turmas: $turmas,
+            ultima_acao: $auditoria['ultima_acao'],
+            ultimas_acoes: $auditoria['ultimas_acoes'],
         );
     }
 }

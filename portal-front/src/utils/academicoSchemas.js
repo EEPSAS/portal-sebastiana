@@ -70,6 +70,22 @@ export function validarFormularioZod(schema, payload) {
 // 2. Schemas de Saída da API (Espelhados com Spatie Laravel Data)
 // ============================================================================
 
+// Schema de Auditoria / Registro de Ação (espelha App\Data\Auditoria\RegistroAcaoData)
+export const RegistroAcaoSchema = z.object({
+  id_registro_acao: z.number().int(),
+  entidade_tipo: z.string().optional(),
+  entidade_id: z.union([z.string(), z.number()]).optional(),
+  acao: z.string(),
+  descricao: z.string(),
+  executado_por_id: z.number().int().nullable().optional(),
+  executado_por_nome: z.string(),
+  executado_por_role: z.string(),
+  executado_por_role_label: z.string().optional(),
+  metadados: z.record(z.string(), z.unknown()).nullable().optional(),
+  created_at: z.string().nullable().optional(),
+  tempo_atras: z.string().optional(),
+});
+
 // Schema da Turma Escolar (espelha App\Data\Academico\TurmaData)
 export const TurmaSchema = z.object({
   id_turma: z.number().int(),
@@ -83,6 +99,8 @@ export const TurmaSchema = z.object({
   status: z.string().optional(),
   total_alunos: z.number().int().optional(),
   total_disciplinas: z.number().int().optional(),
+  ultima_acao: RegistroAcaoSchema.nullable().optional(),
+  ultimas_acoes: z.array(RegistroAcaoSchema).optional(),
 });
 
 export const ListaTurmasSchema = z.array(TurmaSchema);
@@ -201,6 +219,8 @@ export const PeriodoLetivoSchema = z.object({
   total_turmas: z.number().int().optional(),
   divisao_atual: z.any().optional(),
   divisoes: z.array(PeriodoLetivoDivisaoSchema).optional().default([]),
+  ultima_acao: RegistroAcaoSchema.nullable().optional(),
+  ultimas_acoes: z.array(RegistroAcaoSchema).optional(),
 });
 
 export const ListaPeriodosLetivosSchema = z.array(PeriodoLetivoSchema);
@@ -226,6 +246,8 @@ export const CicloSchema = z.object({
     )
     .optional()
     .default([]),
+  ultima_acao: RegistroAcaoSchema.nullable().optional(),
+  ultimas_acoes: z.array(RegistroAcaoSchema).optional(),
 });
 
 export const ListaCiclosSchema = z.array(CicloSchema);
@@ -312,6 +334,8 @@ export const TurnoSchema = z.object({
   icone: z.string().optional().default("bi-sun-fill"),
   cor: z.string().optional().default("warning"),
   grade_horarios: z.array(GradeHorarioItemSchema).optional().default([]),
+  ultima_acao: RegistroAcaoSchema.nullable().optional(),
+  ultimas_acoes: z.array(RegistroAcaoSchema).optional(),
 });
 
 export const ListaTurnosSchema = z.array(TurnoSchema);

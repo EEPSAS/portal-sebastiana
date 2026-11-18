@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\PossuiRegistroAcoes;
 use Database\Factories\MatriculaFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Matricula extends Model
 {
     /** @use HasFactory<MatriculaFactory> */
-    use HasFactory;
+    use HasFactory, PossuiRegistroAcoes;
 
     // Tabela associada no banco de dados
     protected $table = 'matriculas';

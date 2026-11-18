@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\PossuiRegistroAcoes;
 use Database\Factories\PeriodoLetivoFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,7 +21,7 @@ use Illuminate\Support\Facades\DB;
 class PeriodoLetivo extends Model
 {
     /** @use HasFactory<PeriodoLetivoFactory> */
-    use HasFactory;
+    use HasFactory, PossuiRegistroAcoes;
 
     // Tabela associada no banco de dados
     protected $table = 'periodos_letivos';

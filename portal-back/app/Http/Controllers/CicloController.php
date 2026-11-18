@@ -9,6 +9,8 @@ use App\Http\Resources\DisciplinaResource;
 use App\Models\Ciclo;
 use App\Models\Disciplina;
 use App\Models\TurmaDisciplina;
+use App\Models\User;
+use App\Services\RegistroAcaoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -57,17 +59,29 @@ class CicloController extends Controller
                 ->get();
         } else {
             // 2. Visão Global (Especialista e Administrador com acesso a todos os ciclos e catálogo)
-            $ciclos = Ciclo::with([
-                'disciplinas' => fn ($q) => $q->with(['ciclos', 'professores'])->orderBy('nome'),
+            $podeVerAuditoria = $user && ($user->isAdm() || $user->isEspecialista());
+            $relacoesDisciplina = $podeVerAuditoria
+                ? ['ciclos', 'professores', 'registrosAcoes']
+                : ['ciclos', 'professores'];
+
+            $relacoesCiclo = [
+                'disciplinas' => fn ($q) => $q->with($relacoesDisciplina)->orderBy('nome'),
                 'turmas' => fn ($q) => $q->orderBy('nome_identificador'),
-            ])
+            ];
+
+            // Carrega a trilha de auditoria apenas quando solicitado por Especialista ou Adm
+            if ($podeVerAuditoria) {
+                $relacoesCiclo[] = 'registrosAcoes';
+            }
+
+            $ciclos = Ciclo::with($relacoesCiclo)
                 ->withCount(['disciplinas', 'turmas'])
                 ->orderBy('nome')
                 ->get();
 
             // Disciplinas que ainda não foram vinculadas a nenhum ciclo escolar
             $disciplinasSemCiclo = Disciplina::doesntHave('ciclos')
-                ->with(['ciclos', 'professores'])
+                ->with($relacoesDisciplina)
                 ->orderBy('nome')
                 ->get();
         }
@@ -117,7 +131,15 @@ class CicloController extends Controller
         // Revalida e tipa o payload via Spatie Laravel Data antes de persistir
         $dadosCiclo = SalvarCicloData::validateAndCreate($request->validated());
         $ciclo = Ciclo::create($dadosCiclo->toArray());
-        $ciclo->load(['disciplinas.professores', 'turmas']);
+
+        $executor = $request->user();
+        $ciclo->registrarAcao(
+            'ciclo_criado',
+            "Criou o ciclo escolar {$ciclo->nome}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $ciclo->load(['disciplinas.professores', 'turmas', 'registrosAcoes']);
 
         return response()->json([
             'message' => "Ciclo '{$ciclo->nome}' criado com sucesso.",
@@ -133,7 +155,15 @@ class CicloController extends Controller
         // Revalida e tipa a atualização via Spatie Laravel Data
         $dadosCiclo = SalvarCicloData::validateAndCreate($request->validated());
         $ciclo->update($dadosCiclo->toArray());
-        $ciclo->load(['disciplinas.professores', 'turmas']);
+
+        $executor = $request->user();
+        $ciclo->registrarAcao(
+            'ciclo_atualizado',
+            "Atualizou o ciclo escolar {$ciclo->nome}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $ciclo->load(['disciplinas.professores', 'turmas', 'registrosAcoes']);
 
         return response()->json([
             'message' => "Ciclo '{$ciclo->nome}' atualizado com sucesso.",
@@ -174,14 +204,22 @@ class CicloController extends Controller
             'disciplina_id' => ['required', 'integer', 'exists:disciplinas,id_disciplina'],
         ]);
 
-        $disciplina = Disciplina::findOrFail($validated['disciplina_id']);
+        $disciplina = Disciplina::findOrFail((int) $validated['disciplina_id']);
         $ciclo->disciplinas()->syncWithoutDetaching([$disciplina->id_disciplina]);
         $disciplina->sincronizarComTurmasDosCiclos();
         $ciclo->turmas()->get()->each(fn ($turma) => $turma->herdarDisciplinasDoCiclo());
 
+        // Propaga o vínculo da disciplina para o histórico do ciclo e da disciplina
+        app(RegistroAcaoService::class)->registrarPropagado(
+            [$ciclo, $disciplina],
+            'disciplina_vinculada_ciclo',
+            "Vinculou a disciplina {$disciplina->nome} ao ciclo escolar {$ciclo->nome}",
+            $request->user()
+        );
+
         return response()->json([
             'message' => "Disciplina '{$disciplina->nome}' vinculada ao ciclo '{$ciclo->nome}' com sucesso.",
-            'data' => new CicloResource($ciclo->fresh(['disciplinas.professores', 'turmas'])),
+            'data' => new CicloResource($ciclo->fresh(['disciplinas.professores', 'turmas', 'registrosAcoes'])),
         ], 200);
     }
 
@@ -206,9 +244,17 @@ class CicloController extends Controller
 
         $disciplina->sincronizarComTurmasDosCiclos();
 
+        // Propaga o desvínculo da disciplina para o histórico do ciclo e da disciplina
+        app(RegistroAcaoService::class)->registrarPropagado(
+            [$ciclo, $disciplina],
+            'disciplina_desvinculada_ciclo',
+            "Desvinculou a disciplina {$disciplina->nome} do ciclo escolar {$ciclo->nome}",
+            $request->user()
+        );
+
         return response()->json([
             'message' => "Disciplina '{$disciplina->nome}' desvinculada do ciclo '{$ciclo->nome}' com sucesso.",
-            'data' => new CicloResource($ciclo->fresh(['disciplinas.professores', 'turmas'])),
+            'data' => new CicloResource($ciclo->fresh(['disciplinas.professores', 'turmas', 'registrosAcoes'])),
         ], 200);
     }
 }

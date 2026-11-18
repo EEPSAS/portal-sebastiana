@@ -5,6 +5,7 @@ import {
   desvincularUsuario,
   excluirUsuarioTotalmente,
 } from "../../../services/usuarioService";
+import HistoricoAcoesResumo from "../common/HistoricoAcoesResumo";
 
 const ROLES = [
   { value: "aluno", label: "Aluno (Estudante)" },
@@ -520,6 +521,15 @@ function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }
                           </label>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Histórico recente de ações administrativas sobre este usuário */}
+                    <div className="col-12 mt-2">
+                      <HistoricoAcoesResumo
+                        ultimaAcao={usuario?.ultima_acao}
+                        ultimasAcoes={usuario?.ultimas_acoes}
+                        rotuloEntidade="usuário"
+                      />
                     </div>
 
                     {/* Zona de Perigo / Ações Críticas */}

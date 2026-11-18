@@ -29,7 +29,14 @@ class PeriodoLetivoService
      */
     public function listar(): Collection
     {
-        return PeriodoLetivo::with(['divisoes', 'turmas'])
+        $relacoes = ['divisoes', 'turmas'];
+        $user = request()->user();
+        // Carrega histórico de ações somente quando o solicitante tem acesso à auditoria
+        if ($user instanceof User && ($user->isAdm() || $user->isEspecialista())) {
+            $relacoes[] = 'registrosAcoes';
+        }
+
+        return PeriodoLetivo::with($relacoes)
             ->orderByDesc('ano')
             ->get();
     }
@@ -84,7 +91,14 @@ class PeriodoLetivoService
             // Sincroniza os marcos no calendário escolar
             $this->sincronizarMarcosAgenda($periodo, $autor);
 
-            return $periodo->load(['divisoes', 'turmas']);
+            // Registra a criação do período letivo na trilha de ações após concluir a sincronização
+            $periodo->registrarAcao(
+                'periodo_criado',
+                "Cadastrou o Período Letivo de {$periodo->ano}",
+                $autor
+            );
+
+            return $periodo->load(['divisoes', 'turmas', 'registrosAcoes']);
         });
     }
 
@@ -151,18 +165,30 @@ class PeriodoLetivoService
             // Sincroniza os marcos no calendário escolar
             $this->sincronizarMarcosAgenda($periodo, $autor);
 
-            return $periodo->fresh(['divisoes', 'turmas']);
+            $periodo->registrarAcao(
+                'periodo_atualizado',
+                "Atualizou etapas e datas do Período Letivo de {$periodo->ano}",
+                $autor
+            );
+
+            return $periodo->fresh(['divisoes', 'turmas', 'registrosAcoes']);
         });
     }
 
     /**
      * Define o período letivo informado como o vigente (ativo).
      */
-    public function ativar(PeriodoLetivo $periodo): PeriodoLetivo
+    public function ativar(PeriodoLetivo $periodo, ?User $autor = null): PeriodoLetivo
     {
         $periodo->marcarComoAtivo();
 
-        return $periodo->fresh(['divisoes', 'turmas']);
+        $periodo->registrarAcao(
+            'periodo_ativado',
+            "Definiu o ano de {$periodo->ano} como Período Letivo Vigente",
+            $autor
+        );
+
+        return $periodo->fresh(['divisoes', 'turmas', 'registrosAcoes']);
     }
 
     /**

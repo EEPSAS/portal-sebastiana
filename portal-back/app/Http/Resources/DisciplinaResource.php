@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -20,6 +21,10 @@ class DisciplinaResource extends JsonResource
     {
         $aulasSemanais = (int) ($this->aulas_semanais ?: intdiv(max(40, (int) $this->carga_horaria_anual), 40));
         $cargaAnual = (int) ($this->carga_horaria_anual ?: ($aulasSemanais * 40));
+
+        // Aplica blindagem RBAC na auditoria para expor apenas a Especialista/Adm
+        $solicitante = $request->user();
+        $auditoria = $this->resource->obterAuditoriaParaApi($solicitante instanceof User ? $solicitante : null);
 
         return [
             // Identificador e dados obrigatórios da disciplina (Item 3.3)
@@ -46,6 +51,8 @@ class DisciplinaResource extends JsonResource
                 'name' => $p->name,
                 'email' => $p->email,
             ])->values()),
+            'ultima_acao' => $auditoria['ultima_acao'],
+            'ultimas_acoes' => $auditoria['ultimas_acoes'],
         ];
     }
 }

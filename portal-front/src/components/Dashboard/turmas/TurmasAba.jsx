@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ModalDetalhesAluno from "./ModalDetalhesAluno";
 import ModalCriarNotificacao from "./ModalCriarNotificacao";
+import HistoricoAcoesResumo from "../common/HistoricoAcoesResumo";
 
 /**
  * Paleta de cores semânticas para os indicadores circulares de turmas.
@@ -724,6 +725,17 @@ export default function TurmasAba({
                 )}
               </div>
             </div>
+
+            {/* Faixa compacta de auditoria da turma selecionada (exibida apenas para Especialista/Adm) */}
+            {isUmaTurma && turmaUnica && (
+              <HistoricoAcoesResumo
+                ultimaAcao={turmaUnica.ultima_acao}
+                ultimasAcoes={turmaUnica.ultimas_acoes}
+                rotuloEntidade="turma"
+                compacto
+                className="mb-2 flex-shrink-0"
+              />
+            )}
 
             {/* Barra de Busca de Alunos e Filtro de Status */}
             <div className="row g-2 mb-2 align-items-center flex-shrink-0">

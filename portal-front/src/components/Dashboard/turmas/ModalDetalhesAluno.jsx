@@ -7,6 +7,8 @@
  * Utiliza o padrão de overlay acessível com fechamento por clique externo.
  */
 
+import HistoricoAcoesResumo from "../common/HistoricoAcoesResumo";
+
 const ModalDetalhesAluno = ({ matricula, turmaInfo, onClose }) => {
   // Se não houver matrícula selecionada, não renderiza nada na árvore
   if (!matricula) return null;
@@ -180,6 +182,14 @@ const ModalDetalhesAluno = ({ matricula, turmaInfo, onClose }) => {
             </div>
           </div>
         </div>
+
+        {/* Faixa de auditoria com as últimas ações nesta matrícula (visível apenas para Especialista/Adm) */}
+        <HistoricoAcoesResumo
+          ultimaAcao={matricula.ultima_acao}
+          ultimasAcoes={matricula.ultimas_acoes}
+          rotuloEntidade="matrícula"
+          className="mb-3"
+        />
 
         {/* 4. Rodapé de Ações */}
         <div className="d-flex justify-content-end pt-2 border-top">

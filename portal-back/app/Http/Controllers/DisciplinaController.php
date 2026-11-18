@@ -8,7 +8,10 @@ use App\Http\Requests\VincularDisciplinaProfessorRequest;
 use App\Http\Resources\DisciplinaResource;
 use App\Models\Ciclo;
 use App\Models\Disciplina;
+use App\Models\Turma;
 use App\Models\TurmaDisciplina;
+use App\Models\User;
+use App\Services\RegistroAcaoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -29,7 +32,12 @@ class DisciplinaController extends Controller
         Gate::authorize('viewAny', Disciplina::class);
 
         $usuario = $request->user();
-        $query = Disciplina::with(['ciclos', 'professores']);
+        $relacoes = ['ciclos', 'professores'];
+        // Carrega trilha de ações somente quando o solicitante pode visualizá-la
+        if ($usuario && ($usuario->isAdm() || $usuario->isEspecialista())) {
+            $relacoes[] = 'registrosAcoes';
+        }
+        $query = Disciplina::with($relacoes);
 
         // Isolamento de Acesso: O professor visualiza única e exclusivamente suas disciplinas lecionadas
         if ($usuario && $usuario->isProfessor() && ! $usuario->isAdm()) {
@@ -113,7 +121,15 @@ class DisciplinaController extends Controller
 
         // Propaga a disciplina para todas as turmas pertencentes aos Ciclos vinculados (Item 3.2a)
         $disciplina->sincronizarComTurmasDosCiclos();
-        $disciplina->load(['ciclos', 'professores']);
+
+        $executor = $request->user();
+        $disciplina->registrarAcao(
+            'disciplina_criada',
+            "Cadastrou a disciplina {$disciplina->nome}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $disciplina->load(['ciclos', 'professores', 'registrosAcoes']);
 
         return response()->json(new DisciplinaResource($disciplina), 201);
     }
@@ -121,11 +137,17 @@ class DisciplinaController extends Controller
     /**
      * Exibe os detalhes de uma disciplina.
      */
-    public function show(Disciplina $disciplina): JsonResponse
+    public function show(Request $request, Disciplina $disciplina): JsonResponse
     {
         Gate::authorize('view', $disciplina);
 
-        $disciplina->load(['ciclos', 'professores']);
+        $relacoes = ['ciclos', 'professores'];
+        $usuario = $request->user();
+        if ($usuario && ($usuario->isAdm() || $usuario->isEspecialista())) {
+            $relacoes[] = 'registrosAcoes';
+        }
+
+        $disciplina->load($relacoes);
 
         return response()->json(new DisciplinaResource($disciplina), 200);
     }
@@ -193,7 +215,15 @@ class DisciplinaController extends Controller
 
         // Sincroniza a herança com as turmas dos ciclos vinculados
         $disciplina->sincronizarComTurmasDosCiclos();
-        $disciplina->load(['ciclos', 'professores']);
+
+        $executor = $request->user();
+        $disciplina->registrarAcao(
+            'disciplina_atualizada',
+            "Atualizou a matriz/ementa da disciplina {$disciplina->nome}",
+            $executor instanceof User ? $executor : null
+        );
+
+        $disciplina->load(['ciclos', 'professores', 'registrosAcoes']);
 
         return response()->json(new DisciplinaResource($disciplina), 200);
     }
@@ -230,6 +260,17 @@ class DisciplinaController extends Controller
             [
                 'professor_id' => $validated['professor_id'],
             ]
+        );
+
+        // Propaga a alocação docente para a disciplina, a turma e o professor envolvidos
+        $turma = Turma::find((int) $validated['turma_id']);
+        $professor = ! empty($validated['professor_id']) ? User::find((int) $validated['professor_id']) : null;
+        $executor = $request->user();
+        app(RegistroAcaoService::class)->registrarPropagado(
+            [$disciplina, $turma, $professor],
+            'professor_alocado',
+            "Alocou docente para a disciplina {$disciplina->nome}",
+            $executor instanceof User ? $executor : null
         );
 
         return response()->json($vinculo->load(['turma', 'disciplina', 'professor:id,name,email']), 200);

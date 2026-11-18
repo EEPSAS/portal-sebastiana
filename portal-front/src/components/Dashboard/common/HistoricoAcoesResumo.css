@@ -1,0 +1,64 @@
+/* ==========================================================================
+   HistoricoAcoesResumo.css - Faixa compacta de última ação e timeline das 5 últimas
+   ========================================================================== */
+
+.historico-acoes-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.8rem;
+}
+
+.historico-acoes-box--compacto {
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+}
+
+.historico-acoes-badge-cargo {
+  font-size: 0.68rem;
+  font-weight: 600;
+  background-color: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+}
+
+.historico-acoes-toggle-btn {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.historico-acoes-timeline {
+  border-top: 1px dashed #cbd5e1;
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.historico-acoes-timeline-item {
+  position: relative;
+  padding-left: 0.9rem;
+  border-left: 2px solid #cbd5e1;
+}
+
+.historico-acoes-timeline-item::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 0.35rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: #64748b;
+}
+
+.historico-acoes-timeline-item:first-child {
+  border-left-color: #2563eb;
+}
+
+.historico-acoes-timeline-item:first-child::before {
+  background-color: #2563eb;
+}
