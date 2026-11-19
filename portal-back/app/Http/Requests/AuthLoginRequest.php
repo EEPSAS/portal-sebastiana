@@ -19,15 +19,15 @@ class AuthLoginRequest extends FormRequest
     }
 
     /**
-     * Regras de validação para autenticação.
+     * Regras de validação para autenticação por usuário ou e-mail e senha.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            // E-mail válido e obrigatório
-            'email' => ['required', 'string', 'email'],
+            // Identificador de usuário (ex.: 'admin') ou endereço de e-mail institucional
+            'email' => ['required', 'string', 'max:255'],
             // Senha obrigatória para conferência de hash
             'password' => ['required', 'string'],
         ];
@@ -41,8 +41,7 @@ class AuthLoginRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'email.required' => 'O endereço de e-mail é obrigatório.',
-            'email.email' => 'Informe um endereço de e-mail válido.',
+            'email.required' => 'O usuário de acesso é obrigatório.',
             'password.required' => 'A senha de acesso é obrigatória.',
         ];
     }

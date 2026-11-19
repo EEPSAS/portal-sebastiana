@@ -16,9 +16,15 @@ class StoreUsuarioRequest extends FormRequest
     // Regras de validação para os dados cadastrais e perfil do usuário
     public function rules(): array
     {
+        // Administradores não precisam de e-mail institucional, podendo ser cadastrados apenas com um identificador de usuário
+        $isRoleAdm = $this->input('role') === 'adm';
+        $emailRules = $isRoleAdm
+            ? ['required', 'string', 'max:255', 'unique:users,email']
+            : ['required', 'string', 'email', 'max:255', 'unique:users,email'];
+
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email' => $emailRules,
             'password' => ['required', 'string', 'min:8'],
             'role_id' => ['nullable', 'exists:roles,id'],
             'role' => ['nullable', 'string'],

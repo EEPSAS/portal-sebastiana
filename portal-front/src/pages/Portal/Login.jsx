@@ -21,6 +21,8 @@ const LoginSection = () => {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  // Controla a exibição do formulário secundário de acesso por Usuário e Senha (inicia recolhido para priorizar o Google)
+  const [mostrarLoginCredenciais, setMostrarLoginCredenciais] = useState(false);
 
   // Inicializa o Google Identity Services (GIS) uma única vez na montagem e renderiza o botão oficial
   useEffect(() => {
@@ -105,16 +107,29 @@ const LoginSection = () => {
             <div className="card portal-login-card border-0 shadow-lg rounded-4 overflow-hidden">
               <div className="card-body p-4 p-md-5">
                 
-                {/* Cabeçalho do Formulário */}
+                {/* Cabeçalho do Formulário: orienta alunos e professores ao login institucional prioritário */}
                 <div className="text-center mb-4">
                   <h2 className="fw-bold text-dark mb-2">Acesso ao Portal</h2>
-                  <p className="text-secondary small">
-                    Identifique-se com sua conta Google institucional ou credenciais.
+                  <p className="text-secondary small mb-0">
+                    Alunos e professores: acessem prioritariamente com sua conta{" "}
+                    <strong>Google institucional</strong> (<code>@aluno.mg.gov.br</code> ou{" "}
+                    <code>@educacao.mg.gov.br</code>).
                   </p>
                 </div>
 
-                {/* Botão Oficial: Renderização direta do Google Identity Services com FedCM */}
-                <div className="d-flex flex-column align-items-center mb-4">
+                {/* Alerta de erro exibido no topo para cobrir tanto falhas do Google quanto de credenciais */}
+                {error && (
+                  <div className="alert alert-danger py-2 small mb-3" role="alert">
+                    {error}
+                  </div>
+                )}
+
+                {/* Botão Oficial Prioritário: Renderização direta do Google Identity Services com FedCM */}
+                <div className="portal-google-highlight d-flex flex-column align-items-center p-3 rounded-4 mb-3">
+                  <span className="badge rounded-pill text-bg-light border text-secondary small fw-semibold mb-2 px-3 py-1">
+                    <i className="bi bi-shield-check text-success me-1" aria-hidden="true"></i>
+                    Acesso Institucional Recomendado
+                  </span>
                   {googleSubmitting && (
                     <div className="spinner-border text-primary mb-2" role="status">
                       <span className="visually-hidden">Conectando ao Google...</span>
@@ -128,71 +143,78 @@ const LoginSection = () => {
                   ></div>
                 </div>
 
-                {/* Divisor Visual */}
-                <div className="d-flex align-items-center mb-4">
-                  <hr className="flex-grow-1 my-0 text-muted" />
-                  <span className="px-3 text-secondary small fw-medium text-uppercase" style={{ fontSize: "0.75rem", letterSpacing: "0.05em" }}>
-                    ou acesse com e-mail e senha
-                  </span>
-                  <hr className="flex-grow-1 my-0 text-muted" />
+                {/* Botão expansível discreto para revelar o login por Usuário e Senha (administrativo/credenciais) */}
+                <div className="text-center mt-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm portal-login-toggle-btn d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill text-secondary fw-medium"
+                    onClick={() => setMostrarLoginCredenciais((prev) => !prev)}
+                    aria-expanded={mostrarLoginCredenciais}
+                    aria-controls="collapseLoginCredenciais"
+                  >
+                    <span>Acesso com Usuário e Senha</span>
+                    <i
+                      className={`bi ${mostrarLoginCredenciais ? "bi-chevron-up" : "bi-chevron-down"}`}
+                      aria-hidden="true"
+                    ></i>
+                  </button>
                 </div>
 
-                {/* Alerta de erro */}
-                {error && (
-                  <div className="alert alert-danger py-2 small" role="alert">
-                    {error}
+                {/* Formulário Secundário Recolhido: exibido apenas quando o usuário expande */}
+                {mostrarLoginCredenciais && (
+                  <div id="collapseLoginCredenciais" className="portal-login-collapsible mt-3 pt-3 border-top">
+                    <form onSubmit={handleSubmit}>
+                      <div className="mb-3">
+                        <label htmlFor="loginUsuario" className="form-label fw-medium text-dark small">
+                          Usuário
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control form-control-lg bg-light border-0 shadow-none"
+                          id="loginUsuario"
+                          placeholder="Digite seu usuário"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                          autoComplete="username"
+                        />
+                      </div>
+
+                      <div className="mb-4">
+                        <label htmlFor="loginPassword" className="form-label fw-medium text-dark small">
+                          Senha
+                        </label>
+                        <input
+                          type="password"
+                          className="form-control form-control-lg bg-light border-0 shadow-none"
+                          id="loginPassword"
+                          placeholder="Digite sua senha"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          autoComplete="current-password"
+                        />
+                      </div>
+
+                      <div className="d-grid">
+                        <button
+                          type="submit"
+                          className="btn btn-primary btn-lg fw-semibold py-2 shadow-sm"
+                          disabled={submitting}
+                        >
+                          {submitting ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm me-2" role="status" />
+                              Entrando...
+                            </>
+                          ) : (
+                            "Entrar"
+                          )}
+                        </button>
+                      </div>
+                    </form>
                   </div>
                 )}
-
-                {/* Formulário de Login Tradicional */}
-                <form onSubmit={handleSubmit}>
-                  <div className="mb-4">
-                    <label htmlFor="loginEmail" className="form-label fw-medium text-dark">
-                      E-mail
-                    </label>
-                    <input 
-                      type="email" 
-                      className="form-control form-control-lg bg-light border-0 shadow-none" 
-                      id="loginEmail" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      autoComplete="email"
-                    />
-                  </div>
-                  
-                  <div className="mb-4">
-                    <label htmlFor="loginPassword" className="form-label fw-medium text-dark">
-                      Senha
-                    </label>
-                    <input 
-                      type="password" 
-                      className="form-control form-control-lg bg-light border-0 shadow-none" 
-                      id="loginPassword" 
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      autoComplete="current-password"
-                    />
-                  </div>
-                  
-                  <div className="d-grid mt-5">
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary btn-lg fw-semibold py-3 shadow-sm"
-                      disabled={submitting}
-                    >
-                      {submitting ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" />
-                          Entrando...
-                        </>
-                      ) : (
-                        "Entrar"
-                      )}
-                    </button>
-                  </div>
-                </form>
 
               </div>
             </div>

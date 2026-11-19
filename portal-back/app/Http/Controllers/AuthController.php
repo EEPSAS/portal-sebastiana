@@ -46,16 +46,28 @@ class AuthController extends Controller
     }
 
     /**
-     * Autentica o usuário por e-mail e senha, emitindo um novo Bearer token.
+     * Autentica o usuário por identificador de usuário (ou e-mail) e senha, emitindo um novo Bearer token.
      *
      * @param  AuthLoginRequest  $request  Form Request com credenciais validadas
      */
     public function login(AuthLoginRequest $request): JsonResponse
     {
         $credentials = $request->validated();
+        $identificador = strtolower(trim($credentials['email']));
 
-        // Busca o usuário pelo e-mail
-        $user = User::where('email', $credentials['email'])->first();
+        // Busca o usuário diretamente pelo campo email (que também armazena identificadores como 'admin'),
+        // pelo nickname/name ou pelo prefixo antes do '@' para contas administrativas legadas
+        $user = User::whereRaw('LOWER(email) = ?', [$identificador])
+            ->orWhereRaw('LOWER(nickname) = ?', [$identificador])
+            ->orWhereRaw('LOWER(name) = ?', [$identificador])
+            ->first();
+
+        // Fallback: se o identificador não contiver '@', permite localizar um administrador cujo e-mail inicie com '<usuario>@'
+        if (! $user && ! str_contains($identificador, '@')) {
+            $user = User::where('role', UserRole::ADM)
+                ->where('email', 'like', $identificador.'@%')
+                ->first();
+        }
 
         // Verifica a existência e a integridade da senha hasheada
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {

@@ -40,8 +40,14 @@ class UpdateUsuarioRequest extends FormRequest
 
         // Apenas administradores podem alterar nome, papel, status de ativação, comentário e emitir notificação direta (Item 1.3.8)
         if ($isAdm) {
+            // Usuários com papel 'adm' não precisam de e-mail institucional, podendo usar um identificador simples de usuário
+            $roleAlvo = $this->input('role') ?? (is_object($usuario) ? ($usuario->role instanceof UserRole ? $usuario->role->value : $usuario->role) : null);
+            $isAlvoAdm = $roleAlvo === UserRole::ADM->value;
+
             $rules['name'] = ['sometimes', 'required', 'string', 'max:255'];
-            $rules['email'] = ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($usuarioId)];
+            $rules['email'] = $isAlvoAdm
+                ? ['sometimes', 'required', 'string', 'max:255', Rule::unique('users', 'email')->ignore($usuarioId)]
+                : ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($usuarioId)];
             $rules['role_id'] = ['nullable', 'exists:roles,id'];
             $rules['role'] = ['nullable', 'string', new Enum(UserRole::class)];
             $rules['ativo'] = ['nullable', 'boolean'];

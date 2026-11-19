@@ -74,7 +74,11 @@ function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }
     }
 
     if (!email.trim()) {
-      setErro("Informe o e-mail institucional do usuário.");
+      setErro(
+        role === "adm"
+          ? "Informe o usuário ou e-mail do administrador."
+          : "Informe o e-mail institucional do usuário."
+      );
       return;
     }
 
@@ -280,16 +284,21 @@ function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }
                   )}
                 </div>
 
-                {/* E-mail Institucional */}
+                {/* E-mail Institucional ou Usuário (para Administradores) */}
                 <div className="col-12 col-md-6">
                   <label htmlFor="user-email" className="form-label small fw-bold text-dark mb-1">
-                    E-mail Institucional <span className="text-danger">*</span>
+                    {role === "adm" ? "Usuário de Acesso (ou E-mail)" : "E-mail Institucional"}{" "}
+                    <span className="text-danger">*</span>
                   </label>
                   <input
                     id="user-email"
-                    type="email"
+                    type={role === "adm" ? "text" : "email"}
                     className={`form-control form-control-sm ${errosCampos.email ? "is-invalid" : ""}`}
-                    placeholder="Ex: carlos@aluno.mg.gov.br"
+                    placeholder={
+                      role === "adm"
+                        ? "Ex: admin (não precisa de e-mail institucional)"
+                        : "Ex: carlos@aluno.mg.gov.br"
+                    }
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={salvando || executandoAcaoPerigo}
