@@ -168,7 +168,7 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
                 <i className="bi bi-envelope-fill"></i>
               </span>
               <input
-                type="email"
+                type="text"
                 name="email"
                 value={formData.email}
                 disabled

@@ -69,18 +69,14 @@ function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }
     setErrosCampos({});
 
     if (!name.trim()) {
-      setErro("Informe o nome completo do usuário.");
+      setErro("Informe o nome ou usuário.");
       return;
     }
 
-    if (!email.trim()) {
-      setErro(
-        role === "adm"
-          ? "Informe o usuário ou e-mail do administrador."
-          : "Informe o e-mail institucional do usuário."
-      );
-      return;
-    }
+    // Se o campo E-mail ficar em branco, utiliza o Nome/Usuário informado como identificador de login
+    const emailOuUsuarioFinal = email.trim()
+      ? email.trim().toLowerCase()
+      : name.trim().toLowerCase();
 
     if (!isEdicao && (!password || password.length < 8)) {
       setErro("A senha inicial deve conter pelo menos 8 caracteres.");
@@ -98,7 +94,7 @@ function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }
       if (isEdicao) {
         const payload = {
           name: name.trim(),
-          email: email.trim().toLowerCase(),
+          email: emailOuUsuarioFinal,
           role,
           ativo: Boolean(ativo),
           status_confirmacao: statusConfirmacao,
@@ -124,7 +120,7 @@ function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }
       } else {
         const payload = {
           name: name.trim(),
-          email: email.trim().toLowerCase(),
+          email: emailOuUsuarioFinal,
           password,
           role,
           ativo: Boolean(ativo),
@@ -284,25 +280,19 @@ function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }
                   )}
                 </div>
 
-                {/* E-mail Institucional ou Usuário (para Administradores) */}
+                {/* E-mail Institucional (Opcional no cadastro administrativo) */}
                 <div className="col-12 col-md-6">
                   <label htmlFor="user-email" className="form-label small fw-bold text-dark mb-1">
-                    {role === "adm" ? "Usuário de Acesso (ou E-mail)" : "E-mail Institucional"}{" "}
-                    <span className="text-danger">*</span>
+                    E-mail Institucional (Opcional)
                   </label>
                   <input
                     id="user-email"
-                    type={role === "adm" ? "text" : "email"}
+                    type="text"
                     className={`form-control form-control-sm ${errosCampos.email ? "is-invalid" : ""}`}
-                    placeholder={
-                      role === "adm"
-                        ? "Ex: admin (não precisa de e-mail institucional)"
-                        : "Ex: carlos@aluno.mg.gov.br"
-                    }
+                    placeholder="Opcional (ex: carlos@aluno.mg.gov.br)"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={salvando || executandoAcaoPerigo}
-                    required
                   />
                   {errosCampos.email && (
                     <div className="invalid-feedback small">{errosCampos.email[0]}</div>

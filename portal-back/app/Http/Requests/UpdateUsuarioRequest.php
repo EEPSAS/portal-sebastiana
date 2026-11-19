@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\UserRole;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
@@ -14,7 +15,7 @@ class UpdateUsuarioRequest extends FormRequest
     public function authorize(): bool
     {
         $usuario = $this->route('usuario');
-        $usuarioId = is_object($usuario) ? $usuario->id : (int) $usuario;
+        $usuarioId = $usuario instanceof User ? $usuario->id : (int) $usuario;
 
         return $this->user() !== null && (
             (int) $this->user()->id === (int) $usuarioId ||
@@ -23,11 +24,15 @@ class UpdateUsuarioRequest extends FormRequest
         );
     }
 
-    // Regras de validação para os dados cadastrais e edição administrativa
+    /**
+     * Regras de validação para os dados cadastrais e edição administrativa.
+     *
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         $usuario = $this->route('usuario');
-        $usuarioId = is_object($usuario) ? $usuario->id : (int) $usuario;
+        $usuarioId = $usuario instanceof User ? $usuario->id : (int) $usuario;
         $isAdm = $this->user() && ($this->user()->hasPermissionTo('gerenciar_usuarios') || $this->user()->isAdm());
 
         // Nome institucional NÃO é editável pelo próprio usuário: sem regra, o validated() o descarta
@@ -40,14 +45,8 @@ class UpdateUsuarioRequest extends FormRequest
 
         // Apenas administradores podem alterar nome, papel, status de ativação, comentário e emitir notificação direta (Item 1.3.8)
         if ($isAdm) {
-            // Usuários com papel 'adm' não precisam de e-mail institucional, podendo usar um identificador simples de usuário
-            $roleAlvo = $this->input('role') ?? (is_object($usuario) ? ($usuario->role instanceof UserRole ? $usuario->role->value : $usuario->role) : null);
-            $isAlvoAdm = $roleAlvo === UserRole::ADM->value;
-
             $rules['name'] = ['sometimes', 'required', 'string', 'max:255'];
-            $rules['email'] = $isAlvoAdm
-                ? ['sometimes', 'required', 'string', 'max:255', Rule::unique('users', 'email')->ignore($usuarioId)]
-                : ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($usuarioId)];
+            $rules['email'] = ['nullable', 'string', 'max:255', Rule::unique('users', 'email')->ignore($usuarioId)];
             $rules['role_id'] = ['nullable', 'exists:roles,id'];
             $rules['role'] = ['nullable', 'string', new Enum(UserRole::class)];
             $rules['ativo'] = ['nullable', 'boolean'];

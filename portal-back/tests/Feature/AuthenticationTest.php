@@ -119,3 +119,19 @@ test('login de usuario bloqueado pelo administrador retorna 403 forbidden', func
     ])->assertForbidden()
         ->assertJsonPath('message', 'Usuário bloqueado pelo administrador. Acesso negado.');
 });
+
+test('administrador pode logar informando apenas o usuario sem dominio de email institucional', function () {
+    $admin = User::factory()->create([
+        'name' => 'Administrador Geral',
+        'email' => 'admin',
+        'role' => 'adm',
+        'password' => Hash::make('password123'),
+    ]);
+
+    $this->postJson('/api/auth/login', [
+        'email' => 'admin',
+        'password' => 'password123',
+    ])->assertOk()
+        ->assertJsonPath('user.id', $admin->id)
+        ->assertJsonStructure(['user', 'token', 'token_type']);
+});

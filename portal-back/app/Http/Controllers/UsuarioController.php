@@ -114,6 +114,11 @@ class UsuarioController extends Controller
             $dados['role'] = UserRole::ALUNO;
         }
 
+        // Caso um administrador seja cadastrado sem preencher o campo de e-mail, utiliza o nome/identificador informado
+        if (empty($dados['email'])) {
+            $dados['email'] = mb_strtolower(trim((string) $dados['name']));
+        }
+
         $turmaId = $dados['turma_id'] ?? null;
         unset($dados['turma_id']);
 
@@ -239,6 +244,11 @@ class UsuarioController extends Controller
             if (! empty($dados['status_confirmacao']) && $dados['status_confirmacao'] === 'confirmado' && empty($usuario->confirmado_em)) {
                 $dados['confirmado_em'] = now();
                 $dados['autorizado_por_id'] = $request->user()->id;
+            }
+
+            // Se o e-mail foi enviado vazio para um administrador na edição, preserva o identificador existente ou usa o nome
+            if (array_key_exists('email', $dados) && empty($dados['email'])) {
+                $dados['email'] = $usuario->email ?: mb_strtolower(trim((string) ($dados['name'] ?? $usuario->name)));
             }
         }
 
