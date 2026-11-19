@@ -22,20 +22,32 @@ const formatarTelefone = (valor) => {
 };
 
 const DadosPessoaisCard = ({ user, onUserUpdated }) => {
-  const [formData, setFormData] = useState(() => ({
-    name: user?.name || '',
-    nickname: user?.nickname || '',
-    email: user?.email || '',
-    telefone: formatarTelefone(user?.telefone || ''),
-    data_nascimento: user?.data_nascimento ? user.data_nascimento.slice(0, 10) : '',
-  }));
+  // Função auxiliar para montar o estado inicial/resetado a partir do user atual
+  const montarEstadoInicial = (u) => ({
+    name: u?.name || '',
+    nickname: u?.nickname || '',
+    email: u?.email || '',
+    telefone: formatarTelefone(u?.telefone || ''),
+    data_nascimento: u?.data_nascimento ? u.data_nascimento.slice(0, 10) : '',
+  });
 
+  const [formData, setFormData] = useState(() => montarEstadoInicial(user));
+  // Controla o bloqueio do formulário: inicia bloqueado (false) e só libera após clicar em "Editar"
+  const [editando, setEditando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState('');
   const [erros, setErros] = useState({});
 
+  // Cancela a edição restaurando os valores originais do usuário e voltando a bloquear o formulário
+  const handleCancelarEdicao = () => {
+    setFormData(montarEstadoInicial(user));
+    setErros({});
+    setEditando(false);
+  };
+
   // Atualiza os campos do formulário
   const handleChange = (e) => {
+    if (!editando) return;
     const { name, value } = e.target;
     if (name === 'telefone') {
       setFormData((prev) => ({ ...prev, [name]: formatarTelefone(value) }));
@@ -54,12 +66,14 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
 
   // Remove a data de nascimento do formulário
   const handleLimparDataNascimento = () => {
+    if (!editando) return;
     setFormData((prev) => ({ ...prev, data_nascimento: '' }));
   };
 
-  // Submete o formulário de atualização
+  // Submete o formulário de atualização e retorna o card para o estado bloqueado
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!editando) return;
     setSalvando(true);
     setMensagemSucesso('');
     setErros({});
@@ -74,13 +88,8 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
 
       const usuarioAtualizado = await atualizarPerfil(user.id, payload);
       onUserUpdated(usuarioAtualizado);
-      setFormData({
-        name: usuarioAtualizado.name || '',
-        nickname: usuarioAtualizado.nickname || '',
-        email: usuarioAtualizado.email || '',
-        telefone: formatarTelefone(usuarioAtualizado.telefone || ''),
-        data_nascimento: usuarioAtualizado.data_nascimento ? usuarioAtualizado.data_nascimento.slice(0, 10) : '',
-      });
+      setFormData(montarEstadoInicial(usuarioAtualizado));
+      setEditando(false);
       setMensagemSucesso('Dados pessoais atualizados com sucesso!');
 
       setTimeout(() => {
@@ -98,32 +107,81 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
   };
 
   return (
-    <div className="card shadow-sm border-0 rounded-4 p-4 h-100">
-      <h5 className="fw-bold text-dark mb-1">
-        <i className="bi bi-person-lines-fill text-primary me-2"></i>
-        Informações Pessoais
-      </h5>
-      <p className="text-muted small mb-4">
-        Mantenha seus dados de contato e preferências sempre em dia.
-      </p>
-
-      {/* Alertas */}
-      {mensagemSucesso && (
-        <div className="alert alert-success d-flex align-items-center py-2 px-3 small rounded-3 mb-3">
-          <i className="bi bi-check-circle-fill me-2 fs-6"></i>
-          <div>{mensagemSucesso}</div>
-        </div>
-      )}
-      {erros.geral && (
-        <div className="alert alert-danger d-flex align-items-center py-2 px-3 small rounded-3 mb-3">
-          <i className="bi bi-exclamation-triangle-fill me-2 fs-6"></i>
-          <div>{erros.geral}</div>
-        </div>
-      )}
-
+    <div className="card shadow-sm border-0 rounded-4 p-3 p-md-4">
       <form onSubmit={handleSubmit}>
+        {/* Cabeçalho do Card com botão Editar / Salvar alinhado à direita na mesma altura do título */}
+        <div className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+          <div>
+            <h5 className="fw-bold text-dark mb-1">
+              <i className="bi bi-person-lines-fill text-primary me-2"></i>
+              Informações Pessoais
+            </h5>
+            <p className="text-muted small mb-0">
+              Mantenha seus dados de contato e preferências sempre em dia.
+            </p>
+          </div>
+
+          <div className="d-flex align-items-center gap-2 ms-auto">
+            {!editando ? (
+              <button
+                type="button"
+                className="btn btn-outline-primary btn-sm rounded-pill px-3 py-1 d-inline-flex align-items-center gap-2 fw-semibold"
+                onClick={() => {
+                  setMensagemSucesso('');
+                  setEditando(true);
+                }}
+              >
+                <i className="bi bi-pencil-square"></i>
+                Editar
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-light btn-sm rounded-pill px-3 py-1 fw-medium text-secondary border"
+                  onClick={handleCancelarEdicao}
+                  disabled={salvando}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm rounded-pill px-3 py-1 d-inline-flex align-items-center gap-2 fw-semibold"
+                  disabled={salvando}
+                >
+                  {salvando ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status"></span>
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-check-lg"></i>
+                      Salvar Alterações
+                    </>
+                  )}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Alertas */}
+        {mensagemSucesso && (
+          <div className="alert alert-success d-flex align-items-center py-2 px-3 small rounded-3 mb-3">
+            <i className="bi bi-check-circle-fill me-2 fs-6"></i>
+            <div>{mensagemSucesso}</div>
+          </div>
+        )}
+        {erros.geral && (
+          <div className="alert alert-danger d-flex align-items-center py-2 px-3 small rounded-3 mb-3">
+            <i className="bi bi-exclamation-triangle-fill me-2 fs-6"></i>
+            <div>{erros.geral}</div>
+          </div>
+        )}
+
         <div className="row g-3">
-          {/* Nome Institucional Completo (Bloqueado para edição: vem do e-mail institucional) */}
+          {/* Nome Institucional Completo (Sempre bloqueado: vem do e-mail institucional) */}
           <div className="col-12 col-md-6">
             <div className="d-flex justify-content-between align-items-center mb-1">
               <label className="form-label small fw-semibold text-dark mb-0">
@@ -133,7 +191,7 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
                 <i className="bi bi-lock-fill me-1"></i>Bloqueado
               </span>
             </div>
-            <div className="input-group">
+            <div className="input-group input-group-sm">
               <span className="input-group-text bg-light text-muted border-end-0">
                 <i className="bi bi-person-fill"></i>
               </span>
@@ -153,7 +211,7 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
             </small>
           </div>
 
-          {/* E-mail Institucional (Bloqueado para edição) */}
+          {/* E-mail Institucional (Sempre bloqueado) */}
           <div className="col-12 col-md-6">
             <div className="d-flex justify-content-between align-items-center mb-1">
               <label className="form-label small fw-semibold text-dark mb-0">
@@ -163,7 +221,7 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
                 <i className="bi bi-lock-fill me-1"></i>Bloqueado
               </span>
             </div>
-            <div className="input-group">
+            <div className="input-group input-group-sm">
               <span className="input-group-text bg-light text-muted border-end-0">
                 <i className="bi bi-envelope-fill"></i>
               </span>
@@ -185,10 +243,10 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
 
           {/* Nickname / Nome de Exibição */}
           <div className="col-12 col-md-6">
-            <label className="form-label small fw-semibold text-dark">
+            <label className="form-label small fw-semibold text-dark mb-1">
               Apelido / Como prefere ser chamado (Nickname)
             </label>
-            <div className="input-group">
+            <div className="input-group input-group-sm">
               <span className="input-group-text bg-light text-muted border-end-0">
                 <i className="bi bi-tag-fill"></i>
               </span>
@@ -197,8 +255,9 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
                 name="nickname"
                 value={formData.nickname}
                 onChange={handleChange}
+                disabled={!editando || salvando}
                 placeholder="Ex: Bia, Prof. Carlos, Leo"
-                className={`form-control border-start-0 ${erros.nickname ? 'is-invalid' : ''}`}
+                className={`form-control border-start-0 ${!editando ? 'bg-light text-muted' : ''} ${erros.nickname ? 'is-invalid' : ''}`}
                 maxLength={50}
               />
             </div>
@@ -210,10 +269,10 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
 
           {/* Telefone / WhatsApp */}
           <div className="col-12 col-md-6">
-            <label className="form-label small fw-semibold text-dark">
+            <label className="form-label small fw-semibold text-dark mb-1">
               Telefone / WhatsApp
             </label>
-            <div className="input-group">
+            <div className="input-group input-group-sm">
               <span className="input-group-text bg-light text-muted border-end-0">
                 <i className="bi bi-telephone-fill"></i>
               </span>
@@ -222,8 +281,9 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
                 name="telefone"
                 value={formData.telefone}
                 onChange={handleChange}
+                disabled={!editando || salvando}
                 placeholder="(31) 99999-9999"
-                className={`form-control border-start-0 ${erros.telefone ? 'is-invalid' : ''}`}
+                className={`form-control border-start-0 ${!editando ? 'bg-light text-muted' : ''} ${erros.telefone ? 'is-invalid' : ''}`}
                 maxLength={15}
               />
             </div>
@@ -236,7 +296,7 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
               <label className="form-label small fw-semibold text-dark mb-0">
                 Data de Nascimento
               </label>
-              {formData.data_nascimento && (
+              {editando && formData.data_nascimento && (
                 <button
                   type="button"
                   className="btn btn-link btn-sm text-danger text-decoration-none p-0 d-flex align-items-center gap-1"
@@ -248,7 +308,7 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
                 </button>
               )}
             </div>
-            <div className="input-group">
+            <div className="input-group input-group-sm">
               <span className="input-group-text bg-light text-muted border-end-0">
                 <i className="bi bi-calendar-event"></i>
               </span>
@@ -257,7 +317,8 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
                 name="data_nascimento"
                 value={formData.data_nascimento}
                 onChange={handleChange}
-                className={`form-control border-start-0 ${erros.data_nascimento ? 'is-invalid' : ''}`}
+                disabled={!editando || salvando}
+                className={`form-control border-start-0 ${!editando ? 'bg-light text-muted' : ''} ${erros.data_nascimento ? 'is-invalid' : ''}`}
               />
             </div>
             {erros.data_nascimento && (
@@ -265,33 +326,12 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
             )}
 
             {/* Aviso Didático de Sincronização com o Calendário */}
-            <div className="d-flex align-items-start gap-2 bg-primary-subtle text-primary-emphasis p-3 rounded-3 mt-3 border border-primary-subtle">
-              <i className="bi bi-calendar-heart fs-5 flex-shrink-0 mt-1"></i>
+            <div className="d-flex align-items-start gap-2 bg-primary-subtle text-primary-emphasis p-2 px-3 rounded-3 mt-2 border border-primary-subtle">
+              <i className="bi bi-calendar-heart fs-6 flex-shrink-0 mt-1"></i>
               <div className="small">
                 <strong>Sincronização com a Agenda:</strong> Ao cadastrar ou atualizar sua data de nascimento, seu aniversário é automaticamente adicionado ao calendário escolar. Se você remover a data ou o evento na agenda, ambos permanecerão sincronizados.
               </div>
             </div>
-          </div>
-
-          {/* Botão Salvar */}
-          <div className="col-12 d-flex justify-content-end mt-4">
-            <button
-              type="submit"
-              className="btn btn-primary rounded-pill px-4 py-2 d-flex align-items-center gap-2 fw-semibold"
-              disabled={salvando}
-            >
-              {salvando ? (
-                <>
-                  <span className="spinner-border spinner-border-sm" role="status"></span>
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-check-lg fs-6"></i>
-                  Salvar Alterações
-                </>
-              )}
-            </button>
           </div>
         </div>
       </form>
