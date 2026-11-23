@@ -22,6 +22,9 @@ const formatarTelefone = (valor) => {
 };
 
 const DadosPessoaisCard = ({ user, onUserUpdated }) => {
+  // Verifica se o usuário autenticado possui perfil de Administrador (permite editar também Nome e E-mail/Usuário)
+  const isAdmin = user?.role === 'adm' || user?.realRole === 'adm';
+
   // Função auxiliar para montar o estado inicial/resetado a partir do user atual
   const montarEstadoInicial = (u) => ({
     name: u?.name || '',
@@ -79,12 +82,22 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
     setErros({});
 
     try {
-      // Envia apenas os campos editáveis; nome e e-mail institucionais são bloqueados
+      // Envia os campos editáveis; se for Administrador, inclui também nome completo e e-mail/usuário
       const payload = {
         nickname: formData.nickname.trim() || null,
         telefone: formData.telefone.trim() || null,
         data_nascimento: formData.data_nascimento || null,
       };
+
+      if (isAdmin) {
+        if (!formData.name.trim()) {
+          setErros({ name: ['O nome completo é obrigatório.'] });
+          setSalvando(false);
+          return;
+        }
+        payload.name = formData.name.trim();
+        payload.email = formData.email.trim() || formData.name.trim().toLowerCase();
+      }
 
       const usuarioAtualizado = await atualizarPerfil(user.id, payload);
       onUserUpdated(usuarioAtualizado);
@@ -107,8 +120,8 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
   };
 
   return (
-    <div className="card shadow-sm border-0 rounded-4 p-3 p-md-4">
-      <form onSubmit={handleSubmit}>
+    <div className="card shadow-sm border-0 rounded-4 p-3 p-md-4 flex-grow-1 d-flex flex-column">
+      <form onSubmit={handleSubmit} className="d-flex flex-column flex-grow-1">
         {/* Cabeçalho do Card com botão Editar / Salvar alinhado à direita na mesma altura do título */}
         <div className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
           <div>
@@ -180,16 +193,18 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
           </div>
         )}
 
-        <div className="row g-3">
-          {/* Nome Institucional Completo (Sempre bloqueado: vem do e-mail institucional) */}
+        <div className="row g-3 my-auto">
+          {/* Nome Institucional Completo (Bloqueado para usuários comuns; editável para Administrador) */}
           <div className="col-12 col-md-6">
             <div className="d-flex justify-content-between align-items-center mb-1">
               <label className="form-label small fw-semibold text-dark mb-0">
                 Nome Completo Institucional
               </label>
-              <span className="badge bg-secondary-subtle text-secondary border px-2 py-0" style={{ fontSize: '0.72rem' }}>
-                <i className="bi bi-lock-fill me-1"></i>Bloqueado
-              </span>
+              {!isAdmin && (
+                <span className="badge bg-secondary-subtle text-secondary border px-2 py-0" style={{ fontSize: '0.72rem' }}>
+                  <i className="bi bi-lock-fill me-1"></i>Bloqueado
+                </span>
+              )}
             </div>
             <div className="input-group input-group-sm">
               <span className="input-group-text bg-light text-muted border-end-0">
@@ -199,27 +214,31 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
                 type="text"
                 name="name"
                 value={formData.name}
-                disabled
-                readOnly
-                className="form-control border-start-0 bg-light text-muted"
-                style={{ cursor: 'not-allowed' }}
-                title="O nome institucional não pode ser alterado pelo usuário."
+                onChange={handleChange}
+                disabled={!isAdmin || !editando || salvando}
+                readOnly={!isAdmin}
+                className={`form-control border-start-0 ${!isAdmin || !editando ? 'bg-light text-muted' : ''} ${erros.name ? 'is-invalid' : ''}`}
+                style={!isAdmin ? { cursor: 'not-allowed' } : undefined}
+                title={!isAdmin ? 'O nome institucional não pode ser alterado pelo usuário.' : undefined}
               />
             </div>
+            {erros.name && <div className="text-danger small mt-1">{erros.name[0]}</div>}
             <small className="text-muted" style={{ fontSize: '0.75rem' }}>
-              Nome vinculado à sua conta institucional.
+              {isAdmin ? 'Como Administrador, você pode editar seu nome completo.' : 'Nome vinculado à sua conta institucional.'}
             </small>
           </div>
 
-          {/* E-mail Institucional (Sempre bloqueado) */}
+          {/* E-mail Institucional / Usuário (Bloqueado para usuários comuns; editável para Administrador) */}
           <div className="col-12 col-md-6">
             <div className="d-flex justify-content-between align-items-center mb-1">
               <label className="form-label small fw-semibold text-dark mb-0">
-                E-mail Institucional
+                {isAdmin ? 'Usuário / E-mail de Acesso' : 'E-mail Institucional'}
               </label>
-              <span className="badge bg-secondary-subtle text-secondary border px-2 py-0" style={{ fontSize: '0.72rem' }}>
-                <i className="bi bi-lock-fill me-1"></i>Bloqueado
-              </span>
+              {!isAdmin && (
+                <span className="badge bg-secondary-subtle text-secondary border px-2 py-0" style={{ fontSize: '0.72rem' }}>
+                  <i className="bi bi-lock-fill me-1"></i>Bloqueado
+                </span>
+              )}
             </div>
             <div className="input-group input-group-sm">
               <span className="input-group-text bg-light text-muted border-end-0">
@@ -229,15 +248,17 @@ const DadosPessoaisCard = ({ user, onUserUpdated }) => {
                 type="text"
                 name="email"
                 value={formData.email}
-                disabled
-                readOnly
-                className="form-control border-start-0 bg-light text-muted"
-                style={{ cursor: 'not-allowed' }}
-                title="O e-mail institucional não pode ser alterado diretamente pelo usuário."
+                onChange={handleChange}
+                disabled={!isAdmin || !editando || salvando}
+                readOnly={!isAdmin}
+                className={`form-control border-start-0 ${!isAdmin || !editando ? 'bg-light text-muted' : ''} ${erros.email ? 'is-invalid' : ''}`}
+                style={!isAdmin ? { cursor: 'not-allowed' } : undefined}
+                title={!isAdmin ? 'O e-mail institucional não pode ser alterado diretamente pelo usuário.' : undefined}
               />
             </div>
+            {erros.email && <div className="text-danger small mt-1">{erros.email[0]}</div>}
             <small className="text-muted" style={{ fontSize: '0.75rem' }}>
-              Identificador único vinculado à matrícula/conta institucional.
+              {isAdmin ? 'Identificador de login do Administrador (não exige e-mail institucional).' : 'Identificador único vinculado à matrícula/conta institucional.'}
             </small>
           </div>
 

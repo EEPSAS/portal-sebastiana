@@ -4,10 +4,11 @@
    ========================================================================== */
 
 .portal-scope .portal-login-section {
-  min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 80px);
   display: flex;
   align-items: center;
-  padding: 3.5rem 0;
+  justify-content: center;
+  padding: 1.5rem 0;
   background:
     radial-gradient(circle at 15% 20%, rgba(242, 53, 110, 0.12), transparent 30%),
     radial-gradient(circle at 85% 80%, rgba(235, 194, 0, 0.12), transparent 25%),
@@ -16,18 +17,28 @@
 
 .portal-scope .portal-login-card {
   width: 100% !important;
-  max-width: 440px;
+  max-width: 700px;
+  min-height: clamp(540px, 78vh, 760px);
   margin: 0 auto;
-  border-radius: 24px !important;
+  border-radius: 28px !important;
   box-shadow: var(--portal-shadow-lg) !important;
   border: 1px solid var(--color-border-subtle) !important;
-  border-top: 5px solid var(--color-pink) !important;
+  border-top: 6px solid var(--color-pink) !important;
   background: #ffffff !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.portal-scope .portal-login-card .card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .portal-scope .portal-login-card h2 {
   color: var(--color-primary);
   font-weight: 800;
+  font-size: 2.2rem;
 }
 
 .portal-scope .portal-login-card .form-control {

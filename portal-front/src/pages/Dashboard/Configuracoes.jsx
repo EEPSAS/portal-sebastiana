@@ -44,16 +44,16 @@ const ConfiguracoesPage = () => {
         mostrarNav={false}
       >
         {/* Bandeja com scroll interno confinado (mesmo padrão da tela de Disciplinas) */}
-        <div className="modulo-conteudo-scroll">
-          <div className="row g-3">
+        <div className="modulo-conteudo-scroll d-flex flex-column">
+          <div className="row g-3 flex-grow-1">
             {/* Coluna Lateral: Cartão de Foto de Perfil */}
-            <div className="col-12 col-lg-4 col-xl-3">
+            <div className="col-12 col-lg-4 col-xl-3 d-flex">
               <AvatarCard user={user} onUserUpdated={handleUserUpdated} />
             </div>
 
-            {/* Coluna Principal: Dados Pessoais e Segurança */}
-            <div className="col-12 col-lg-8 col-xl-9">
-              <div className="d-flex flex-column gap-3">
+            {/* Coluna Principal: Dados Pessoais e Segurança preenchendo toda a altura restante da bandeja */}
+            <div className="col-12 col-lg-8 col-xl-9 d-flex flex-column">
+              <div className="d-flex flex-column gap-3 flex-grow-1">
                 <DadosPessoaisCard user={user} onUserUpdated={handleUserUpdated} />
                 <SegurancaCard user={user} />
               </div>

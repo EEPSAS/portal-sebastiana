@@ -92,7 +92,7 @@ const AvatarCard = ({ user, onUserUpdated }) => {
   const inicial = (user?.nickname || user?.name || 'U').charAt(0).toUpperCase();
 
   return (
-    <div className="card shadow-sm border-0 rounded-4 p-3 p-md-4 h-100">
+    <div className="card shadow-sm border-0 rounded-4 p-3 p-md-4 h-100 w-100">
       <h5 className="fw-bold text-dark mb-1">
         <i className="bi bi-person-bounding-box text-primary me-2"></i>
         Foto de Perfil

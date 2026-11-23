@@ -25,6 +25,32 @@ class UpdateUsuarioRequest extends FormRequest
     }
 
     /**
+     * Normaliza o campo 'role' antes da validação para aceitar aliases legados ('admin', 'bibliotecario', 'padrao').
+     */
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('role') || $this->input('role') === null) {
+            return;
+        }
+
+        $roleBruto = mb_strtolower(trim((string) $this->input('role')));
+        if ($roleBruto === '') {
+            $this->merge(['role' => null]);
+
+            return;
+        }
+
+        $roleNormalizado = match ($roleBruto) {
+            'admin', 'administrador' => UserRole::ADM->value,
+            'bibliotecario' => UserRole::BIBLIOTECARIA->value,
+            'padrao' => UserRole::ALUNO->value,
+            default => $roleBruto,
+        };
+
+        $this->merge(['role' => $roleNormalizado]);
+    }
+
+    /**
      * Regras de validação para os dados cadastrais e edição administrativa.
      *
      * @return array<string, mixed>

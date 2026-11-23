@@ -31,15 +31,28 @@ trait HasRolesAndPermissions
 
     /**
      * Verifica se o usuário possui determinado papel (role).
+     *
+     * @param  string|array<int, string|UserRole>|UserRole  $roles
      */
     public function hasRole(string|array|UserRole $roles): bool
     {
         $roleList = is_array($roles) ? $roles : [$roles];
-        $slugs = array_map(fn ($r) => $r instanceof UserRole ? $r->value : (string) $r, $roleList);
+        $normalizar = static function (string|UserRole $role): string {
+            $valor = mb_strtolower(trim($role instanceof UserRole ? $role->value : $role));
 
-        $currentSlug = $this->roleModel?->slug ?? ($this->role instanceof UserRole ? $this->role->value : (string) $this->role);
+            // Compatibiliza o slug legado 'admin' (tabela roles) com o case oficial 'adm' do Enum UserRole
+            return $valor === 'admin' ? UserRole::ADM->value : $valor;
+        };
 
-        return in_array($currentSlug, $slugs, true);
+        $slugs = array_map($normalizar, $roleList);
+
+        // Prioriza a coluna canônica 'role' do usuário e usa roleModel apenas como fallback
+        $roleBruto = $this->role instanceof UserRole ? $this->role->value : (string) $this->role;
+        $currentSlug = $roleBruto !== ''
+            ? $normalizar($roleBruto)
+            : ($this->roleModel ? $normalizar((string) $this->roleModel->slug) : '');
+
+        return $currentSlug !== '' && in_array($currentSlug, $slugs, true);
     }
 
     /**

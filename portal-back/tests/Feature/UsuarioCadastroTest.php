@@ -1,8 +1,10 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Models\Role;
 use App\Models\Turma;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
@@ -204,4 +206,74 @@ test('administrador exclui usuario totalmente do banco de dados quando permanent
         ->assertJsonPath('excluido_permanente', true);
 
     $this->assertDatabaseMissing('users', ['id' => $usuarioId]);
+});
+
+test('administrador cadastra usuarios preservando o papel selecionado com roles populadas', function () {
+    $this->seed(RolePermissionSeeder::class);
+
+    $admin = User::factory()->create([
+        'role' => UserRole::ADM,
+        'status_confirmacao' => 'confirmado',
+    ]);
+
+    Sanctum::actingAs($admin);
+
+    $papeisEsperados = [
+        'professor' => 'professor',
+        'bibliotecaria' => 'bibliotecaria',
+        'especialista' => 'especialista',
+        'adm' => 'admin',
+    ];
+
+    foreach ($papeisEsperados as $roleEnviada => $slugTabelaRoles) {
+        $email = "novo.{$roleEnviada}@sebastiana.edu.br";
+
+        $response = $this->postJson('/api/usuarios', [
+            'name' => "Usuario {$roleEnviada}",
+            'email' => $email,
+            'password' => 'SenhaForte123!',
+            'role' => $roleEnviada,
+            'status_confirmacao' => 'confirmado',
+            'ativo' => true,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('role', $roleEnviada);
+
+        $criado = User::with('roleModel')->where('email', $email)->first();
+        $roleModelEsperado = Role::where('slug', $slugTabelaRoles)->first();
+
+        expect($criado)->not->toBeNull()
+            ->and($criado->role->value)->toBe($roleEnviada)
+            ->and($criado->role_id)->toBe($roleModelEsperado?->id);
+    }
+});
+
+test('administrador cadastra usuarios preservando o papel selecionado mesmo sem roles populadas', function () {
+    $admin = User::factory()->create([
+        'role' => UserRole::ADM,
+        'status_confirmacao' => 'confirmado',
+    ]);
+
+    Sanctum::actingAs($admin);
+
+    foreach (['professor', 'bibliotecaria', 'especialista', 'adm'] as $roleEnviada) {
+        $email = "semseed.{$roleEnviada}@sebastiana.edu.br";
+
+        $response = $this->postJson('/api/usuarios', [
+            'name' => "Sem Seed {$roleEnviada}",
+            'email' => $email,
+            'password' => 'SenhaForte123!',
+            'role' => $roleEnviada,
+            'status_confirmacao' => 'confirmado',
+            'ativo' => true,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('role', $roleEnviada);
+
+        $criado = User::where('email', $email)->first();
+        expect($criado)->not->toBeNull()
+            ->and($criado->role->value)->toBe($roleEnviada);
+    }
 });

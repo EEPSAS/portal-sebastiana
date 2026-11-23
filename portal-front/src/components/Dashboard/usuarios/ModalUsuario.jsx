@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   cadastrarUsuario,
   atualizarUsuario,
@@ -15,6 +15,16 @@ const ROLES = [
   { value: "adm", label: "Administrador Geral" },
 ];
 
+// Normaliza papéis legados ou sinônimos para o valor exato aceito pelo select e pelo backend.
+const normalizarRoleInicial = (roleUsuario) => {
+  if (!roleUsuario) return "aluno";
+  const valor = String(roleUsuario).trim().toLowerCase();
+  if (valor === "padrao") return "aluno";
+  if (valor === "admin" || valor === "administrador") return "adm";
+  if (valor === "bibliotecario") return "bibliotecaria";
+  return valor;
+};
+
 function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }) {
   const isEdicao = Boolean(usuario && usuario.id);
 
@@ -23,9 +33,7 @@ function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }
   const [email, setEmail] = useState(usuario?.email || "");
   const [password, setPassword] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
-  const [role, setRole] = useState(
-    usuario?.role === "padrao" ? "aluno" : usuario?.role || "aluno"
-  );
+  const [role, setRole] = useState(() => normalizarRoleInicial(usuario?.role));
   const [turmaId, setTurmaId] = useState(
     usuario?.turma_id || usuario?.turma_ativa?.id_turma || ""
   );
@@ -52,6 +60,73 @@ function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [errosCampos, setErrosCampos] = useState({});
+
+  // Estados e referências para movimentar o modal com o mouse (clique e arraste)
+  const [posicao, setPosicao] = useState({ x: 0, y: 0 });
+  const [arrastando, setArrastando] = useState(false);
+  const modalContentRef = useRef(null);
+  const arrasteRef = useRef(null);
+
+  // Registra listeners globais apenas enquanto o modal está sendo arrastado para acompanhar o ponteiro fora do card
+  useEffect(() => {
+    if (!arrastando) return undefined;
+
+    const handleMover = (event) => {
+      const dados = arrasteRef.current;
+      if (!dados) return;
+
+      const novoX = dados.inicioPosX + (event.clientX - dados.inicioMouseX);
+      const novoY = dados.inicioPosY + (event.clientY - dados.inicioMouseY);
+
+      // Mantém parte da barra superior visível dentro da janela para evitar que o modal fique inacessível
+      const minX = -(dados.baseLeft + dados.largura - 120);
+      const maxX = Math.max(minX, window.innerWidth - dados.baseLeft - 120);
+      const minY = 8 - dados.baseTop;
+      const maxY = Math.max(minY, window.innerHeight - dados.baseTop - 64);
+
+      setPosicao({
+        x: Math.max(minX, Math.min(novoX, maxX)),
+        y: Math.max(minY, Math.min(novoY, maxY)),
+      });
+    };
+
+    const handleEncerrar = () => {
+      arrasteRef.current = null;
+      setArrastando(false);
+    };
+
+    window.addEventListener("mousemove", handleMover);
+    window.addEventListener("mouseup", handleEncerrar);
+    window.addEventListener("blur", handleEncerrar);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMover);
+      window.removeEventListener("mouseup", handleEncerrar);
+      window.removeEventListener("blur", handleEncerrar);
+    };
+  }, [arrastando]);
+
+  // Inicia o arraste ao clicar com o botão esquerdo fora de campos e botões interativos
+  const handleIniciarArraste = (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest("input, select, textarea, button, a, label, code, [data-no-drag]")) {
+      return;
+    }
+
+    // Evita seleção acidental de texto durante a movimentação da janela
+    e.preventDefault();
+    const rect = modalContentRef.current?.getBoundingClientRect();
+    arrasteRef.current = {
+      inicioMouseX: e.clientX,
+      inicioMouseY: e.clientY,
+      inicioPosX: posicao.x,
+      inicioPosY: posicao.y,
+      baseLeft: rect ? rect.left - posicao.x : 0,
+      baseTop: rect ? rect.top - posicao.y : 0,
+      largura: rect?.width || 600,
+    };
+    setArrastando(true);
+  };
 
   const handleGerarSenha = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$";
@@ -222,9 +297,30 @@ function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }
       aria-labelledby="modal-usuario-titulo"
       style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
     >
-      <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-        <div className="modal-content border-0 shadow-lg rounded-4">
-          <div className="modal-header border-bottom pb-3">
+      <div
+        className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable"
+        style={{
+          transform: `translate3d(${posicao.x}px, ${posicao.y}px, 0)`,
+          transition: arrastando ? "none" : undefined,
+        }}
+      >
+        <div
+          ref={modalContentRef}
+          className="modal-content border-0 shadow-lg rounded-4"
+          onMouseDown={handleIniciarArraste}
+          style={{
+            cursor: arrastando ? "grabbing" : undefined,
+            userSelect: arrastando ? "none" : undefined,
+          }}
+        >
+          <div
+            className="modal-header border-bottom pb-3"
+            style={{
+              cursor: arrastando ? "grabbing" : "grab",
+              userSelect: "none",
+            }}
+            title="Clique e arraste para mover esta janela"
+          >
             <div>
               <h2
                 id="modal-usuario-titulo"
@@ -626,7 +722,7 @@ function ModalUsuarioForm({ usuario, onClose, onSuccess, onDelete, turmas = [] }
                               Para autorizar a remoção definitiva, digite exatamente o nome completo do
                               usuário abaixo:
                             </p>
-                            <div className="p-2 bg-light border rounded-2 text-center mb-2">
+                            <div className="p-2 bg-light border rounded-2 text-center mb-2" data-no-drag="true">
                               <strong className="text-dark fs-6">{usuario.name}</strong>
                             </div>
                             <input

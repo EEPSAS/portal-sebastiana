@@ -56,10 +56,16 @@ class UsuarioController extends Controller
         }
 
         if ($request->filled('role')) {
-            $roleSlug = $request->string('role')->toString();
-            $query->where(function ($q) use ($roleSlug) {
-                $q->whereHas('roleModel', fn ($r) => $r->where('slug', $roleSlug))
-                    ->orWhere('role', $roleSlug);
+            $roleSlug = mb_strtolower(trim($request->string('role')->toString()));
+            $slugsBusca = match ($roleSlug) {
+                UserRole::ADM->value, 'admin', 'administrador' => [UserRole::ADM->value, 'admin'],
+                UserRole::BIBLIOTECARIA->value, 'bibliotecario' => [UserRole::BIBLIOTECARIA->value, 'bibliotecario'],
+                default => [$roleSlug],
+            };
+
+            $query->where(function ($q) use ($slugsBusca) {
+                $q->whereHas('roleModel', fn ($r) => $r->whereIn('slug', $slugsBusca))
+                    ->orWhereIn('role', $slugsBusca);
             });
         }
 
@@ -100,19 +106,13 @@ class UsuarioController extends Controller
     {
         $dados = $request->validated();
 
-        $roleModel = null;
-        if (! empty($dados['role_id'])) {
-            $roleModel = Role::find($dados['role_id']);
-        } elseif (! empty($dados['role'])) {
-            $roleModel = Role::where('slug', $dados['role'])->first();
-        }
-
-        if ($roleModel) {
-            $dados['role_id'] = $roleModel->id;
-            $dados['role'] = $roleModel->slug;
-        } else {
-            $dados['role'] = UserRole::ALUNO;
-        }
+        // Normaliza o papel selecionado para o Enum oficial UserRole e sincroniza o role_id correspondente
+        $papelResolvido = $this->resolverPapelUsuario(
+            isset($dados['role']) ? (string) $dados['role'] : null,
+            isset($dados['role_id']) ? (int) $dados['role_id'] : null
+        );
+        $dados['role'] = $papelResolvido['role'];
+        $dados['role_id'] = $papelResolvido['role_id'];
 
         // Caso um administrador seja cadastrado sem preencher o campo de e-mail, utiliza o nome/identificador informado
         if (empty($dados['email'])) {
@@ -229,16 +229,14 @@ class UsuarioController extends Controller
         if (! $isAdm) {
             unset($dados['role_id'], $dados['role'], $dados['ativo'], $dados['email'], $dados['comentario_admin'], $dados['status_confirmacao']);
         } else {
-            if (! empty($dados['role_id'])) {
-                $roleModel = Role::find($dados['role_id']);
-                if ($roleModel) {
-                    $dados['role'] = $roleModel->slug;
-                }
-            } elseif (! empty($dados['role'])) {
-                $roleModel = Role::where('slug', $dados['role'])->first();
-                if ($roleModel) {
-                    $dados['role_id'] = $roleModel->id;
-                }
+            // Garante sincronia entre a coluna enum 'role' e a FK 'role_id' na edição administrativa
+            if (! empty($dados['role_id']) || ! empty($dados['role'])) {
+                $papelResolvido = $this->resolverPapelUsuario(
+                    isset($dados['role']) ? (string) $dados['role'] : null,
+                    isset($dados['role_id']) ? (int) $dados['role_id'] : null
+                );
+                $dados['role'] = $papelResolvido['role'];
+                $dados['role_id'] = $papelResolvido['role_id'];
             }
 
             if (! empty($dados['status_confirmacao']) && $dados['status_confirmacao'] === 'confirmado' && empty($usuario->confirmado_em)) {
@@ -413,12 +411,11 @@ class UsuarioController extends Controller
         Gate::authorize('gerenciar_papeis_permissoes');
 
         $validated = $request->validated();
-        $roleValue = $validated['role'];
-
-        $roleModel = Role::where('slug', $roleValue)->first();
+        $papelResolvido = $this->resolverPapelUsuario((string) $validated['role']);
+        $roleValue = $papelResolvido['role'];
 
         $usuario->update([
-            'role_id' => $roleModel?->id,
+            'role_id' => $papelResolvido['role_id'],
             'role' => $roleValue,
         ]);
 
@@ -675,5 +672,44 @@ class UsuarioController extends Controller
             'message' => 'Permissões do usuário atualizadas com sucesso.',
             'usuario' => new UsuarioResource($usuario),
         ], 200);
+    }
+
+    /**
+     * Normaliza o papel institucional para um valor válido do Enum UserRole
+     * e localiza o registro relacional na tabela roles (compatibilizando 'adm' e 'admin').
+     *
+     * @return array{role: string, role_id: int|null}
+     */
+    private function resolverPapelUsuario(?string $roleSlug = null, ?int $roleId = null): array
+    {
+        $roleModel = ! empty($roleId) ? Role::find($roleId) : null;
+
+        // Prioriza o slug enviado no formulário; se ausente, extrai do Role relacional
+        $slugBruto = ! empty($roleSlug)
+            ? mb_strtolower(trim($roleSlug))
+            : ($roleModel ? mb_strtolower(trim((string) $roleModel->slug)) : '');
+
+        // Converte aliases legados para o valor oficial do Enum UserRole
+        $roleEnum = UserRole::tryFrom($slugBruto);
+        $slugNormalizado = match ($slugBruto) {
+            'admin', 'administrador' => UserRole::ADM->value,
+            'bibliotecario' => UserRole::BIBLIOTECARIA->value,
+            'padrao', '' => UserRole::ALUNO->value,
+            default => $roleEnum instanceof UserRole ? $roleEnum->value : UserRole::ALUNO->value,
+        };
+
+        $slugsBusca = $slugNormalizado === UserRole::ADM->value
+            ? [UserRole::ADM->value, 'admin']
+            : [$slugNormalizado];
+
+        // Garante que o Role relacional encontrado corresponde exatamente ao papel normalizado
+        if (! $roleModel || ! in_array(mb_strtolower(trim((string) $roleModel->slug)), $slugsBusca, true)) {
+            $roleModel = Role::whereIn('slug', $slugsBusca)->first();
+        }
+
+        return [
+            'role' => $slugNormalizado,
+            'role_id' => $roleModel?->id,
+        ];
     }
 }

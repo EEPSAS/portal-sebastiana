@@ -106,8 +106,8 @@ const SegurancaCard = ({ user }) => {
   };
 
   return (
-    <div className="card shadow-sm border-0 rounded-4 p-3 p-md-4">
-      <form onSubmit={handleSubmit}>
+    <div className="card shadow-sm border-0 rounded-4 p-3 p-md-4 flex-grow-1 d-flex flex-column">
+      <form onSubmit={handleSubmit} className="d-flex flex-column flex-grow-1">
         {/* Cabeçalho do Card com botão Editar / Atualizar Senha alinhado à direita na mesma altura do título */}
         <div className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
           <div>
@@ -183,7 +183,7 @@ const SegurancaCard = ({ user }) => {
 
         {/* Caso seja conta exclusiva do Google sem senha local definida */}
         {somenteGoogle ? (
-          <div className="p-3 bg-light rounded-3 border text-center">
+          <div className="p-3 bg-light rounded-3 border text-center my-auto">
             <i className="bi bi-google text-danger fs-3 mb-1 d-block"></i>
             <h6 className="fw-bold text-dark mb-1">Autenticação Gerenciada pelo Google</h6>
             <p className="text-muted small mb-0">
@@ -191,7 +191,7 @@ const SegurancaCard = ({ user }) => {
             </p>
           </div>
         ) : (
-          <div className="row g-3">
+          <div className="row g-3 my-auto">
             {user?.tem_senha && (
               <div className="col-12">
                 <label className="form-label small fw-semibold text-dark mb-1">
