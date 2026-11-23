@@ -77,6 +77,37 @@
 .portal-scope .portal-google-highlight {
   background-color: #f8fafc;
   border: 1px dashed var(--color-border-medium);
+  width: 100%;
+}
+
+/* Badge 'Acesso Institucional Recomendado' preenchendo toda a largura da área */
+.portal-scope .portal-google-badge {
+  width: 100% !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--portal-radius-pill);
+  background-color: #ffffff;
+  border: 1px solid var(--color-border-subtle);
+  color: #475569;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Força o botão e o iframe do Google a ocuparem toda a largura da área */
+.portal-scope .portal-google-highlight #googleButtonContainer {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center;
+}
+
+.portal-scope .portal-google-highlight #googleButtonContainer > div,
+.portal-scope .portal-google-highlight #googleButtonContainer iframe {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: block !important;
 }
 
 /* Botão discreto para expandir/recolher o acesso alternativo por Usuário e Senha */

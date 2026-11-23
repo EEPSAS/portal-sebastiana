@@ -62,7 +62,7 @@ const LoginSection = () => {
           size: "large",
           shape: "pill",
           text: "signin_with",
-          width: 380,
+          width: 400,
         });
       }
 
@@ -125,14 +125,16 @@ const LoginSection = () => {
                 )}
 
                 {/* Botão Oficial Prioritário: Renderização direta do Google Identity Services com FedCM */}
-                <div className="portal-google-highlight d-flex flex-column align-items-center p-4 rounded-4 mb-4">
-                  <span className="badge rounded-pill text-bg-light border text-secondary small fw-semibold mb-3 px-3 py-2">
-                    <i className="bi bi-shield-check text-success me-1" aria-hidden="true"></i>
-                    Acesso Institucional Recomendado
-                  </span>
+                <div className="portal-google-highlight d-flex flex-column align-items-stretch p-4 rounded-4 mb-4">
+                  <div className="portal-google-badge mb-3">
+                    <i className="bi bi-shield-check text-success me-2" aria-hidden="true"></i>
+                    <span>Acesso Institucional Recomendado</span>
+                  </div>
                   {googleSubmitting && (
-                    <div className="spinner-border text-primary mb-3" role="status">
-                      <span className="visually-hidden">Conectando ao Google...</span>
+                    <div className="d-flex justify-content-center mb-3">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Conectando ao Google...</span>
+                      </div>
                     </div>
                   )}
                   <div
